@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#5b5bf0">
+<title>CBT Test Series</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t}catch(e){}</script>
+<script src="config.js"></script>
+</head>
+<body>
+<header class="hdr"><div class="hdr-in">
+  <a class="brand" href="#" onclick="home('tests');return false"><span class="logo" id="lg"></span><span id="sn">CBT Test Series</span></a>
+  <div class="sp"></div>
+  <div id="usr"></div>
+  <button class="iconbtn" id="thm" aria-label="Toggle theme" onclick="toggleTheme()"></button>
+</div></header>
+<main id="app"></main>
+<div id="layer"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const LS={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=sec=>{sec=Math.max(0,sec);const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return (h?h+':':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')};
+const IC={
+ sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+ moon:'<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+ file:'<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+ grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+ flag:'<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+ right:'<path d="M9 6l6 6-6 6"/>',left:'<path d="M15 6l-6 6 6 6"/>',
+ trophy:'<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0z"/><path d="M17 5h3v2a3 3 0 01-3 3M7 5H4v2a3 3 0 003 3"/>',
+ play:'<path d="M7 4l13 8-13 8z"/>',check:'<path d="M5 12l5 5L20 7"/>',
+ lock:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>',
+ info:'<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/>',
+ target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+ back:'<path d="M19 12H5M12 19l-7-7 7-7"/>'
+};
+const ic=n=>`<svg class="i" viewBox="0 0 24 24">${IC[n]}</svg>`;
+const L='ABCD';
+const CFG=window.CBT_CONFIG||{};
+const cloud=!!(CFG.SUPABASE_URL&&CFG.SUPABASE_KEY);
+let tests=[],T=null,P=null,timer=null,palOpen=false,student=LS.get('cbt_student',null);
+
+/* ---------- theme ---------- */
+function updateTheme(){$('#thm').innerHTML=ic(document.documentElement.dataset.theme==='dark'?'sun':'moon')}
+function toggleTheme(){const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;LS.set('cbt_theme',t);updateTheme()}
+function updateHeader(){
+  $('#lg').innerHTML=ic('target').replace('class="i"','class="i" style="width:20px;height:20px"');
+  $('#sn').textContent=CFG.SITE_NAME||'CBT Test Series';document.title=CFG.SITE_NAME||'CBT Test Series';
+  $('#usr').innerHTML=student?`<button class="chip-user" onclick="logout()" title="Switch student"><span class="avatar">${esc(student.name.trim()[0].toUpperCase())}</span>${esc(student.name.split(' ')[0])}</button>`:'';
+}
+function logout(){if(confirm('Switch to a different student? Your results stay saved.')){student=null;LS.del('cbt_student');updateHeader();login()}}
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2600)}
+function modal(h){$('#layer').innerHTML=`<div class="modal" onclick="if(event.target===this)closeModal()"><div class="box">${h}</div></div>`}
+function closeModal(){$('#layer').innerHTML=''}
+function setApp(h,keepScroll){$('#app').innerHTML=h;if(!keepScroll)window.scrollTo(0,0)}
+
+/* ---------- cloud ---------- */
+async function api(path,opt={}){
+  const r=await fetch(CFG.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/'+path,{...opt,headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json',...(opt.headers||{})}});
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const t=await r.text();return t?JSON.parse(t):null;
+}
+const hist=()=>LS.get('cbt_hist',[]);
+const toRow=r=>({client_id:r.cid,student_id:student.phone,name:student.name,test_id:r.testId,test_title:r.title,score:r.score,max_score:r.max,correct:r.correct,wrong:r.wrong,skipped:r.skipped,used_seconds:r.used,answers:r.ans});
+async function syncPending(){
+  if(!cloud||!student)return;
+  const h=hist();let ch=false;
+  for(const r of h){
+    if(r.synced)continue;
+    try{await api('attempts?on_conflict=client_id',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify(toRow(r))});r.synced=true;ch=true}catch(e){break}
+  }
+  if(ch)LS.set('cbt_hist',h);
+}
+async function pullHistory(){
+  if(!cloud||!student)return false;
+  try{
+    const rows=await api('attempts?student_id=eq.'+encodeURIComponent(student.phone)+'&select=*&order=created_at.asc&limit=500');
+    const h=hist(),have=new Set(h.map(x=>x.cid));let add=0;
+    rows.forEach(x=>{if(!have.has(x.client_id)){h.push({cid:x.client_id,testId:x.test_id,title:x.test_title,date:new Date(x.created_at).getTime(),ans:x.answers||{},used:x.used_seconds,correct:x.correct,wrong:x.wrong,skipped:x.skipped,score:+x.score,max:+x.max_score,synced:true});add++}});
+    if(add){h.sort((a,b)=>a.date-b.date);LS.set('cbt_hist',h)}
+    return add>0;
+  }catch(e){return false}
+}
+
+/* ---------- init & login ---------- */
+async function init(){
+  updateTheme();updateHeader();
+  try{tests=await (await fetch('index.json',{cache:'no-cache'})).json()}catch(e){tests=[]}
+  if(!student)return login();
+  home('tests');
+  if(cloud){await syncPending();if(await pullHistory()&&!T&&!P)home(curTab)}
+}
+function login(){
+  document.body.classList.remove('intest');
+  setApp(`<div class="wrap"><div class="card login">
+   <div class="logo" id="lg2"></div><h1 style="font-size:26px">Welcome 👋</h1>
+   <p class="mut" style="margin:6px 0 4px">Enter your details to start practising.${cloud?' Use the same mobile number on any device to see all your past results.':''}</p>
+   <label class="l">Full name</label><input type="text" id="nm" placeholder="e.g. Rahul Sharma" autocomplete="name">
+   <label class="l">Mobile number</label><input type="tel" id="ph" placeholder="10-digit number" inputmode="numeric" maxlength="10" autocomplete="tel">
+   <div id="er" class="sm" style="color:var(--bad);min-height:20px;margin-top:8px"></div>
+   <button class="btn block" onclick="doLogin()" style="margin-top:6px">Continue ${ic('right')}</button>
+  </div></div>`);
+  $('#lg2').innerHTML=ic('target').replace('class="i"','class="i" style="width:26px;height:26px"');
+}
+async function doLogin(){
+  const n=$('#nm').value.trim().replace(/\s+/g,' '),p=$('#ph').value.replace(/\D/g,'');
+  if(n.length<2){$('#er').textContent='Please enter your name.';return}
+  if(p.length!==10){$('#er').textContent='Please enter a valid 10-digit mobile number.';return}
+  student={name:n,phone:p};LS.set('cbt_student',student);updateHeader();
+  const other=hist().length&&LS.get('cbt_hist_owner',p)!==p;
+  if(other){LS.del('cbt_hist')}
+  LS.set('cbt_hist_owner',p);
+  home('tests');
+  if(cloud){await syncPending();if(await pullHistory())home(curTab)}
+}
+
+/* ---------- home ---------- */
+let curTab='tests';
+const pct=(s,m)=>m?Math.max(0,Math.round(s*100/m)):0;
+function ring(p,size,sw,col){
+  const r=(size-sw)/2,c=2*Math.PI*r;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="${sw}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${col||'var(--pri)'}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-p/100)}"/></svg>`;
+}
+function home(tab){
+  curTab=tab||curTab;
+  clearInterval(timer);window.onbeforeunload=null;document.body.classList.remove('intest');T=null;P=null;
+  if(!student)return login();
+  const h=hist();
+  const avg=h.length?Math.round(h.reduce((a,x)=>a+pct(x.score,x.max),0)/h.length):0;
+  const best=h.length?Math.max(...h.map(x=>pct(x.score,x.max))):0;
+  const hr=new Date().getHours(),gr=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+  let o=`<div class="wrap"><div class="hero"><h1>${gr}, ${esc(student.name.split(' ')[0])}</h1><p>Pick a test and start practising in real exam mode.</p>
+  <div class="stats"><div class="stat"><b>${h.length}</b><span>Tests taken</span></div><div class="stat"><b>${avg}%</b><span>Average</span></div><div class="stat"><b>${best}%</b><span>Best</span></div></div></div>
+  <div class="sec-h"><div class="seg"><button class="${curTab==='tests'?'on':''}" onclick="home('tests')">All tests</button><button class="${curTab==='results'?'on':''}" onclick="home('results')">My results</button></div></div>`;
+  if(curTab==='tests'){
+    if(!tests.length)o+=`<div class="card empty">No tests have been added yet.</div>`;
+    else{
+      o+='<div class="grid">';
+      tests.forEach(t=>{
+        const at=h.filter(x=>x.testId===t.id),b=at.length?Math.max(...at.map(x=>pct(x.score,x.max))):null;
+        const prog=LS.get('cbt_prog_'+t.id,null);
+        o+=`<div class="card tcard"><div class="row" style="align-items:flex-start;gap:12px"><div class="tico">${ic('file')}</div><div style="flex:1;min-width:0"><h3>${esc(t.title)}</h3>
+        <div class="chips" style="margin-top:8px"><span class="chip">${ic('grid').replace('class="i"','class="i" style="width:13px;height:13px"')}${t.questions||'?'} questions</span><span class="chip">${ic('clock').replace('class="i"','class="i" style="width:13px;height:13px"')}${t.duration} min</span>
+        ${prog?'<span class="chip warn">In progress</span>':at.length?`<span class="chip ok">Attempted ${at.length}×</span>`:'<span class="chip pri">New</span>'}</div></div></div>
+        ${b!=null?`<div><div class="row sm mut" style="justify-content:space-between;margin-bottom:6px"><span>Best score</span><b style="color:var(--tx)">${b}%</b></div><div class="bar"><i style="width:${b}%"></i></div></div>`:''}
+        <button class="btn" onclick="start('${esc(t.id)}')">${prog?'Resume test':at.length?'Attempt again':'Start test'} ${ic('right')}</button></div>`;
+      });
+      o+='</div>';
+    }
+  }else{
+    if(!h.length)o+=`<div class="card empty">You haven't attempted any test yet.</div>`;
+    else{
+      o+='<div class="card">';
+      h.map((x,i)=>[x,i]).reverse().forEach(([x,i])=>{
+        const p=pct(x.score,x.max);
+        o+=`<div class="rrow"><div class="mring">${ring(p,54,6,p>=60?'var(--ok)':p>=35?'var(--warn)':'var(--bad)')}<span>${p}%</span></div>
+        <div class="grow"><b>${esc(x.title)}</b><span class="sm mut">${new Date(x.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} · ${x.score}/${x.max} · ✓${x.correct} ✗${x.wrong}</span></div>
+        <button class="btn soft sm" onclick="viewAttempt(${i})">Review</button></div>`;
+      });
+      o+='</div>';
+    }
+  }
+  setApp(o+'</div>');
+}
+
+/* ---------- test flow ---------- */
+async function loadTest(id){
+  const t=tests.find(x=>x.id===id);
+  const r=await fetch(encodeURIComponent((t&&t.file)||id+'.json'),{cache:'no-cache'});
+  if(!r.ok)throw new Error('load');
+  const d=await r.json();d.id=id;return d;
+}
+async function start(id){
+  try{T=await loadTest(id)}catch(e){toast('Could not load the test. Check your internet.');return}
+  const p=LS.get('cbt_prog_'+id,null);
+  if(p){P=p;if(p.end<=Date.now())return submit(true);return run()}
+  instr();
+}
+function instr(){
+  const pm=T.correct==null?4:T.correct,nm=T.wrong==null?1:T.wrong;
+  setApp(`<div class="wrap"><div class="ins card"><button class="btn ghost sm" onclick="home()">${ic('back')} Back</button>
+  <h1 style="font-size:24px;margin-top:16px">${esc(T.title)}</h1><p class="mut" style="margin:4px 0 0">Read the instructions carefully before you begin.</p>
+  <ul>
+   <li>${ic('grid')}<span><b>${T.questions.length} questions</b> in <b>${T.duration} minutes</b></span></li>
+   <li>${ic('check')}<span>Correct answer <b>+${pm}</b> · Wrong answer <b>−${nm}</b> · Unanswered <b>0</b></span></li>
+   <li>${ic('clock')}<span>The timer never pauses. It keeps running even if you refresh or close the page.</span></li>
+   <li>${ic('flag')}<span>Use <b>Mark for review</b> to flag questions you want to revisit.</span></li>
+   <li>${ic(T.lockBack?'lock':'info')}<span>${T.lockBack?'<b>You cannot go back</b> to previous questions once you move ahead.':'You can move freely between questions and change answers any time.'}</span></li>
+   <li>${ic('trophy')}<span>The test is submitted automatically when time ends. Correct answers are shown after submission.</span></li>
+  </ul><button class="btn block" onclick="begin()">${ic('play')} Start test now</button></div></div>`);
+}
+function begin(){
+  P={start:Date.now(),end:Date.now()+T.duration*60000,ans:{},mark:{},vis:{0:1},cur:0};
+  save();run();
+}
+const save=()=>LS.set('cbt_prog_'+T.id,P);
+function run(){
+  document.body.classList.add('intest');palOpen=false;
+  window.onbeforeunload=e=>{e.preventDefault();e.returnValue=''};
+  clearInterval(timer);draw();timer=setInterval(tick,1000);tick();
+}
+let warned=false;
+function tick(){
+  if(!P)return;
+  const left=Math.round((P.end-Date.now())/1000);
+  const e=$('#tm');if(e){e.querySelector('span').textContent=fmt(left);e.classList.toggle('low',left<=300)}
+  if(T.duration>10&&left<=300&&left>295&&!warned){warned=true;toast('Only 5 minutes left!')}
+  if(left<=0){clearInterval(timer);submit(true)}
+}
+function counts(){
+  const n=T.questions.length;let a=0,m=0;
+  for(let i=0;i<n;i++){if(P.ans[i]!=null)a++;if(P.mark[i])m++}
+  return{a,m,u:n-a,n};
+}
+function palHtml(){
+  const lock=!!T.lockBack;
+  return `<div class="pal">${T.questions.map((_,i)=>{
+    const has=P.ans[i]!=null,mk=P.mark[i];
+    let c=i===P.cur?'cur ':'';c+=mk?(has?'mans':'mark'):has?'ans':P.vis[i]?'na':'';
+    return `<button class="${c}" ${lock?'disabled':''} onclick="go(${i})">${i+1}</button>`}).join('')}</div>
+  <div class="leg"><span><i style="background:var(--okSoft)"></i>Answered</span><span><i style="background:var(--badSoft)"></i>Not answered</span><span><i style="background:var(--priSoft)"></i>Marked</span><span><i style="border:1.5px solid var(--bd)"></i>Not visited</span></div>`;
+}
+function draw(){
+  const n=T.questions.length,q=T.questions[P.cur],a=P.ans[P.cur],lock=!!T.lockBack,c=counts();
+  const pm=T.correct==null?4:T.correct,nm=T.wrong==null?1:T.wrong;
+  P.vis[P.cur]=1;
+  setApp(`<div class="tbar"><div class="tb-l"><div class="tb-title">${esc(T.title)}</div><div class="sm mut">${c.a} of ${n} answered</div></div>
+   <div class="timer" id="tm">${ic('clock')}<span>--:--</span></div><button class="btn danger sm" onclick="submit(false)">Submit</button></div>
+   <div class="progress"><i style="width:${(P.cur+1)*100/n}%"></i></div>
+   <div class="tlayout"><section class="card qcard"><div class="qmeta"><b>Question ${P.cur+1}</b><span class="chip ok">+${pm}</span><span class="chip warn">−${nm}</span>${P.mark[P.cur]?'<span class="chip pri">Marked for review</span>':''}</div>
+   <div class="qtext">${esc(q.q)}</div>
+   ${q.options.map((o,i)=>`<button class="opt ${a===i?'sel':''}" onclick="sel(${i})"><span class="k">${L[i]}</span><span class="t">${esc(o)}</span></button>`).join('')}</section>
+   <aside class="side card"><b>Question palette</b><div style="margin-top:12px">${palHtml()}</div>
+   <div class="mgrid" style="margin-bottom:0"><div><b>${c.a}</b><span class="sm mut">Answered</span></div><div><b>${c.u}</b><span class="sm mut">Left</span></div><div><b>${c.m}</b><span class="sm mut">Marked</span></div></div></aside></div>
+   <div class="bbar"><div class="r"><button class="btn warn sm" onclick="markNext()">${ic('flag')} ${P.mark[P.cur]?'Unmark':'Mark'}</button><button class="btn ghost sm" onclick="clr()">Clear</button><button class="btn soft sm only-m" onclick="pal(true)">${ic('grid')} Palette</button></div>
+   <div class="r">${lock?'':`<button class="btn ghost" ${P.cur===0?'disabled':''} onclick="go(${P.cur-1})">${ic('left')} Prev</button>`}<button class="btn" onclick="saveNext()" style="flex:2">${P.cur===n-1?'Save':'Save &amp; next'} ${ic('right')}</button></div></div>
+   <div class="sheet ${palOpen?'open':''}" onclick="if(event.target===this)pal(false)"><div class="in"><div class="grab"></div><b>Question palette</b><div style="margin-top:12px">${palHtml()}</div>
+   <div class="mgrid"><div><b>${c.a}</b><span class="sm mut">Answered</span></div><div><b>${c.u}</b><span class="sm mut">Left</span></div><div><b>${c.m}</b><span class="sm mut">Marked</span></div></div>
+   <button class="btn danger block" onclick="submit(false)">Submit test</button></div></div>`,true);
+  tick();
+}
+function pal(v){palOpen=v;const s=document.querySelector('.sheet');if(s)s.classList.toggle('open',v)}
+function go(i){if(i<0||i>=T.questions.length)return;P.cur=i;palOpen=false;save();draw();window.scrollTo(0,0)}
+function sel(i){P.ans[P.cur]=i;save();draw()}
+function clr(){delete P.ans[P.cur];save();draw()}
+function saveNext(){delete P.mark[P.cur];nxt()}
+function markNext(){if(P.mark[P.cur])delete P.mark[P.cur];else P.mark[P.cur]=1;nxt()}
+function nxt(){if(P.cur<T.questions.length-1)P.cur++;save();draw();window.scrollTo(0,0)}
+
+function score(t,ans){
+  let c=0,w=0,s=0;const pm=t.correct==null?4:t.correct,nm=t.wrong==null?1:t.wrong;
+  t.questions.forEach((q,i)=>{const a=ans[i];if(a==null||q.answer==null)s++;else if(a===q.answer)c++;else w++});
+  return{correct:c,wrong:w,skipped:s,score:c*pm-w*nm,max:t.questions.length*pm};
+}
+function submit(auto){
+  if(!auto){
+    const c=counts();
+    modal(`<h2>Submit test?</h2><p class="mut" style="margin:6px 0 0">You won't be able to change your answers after this.</p>
+    <div class="mgrid"><div><b style="color:var(--ok)">${c.a}</b><span class="sm mut">Answered</span></div><div><b style="color:var(--bad)">${c.u}</b><span class="sm mut">Unanswered</span></div><div><b style="color:var(--pri)">${c.m}</b><span class="sm mut">Marked</span></div></div>
+    <div class="row"><button class="btn ghost" style="flex:1" onclick="closeModal()">Keep going</button><button class="btn danger" style="flex:1" onclick="closeModal();finish()">Submit</button></div>`);
+    return;
+  }
+  toast("Time's up! Submitting your test…");finish();
+}
+function finish(){
+  clearInterval(timer);window.onbeforeunload=null;
+  const date=Date.now();
+  const rec={cid:T.id+'_'+student.phone+'_'+date,testId:T.id,title:T.title,date,ans:P.ans,used:Math.min(Math.round((date-P.start)/1000),T.duration*60),...score(T,P.ans),synced:false};
+  const h=hist();h.push(rec);LS.set('cbt_hist',h);LS.del('cbt_prog_'+T.id);
+  P=null;warned=false;document.body.classList.remove('intest');
+  showResult(rec,'all');
+  syncPending().then(()=>lb(rec));
+}
+async function viewAttempt(i){
+  const rec=hist()[i];
+  try{T=await loadTest(rec.testId)}catch(e){toast('Could not load the test.');return}
+  showResult(rec,'all');lb(rec);
+}
+
+/* ---------- result ---------- */
+async function lb(rec){
+  const el=$('#lb');if(!el||!cloud)return;
+  try{
+    const rows=await api('attempts?test_id=eq.'+encodeURIComponent(rec.testId)+'&select=student_id,name,score&limit=2000');
+    const best={};rows.forEach(r=>{if(!best[r.student_id]||+r.score>best[r.student_id].s)best[r.student_id]={n:r.name,s:+r.score}});
+    const arr=Object.entries(best).map(([id,v])=>({id,...v})).sort((a,b)=>b.s-a.s);
+    const me=arr.findIndex(x=>x.id===student.phone);
+    if(!arr.length)return;
+    const top=arr.slice(0,5);
+    el.innerHTML=`<div class="card" style="margin-top:12px"><div class="row" style="justify-content:space-between;margin-bottom:6px"><b>${ic('trophy')} Leaderboard</b>${me>=0?`<span class="chip pri">Your rank #${me+1} of ${arr.length}</span>`:''}</div>
+    ${top.map((x,i)=>`<div class="lb ${x.id===student.phone?'me':''}"><span class="n">${i+1}</span><span style="flex:1">${esc(x.n)}</span><b>${x.s}</b></div>`).join('')}
+    ${me>=5?`<div class="lb me"><span class="n">${me+1}</span><span style="flex:1">${esc(student.name)} (you)</span><b>${arr[me].s}</b></div>`:''}</div>`;
+  }catch(e){}
+}
+function showResult(rec,f){
+  document.body.classList.remove('intest');
+  const p=pct(rec.score,rec.max),col=p>=60?'var(--ok)':p>=35?'var(--warn)':'var(--bad)';
+  const acc=rec.correct+rec.wrong?Math.round(rec.correct*100/(rec.correct+rec.wrong)):0;
+  const items=T.questions.map((q,i)=>{const a=rec.ans[i];return{q,i,a,st:a==null?'s':(a===q.answer?'c':'w')}}).filter(x=>f==='all'||x.st===f);
+  const fb=(k,t)=>`<button class="${f===k?'on':''}" onclick="showResult(hist().find(x=>x.cid==='${rec.cid}'),'${k}')">${t}</button>`;
+  setApp(`<div class="wrap"><div class="card rhero"><div class="mut sm">${esc(rec.title)}</div>
+   <div class="ring">${ring(p,150,12,col)}<div class="c"><div><b>${rec.score}</b><span class="sm mut">out of ${rec.max}</span></div></div></div>
+   <h2>${p>=75?'Excellent work! 🎉':p>=50?'Good effort 👍':'Keep practising 💪'}</h2><div class="mut sm" style="margin-top:4px">${p}% · Accuracy ${acc}% · Time ${fmt(rec.used)}</div>
+   <div class="s4"><div><b style="color:var(--ok)">${rec.correct}</b><span>Correct</span></div><div><b style="color:var(--bad)">${rec.wrong}</b><span>Wrong</span></div><div><b>${rec.skipped}</b><span>Skipped</span></div><div><b>${T.questions.length}</b><span>Total</span></div></div></div>
+   <div id="lb"></div>
+   <div class="sec-h"><div class="seg">${fb('all','All')}${fb('c','Correct')}${fb('w','Wrong')}${fb('s','Skipped')}</div><button class="btn ghost sm" onclick="home('results')">Done</button></div>
+   ${items.map(({q,i,a,st})=>`<div class="card rv"><div class="row" style="margin-bottom:8px"><b>Q${i+1}</b>${st==='c'?'<span class="chip ok">Correct</span>':st==='w'?'<span class="chip" style="background:var(--badSoft);color:var(--bad)">Wrong</span>':'<span class="chip">Skipped</span>'}</div>
+    <div style="white-space:pre-wrap;font-weight:500;margin-bottom:12px;line-height:1.6">${esc(q.q)}</div>
+    ${q.options.map((o,j)=>{const isC=j===q.answer,isY=j===a;return `<div class="ro ${isC?'c':(isY?'w':'')}"><span class="k">${L[j]}</span><span style="flex:1">${esc(o)}${isC||isY?`<span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${isC?'<span class="tag g" style="margin:0">Correct answer</span>':''}${isY&&!isC?'<span class="tag r" style="margin:0">Your answer</span>':''}${isY&&isC?'<span class="tag g" style="margin:0">Your answer</span>':''}</span>`:''}</span></div>`}).join('')}
+    ${q.explanation?`<div class="exp"><b>Explanation:</b> ${esc(q.explanation)}</div>`:''}</div>`).join('')||'<div class="card empty">Nothing to show here.</div>'}
+   </div>`);
+}
+init();
+</script>
+</body>
+</html>
