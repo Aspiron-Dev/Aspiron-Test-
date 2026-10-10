@@ -3,6 +3,6 @@
 window.CBT_CONFIG = {
   SUPABASE_URL: "https://klvvhbqkhbdzysgpykpr.supabase.co",   // e.g. https://abcdxyz.supabase.co
   SUPABASE_KEY: "sb_publishable_pt-b8kuOOsxyyAz277qsNA_q6e8D2G3",   // the "anon public" key
-  ADMIN_PASS: "",     // optional passcode for admin.html (keeps casual students out)
+  ADMIN_PASS: "12345Asdfghjkl7890",     // optional passcode for admin.html (keeps casual students out)
   SITE_NAME: "CBT Test Series"
 };
