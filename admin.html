@@ -60,7 +60,9 @@ function createView(){
   <p class="mut sm" style="margin:4px 0 12px">The PDF is read inside your browser and is not uploaded anywhere. It must be a typed PDF (not a scanned photo).</p>
   <input type="file" id="pdf" accept="application/pdf"><p class="mut sm" id="st"></p>
   <label class="l">Extracted text (you can fix it or paste text directly)</label><textarea id="raw" style="min-height:140px"></textarea>
-  <label class="l">Answer key (only if it is not at the end of the PDF) e.g. 1. B &nbsp; 2. D &nbsp; 3. A</label><textarea id="key"></textarea>
+  <label class="l">Answer key PDF (only if the key is a separate PDF)</label>
+  <input type="file" id="kpdf" accept="application/pdf"><p class="mut sm" id="kst"></p>
+  <label class="l">Answer key text (filled automatically from the key PDF, or paste it here) e.g. 1. B &nbsp; 2. D &nbsp; 3. A</label><textarea id="key"></textarea>
   <button class="btn" style="margin-top:12px" onclick="doParse()">2. Build questions</button></div>
   <div class="card" style="margin-top:14px"><h3>Test details</h3><div class="g2">
    <div><label class="l">Test name</label><input type="text" id="title" placeholder="NEET Mock Test 1"></div>
@@ -74,30 +76,41 @@ function createView(){
    <div class="row"><button class="btn" onclick="dlTest()">Download test file</button><button class="btn soft" onclick="dlIndex()">Download index.json</button></div></div>`;
   if(Q.length)render();
 }
-document.addEventListener('change',async e=>{
-  if(e.target.id!=='pdf')return;
-  const f=e.target.files[0];if(!f)return;
-  if(!window.pdfjsLib){$('#st').textContent='PDF reader could not load. Check your internet connection and reload, or paste the text below.';return}
-  $('#st').textContent='Reading PDF…';
-  try{
-    const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
-    let out='';
-    for(let p=1;p<=pdf.numPages;p++){
-      const tc=await (await pdf.getPage(p)).getTextContent();
-      let last=null,cur='',lines=[];
-      for(const it of tc.items){
-        const y=Math.round(it.transform[5]);
-        if(last!==null&&Math.abs(y-last)>3){lines.push(cur);cur=''}
-        cur+=it.str;last=y;
-      }
-      lines.push(cur);out+=lines.join('\n')+'\n';
-      $('#st').textContent=`Read page ${p} of ${pdf.numPages}`;
+async function pdfText(f,spaced,note){
+  if(!window.pdfjsLib)throw new Error('PDF reader could not load. Check your internet and reload.');
+  const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;
+  let out='';
+  for(let p=1;p<=pdf.numPages;p++){
+    const tc=await (await pdf.getPage(p)).getTextContent();
+    let last=null,cur='',lines=[];
+    for(const it of tc.items){
+      const y=Math.round(it.transform[5]);
+      if(last!==null&&Math.abs(y-last)>3){lines.push(cur);cur=''}
+      cur+=it.str+(spaced?' ':'');last=y;
     }
-    $('#raw').value=out;
-    if(!$('#title').value)$('#title').value=f.name.replace(/\.pdf$/i,'');
-    $('#st').textContent='Done. If the text looks empty or garbled, the PDF is probably a scanned image.';
-    doParse();
-  }catch(err){$('#st').textContent='Could not read this PDF: '+err.message}
+    lines.push(cur);out+=lines.join('\n')+'\n';
+    note.textContent=`Reading page ${p} of ${pdf.numPages}…`;
+  }
+  return out;
+}
+document.addEventListener('change',async e=>{
+  const id=e.target.id;
+  if(id!=='pdf'&&id!=='kpdf')return;
+  const f=e.target.files[0];if(!f)return;
+  const note=$(id==='pdf'?'#st':'#kst');
+  note.textContent='Reading PDF…';
+  try{
+    if(id==='pdf'){
+      $('#raw').value=await pdfText(f,false,note);
+      if(!$('#title').value)$('#title').value=f.name.replace(/\.pdf$/i,'');
+      note.textContent='Done. If the text looks empty or garbled, the PDF is probably a scanned image.';
+    }else{
+      $('#key').value=await pdfText(f,true,note);
+      const n=CBTParser.parseKey($('#key').value).count;
+      note.textContent=n?`Done. Found ${n} answers in the key.`:'No answers found. This PDF may be a scanned image, or paste the key text below.';
+    }
+    if($('#raw').value.trim())doParse();
+  }catch(err){note.textContent='Could not read this PDF: '+err.message}
 });
 function doParse(){
   const r=CBTParser.parse($('#raw').value,$('#key').value);
