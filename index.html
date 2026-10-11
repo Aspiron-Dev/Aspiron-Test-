@@ -13,7 +13,7 @@
 </head>
 <body>
 <header class="hdr"><div class="hdr-in">
-  <a class="brand" href="#" onclick="home('tests');return false"><span class="logo" id="lg"></span><span id="sn">CBT Test Series</span></a>
+  <a class="brand" href="#/"><span class="logo" id="lg"></span><span id="sn">CBT Test Series</span></a>
   <div class="sp"></div>
   <div id="usr"></div>
   <button class="iconbtn" id="thm" aria-label="Toggle theme" onclick="toggleTheme()"></button>
@@ -24,8 +24,9 @@
 <script>
 const $=s=>document.querySelector(s);
 const LS={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
-const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const fmt=sec=>{sec=Math.max(0,sec);const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return (h?h+':':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=sec=>{sec=Math.max(0,Math.round(sec));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return (h?h+':':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')};
+const uuid=()=>(crypto.randomUUID?crypto.randomUUID():'id-'+Date.now()+'-'+Math.random().toString(16).slice(2));
 const IC={
  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
  moon:'<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>',
@@ -39,180 +40,319 @@ const IC={
  lock:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>',
  info:'<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/>',
  target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
- back:'<path d="M19 12H5M12 19l-7-7 7-7"/>'
+ back:'<path d="M19 12H5M12 19l-7-7 7-7"/>',
+ folder:'<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>',
+ logout:'<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>',
+ book:'<path d="M4 19.5A2.5 2.5 0 016.5 17H20V3H6.5A2.5 2.5 0 004 5.5z"/><path d="M4 19.5V21h16"/>',
+ crown:'<path d="M3 7l4 4 5-7 5 7 4-4-2 12H5z"/>',
+ msg:'<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>',
+ wifi:'<path d="M1 1l22 22M16.7 11.1A10.9 10.9 0 0119 12.6M5 12.6a10.9 10.9 0 015.2-2.5M8.5 16.1a6 6 0 016.9 0M12 20h.01"/>',
+ eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>',
+ key:'<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2L21 2M16 7l3 3M14 9l2 2"/>'
 };
-const ic=n=>`<svg class="i" viewBox="0 0 24 24">${IC[n]}</svg>`;
+const ic=(n,s)=>`<svg class="i" viewBox="0 0 24 24"${s?` style="width:${s}px;height:${s}px"`:''}>${IC[n]}</svg>`;
 const L='ABCD';
 const CFG=window.CBT_CONFIG||{};
-const cloud=!!(CFG.SUPABASE_URL&&CFG.SUPABASE_KEY);
-let tests=[],T=null,P=null,timer=null,palOpen=false,student=LS.get('cbt_student',null);
+const API=String(CFG.SUPABASE_URL||'').replace(/\/$/,'');
+const cloud=!!(API&&CFG.SUPABASE_KEY);
 
-/* ---------- theme ---------- */
+/* ---------- device id ---------- */
+function devId(){
+  let d=LS.get('cbt_dev',null);
+  if(!d||String(d).length<8){
+    try{d=Array.from(crypto.getRandomValues(new Uint8Array(10))).map(b=>b.toString(16).padStart(2,'0')).join('')}catch(e){d=(Math.random().toString(16).slice(2)+Math.random().toString(16).slice(2)).slice(0,20)}
+    LS.set('cbt_dev',d);
+  }
+  return d;
+}
+const DEV=devId();
+
+/* ---------- state ---------- */
+let AUTH=LS.get('cbt_auth',null);      // {mobile, code, name}
+let CAT=null, T=null, P=null, timer=null, INTEST=false, palOpen=false, warned=false, RV=null, retryT=null, RET='#/', LOGINERR='';
+
+/* ---------- api ---------- */
+async function rpc(fn,args,noAuth){
+  const body=noAuth?args:Object.assign({p_mobile:AUTH.mobile,p_code:AUTH.code,p_device:DEV},args||{});
+  try{
+    const r=await fetch(API+'/rest/v1/rpc/'+fn,{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok)return{ok:false,error:'server',status:r.status};
+    return await r.json();
+  }catch(e){return{ok:false,error:'network'}}
+}
+const AUTHERR=['invalid','blocked','pending','device_limit','locked','device'];
+function errText(r){
+  switch(r&&r.error){
+    case 'invalid':return 'Mobile number or access code is incorrect.';
+    case 'pending':return 'Your request is waiting for approval. You will receive your access code once the admin approves it.';
+    case 'blocked':return 'Your access has been blocked. Please contact the admin.';
+    case 'locked':return `Too many wrong attempts. Please try again in ${r.wait||15} minutes.`;
+    case 'device_limit':return 'This code is already active on the maximum number of devices. Ask the admin to reset your devices.';
+    case 'network':return 'No internet connection. Please check and try again.';
+    default:return 'Something went wrong. Please try again.';
+  }
+}
+function authErr(r){
+  if(r&&!r.ok&&AUTHERR.includes(r.error)){
+    LOGINERR=r.error==='invalid'?'Your session is no longer valid. Please sign in again.':errText(r);
+    AUTH=null;LS.del('cbt_auth');CAT=null;INTEST=false;document.body.classList.remove('intest');login();
+    return true;
+  }
+  return false;
+}
+
+/* ---------- theme / header / helpers ---------- */
 function updateTheme(){$('#thm').innerHTML=ic(document.documentElement.dataset.theme==='dark'?'sun':'moon')}
 function toggleTheme(){const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;LS.set('cbt_theme',t);updateTheme()}
 function updateHeader(){
-  $('#lg').innerHTML=ic('target').replace('class="i"','class="i" style="width:20px;height:20px"');
+  $('#lg').innerHTML=ic('target',20);
   $('#sn').textContent=CFG.SITE_NAME||'CBT Test Series';document.title=CFG.SITE_NAME||'CBT Test Series';
-  $('#usr').innerHTML=student?`<button class="chip-user" onclick="logout()" title="Switch student"><span class="avatar">${esc(student.name.trim()[0].toUpperCase())}</span>${esc(student.name.split(' ')[0])}</button>`:'';
+  $('#usr').innerHTML=AUTH?`<button class="chip-user" onclick="signOut()" title="Sign out"><span class="avatar">${esc((AUTH.name||'?').trim()[0].toUpperCase())}</span>${esc((AUTH.name||'').split(' ')[0])}</button>`:'';
 }
-function logout(){if(confirm('Switch to a different student? Your results stay saved.')){student=null;LS.del('cbt_student');updateHeader();login()}}
-function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2600)}
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}
 function modal(h){$('#layer').innerHTML=`<div class="modal" onclick="if(event.target===this)closeModal()"><div class="box">${h}</div></div>`}
 function closeModal(){$('#layer').innerHTML=''}
-function setApp(h,keepScroll){$('#app').innerHTML=h;if(!keepScroll)window.scrollTo(0,0)}
-
-/* ---------- cloud ---------- */
-async function api(path,opt={}){
-  const r=await fetch(CFG.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/'+path,{...opt,headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json',...(opt.headers||{})}});
-  if(!r.ok)throw new Error('HTTP '+r.status);
-  const t=await r.text();return t?JSON.parse(t):null;
-}
-const hist=()=>LS.get('cbt_hist',[]);
-const toRow=r=>({client_id:r.cid,student_id:student.phone,name:student.name,test_id:r.testId,test_title:r.title,score:r.score,max_score:r.max,correct:r.correct,wrong:r.wrong,skipped:r.skipped,used_seconds:r.used,answers:r.ans});
-async function syncPending(){
-  if(!cloud||!student)return;
-  const h=hist();let ch=false;
-  for(const r of h){
-    if(r.synced)continue;
-    try{await api('attempts?on_conflict=client_id',{method:'POST',headers:{Prefer:'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify(toRow(r))});r.synced=true;ch=true}catch(e){break}
-  }
-  if(ch)LS.set('cbt_hist',h);
-}
-async function pullHistory(){
-  if(!cloud||!student)return false;
-  try{
-    const rows=await api('attempts?student_id=eq.'+encodeURIComponent(student.phone)+'&select=*&order=created_at.asc&limit=500');
-    const h=hist(),have=new Set(h.map(x=>x.cid));let add=0;
-    rows.forEach(x=>{if(!have.has(x.client_id)){h.push({cid:x.client_id,testId:x.test_id,title:x.test_title,date:new Date(x.created_at).getTime(),ans:x.answers||{},used:x.used_seconds,correct:x.correct,wrong:x.wrong,skipped:x.skipped,score:+x.score,max:+x.max_score,synced:true});add++}});
-    if(add){h.sort((a,b)=>a.date-b.date);LS.set('cbt_hist',h)}
-    return add>0;
-  }catch(e){return false}
-}
-
-/* ---------- init & login ---------- */
-async function init(){
-  updateTheme();updateHeader();
-  try{tests=await (await fetch('index.json',{cache:'no-cache'})).json()}catch(e){tests=[]}
-  if(!student)return login();
-  home('tests');
-  if(cloud){await syncPending();if(await pullHistory()&&!T&&!P)home(curTab)}
-}
-function login(){
-  document.body.classList.remove('intest');
-  setApp(`<div class="wrap"><div class="card login">
-   <div class="logo" id="lg2"></div><h1 style="font-size:26px">Welcome 👋</h1>
-   <p class="mut" style="margin:6px 0 4px">Enter your details to start practising.${cloud?' Use the same mobile number on any device to see all your past results.':''}</p>
-   <label class="l">Full name</label><input type="text" id="nm" placeholder="e.g. Rahul Sharma" autocomplete="name">
-   <label class="l">Mobile number</label><input type="tel" id="ph" placeholder="10-digit number" inputmode="numeric" maxlength="10" autocomplete="tel">
-   <div id="er" class="sm" style="color:var(--bad);min-height:20px;margin-top:8px"></div>
-   <button class="btn block" onclick="doLogin()" style="margin-top:6px">Continue ${ic('right')}</button>
-  </div></div>`);
-  $('#lg2').innerHTML=ic('target').replace('class="i"','class="i" style="width:26px;height:26px"');
-}
-async function doLogin(){
-  const n=$('#nm').value.trim().replace(/\s+/g,' '),p=$('#ph').value.replace(/\D/g,'');
-  if(n.length<2){$('#er').textContent='Please enter your name.';return}
-  if(p.length!==10){$('#er').textContent='Please enter a valid 10-digit mobile number.';return}
-  student={name:n,phone:p};LS.set('cbt_student',student);updateHeader();
-  const other=hist().length&&LS.get('cbt_hist_owner',p)!==p;
-  if(other){LS.del('cbt_hist')}
-  LS.set('cbt_hist_owner',p);
-  home('tests');
-  if(cloud){await syncPending();if(await pullHistory())home(curTab)}
-}
-
-/* ---------- home ---------- */
-let curTab='tests';
+function setApp(h){$('#app').innerHTML=h;window.scrollTo(0,0)}
+function loading(m){setApp(`<div class="loading"><div><div class="spin"></div>${esc(m||'Loading…')}</div></div>`)}
+const GR=[['#5b5bf0','#8b5cf6'],['#0ea5e9','#6366f1'],['#10b981','#0ea5e9'],['#f59e0b','#ef4444'],['#ec4899','#8b5cf6'],['#14b8a6','#22c55e']];
+function grad(id){let h=0;for(const c of String(id))h=(h*31+c.charCodeAt(0))>>>0;const g=GR[h%GR.length];return `linear-gradient(135deg,${g[0]},${g[1]})`}
 const pct=(s,m)=>m?Math.max(0,Math.round(s*100/m)):0;
 function ring(p,size,sw,col){
   const r=(size-sw)/2,c=2*Math.PI*r;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="${sw}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${col||'var(--pri)'}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-p/100)}"/></svg>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="${sw}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${col||'var(--pri)'}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-Math.min(100,p)/100)}"/></svg>`;
 }
-function home(tab){
-  curTab=tab||curTab;
-  clearInterval(timer);window.onbeforeunload=null;document.body.classList.remove('intest');T=null;P=null;
-  if(!student)return login();
-  const h=hist();
-  const avg=h.length?Math.round(h.reduce((a,x)=>a+pct(x.score,x.max),0)/h.length):0;
-  const best=h.length?Math.max(...h.map(x=>pct(x.score,x.max))):0;
+const ringCol=p=>p>=60?'var(--ok)':p>=35?'var(--warn)':'var(--bad)';
+function waLink(text){
+  const n=String(CFG.CONTACT_WHATSAPP||'').replace(/\D/g,'');
+  return n?`https://wa.me/${n}?text=${encodeURIComponent(text)}`:'';
+}
+
+/* ---------- login / request ---------- */
+function login(mode){
+  INTEST=false;document.body.classList.remove('intest');clearTimeout(retryT);updateHeader();
+  if(!cloud){setApp(`<div class="wrap"><div class="card empty"><b>Website is not connected yet.</b><p class="sm">The admin needs to fill in config.js.</p></div></div>`);return}
+  if(mode==='request')return requestView();
+  const wa=waLink('Hi, I would like to get access to '+(CFG.SITE_NAME||'the test series')+'.');
+  setApp(`<div class="wrap"><div class="card login">
+   <div class="logo">${ic('key',26)}</div>
+   <h1 style="font-size:26px">Student login</h1>
+   <p class="mut" style="margin:6px 0 0">Enter your mobile number and the access code given to you.</p>
+   <label class="l">Mobile number</label><input type="tel" id="ph" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="10-digit mobile number">
+   <label class="l">Access code</label><input type="text" id="cd" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="12" placeholder="e.g. A1B2-C3D4">
+   <div id="er" class="sm err" style="min-height:22px;margin-top:8px">${esc(LOGINERR)}</div>
+   <button class="btn block" id="lbtn" onclick="doLogin()">Sign in ${ic('right')}</button>
+   <div class="divider">New student?</div>
+   <button class="btn ghost block" onclick="login('request')">Request access</button>
+   ${wa?`<a class="btn soft block" style="margin-top:10px;text-decoration:none" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Contact on WhatsApp</a>`:''}
+  </div></div>`);
+  LOGINERR='';
+  ['ph','cd'].forEach(id=>$('#'+id).addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()}));
+}
+async function doLogin(){
+  const m=$('#ph').value.replace(/\D/g,'').slice(-10),c=$('#cd').value.replace(/[^0-9a-zA-Z]/g,'').toUpperCase();
+  if(m.length!==10){$('#er').textContent='Please enter a valid 10-digit mobile number.';return}
+  if(c.length<4){$('#er').textContent='Please enter your access code.';return}
+  const b=$('#lbtn');b.disabled=true;b.textContent='Checking…';$('#er').textContent='';
+  const r=await rpc('cbt_login',{p_mobile:m,p_code:c,p_device:DEV},true);
+  if(!r.ok){$('#er').textContent=errText(r);b.disabled=false;b.innerHTML='Sign in '+ic('right');return}
+  AUTH={mobile:m,code:c,name:r.name};LS.set('cbt_auth',AUTH);updateHeader();CAT=null;
+  await flushPending();
+  location.hash='#/';route();
+}
+function requestView(){
+  setApp(`<div class="wrap"><div class="card login" id="rq">
+   <button class="btn ghost sm" onclick="login()">${ic('back')} Back</button>
+   <h1 style="font-size:24px;margin-top:16px">Request access</h1>
+   <p class="mut" style="margin:6px 0 0">Send your details. Once the admin approves you, you will get a personal access code.</p>
+   <label class="l">Full name</label><input type="text" id="rn" autocomplete="name" placeholder="e.g. Rahul Sharma">
+   <label class="l">Mobile number</label><input type="tel" id="rp" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="10-digit mobile number">
+   <div id="er" class="sm err" style="min-height:22px;margin-top:8px"></div>
+   <button class="btn block" id="rbtn" onclick="doRequest()">Send request</button>
+  </div></div>`);
+}
+async function doRequest(){
+  const n=$('#rn').value.trim(),m=$('#rp').value.replace(/\D/g,'').slice(-10);
+  if(n.length<2){$('#er').textContent='Please enter your name.';return}
+  if(m.length!==10){$('#er').textContent='Please enter a valid 10-digit mobile number.';return}
+  const b=$('#rbtn');b.disabled=true;b.textContent='Sending…';
+  const r=await rpc('cbt_request_access',{p_name:n,p_mobile:m},true);
+  if(!r.ok){$('#er').textContent=r.error==='blocked'?'Your access has been blocked. Please contact the admin.':r.error==='busy'?'Too many pending requests right now. Please try again later.':errText(r);b.disabled=false;b.textContent='Send request';return}
+  const wa=waLink(`Hi, I am ${n} (${m}). I have requested access to ${CFG.SITE_NAME||'the test series'}.`);
+  const msg=r.status==='approved'?`<h2>You are already approved</h2><p class="mut">Go back and sign in with your access code. If you lost your code, ask the admin for a new one.</p>`
+    :`<h2>Request sent ✓</h2><p class="mut">The admin will review your request. After approval you will receive an access code on your mobile. Then come back here and sign in.</p>`;
+  $('#rq').innerHTML=`<div class="logo" style="background:var(--ok)">${ic('check',26)}</div>${msg}
+    ${wa?`<a class="btn soft block" style="margin:8px 0;text-decoration:none" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Message the admin</a>`:''}
+    <button class="btn block" onclick="login()">Back to sign in</button>`;
+}
+function signOut(){
+  modal(`<h2>Sign out?</h2><p class="mut">You will need your access code to sign in again. Tests in progress stay saved on this device.</p>
+  <div class="row"><button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn danger" style="flex:1" onclick="doSignOut()">Sign out</button></div>`);
+}
+function doSignOut(){closeModal();AUTH=null;LS.del('cbt_auth');CAT=null;login()}
+
+/* ---------- catalog / routing ---------- */
+let CATAT=0;
+async function loadCat(silent){
+  const r=await rpc('cbt_catalog',{});
+  if(!r.ok){
+    if(authErr(r))return false;
+    if(!silent)setApp(`<div class="wrap"><div class="card empty">${ic('wifi',30)}<h3 style="margin:10px 0 4px">Could not load</h3><p class="sm">${esc(errText(r))}</p><button class="btn" onclick="route()">Try again</button></div></div>`);
+    return false;
+  }
+  CAT=r;CATAT=Date.now();if(r.name&&AUTH&&AUTH.name!==r.name){AUTH.name=r.name;LS.set('cbt_auth',AUTH);updateHeader()}
+  return true;
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AUTH&&!INTEST&&CAT&&Date.now()-CATAT>30000)route()});
+async function route(){
+  if(INTEST||!AUTH)return;
+  if(!CAT){loading('Loading your tests…');if(!(await loadCat()))return}
+  else if(Date.now()-CATAT>30000){await loadCat(true);if(!AUTH||INTEST)return}
+  const h=location.hash||'#/';let m;
+  if((m=h.match(/^#\/s\/(.+)$/)))return viewSeries(m[1]);
+  if((m=h.match(/^#\/f\/(.+)$/)))return viewFolder(m[1]);
+  if(h==='#/r')return viewHome('results');
+  return viewHome('series');
+}
+window.addEventListener('hashchange',()=>{if(!INTEST)route()});
+
+/* ---------- home ---------- */
+function viewHome(tab){
+  const R=CAT.results||[];
+  const avg=R.length?Math.round(R.reduce((a,x)=>a+pct(x.score,x.max),0)/R.length):0;
+  const best=R.length?Math.max(...R.map(x=>pct(x.score,x.max))):0;
   const hr=new Date().getHours(),gr=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
-  let o=`<div class="wrap"><div class="hero"><h1>${gr}, ${esc(student.name.split(' ')[0])}</h1><p>Pick a test and start practising in real exam mode.</p>
-  <div class="stats"><div class="stat"><b>${h.length}</b><span>Tests taken</span></div><div class="stat"><b>${avg}%</b><span>Average</span></div><div class="stat"><b>${best}%</b><span>Best</span></div></div></div>
-  <div class="sec-h"><div class="seg"><button class="${curTab==='tests'?'on':''}" onclick="home('tests')">All tests</button><button class="${curTab==='results'?'on':''}" onclick="home('results')">My results</button></div></div>`;
-  if(curTab==='tests'){
-    if(!tests.length)o+=`<div class="card empty">No tests have been added yet.</div>`;
-    else{
-      o+='<div class="grid">';
-      tests.forEach(t=>{
-        const at=h.filter(x=>x.testId===t.id),b=at.length?Math.max(...at.map(x=>pct(x.score,x.max))):null;
-        const prog=LS.get('cbt_prog_'+t.id,null);
-        o+=`<div class="card tcard"><div class="row" style="align-items:flex-start;gap:12px"><div class="tico">${ic('file')}</div><div style="flex:1;min-width:0"><h3>${esc(t.title)}</h3>
-        <div class="chips" style="margin-top:8px"><span class="chip">${ic('grid').replace('class="i"','class="i" style="width:13px;height:13px"')}${t.questions||'?'} questions</span><span class="chip">${ic('clock').replace('class="i"','class="i" style="width:13px;height:13px"')}${t.duration} min</span>
-        ${prog?'<span class="chip warn">In progress</span>':at.length?`<span class="chip ok">Attempted ${at.length}×</span>`:'<span class="chip pri">New</span>'}</div></div></div>
-        ${b!=null?`<div><div class="row sm mut" style="justify-content:space-between;margin-bottom:6px"><span>Best score</span><b style="color:var(--tx)">${b}%</b></div><div class="bar"><i style="width:${b}%"></i></div></div>`:''}
-        <button class="btn" onclick="start('${esc(t.id)}')">${prog?'Resume test':at.length?'Attempt again':'Start test'} ${ic('right')}</button></div>`;
-      });
-      o+='</div>';
-    }
+  let o=`<div class="wrap"><div class="hero"><h1>${gr}, ${esc((AUTH.name||'').split(' ')[0])}</h1><p>Pick a test series and practise in real exam mode.</p>
+  <div class="stats"><div class="stat"><b>${R.length}</b><span>Tests taken</span></div><div class="stat"><b>${avg}%</b><span>Average</span></div><div class="stat"><b>${best}%</b><span>Best</span></div></div></div>
+  <div class="sec-h"><div class="seg"><button class="${tab==='series'?'on':''}" onclick="location.hash='#/'">Test series</button><button class="${tab==='results'?'on':''}" onclick="location.hash='#/r'">My results</button></div></div>`;
+  if(tab==='series'){
+    const free=CAT.series.filter(s=>s.is_free),paid=CAT.series.filter(s=>!s.is_free);
+    if(!CAT.series.length)o+=`<div class="card empty">No test series have been added yet.</div>`;
+    if(free.length)o+=`<div class="h2s">${ic('book',20)} Free practice <span class="n">${free.length}</span></div><div class="sgrid">${free.map(seriesCard).join('')}</div>`;
+    if(paid.length)o+=`<div class="h2s">${ic('crown',20)} Premium series <span class="n">${paid.length}</span></div><div class="sgrid">${paid.map(seriesCard).join('')}</div>`;
   }else{
-    if(!h.length)o+=`<div class="card empty">You haven't attempted any test yet.</div>`;
-    else{
-      o+='<div class="card">';
-      h.map((x,i)=>[x,i]).reverse().forEach(([x,i])=>{
-        const p=pct(x.score,x.max);
-        o+=`<div class="rrow"><div class="mring">${ring(p,54,6,p>=60?'var(--ok)':p>=35?'var(--warn)':'var(--bad)')}<span>${p}%</span></div>
-        <div class="grow"><b>${esc(x.title)}</b><span class="sm mut">${new Date(x.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} · ${x.score}/${x.max} · ✓${x.correct} ✗${x.wrong}</span></div>
-        <button class="btn soft sm" onclick="viewAttempt(${i})">Review</button></div>`;
-      });
-      o+='</div>';
-    }
+    if(!R.length)o+=`<div class="card empty">You have not attempted any test yet.</div>`;
+    else o+=`<div class="card">${R.map(x=>{const p=pct(x.score,x.max);return `<div class="rrow"><div class="mring">${ring(p,54,6,ringCol(p))}<span>${p}%</span></div>
+      <div class="grow"><b>${esc(x.title)}</b><span class="sm mut">${new Date(x.at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} · ${x.score}/${x.max} · ✓${x.correct} ✗${x.wrong}</span></div>
+      <button class="btn soft sm" onclick="openReview('${x.id}')">Review</button></div>`}).join('')}</div>`;
   }
   setApp(o+'</div>');
 }
+function seriesStats(s){
+  const ts=CAT.tests.filter(t=>t.series_id===s.id);
+  return{n:ts.length,done:ts.filter(t=>t.attempts>0).length,folders:CAT.folders.filter(f=>f.series_id===s.id).length};
+}
+function seriesCard(s){
+  const st=seriesStats(s),p=st.n?Math.round(st.done*100/st.n):0;
+  return `<div class="card scard" onclick="location.hash='#/s/${s.id}'">
+   <div class="cover" style="background:${grad(s.id)}"><div class="ico">${ic(s.is_free?'book':'crown')}</div>
+     ${s.is_free?`<span class="pill free">FREE</span>`:s.unlocked?`<span class="pill">${ic('check')} UNLOCKED</span>`:`<span class="pill paid">${ic('lock')} ${esc(s.price_label||'PREMIUM')}</span>`}</div>
+   <div class="body"><h3>${esc(s.title)}</h3>
+    ${s.description?`<div class="mut sm clamp2">${esc(s.description)}</div>`:''}
+    <div class="chips"><span class="chip">${st.n} test${st.n===1?'':'s'}</span>${st.folders?`<span class="chip">${st.folders} folder${st.folders===1?'':'s'}</span>`:''}</div>
+    ${st.n?`<div><div class="row sm mut" style="justify-content:space-between;margin-bottom:6px"><span>Attempted</span><b style="color:var(--tx)">${st.done}/${st.n}</b></div><div class="bar"><i style="width:${p}%"></i></div></div>`:''}
+    <button class="btn ${s.is_free||s.unlocked?'':'ghost'}" style="margin-top:auto">${s.is_free||s.unlocked?'Open':'View'} ${ic('right')}</button></div></div>`;
+}
 
-/* ---------- test flow ---------- */
-async function loadTest(id){
-  const t=tests.find(x=>x.id===id);
-  const r=await fetch(encodeURIComponent((t&&t.file)||id+'.json'),{cache:'no-cache'});
-  if(!r.ok)throw new Error('load');
-  const d=await r.json();d.id=id;return d;
+/* ---------- series & folder ---------- */
+function lockBanner(s){
+  if(s.is_free||s.unlocked)return '';
+  const wa=waLink(`Hi, I am ${AUTH.name} (${AUTH.mobile}). Please unlock "${s.title}" for me.`);
+  return `<div class="banner"><div style="color:var(--warn)">${ic('lock',26)}</div><div class="t"><b>Premium series</b><div class="sm mut">${esc(s.price_label?s.price_label+' · ':'')}Ask the admin to unlock this series for you. Some tests may be open as a free preview.</div></div>
+   ${wa?`<a class="btn sm" style="text-decoration:none" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Unlock</a>`:''}</div>`;
 }
-async function start(id){
-  try{T=await loadTest(id)}catch(e){toast('Could not load the test. Check your internet.');return}
-  const p=LS.get('cbt_prog_'+id,null);
-  if(p){P=p;if(p.end<=Date.now())return submit(true);return run()}
-  instr();
+function viewSeries(id){
+  const s=CAT.series.find(x=>x.id===id);if(!s){location.hash='#/';return}
+  const folders=CAT.folders.filter(f=>f.series_id===id),root=CAT.tests.filter(t=>t.series_id===id&&!t.folder_id);
+  let o=`<div class="wrap"><div class="crumb"><a href="#/">${ic('back',14)} Test series</a></div>
+  <div class="sh" style="background:${grad(s.id)}"><div style="position:relative;z-index:1;margin-bottom:8px">${s.is_free?`<span class="pill free">FREE</span>`:s.unlocked?`<span class="pill">${ic('check')} UNLOCKED</span>`:`<span class="pill paid">${ic('lock')} ${esc(s.price_label||'PREMIUM')}</span>`}</div>
+   <h1>${esc(s.title)}</h1>${s.description?`<p>${esc(s.description)}</p>`:''}</div>${lockBanner(s)}`;
+  if(folders.length){
+    o+=`<div class="h2s">${ic('folder',20)} Folders <span class="n">${folders.length}</span></div><div class="fgrid">${folders.map(f=>{
+      const ts=CAT.tests.filter(t=>t.folder_id===f.id),d=ts.filter(t=>t.attempts>0).length;
+      return `<div class="card fcard" onclick="location.hash='#/f/${f.id}'"><div class="fico">${ic('folder',22)}</div><div style="flex:1;min-width:0"><b>${esc(f.title)}</b><span class="sm mut">${ts.length} test${ts.length===1?'':'s'}${ts.length?` · ${d} done`:''}</span></div>${ic('right')}</div>`}).join('')}</div>`;
+  }
+  if(root.length)o+=`<div class="h2s">${ic('file',20)} Tests <span class="n">${root.length}</span></div>${root.map(t=>testRow(t)).join('')}`;
+  if(!folders.length&&!root.length)o+=`<div class="card empty" style="margin-top:16px">No tests in this series yet.</div>`;
+  setApp(o+'</div>');
 }
-function instr(){
-  const pm=T.correct==null?4:T.correct,nm=T.wrong==null?1:T.wrong;
-  setApp(`<div class="wrap"><div class="ins card"><button class="btn ghost sm" onclick="home()">${ic('back')} Back</button>
-  <h1 style="font-size:24px;margin-top:16px">${esc(T.title)}</h1><p class="mut" style="margin:4px 0 0">Read the instructions carefully before you begin.</p>
+function viewFolder(id){
+  const f=CAT.folders.find(x=>x.id===id);if(!f){location.hash='#/';return}
+  const s=CAT.series.find(x=>x.id===f.series_id);if(!s){location.hash='#/';return}
+  const ts=CAT.tests.filter(t=>t.folder_id===id);
+  setApp(`<div class="wrap"><div class="crumb"><a href="#/">Test series</a> ${ic('right',12)} <a href="#/s/${s.id}">${esc(s.title)}</a></div>
+  <div class="sh" style="background:${grad(s.id)}"><div style="position:relative;z-index:1;margin-bottom:8px"><span class="pill">${ic('folder')} FOLDER</span></div><h1>${esc(f.title)}</h1><p>${esc(s.title)}</p></div>${lockBanner(s)}
+  <div class="h2s">${ic('file',20)} Tests <span class="n">${ts.length}</span></div>
+  ${ts.length?ts.map(t=>testRow(t)).join(''):'<div class="card empty">No tests in this folder yet.</div>'}</div>`);
+}
+function testRow(t){
+  const p=t.best!=null&&t.best_max?pct(t.best,t.best_max):null;
+  const last=(CAT.results||[]).find(r=>r.test_id===t.id);
+  const status=t.in_progress?'<span class="chip warn">In progress</span>':t.locked?`<span class="chip lockbadge">${ic('lock',12)} Locked</span>`
+    :t.attempts?`<span class="chip ok">Attempted ${t.attempts}×</span>`:'<span class="chip pri">New</span>';
+  const cta=t.locked?`<button class="btn ghost sm" onclick="openTest('${t.id}')">${ic('lock')} Unlock</button>`
+    :`<button class="btn sm" onclick="openTest('${t.id}')">${t.in_progress?'Resume':t.attempts?'Try again':'Start'} ${ic('right')}</button>`;
+  return `<div class="card trow"><div class="tico">${ic(t.locked?'lock':'file')}</div>
+   <div class="info"><h3>${esc(t.title)}</h3><div class="chips"><span class="chip">${t.questions} questions</span><span class="chip">${t.duration} min</span>${status}${t.free_preview&&t.locked===false?'<span class="chip pri">Free preview</span>':''}</div>
+   ${p!=null?`<div style="margin-top:10px"><div class="row sm mut" style="justify-content:space-between;margin-bottom:5px"><span>Best score</span><b style="color:var(--tx)">${t.best}/${t.best_max} · ${p}%</b></div><div class="bar"><i style="width:${p}%"></i></div></div>`:''}</div>
+   <div class="acts">${last?`<button class="btn soft sm" onclick="openReview('${last.id}')">${ic('eye')} Review</button>`:''}${cta}</div></div>`;
+}
+
+/* ---------- starting a test ---------- */
+const progKey=id=>'cbt_prog_'+AUTH.mobile+'_'+id;
+const getProg=id=>LS.get(progKey(id),null);
+const saveProg=()=>LS.set(progKey(P.tid),P);
+function openTest(id){
+  const t=CAT.tests.find(x=>x.id===id);if(!t)return;
+  const s=CAT.series.find(x=>x.id===t.series_id)||{};
+  if(t.locked){
+    const wa=waLink(`Hi, I am ${AUTH.name} (${AUTH.mobile}). Please unlock "${s.title}" for me.`);
+    return modal(`<div class="logo" style="background:var(--warn)">${ic('lock',24)}</div><h2>This test is locked</h2>
+      <p class="mut" style="margin:6px 0 14px">"${esc(s.title||'This series')}" is a premium series${s.price_label?' ('+esc(s.price_label)+')':''}. Ask the admin to unlock it for your account.</p>
+      <div class="row">${wa?`<a class="btn" style="flex:1;text-decoration:none" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Contact admin</a>`:''}<button class="btn ghost" style="flex:1" onclick="closeModal()">Close</button></div>`);
+  }
+  RET=location.hash||'#/';
+  if(getProg(id)||t.in_progress)return startTest(id);
+  instr(t,s);
+}
+function instr(t,s){
+  setApp(`<div class="wrap"><div class="ins card"><button class="btn ghost sm" onclick="route()">${ic('back')} Back</button>
+  <h1 style="font-size:24px;margin-top:16px">${esc(t.title)}</h1><p class="mut" style="margin:4px 0 0">${esc(s.title||'')}</p>
   <ul>
-   <li>${ic('grid')}<span><b>${T.questions.length} questions</b> in <b>${T.duration} minutes</b></span></li>
-   <li>${ic('check')}<span>Correct answer <b>+${pm}</b> · Wrong answer <b>−${nm}</b> · Unanswered <b>0</b></span></li>
+   <li>${ic('grid')}<span><b>${t.questions} questions</b> in <b>${t.duration} minutes</b></span></li>
+   <li>${ic('check')}<span>Correct answer <b>+${t.correct}</b> · Wrong answer <b>−${t.wrong}</b> · Unanswered <b>0</b></span></li>
    <li>${ic('clock')}<span>The timer never pauses. It keeps running even if you refresh or close the page.</span></li>
-   <li>${ic('flag')}<span>Use <b>Mark for review</b> to flag questions you want to revisit.</span></li>
-   <li>${ic(T.lockBack?'lock':'info')}<span>${T.lockBack?'<b>You cannot go back</b> to previous questions once you move ahead.':'You can move freely between questions and change answers any time.'}</span></li>
-   <li>${ic('trophy')}<span>The test is submitted automatically when time ends. Correct answers are shown after submission.</span></li>
-  </ul><button class="btn block" onclick="begin()">${ic('play')} Start test now</button></div></div>`);
+   <li>${ic('flag')}<span>Use <b>Mark</b> to flag questions you want to revisit.</span></li>
+   <li>${ic(t.lock_back?'lock':'info')}<span>${t.lock_back?'<b>You cannot go back</b> to previous questions once you move ahead.':'You can move freely between questions and change answers at any time.'}</span></li>
+   <li>${ic('trophy')}<span>The test is submitted automatically when time ends. Correct answers are shown after you submit.</span></li>
+  </ul><button class="btn block" onclick="startTest('${t.id}')">${ic('play')} Start test now</button></div></div>`);
 }
-function begin(){
-  P={start:Date.now(),end:Date.now()+T.duration*60000,ans:{},mark:{},vis:{0:1},cur:0};
-  save();run();
+async function startTest(id){
+  loading('Starting your test…');
+  const r=await rpc('cbt_start',{p_test:id});
+  if(!r.ok){
+    if(authErr(r))return;
+    if(r.error==='locked'||r.error==='not_found')LS.del(progKey(id));
+    if(r.error==='locked'){CAT=null;await route();toast('This test is locked.');return}
+    toast(r.error==='not_found'?'This test is no longer available.':errText(r));CAT=null;route();return;
+  }
+  T=r.test;const off=r.now-Date.now();
+  let p=getProg(id);
+  if(!(p&&p.sid===r.session.id))p={tid:id,sid:r.session.id,cid:uuid(),ans:{},mark:{},vis:{0:1},cur:0,title:T.title};
+  p.ends=r.session.ends_at;p.off=off;P=p;saveProg();
+  if(P.ends-(Date.now()+P.off)<=0){return finish(true)}
+  INTEST=true;warned=false;run();
 }
-const save=()=>LS.set('cbt_prog_'+T.id,P);
 function run(){
   document.body.classList.add('intest');palOpen=false;
   window.onbeforeunload=e=>{e.preventDefault();e.returnValue=''};
   clearInterval(timer);draw();timer=setInterval(tick,1000);tick();
 }
-let warned=false;
 function tick(){
   if(!P)return;
-  const left=Math.round((P.end-Date.now())/1000);
+  const left=Math.round((P.ends-(Date.now()+P.off))/1000);
   const e=$('#tm');if(e){e.querySelector('span').textContent=fmt(left);e.classList.toggle('low',left<=300)}
-  if(T.duration>10&&left<=300&&left>295&&!warned){warned=true;toast('Only 5 minutes left!')}
-  if(left<=0){clearInterval(timer);submit(true)}
+  if(T&&T.duration>10&&left<=300&&left>295&&!warned){warned=true;toast('Only 5 minutes left!')}
+  if(left<=0){clearInterval(timer);toast("Time's up! Submitting your test…");finish(true)}
 }
 function counts(){
   const n=T.questions.length;let a=0,m=0;
@@ -220,7 +360,7 @@ function counts(){
   return{a,m,u:n-a,n};
 }
 function palHtml(){
-  const lock=!!T.lockBack;
+  const lock=!!T.lock_back;
   return `<div class="pal">${T.questions.map((_,i)=>{
     const has=P.ans[i]!=null,mk=P.mark[i];
     let c=i===P.cur?'cur ':'';c+=mk?(has?'mans':'mark'):has?'ans':P.vis[i]?'na':'';
@@ -228,13 +368,12 @@ function palHtml(){
   <div class="leg"><span><i style="background:var(--okSoft)"></i>Answered</span><span><i style="background:var(--badSoft)"></i>Not answered</span><span><i style="background:var(--priSoft)"></i>Marked</span><span><i style="border:1.5px solid var(--bd)"></i>Not visited</span></div>`;
 }
 function draw(){
-  const n=T.questions.length,q=T.questions[P.cur],a=P.ans[P.cur],lock=!!T.lockBack,c=counts();
-  const pm=T.correct==null?4:T.correct,nm=T.wrong==null?1:T.wrong;
+  const n=T.questions.length,q=T.questions[P.cur],a=P.ans[P.cur],lock=!!T.lock_back,c=counts();
   P.vis[P.cur]=1;
-  setApp(`<div class="tbar"><div class="tb-l"><div class="tb-title">${esc(T.title)}</div><div class="sm mut">${c.a} of ${n} answered</div></div>
-   <div class="timer" id="tm">${ic('clock')}<span>--:--</span></div><button class="btn danger sm" onclick="submit(false)">Submit</button></div>
+  $('#app').innerHTML=(`<div class="tbar"><div class="tb-l"><div class="tb-title">${esc(T.title)}</div><div class="sm mut">${c.a} of ${n} answered</div></div>
+   <div class="timer" id="tm">${ic('clock')}<span>--:--</span></div><button class="btn danger sm" onclick="submitAsk()">Submit</button></div>
    <div class="progress"><i style="width:${(P.cur+1)*100/n}%"></i></div>
-   <div class="tlayout"><section class="card qcard"><div class="qmeta"><b>Question ${P.cur+1}</b><span class="chip ok">+${pm}</span><span class="chip warn">−${nm}</span>${P.mark[P.cur]?'<span class="chip pri">Marked for review</span>':''}</div>
+   <div class="tlayout"><section class="card qcard"><div class="qmeta"><b>Question ${P.cur+1}</b><span class="chip ok">+${T.correct}</span><span class="chip warn">−${T.wrong}</span>${P.mark[P.cur]?'<span class="chip pri">Marked for review</span>':''}</div>
    <div class="qtext">${esc(q.q)}</div>
    ${q.options.map((o,i)=>`<button class="opt ${a===i?'sel':''}" onclick="sel(${i})"><span class="k">${L[i]}</span><span class="t">${esc(o)}</span></button>`).join('')}</section>
    <aside class="side card"><b>Question palette</b><div style="margin-top:12px">${palHtml()}</div>
@@ -243,79 +382,130 @@ function draw(){
    <div class="r">${lock?'':`<button class="btn ghost" ${P.cur===0?'disabled':''} onclick="go(${P.cur-1})">${ic('left')} Prev</button>`}<button class="btn" onclick="saveNext()" style="flex:2">${P.cur===n-1?'Save':'Save &amp; next'} ${ic('right')}</button></div></div>
    <div class="sheet ${palOpen?'open':''}" onclick="if(event.target===this)pal(false)"><div class="in"><div class="grab"></div><b>Question palette</b><div style="margin-top:12px">${palHtml()}</div>
    <div class="mgrid"><div><b>${c.a}</b><span class="sm mut">Answered</span></div><div><b>${c.u}</b><span class="sm mut">Left</span></div><div><b>${c.m}</b><span class="sm mut">Marked</span></div></div>
-   <button class="btn danger block" onclick="submit(false)">Submit test</button></div></div>`,true);
+   <button class="btn danger block" onclick="submitAsk()">Submit test</button></div></div>`);
   tick();
 }
 function pal(v){palOpen=v;const s=document.querySelector('.sheet');if(s)s.classList.toggle('open',v)}
-function go(i){if(i<0||i>=T.questions.length)return;P.cur=i;palOpen=false;save();draw();window.scrollTo(0,0)}
-function sel(i){P.ans[P.cur]=i;save();draw()}
-function clr(){delete P.ans[P.cur];save();draw()}
+function go(i){if(i<0||i>=T.questions.length)return;P.cur=i;palOpen=false;saveProg();draw();window.scrollTo(0,0)}
+function sel(i){P.ans[P.cur]=i;saveProg();draw()}
+function clr(){delete P.ans[P.cur];saveProg();draw()}
 function saveNext(){delete P.mark[P.cur];nxt()}
 function markNext(){if(P.mark[P.cur])delete P.mark[P.cur];else P.mark[P.cur]=1;nxt()}
-function nxt(){if(P.cur<T.questions.length-1)P.cur++;save();draw();window.scrollTo(0,0)}
+function nxt(){if(P.cur<T.questions.length-1)P.cur++;saveProg();draw();window.scrollTo(0,0)}
 
-function score(t,ans){
-  let c=0,w=0,s=0;const pm=t.correct==null?4:t.correct,nm=t.wrong==null?1:t.wrong;
-  t.questions.forEach((q,i)=>{const a=ans[i];if(a==null||q.answer==null)s++;else if(a===q.answer)c++;else w++});
-  return{correct:c,wrong:w,skipped:s,score:c*pm-w*nm,max:t.questions.length*pm};
+/* ---------- submitting (answers are marked on the server) ---------- */
+const pendKey=()=>'cbt_pend_'+AUTH.mobile;
+const getPend=()=>LS.get(pendKey(),[]);
+function addPend(it){const l=getPend().filter(x=>x.cid!==it.cid);l.push(it);LS.set(pendKey(),l)}
+function delPend(cid){LS.set(pendKey(),getPend().filter(x=>x.cid!==cid))}
+function submitAsk(){
+  const c=counts();
+  modal(`<h2>Submit test?</h2><p class="mut" style="margin:6px 0 0">You won't be able to change your answers after this.</p>
+  <div class="mgrid"><div><b style="color:var(--ok)">${c.a}</b><span class="sm mut">Answered</span></div><div><b style="color:var(--bad)">${c.u}</b><span class="sm mut">Unanswered</span></div><div><b style="color:var(--pri)">${c.m}</b><span class="sm mut">Marked</span></div></div>
+  <div class="row"><button class="btn ghost" style="flex:1" onclick="closeModal()">Keep going</button><button class="btn danger" style="flex:1" onclick="closeModal();finish(false)">Submit</button></div>`);
 }
-function submit(auto){
-  if(!auto){
-    const c=counts();
-    modal(`<h2>Submit test?</h2><p class="mut" style="margin:6px 0 0">You won't be able to change your answers after this.</p>
-    <div class="mgrid"><div><b style="color:var(--ok)">${c.a}</b><span class="sm mut">Answered</span></div><div><b style="color:var(--bad)">${c.u}</b><span class="sm mut">Unanswered</span></div><div><b style="color:var(--pri)">${c.m}</b><span class="sm mut">Marked</span></div></div>
-    <div class="row"><button class="btn ghost" style="flex:1" onclick="closeModal()">Keep going</button><button class="btn danger" style="flex:1" onclick="closeModal();finish()">Submit</button></div>`);
-    return;
-  }
-  toast("Time's up! Submitting your test…");finish();
-}
-function finish(){
+async function finish(auto){
   clearInterval(timer);window.onbeforeunload=null;
-  const date=Date.now();
-  const rec={cid:T.id+'_'+student.phone+'_'+date,testId:T.id,title:T.title,date,ans:P.ans,used:Math.min(Math.round((date-P.start)/1000),T.duration*60),...score(T,P.ans),synced:false};
-  const h=hist();h.push(rec);LS.set('cbt_hist',h);LS.del('cbt_prog_'+T.id);
-  P=null;warned=false;document.body.classList.remove('intest');
-  showResult(rec,'all');
-  syncPending().then(()=>lb(rec));
+  const it={tid:P.tid,cid:P.cid,ans:P.ans,title:(T&&T.title)||P.title,ts:Date.now()};
+  addPend(it);LS.del(progKey(P.tid));
+  INTEST=false;P=null;T=null;document.body.classList.remove('intest');
+  await sendPending(it);
 }
-async function viewAttempt(i){
-  const rec=hist()[i];
-  try{T=await loadTest(rec.testId)}catch(e){toast('Could not load the test.');return}
-  showResult(rec,'all');lb(rec);
+let CURPEND=null;
+async function sendPending(it){
+  CURPEND=it;clearTimeout(retryT);loading('Submitting your answers…');
+  const r=await rpc('cbt_submit',{p_test:it.tid,p_answers:it.ans,p_client_id:it.cid});
+  if(r.ok){
+    delPend(it.cid);CAT=null;
+    RV={result:r.result,review:r.review,filter:'all'};
+    showResult();lb(r.result);return;
+  }
+  if(r.error==='network'||r.error==='server'){
+    setApp(`<div class="wrap"><div class="card empty">${ic('wifi',32)}<h3 style="margin:10px 0 4px">No connection</h3>
+      <p class="sm">Your answers are saved on this phone. We will keep trying to submit them. Please stay on this page.</p>
+      <button class="btn" onclick="sendPending(CURPEND)">Try again now</button></div></div>`);
+    retryT=setTimeout(()=>sendPending(it),8000);return;
+  }
+  if(authErr(r))return;
+  delPend(it.cid);CAT=null;
+  toast(r.error==='no_session'?'This attempt was already closed.':'Could not submit this test.');
+  location.hash=RET;route();
+}
+async function flushPending(){
+  if(!AUTH)return;
+  // expired local progress -> submit
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&k.startsWith('cbt_prog_'+AUTH.mobile+'_')){
+        const p=LS.get(k,null);
+        if(p&&p.ends&&p.ends<=Date.now()+(p.off||0)){addPend({tid:p.tid,cid:p.cid,ans:p.ans||{},title:p.title,ts:Date.now()});LS.del(k)}
+      }
+    }
+  }catch(e){}
+  for(const it of getPend()){
+    const r=await rpc('cbt_submit',{p_test:it.tid,p_answers:it.ans,p_client_id:it.cid});
+    if(r.ok||['no_session','not_found'].includes(r.error))delPend(it.cid);
+    if(r.ok)toast('Your earlier test was submitted.');
+  }
 }
 
-/* ---------- result ---------- */
-async function lb(rec){
-  const el=$('#lb');if(!el||!cloud)return;
-  try{
-    const rows=await api('attempts?test_id=eq.'+encodeURIComponent(rec.testId)+'&select=student_id,name,score&limit=2000');
-    const best={};rows.forEach(r=>{if(!best[r.student_id]||+r.score>best[r.student_id].s)best[r.student_id]={n:r.name,s:+r.score}});
-    const arr=Object.entries(best).map(([id,v])=>({id,...v})).sort((a,b)=>b.s-a.s);
-    const me=arr.findIndex(x=>x.id===student.phone);
-    if(!arr.length)return;
-    const top=arr.slice(0,5);
-    el.innerHTML=`<div class="card" style="margin-top:12px"><div class="row" style="justify-content:space-between;margin-bottom:6px"><b>${ic('trophy')} Leaderboard</b>${me>=0?`<span class="chip pri">Your rank #${me+1} of ${arr.length}</span>`:''}</div>
-    ${top.map((x,i)=>`<div class="lb ${x.id===student.phone?'me':''}"><span class="n">${i+1}</span><span style="flex:1">${esc(x.n)}</span><b>${x.s}</b></div>`).join('')}
-    ${me>=5?`<div class="lb me"><span class="n">${me+1}</span><span style="flex:1">${esc(student.name)} (you)</span><b>${arr[me].s}</b></div>`:''}</div>`;
-  }catch(e){}
+/* ---------- result / review ---------- */
+async function openReview(id){
+  loading('Loading your answers…');
+  const r=await rpc('cbt_review',{p_result:id});
+  if(!r.ok){if(authErr(r))return;toast('Could not load this result.');route();return}
+  if(r.gone){toast('This test is no longer available for review.');route();return}
+  RV={result:r.result,review:r.review,filter:'all'};showResult();lb(r.result);
 }
-function showResult(rec,f){
+async function lb(res){
+  if(!res.test_id)return;
+  const r=await rpc('cbt_leaderboard',{p_test:res.test_id});
+  const el=$('#lb');if(!el||!r.ok||!r.top||!r.top.length)return;
+  el.innerHTML=`<div class="card" style="margin-top:12px"><div class="row" style="justify-content:space-between;margin-bottom:6px"><b>${ic('trophy')} Leaderboard</b>${r.my_rank?`<span class="chip pri">Your rank #${r.my_rank} of ${r.total}</span>`:''}</div>
+   ${r.top.map(x=>`<div class="lb ${x.me?'me':''}"><span class="n">${x.rank}</span><span style="flex:1">${esc(x.name)}${x.me?' (you)':''}</span><b>${x.score}</b></div>`).join('')}</div>`;
+}
+function setFilter(f){RV.filter=f;showResult()}
+function doneResult(){RV=null;CAT=null;const h=RET&&RET!=='#/'?RET:'#/r';history.replaceState(null,'',h);route()}
+function showResult(){
   document.body.classList.remove('intest');
-  const p=pct(rec.score,rec.max),col=p>=60?'var(--ok)':p>=35?'var(--warn)':'var(--bad)';
-  const acc=rec.correct+rec.wrong?Math.round(rec.correct*100/(rec.correct+rec.wrong)):0;
-  const items=T.questions.map((q,i)=>{const a=rec.ans[i];return{q,i,a,st:a==null?'s':(a===q.answer?'c':'w')}}).filter(x=>f==='all'||x.st===f);
-  const fb=(k,t)=>`<button class="${f===k?'on':''}" onclick="showResult(hist().find(x=>x.cid==='${rec.cid}'),'${k}')">${t}</button>`;
+  const rec=RV.result,f=RV.filter,Qs=RV.review,ans=rec.answers||{};
+  const p=pct(rec.score,rec.max),col=ringCol(p),acc=rec.correct+rec.wrong?Math.round(rec.correct*100/(rec.correct+rec.wrong)):0;
+  const items=Qs.map((q,i)=>{const a=ans[i]!=null?+ans[i]:null;return{q,i,a,st:a==null?'s':(a===q.answer?'c':'w')}}).filter(x=>f==='all'||x.st===f);
+  const fb=(k,t)=>`<button class="${f===k?'on':''}" onclick="setFilter('${k}')">${t}</button>`;
   setApp(`<div class="wrap"><div class="card rhero"><div class="mut sm">${esc(rec.title)}</div>
    <div class="ring">${ring(p,150,12,col)}<div class="c"><div><b>${rec.score}</b><span class="sm mut">out of ${rec.max}</span></div></div></div>
-   <h2>${p>=75?'Excellent work! 🎉':p>=50?'Good effort 👍':'Keep practising 💪'}</h2><div class="mut sm" style="margin-top:4px">${p}% · Accuracy ${acc}% · Time ${fmt(rec.used)}</div>
-   <div class="s4"><div><b style="color:var(--ok)">${rec.correct}</b><span>Correct</span></div><div><b style="color:var(--bad)">${rec.wrong}</b><span>Wrong</span></div><div><b>${rec.skipped}</b><span>Skipped</span></div><div><b>${T.questions.length}</b><span>Total</span></div></div></div>
+   <h2>${p>=75?'Excellent work! 🎉':p>=50?'Good effort 👍':'Keep practising 💪'}</h2><div class="mut sm" style="margin-top:4px">${p}% · Accuracy ${acc}% · Time ${fmt(rec.used)}${rec.late?' · Submitted late':''}</div>
+   <div class="s4"><div><b style="color:var(--ok)">${rec.correct}</b><span>Correct</span></div><div><b style="color:var(--bad)">${rec.wrong}</b><span>Wrong</span></div><div><b>${rec.skipped}</b><span>Skipped</span></div><div><b>${Qs.length}</b><span>Total</span></div></div></div>
    <div id="lb"></div>
-   <div class="sec-h"><div class="seg">${fb('all','All')}${fb('c','Correct')}${fb('w','Wrong')}${fb('s','Skipped')}</div><button class="btn ghost sm" onclick="home('results')">Done</button></div>
+   <div class="sec-h"><div class="seg">${fb('all','All')}${fb('c','Correct')}${fb('w','Wrong')}${fb('s','Skipped')}</div><button class="btn ghost sm" onclick="doneResult()">Done</button></div>
    ${items.map(({q,i,a,st})=>`<div class="card rv"><div class="row" style="margin-bottom:8px"><b>Q${i+1}</b>${st==='c'?'<span class="chip ok">Correct</span>':st==='w'?'<span class="chip" style="background:var(--badSoft);color:var(--bad)">Wrong</span>':'<span class="chip">Skipped</span>'}</div>
     <div style="white-space:pre-wrap;font-weight:500;margin-bottom:12px;line-height:1.6">${esc(q.q)}</div>
     ${q.options.map((o,j)=>{const isC=j===q.answer,isY=j===a;return `<div class="ro ${isC?'c':(isY?'w':'')}"><span class="k">${L[j]}</span><span style="flex:1">${esc(o)}${isC||isY?`<span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${isC?'<span class="tag g" style="margin:0">Correct answer</span>':''}${isY&&!isC?'<span class="tag r" style="margin:0">Your answer</span>':''}${isY&&isC?'<span class="tag g" style="margin:0">Your answer</span>':''}</span>`:''}</span></div>`}).join('')}
     ${q.explanation?`<div class="exp"><b>Explanation:</b> ${esc(q.explanation)}</div>`:''}</div>`).join('')||'<div class="card empty">Nothing to show here.</div>'}
-   </div>`);
+   <div style="text-align:center;margin-top:8px"><button class="btn" onclick="doneResult()">Back to tests</button></div></div>`);
+}
+
+/* ---------- boot ---------- */
+async function init(){
+  updateTheme();updateHeader();
+  if(!cloud)return login();
+  if(!AUTH)return login();
+  loading('Loading…');
+  await flushPending();
+  // a test is still running on this device -> go straight back into it
+  const rid=runningTest();
+  if(rid){RET='#/';return startTest(rid)}
+  route();
+}
+function runningTest(){
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&k.startsWith('cbt_prog_'+AUTH.mobile+'_')){const p=LS.get(k,null);if(p&&p.tid)return p.tid}
+    }
+  }catch(e){}
+  return null;
 }
 init();
 </script>
