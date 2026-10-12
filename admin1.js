@@ -58,7 +58,7 @@ async function unlock(){
 }
 
 /* ---------- shell ---------- */
-let ST=[],CA={series:[],folders:[],tests:[]},Q=[],EDIT=null,CUR='students',OPEN={},SF={q:'',s:'all'},RP=[],RF='open';
+let ST=[],CA={series:[],folders:[],tests:[]},Q=[],EDIT=null,CUR='students',OPEN={},SF={q:'',s:'all',b:'all',o:'new'},RP=[],RF='open';
 function shell(){
   $('#gear').style.display='';
   $('#root').innerHTML=`<div class="atabs">
@@ -92,26 +92,70 @@ function badge(){
   const n=ST.filter(s=>s.status==='pending').length,e=$('#pc');
   if(e){e.style.display=n?'':'none';e.textContent=n}
 }
+let SEL=new Set();
+const paidSer=()=>CA.series.filter(x=>!x.is_free);
+const isPaid=s=>{const p=new Set(paidSer().map(x=>x.id));return (s.access||[]).some(a=>p.has(a))};
+function statsHtml(){
+  const act=ST.filter(s=>s.status!=='pending'),paid=act.filter(isPaid).length,blk=act.filter(s=>s.status==='blocked').length;
+  const box=(n,l,c)=>`<div class="sbox"><b style="${c?'color:'+c:''}">${n}</b><span>${l}</span></div>`;
+  return box(act.length,'Students')+box(paid,'Paid','var(--ok)')+box(act.length-paid,'Free only')+box(blk,'Blocked','var(--bad)');
+}
+function updStats(){const e=$('#sstats');if(e)e.innerHTML=statsHtml();badge()}
 function renderStudents(){
   badge();
-  const pend=ST.filter(s=>s.status==='pending');
-  const cnt={all:ST.length,approved:ST.filter(s=>s.status==='approved').length,blocked:ST.filter(s=>s.status==='blocked').length};
+  const pend=ST.filter(s=>s.status==='pending'),ps=paidSer();
   $('#pn_students').innerHTML=`
    ${pend.length?`<div class="h2s" style="margin-top:0">Approval requests <span class="n">${pend.length}</span></div>${pend.map(s=>`<div class="card srow reqcard"><div class="av">${esc(s.name[0].toUpperCase())}</div><div class="grow"><b>${esc(s.name)}</b><span class="sm mut">${esc(s.mobile)} · requested ${ago(s.created)}</span></div>
      <button class="btn sm" onclick="approve('${s.id}')">Approve</button><button class="btn ghost sm" onclick="reject('${s.id}')">Reject</button></div>`).join('')}`:''}
-   <div class="row" style="margin:${pend.length?'22px':'0'} 0 12px;gap:10px"><div style="flex:1;min-width:180px"><input type="search" id="sq" placeholder="Search name or mobile" value="${esc(SF.q)}" oninput="SF.q=this.value;drawList()"></div>
-     <select id="ss" style="max-width:160px" onchange="SF.s=this.value;drawList()"><option value="all">All (${cnt.all})</option><option value="approved">Approved (${cnt.approved})</option><option value="blocked">Blocked (${cnt.blocked})</option></select>
+   <div class="sstats" id="sstats" style="margin-top:${pend.length?'22px':'0'}">${statsHtml()}</div>
+   <div class="row" style="margin:12px 0 10px;gap:10px"><div style="flex:1;min-width:180px"><input type="search" id="sq" placeholder="Search name or mobile" value="${esc(SF.q)}" oninput="SF.q=this.value;drawList()"></div>
      <button class="btn" onclick="addModal()">+ Add student</button></div>
-   <div id="slist"></div>`;
-  $('#ss').value=SF.s;drawList();
+   <div class="seg fseg" id="sseg"></div>
+   <div class="row" style="margin:10px 0 12px;gap:10px">
+     <select id="sb" style="flex:1;min-width:150px" onchange="SF.b=this.value;drawList()"><option value="all">All batches</option>${ps.map(x=>`<option value="${x.id}">${esc(x.title)} (${ST.filter(s=>(s.access||[]).includes(x.id)).length})</option>`).join('')}</select>
+     <select id="so" style="max-width:150px" onchange="SF.o=this.value;drawList()"><option value="new">Newest</option><option value="name">Name A–Z</option><option value="seen">Last seen</option><option value="tests">Most tests</option></select>
+     <button class="btn soft sm" onclick="selAll()">Select all shown</button></div>
+   <div id="slist"></div><div id="bulkbar"></div>`;
+  $('#sb').value=SF.b;$('#so').value=SF.o;drawList();
+}
+function shownStudents(){
+  const q=SF.q.toLowerCase();
+  let l=ST.filter(s=>s.status!=='pending'&&(!q||s.name.toLowerCase().includes(q)||s.mobile.includes(q)));
+  if(SF.s==='paid')l=l.filter(isPaid);else if(SF.s==='free')l=l.filter(s=>!isPaid(s));else if(SF.s==='blocked')l=l.filter(s=>s.status==='blocked');
+  if(SF.b!=='all')l=l.filter(s=>(s.access||[]).includes(SF.b));
+  const o=SF.o;
+  l.sort((a,b)=>o==='name'?a.name.localeCompare(b.name):o==='seen'?(b.last_seen||0)-(a.last_seen||0):o==='tests'?b.attempts-a.attempts:b.created-a.created);
+  return l;
 }
 function drawList(){
-  const q=SF.q.toLowerCase();
-  const l=ST.filter(s=>s.status!=='pending'&&(SF.s==='all'||s.status===SF.s)&&(!q||s.name.toLowerCase().includes(q)||s.mobile.includes(q)));
-  $('#slist').innerHTML=l.length?l.map(s=>`<div class="card srow"><div class="av">${esc(s.name[0].toUpperCase())}</div>
-    <div class="grow"><b>${esc(s.name)}</b><span class="sm mut">${esc(s.mobile)} · ${s.devices}/${s.max_devices} devices · ${s.attempts} tests · seen ${ago(s.last_seen)}</span></div>
-    ${s.status==='blocked'?'<span class="chip" style="background:var(--badSoft);color:var(--bad)">Blocked</span>':'<span class="chip ok">Active</span>'}
-    <button class="btn ghost sm" onclick="manage('${s.id}')">Manage</button></div>`).join(''):`<div class="card empty">${ST.length?'No students match.':'No students yet. Add students or share the site link so they can request access.'}</div>`;
+  const all=ST.filter(s=>s.status!=='pending'),ps=paidSer();
+  const cn={all:all.length,paid:all.filter(isPaid).length,free:all.filter(s=>!isPaid(s)).length,blocked:all.filter(s=>s.status==='blocked').length};
+  $('#sseg').innerHTML=[['all','All'],['paid','Paid'],['free','Free'],['blocked','Blocked']].map(([k,t])=>`<button class="${SF.s===k?'on':''}" onclick="SF.s='${k}';drawList()">${t} <span class="mut">${cn[k]}</span></button>`).join('');
+  const l=shownStudents();
+  $('#slist').innerHTML=l.length?l.map(s=>{
+    const pd=isPaid(s),n=ps.filter(x=>(s.access||[]).includes(x.id)).length;
+    return `<div class="card srow2 ${s.status==='blocked'?'blk':''}"><label class="selbox"><input type="checkbox" ${SEL.has(s.id)?'checked':''} onchange="selTog('${s.id}',this.checked)"></label><div class="av ${pd?'avp':''}">${esc(s.name[0].toUpperCase())}</div>
+     <div class="grow"><div class="nm"><b>${esc(s.name)}</b>${pd?`<span class="tg paid">PAID${ps.length>1?' · '+n:''}</span>`:'<span class="tg">FREE</span>'}${s.status==='blocked'?'<span class="tg bad">BLOCKED</span>':''}</div>
+      <span class="sm mut">${esc(s.mobile)} · ${s.devices}/${s.max_devices} devices · ${s.attempts} tests · seen ${ago(s.last_seen)}</span>
+      ${ps.length?`<div class="accs">${ps.map(x=>{const on=(s.access||[]).includes(x.id);return `<button class="accchip ${on?'on':''}" onclick="toggleStuAcc('${s.id}','${x.id}')" title="${on?'Tap to remove access':'Tap to give access'}">${on?'✓':'+'} ${esc(x.title)}</button>`}).join('')}</div>`:''}</div>
+     <button class="btn ghost sm" onclick="manage('${s.id}')">Manage</button></div>`}).join('')
+   :`<div class="card empty">${ST.length?'No students match.':'No students yet. Add students or share the site link so they can request access.'}</div>`;
+  $('#bulkbar').innerHTML=SEL.size?`<div class="bulkbar"><b>${SEL.size} selected</b>${ps.length?`<select id="bsr">${ps.map(x=>`<option value="${x.id}">${esc(x.title)}</option>`).join('')}</select><button class="btn sm" onclick="bulkAcc(true)">Give access</button><button class="btn warn sm" onclick="bulkAcc(false)">Remove</button>`:''}<button class="btn ghost sm" onclick="SEL.clear();drawList()">Clear</button></div>`:'';
+}
+function selTog(id,on){on?SEL.add(id):SEL.delete(id);drawList()}
+function selAll(){const l=shownStudents();const all=l.length&&l.every(s=>SEL.has(s.id));l.forEach(s=>all?SEL.delete(s.id):SEL.add(s.id));drawList()}
+async function toggleStuAcc(sid,ser){
+  const s=ST.find(x=>x.id===sid),on=!(s.access||[]).includes(ser);
+  const r=await A('grant',{student_id:sid,series_id:ser,on});
+  if(r.ok){s.access=on?[...new Set([...(s.access||[]),ser])]:(s.access||[]).filter(x=>x!==ser);toast(on?'Access given to '+s.name:'Access removed');updStats();drawList()}
+}
+async function bulkAcc(on){
+  const ser=$('#bsr').value,ids=[...SEL];let n=0;
+  for(const id of ids){
+    const r=await A('grant',{student_id:id,series_id:ser,on});
+    if(r.ok){const s=ST.find(x=>x.id===id);if(s){s.access=on?[...new Set([...(s.access||[]),ser])]:(s.access||[]).filter(x=>x!==ser);n++}}
+  }
+  SEL.clear();toast((on?'Access given to ':'Access removed from ')+n+' students');renderStudents();
 }
 function codeMsg(name,mobile,code){
   return `Hi ${name}, your access to ${CFG.SITE_NAME||'the test series'} is approved.\n\nWebsite: ${siteUrl()}\nMobile: ${mobile}\nAccess code: ${code}\n\nPlease keep this code private. It works on up to 2 devices.`;
@@ -190,7 +234,7 @@ async function saveStudent(id){
 async function grant(sid,ser,on){
   const r=await A('grant',{student_id:sid,series_id:ser,on});
   const s=ST.find(x=>x.id===sid);
-  if(r.ok&&s){s.access=on?[...new Set([...s.access,ser])]:s.access.filter(x=>x!==ser);toast(on?'Access given':'Access removed')}
+  if(r.ok&&s){s.access=on?[...new Set([...s.access,ser])]:s.access.filter(x=>x!==ser);toast(on?'Access given':'Access removed');if($('#slist')){updStats();drawList()}}
 }
 async function newCode(id){
   const s=ST.find(x=>x.id===id);
@@ -257,40 +301,5 @@ function folderModal(sid,id){
    <label class="chk"><input type="checkbox" id="fa" ${f.active?'checked':''}><span>Visible to students</span></label>
    <div class="row" style="margin-top:12px"><button class="btn" style="flex:1" onclick="saveFolder('${sid}','${id||''}')">Save</button>${id?`<button class="btn danger" onclick="delFolder('${id}')">Delete</button>`:''}</div>
    ${id?'<p class="sm mut" style="margin:10px 0 0">Deleting a folder keeps its tests; they move to the series itself.</p>':''}`);
-}
-async function saveFolder(sid,id){
-  const r=await A('folder_save',{id:id||null,series_id:sid,title:$('#ft').value,sort_order:+$('#fo').value||0,active:$('#fa').checked});
-  if(!r.ok){toast(r.error==='title'?'Please enter a name':'Could not save');return}
-  closeModal();toast('Saved');OPEN[sid]=true;await loadContent();
-}
-async function delFolder(id){
-  if(!confirm('Delete this folder? Its tests will stay in the series.'))return;
-  const r=await A('folder_delete',{id});if(r.ok){closeModal();toast('Folder deleted');loadContent()}
-}
-function folderOpts(sid,sel){
-  return '<option value="">No folder</option>'+CA.folders.filter(f=>f.series_id===sid).map(f=>`<option value="${f.id}" ${f.id===sel?'selected':''}>${esc(f.title)}</option>`).join('');
-}
-function testModal(id){
-  const t=CA.tests.find(x=>x.id===id);
-  modal(`<h2>Test details</h2>
-   <label class="l">Test name</label><input type="text" id="tt" value="${esc(t.title)}">
-   <div class="g2"><div><label class="l">Series</label><select id="ts" onchange="$('#tfl').innerHTML=CA.folders.filter(f=>f.series_id===this.value).map(f=>'<option value=&quot;'+esc(f.title)+'&quot;>').join('')">${CA.series.map(s=>`<option value="${s.id}" ${s.id===t.series_id?'selected':''}>${esc(s.title)}</option>`).join('')}</select></div>
-   <div><label class="l">Folder (type or pick)</label><input type="text" id="tf" list="tfl" value="${esc((CA.folders.find(f=>f.id===t.folder_id)||{}).title||'')}" autocomplete="off"><datalist id="tfl">${CA.folders.filter(f=>f.series_id===t.series_id).map(f=>`<option value="${esc(f.title)}">`).join('')}</datalist></div>
-   <div><label class="l">Minutes</label><input type="number" id="td" value="${t.duration}"></div><div><label class="l">Order</label><input type="number" id="to" value="${t.sort_order}"></div>
-   <div><label class="l">Marks per correct</label><input type="number" step="0.25" id="tc" value="${t.correct}"></div><div><label class="l">Negative marks</label><input type="number" step="0.25" id="tw" value="${t.wrong}"></div></div>
-   <label class="l">Test starts at (empty = open now)</label><input type="datetime-local" id="tos" value="${toLocal(t.opens_at)}">
-   <label class="chk"><input type="checkbox" id="tl" ${t.lock_back?'checked':''}><span>Don't allow going back to previous questions</span></label>
-   <label class="chk"><input type="checkbox" id="tp" ${t.free_preview?'checked':''}><span>Free preview (open even if the series is paid)</span></label>
-   <label class="chk"><input type="checkbox" id="ta" ${t.active?'checked':''}><span>Visible to students</span></label>
-   <div class="row" style="margin-top:12px"><button class="btn" style="flex:1" onclick="saveTestMeta('${id}')">Save</button><button class="btn danger" onclick="delTest('${id}')">Delete</button></div>
-   <p class="sm mut" style="margin:10px 0 0">${t.results} past attempt${t.results===1?'':'s'}. To change the questions, use the "Questions" button.</p>`,true);
-}
-async function saveTestMeta(id){
-  let fid=null;
-  try{fid=await resolveFolder($('#ts').value,$('#tf').value)}catch(e){return toast(e.message)}
-  const r=await A('test_save',{id,series_id:$('#ts').value,folder_id:fid,opens_at:fromLocal($('#tos').value),title:$('#tt').value,duration:+$('#td').value,correct:+$('#tc').value,wrong:+$('#tw').value,
-    sort_order:+$('#to').value||0,lock_back:$('#tl').checked,free_preview:$('#tp').checked,active:$('#ta').checked});
-  if(!r.ok){toast(r.error==='title'?'Please enter a name':'Could not save');return}
-  closeModal();toast('Saved');await loadContent();
 }
 ;(window.__p=window.__p||{})['admin1']=1;
