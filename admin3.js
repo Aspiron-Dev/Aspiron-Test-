@@ -1,3 +1,43 @@
+function secSum(){const e=$('#ssum');if(e)e.textContent=`Total ${S.reduce((a,x)=>a+(+x.count||0),0)} of ${Q.length} questions`}
+function presetSec(k){S=k==='neet'?[{name:'Physics',count:45},{name:'Chemistry',count:45},{name:'Botany',count:45},{name:'Zoology',count:45}]:[{name:'Physics',count:30},{name:'Chemistry',count:30},{name:'Mathematics',count:30}];renderSecs()}
+function addSec(){S.push({name:'',count:0});renderSecs()}
+function clearSec(){S=[];Q.forEach(q=>q.sec='');renderSecs();render()}
+function applySec(){
+  if(!Q.length)return toast('Build the questions first');
+  let i=0;
+  for(const s of S){const n=Math.max(0,+s.count||0);for(let k=0;k<n&&i<Q.length;k++)Q[i++].sec=(s.name||'').trim()}
+  if(i<Q.length){const last=S.length?(S[S.length-1].name||'').trim():'';for(;i<Q.length;i++)Q[i].sec=last}
+  toast('Sections applied');render();
+}
+
+/* ---- question list ---- */
+function problems(q){
+  const p=[];
+  if(q.gap&&!q.q&&!q.img)p.push('Question missing in the file');
+  else if(!q.q.trim()&&!q.img)p.push('Question text is empty');
+  q.options.forEach((o,j)=>{if(!o.trim()&&!q.oimg[j])p.push('Option '+'ABCD'[j]+' is empty')});
+  if(q.answer==null)p.push('No correct answer set');
+  return p;
+}
+const bad=q=>problems(q).length>0;
+function summary(){
+  const bl=[];Q.forEach((q,i)=>{if(bad(q))bl.push(i)});
+  $('#sum').innerHTML=`${Q.length} questions · ${bl.length?`<span class="err">${bl.length} need attention</span>`:'<span class="okc">all look complete</span>'}`;
+  $('#probs').innerHTML=bl.length?`<div class="card" style="border-color:var(--bad)"><div class="row" style="justify-content:space-between"><b>Questions with problems</b>
+    <label class="chk" style="padding:0"><input type="checkbox" ${V.only?'checked':''} onchange="V.only=this.checked;V.page=0;render()"><span class="sm">Show only these</span></label></div>
+    <div class="plist">${bl.map(i=>`<button class="pchip" onclick="jumpQ(${i})" title="${esc(problems(Q[i]).join(', '))}">Q${i+1}<small>${esc(problems(Q[i])[0].replace('Question ','').replace('is empty','empty').replace('No correct answer set','no answer'))}</small></button>`).join('')}</div></div>`:'';
+}
+function visible(){const a=[];Q.forEach((q,i)=>{if(!V.only||bad(q))a.push(i)});return a}
+function cardHtml(i){
+  const q=Q[i],pr=problems(q),names=S.map(s=>s.name||'General');
+  return `<div class="card qed ${pr.length?'miss':''}" id="qc${i}" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><b>Question ${i+1}</b>
+    <span class="row" style="gap:6px">${pr.map(p=>`<span class="chip" style="background:var(--badSoft);color:var(--bad)">${esc(p)}</span>`).join('')}<button class="btn danger sm" onclick="delQ(${i})">Delete</button></span></div>
+    <textarea oninput="Q[${i}].q=this.value;touch(${i})" style="margin-top:8px">${esc(q.q)}</textarea>${imgCtl(i,'q','Add diagram')}
+    ${q.options.map((o,j)=>`<label class="l">Option ${'ABCD'[j]}</label><input type="text" value="${esc(o)}" oninput="Q[${i}].options[${j}]=this.value;touch(${i})">${imgCtl(i,j,'Option image')}`).join('')}
+    <div class="g2"><div><label class="l">Correct answer</label><select onchange="Q[${i}].answer=this.value===''?null:+this.value;touch(${i})"><option value="">Select…</option>${[0,1,2,3].map(j=>`<option value="${j}" ${q.answer===j?'selected':''}>${'ABCD'[j]}</option>`).join('')}</select></div>
+    ${names.length?`<div><label class="l">Section</label><select onchange="Q[${i}].sec=this.value">${['',...names].map(n=>`<option value="${esc(n)}" ${(q.sec||'')===n?'selected':''}>${n||'—'}</option>`).join('')}</select></div>`:''}</div>
+    <label class="l">Explanation (optional)</label><input type="text" value="${esc(q.explanation)}" oninput="Q[${i}].explanation=this.value">${imgCtl(i,'e','Explanation image')}</div>`;
+}
 function redrawCard(i){const e=$('#qc'+i);if(e){const t=document.createElement('div');t.innerHTML=cardHtml(i);e.replaceWith(t.firstElementChild)}summary()}
 function touch(i){
   const e=$('#qc'+i);if(!e)return;const pr=problems(Q[i]);e.classList.toggle('miss',pr.length>0);
