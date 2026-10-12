@@ -7,7 +7,7 @@
 <title>CBT Test Series</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=5">
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
 <script src="config.js"></script>
 </head>
@@ -28,6 +28,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const fmt=sec=>{sec=Math.max(0,Math.round(sec));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return (h?h+':':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')};
 const uuid=()=>(crypto.randomUUID?crypto.randomUUID():'id-'+Date.now()+'-'+Math.random().toString(16).slice(2));
 const IC={
+ search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
  palette:'<circle cx="12" cy="12" r="9"/><circle cx="8" cy="10" r="1.2"/><circle cx="12" cy="7.5" r="1.2"/><circle cx="16" cy="10" r="1.2"/><path d="M12 21a2.5 2.5 0 01-.5-4.9c1-.2 1.5-.8 1.5-1.6 0-.9.7-1.5 1.6-1.5H18"/>',
  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
  moon:'<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>',
@@ -118,7 +119,7 @@ function openLook(){
   const sw={blue:'#1d6fe8',green:'#12a56a',gray:'#5b6677'};
   modal(`<h2>Appearance</h2><p class="mut sm" style="margin:4px 0 12px">Choose a mode and a colour. That gives 6 looks in total.</p>
    <div class="sm mut" style="font-weight:600">Mode</div>
-   <div class="lookrow" style="grid-template-columns:repeat(2,1fr)"><button class="look m ${dark?'':'on'}" onclick="setMode('light')"><i style="background:#fff"></i>Light</button><button class="look m ${dark?'on':''}" onclick="setMode('dark')"><i style="background:#0f1722"></i>Dark</button></div>
+   <div class="lookrow" style="grid-template-columns:repeat(2,1fr)"><button class="look m ${dark?'':'on'}" onclick="setMode('light')"><i style="background:#fff"></i>Light</button><button class="look m ${dark?'on':''}" onclick="setMode('dark')"><i style="background:#2b3a52"></i>Dark</button></div>
    <div class="sm mut" style="font-weight:600">Colour</div>
    <div class="lookrow">${['blue','green','gray'].map(a=>`<button class="look ${ac===a?'on':''}" onclick="setAccent('${a}')"><i style="background:${sw[a]}"></i>${a[0].toUpperCase()+a.slice(1)}</button>`).join('')}</div>
    <button class="btn block" onclick="closeModal()">Done</button>`);
@@ -311,7 +312,9 @@ function spark(vals){
 }
 function tabsHtml(tab){
   const b=(k,h,t)=>`<button class="${tab===k?'on':''}" onclick="location.hash='${h}'">${t}</button>`;
-  return `<div class="sec-h"><div class="seg">${b('dash','#/','Dashboard')}${b('series','#/series','Test series')}${b('bm','#/b','Bookmarks')}${b('results','#/r','Results')}</div></div>`;
+  const nb=(k,hh,t,i)=>`<button class="${tab===k?'on':''}" onclick="location.hash='${hh}'">${ic(i,22)}${t}</button>`;
+  return `<div class="sec-h hometabs"><div class="seg">${b('dash','#/','Dashboard')}${b('series','#/series','Test series')}${b('bm','#/b','Bookmarks')}${b('results','#/r','Results')}</div></div>
+  <nav class="bnav">${nb('dash','#/','Home','target')}${nb('series','#/series','Series','book')}${nb('bm','#/b','Saved','star')}${nb('results','#/r','Results','trophy')}</nav>`;
 }
 function resultRow(x){
   const p=pct(x.score,x.max);
@@ -366,12 +369,13 @@ function dashBody(R,avg){
 }
 function seriesList(){
   const free=CAT.series.filter(s=>s.is_free),paid=CAT.series.filter(s=>!s.is_free);
-  let o='';
+  let o=CAT.series.length>3?`<div class="searchbox">${ic('search',18)}<input type="search" placeholder="Search test series" oninput="filterSeries(this.value)"></div>`:'';
   if(!CAT.series.length)o+=`<div class="card empty">No test series have been added yet.</div>`;
   if(free.length)o+=`<div class="h2s">${ic('book',20)} Free practice <span class="n">${free.length}</span></div><div class="sgrid">${free.map(seriesCard).join('')}</div>`;
   if(paid.length)o+=`<div class="h2s">${ic('crown',20)} Premium series <span class="n">${paid.length}</span></div><div class="sgrid">${paid.map(seriesCard).join('')}</div>`;
   return o;
 }
+function filterSeries(v){v=v.trim().toLowerCase();document.querySelectorAll('.scard').forEach(c=>{c.style.display=!v||c.textContent.toLowerCase().includes(v)?'':'none'})}
 function seriesStats(s){
   const ts=CAT.tests.filter(t=>t.series_id===s.id);
   return{n:ts.length,done:ts.filter(t=>t.attempts>0).length,folders:CAT.folders.filter(f=>f.series_id===s.id).length};
@@ -743,6 +747,7 @@ function showResult(){
 /* ---------- boot ---------- */
 async function init(){
   updateTheme();updateHeader();
+  if(getComputedStyle(document.documentElement).getPropertyValue('--cssv').trim()!=='5'){const b=document.createElement('div');b.className='cssbanner';b.textContent='Design is not fully updated. Please upload the new style.css to GitHub, then refresh.';b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font-weight:600';document.body.appendChild(b)}
   if(!cloud)return login();
   if(!AUTH)return login();
   loading('Loading…');
