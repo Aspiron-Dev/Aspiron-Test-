@@ -378,7 +378,7 @@ html[data-theme="dark"][data-accent="gray"]{--bg:#0f1114;--surface:#171a1e;--sur
 
 /* ---- v4.3  flat modern look (no outlines), bottom nav, motion ---- */
 :root{--cssv:5}
-body{background:var(--bg);background-image:radial-gradient(900px 380px at 50% -120px,color-mix(in srgb,var(--pri) 14%,transparent),transparent)}
+body{background-color:var(--bg);background-image:radial-gradient(900px 380px at 50% -120px,color-mix(in srgb,var(--pri) 14%,transparent),transparent);background-repeat:no-repeat;background-attachment:fixed}
 .card{border:0}
 .modal .box{border:0}
 .iconbtn,.chip-user{border:0;box-shadow:var(--shadow)}
@@ -419,6 +419,7 @@ input:focus,textarea:focus,select:focus{background:var(--surface)}
 
 </style>
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
+<script>window.addEventListener('load',function(){setTimeout(function(){if(window.__ok)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='This page file is damaged or incomplete (upload did not finish). Please upload this HTML file again to GitHub using Add file > Upload files, then refresh.';document.body.appendChild(b)},1200)})</script>
 <script src="config.js"></script>
 </head>
 <body>
@@ -1177,6 +1178,7 @@ function runningTest(){
   return null;
 }
 init();
+;window.__ok=1;
 </script>
 </body>
 </html>
