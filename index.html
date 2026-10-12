@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="light" data-accent="blue">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
-<script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t}catch(e){}</script>
+<script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
 <script src="config.js"></script>
 </head>
 <body>
@@ -16,7 +16,7 @@
   <a class="brand" href="#/"><span class="logo" id="lg"></span><span id="sn">CBT Test Series</span></a>
   <div class="sp"></div>
   <div id="usr"></div>
-  <button class="iconbtn" id="thm" aria-label="Toggle theme" onclick="toggleTheme()"></button>
+  <button class="iconbtn" id="thm" aria-label="Appearance" onclick="openLook()"></button>
 </div></header>
 <main id="app"></main>
 <div id="layer"></div>
@@ -28,6 +28,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const fmt=sec=>{sec=Math.max(0,Math.round(sec));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return (h?h+':':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')};
 const uuid=()=>(crypto.randomUUID?crypto.randomUUID():'id-'+Date.now()+'-'+Math.random().toString(16).slice(2));
 const IC={
+ palette:'<circle cx="12" cy="12" r="9"/><circle cx="8" cy="10" r="1.2"/><circle cx="12" cy="7.5" r="1.2"/><circle cx="16" cy="10" r="1.2"/><path d="M12 21a2.5 2.5 0 01-.5-4.9c1-.2 1.5-.8 1.5-1.6 0-.9.7-1.5 1.6-1.5H18"/>',
  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
  moon:'<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>',
  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
@@ -109,8 +110,19 @@ function authErr(r){
 }
 
 /* ---------- theme / header / helpers ---------- */
-function updateTheme(){$('#thm').innerHTML=ic(document.documentElement.dataset.theme==='dark'?'sun':'moon')}
-function toggleTheme(){const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;LS.set('cbt_theme',t);updateTheme()}
+function updateTheme(){$('#thm').innerHTML=ic('palette')}
+function setMode(t){document.documentElement.dataset.theme=t;LS.set('cbt_theme',t);openLook()}
+function setAccent(a){document.documentElement.dataset.accent=a;LS.set('cbt_accent',a);openLook()}
+function openLook(){
+  const D=document.documentElement.dataset,dark=D.theme==='dark',ac=D.accent||'blue';
+  const sw={blue:'#1d6fe8',green:'#12a56a',gray:'#5b6677'};
+  modal(`<h2>Appearance</h2><p class="mut sm" style="margin:4px 0 12px">Choose a mode and a colour. That gives 6 looks in total.</p>
+   <div class="sm mut" style="font-weight:600">Mode</div>
+   <div class="lookrow" style="grid-template-columns:repeat(2,1fr)"><button class="look m ${dark?'':'on'}" onclick="setMode('light')"><i style="background:#fff"></i>Light</button><button class="look m ${dark?'on':''}" onclick="setMode('dark')"><i style="background:#0f1722"></i>Dark</button></div>
+   <div class="sm mut" style="font-weight:600">Colour</div>
+   <div class="lookrow">${['blue','green','gray'].map(a=>`<button class="look ${ac===a?'on':''}" onclick="setAccent('${a}')"><i style="background:${sw[a]}"></i>${a[0].toUpperCase()+a.slice(1)}</button>`).join('')}</div>
+   <button class="btn block" onclick="closeModal()">Done</button>`);
+}
 function updateHeader(){
   $('#lg').innerHTML=ic('target',20);
   $('#sn').textContent=CFG.SITE_NAME||'CBT Test Series';document.title=CFG.SITE_NAME||'CBT Test Series';
@@ -283,12 +295,11 @@ const maskMob=m=>{m=String(m||'');return m.length>=10?m.slice(0,2)+'••••
 function openProfile(){
   const R=CAT?CAT.results||[]:[],P=pstats(R),nm=AUTH.name||'';
   const wa=waLink('Hello, I am '+nm+' ('+AUTH.mobile+'). I need help.');
-  const dark=document.documentElement.dataset.theme==='dark';
   modal(`<div class="prof"><div class="bigav">${esc(nm.trim()[0]||'?').toUpperCase()}</div><h2>${esc(nm)}</h2>
    <div class="sm mut">+91 ${esc(maskMob(AUTH.mobile))} · <b style="color:var(--pri)">${P.lvl}</b></div>
    <div class="kv"><div><b>${P.n}</b><span>Tests</span></div><div><b>${P.avg}%</b><span>Average</span></div><div><b>${P.streak}🔥</b><span>Day streak</span></div></div>
    <div class="badges" style="text-align:left;margin-bottom:14px">${P.badges.map(b=>`<div class="bdg ${b.on?'on':''}"><b>${b.i}</b>${b.t}</div>`).join('')}</div>
-   <div class="row" style="margin-bottom:8px"><button class="btn ghost" style="flex:1" onclick="closeModal();location.hash='#/b'">${ic('star')} Bookmarks (${BM.size})</button><button class="btn ghost" style="flex:1" onclick="toggleTheme();closeModal();openProfile()">${ic(dark?'sun':'moon')} ${dark?'Light':'Dark'} theme</button></div>
+   <div class="row" style="margin-bottom:8px"><button class="btn ghost" style="flex:1" onclick="closeModal();location.hash='#/b'">${ic('star')} Bookmarks (${BM.size})</button><button class="btn ghost" style="flex:1" onclick="openLook()">${ic('palette')} Appearance</button></div>
    ${wa?`<a class="btn soft block" style="text-decoration:none;margin-bottom:8px" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Contact admin</a>`:''}
    <div class="row"><button class="btn ghost" style="flex:1" onclick="closeModal()">Close</button><button class="btn danger" style="flex:1" onclick="closeModal();signOut()">Sign out</button></div></div>`);
 }
