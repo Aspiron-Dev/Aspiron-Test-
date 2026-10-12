@@ -352,3 +352,16 @@ html[data-theme=dark] .lg.nv,html[data-theme=dark] .pal button.nv{background:#2a
 .prof .bigav{width:84px;height:84px;margin:4px auto 10px;border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;font-size:36px;font-weight:800;box-shadow:0 10px 26px var(--glow)}
 .prof .kv{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
 .prof .kv div{background:var(--surface2);border-radius:12px;padding:10px 4px}.prof .kv b{display:block;font-size:18px}.prof .kv span{font-size:11px;color:var(--mut)}
+
+/* ---- v4.2  accent colours: blue / green / gray  x  light / dark ---- */
+html[data-theme="light"][data-accent="blue"]{--bg:#f1f5fb;--surface2:#e8eff9;--bd:#d9e3f1;--pri:#1d6fe8;--pri2:#3b9bff;--priSoft:#e4efff;--grad:linear-gradient(135deg,#1c5fe0 0%,#3b9bff 100%);--glow:rgba(29,111,232,.30)}
+html[data-theme="light"][data-accent="green"]{--bg:#f1f8f4;--surface2:#e6f3ec;--bd:#d5e8dc;--pri:#0f8a55;--pri2:#3cc47f;--priSoft:#dff4e8;--grad:linear-gradient(135deg,#0c7a4b 0%,#3cc47f 100%);--glow:rgba(15,138,85,.30)}
+html[data-theme="light"][data-accent="gray"]{--bg:#f3f4f6;--surface2:#eaecef;--bd:#dadde2;--pri:#3f4b5c;--pri2:#6b7686;--priSoft:#e6e9ee;--grad:linear-gradient(135deg,#2f3b4d 0%,#6b7686 100%);--glow:rgba(47,59,77,.28)}
+html[data-theme="dark"][data-accent="blue"]{--bg:#09111f;--surface:#101b2e;--surface2:#172640;--bd:#233654;--pri:#5aa2ff;--pri2:#3b9bff;--priSoft:#14284a;--grad:linear-gradient(135deg,#2160e0 0%,#3b9bff 100%);--glow:rgba(43,123,232,.30)}
+html[data-theme="dark"][data-accent="green"]{--bg:#09130e;--surface:#101c16;--surface2:#172a20;--bd:#233b2e;--pri:#4fd69a;--pri2:#34c47e;--priSoft:#12321f;--grad:linear-gradient(135deg,#11804f 0%,#34c47e 100%);--glow:rgba(52,196,126,.25)}
+html[data-theme="dark"][data-accent="gray"]{--bg:#0f1114;--surface:#171a1e;--surface2:#21252b;--bd:#2e333a;--pri:#b4bdca;--pri2:#8a95a5;--priSoft:#252a31;--grad:linear-gradient(135deg,#4a5463 0%,#7a8696 100%);--glow:rgba(0,0,0,.35)}
+.lookrow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:8px 0 16px}
+.look{border:2px solid var(--bd);background:var(--surface);color:var(--tx);border-radius:14px;padding:12px 6px;text-align:center;font-weight:600;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.look.on{border-color:var(--pri);box-shadow:0 0 0 3px var(--priSoft)}
+.look i{width:34px;height:34px;border-radius:50%;display:block;border:2px solid rgba(127,127,127,.35)}
+.look.m i{border-radius:10px}
