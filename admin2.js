@@ -1,3 +1,38 @@
+async function saveFolder(sid,id){
+  const r=await A('folder_save',{id:id||null,series_id:sid,title:$('#ft').value,sort_order:+$('#fo').value||0,active:$('#fa').checked});
+  if(!r.ok){toast(r.error==='title'?'Please enter a name':'Could not save');return}
+  closeModal();toast('Saved');OPEN[sid]=true;await loadContent();
+}
+async function delFolder(id){
+  if(!confirm('Delete this folder? Its tests will stay in the series.'))return;
+  const r=await A('folder_delete',{id});if(r.ok){closeModal();toast('Folder deleted');loadContent()}
+}
+function folderOpts(sid,sel){
+  return '<option value="">No folder</option>'+CA.folders.filter(f=>f.series_id===sid).map(f=>`<option value="${f.id}" ${f.id===sel?'selected':''}>${esc(f.title)}</option>`).join('');
+}
+function testModal(id){
+  const t=CA.tests.find(x=>x.id===id);
+  modal(`<h2>Test details</h2>
+   <label class="l">Test name</label><input type="text" id="tt" value="${esc(t.title)}">
+   <div class="g2"><div><label class="l">Series</label><select id="ts" onchange="$('#tfl').innerHTML=CA.folders.filter(f=>f.series_id===this.value).map(f=>'<option value=&quot;'+esc(f.title)+'&quot;>').join('')">${CA.series.map(s=>`<option value="${s.id}" ${s.id===t.series_id?'selected':''}>${esc(s.title)}</option>`).join('')}</select></div>
+   <div><label class="l">Folder (type or pick)</label><input type="text" id="tf" list="tfl" value="${esc((CA.folders.find(f=>f.id===t.folder_id)||{}).title||'')}" autocomplete="off"><datalist id="tfl">${CA.folders.filter(f=>f.series_id===t.series_id).map(f=>`<option value="${esc(f.title)}">`).join('')}</datalist></div>
+   <div><label class="l">Minutes</label><input type="number" id="td" value="${t.duration}"></div><div><label class="l">Order</label><input type="number" id="to" value="${t.sort_order}"></div>
+   <div><label class="l">Marks per correct</label><input type="number" step="0.25" id="tc" value="${t.correct}"></div><div><label class="l">Negative marks</label><input type="number" step="0.25" id="tw" value="${t.wrong}"></div></div>
+   <label class="l">Test starts at (empty = open now)</label><input type="datetime-local" id="tos" value="${toLocal(t.opens_at)}">
+   <label class="chk"><input type="checkbox" id="tl" ${t.lock_back?'checked':''}><span>Don't allow going back to previous questions</span></label>
+   <label class="chk"><input type="checkbox" id="tp" ${t.free_preview?'checked':''}><span>Free preview (open even if the series is paid)</span></label>
+   <label class="chk"><input type="checkbox" id="ta" ${t.active?'checked':''}><span>Visible to students</span></label>
+   <div class="row" style="margin-top:12px"><button class="btn" style="flex:1" onclick="saveTestMeta('${id}')">Save</button><button class="btn danger" onclick="delTest('${id}')">Delete</button></div>
+   <p class="sm mut" style="margin:10px 0 0">${t.results} past attempt${t.results===1?'':'s'}. To change the questions, use the "Questions" button.</p>`,true);
+}
+async function saveTestMeta(id){
+  let fid=null;
+  try{fid=await resolveFolder($('#ts').value,$('#tf').value)}catch(e){return toast(e.message)}
+  const r=await A('test_save',{id,series_id:$('#ts').value,folder_id:fid,opens_at:fromLocal($('#tos').value),title:$('#tt').value,duration:+$('#td').value,correct:+$('#tc').value,wrong:+$('#tw').value,
+    sort_order:+$('#to').value||0,lock_back:$('#tl').checked,free_preview:$('#tp').checked,active:$('#ta').checked});
+  if(!r.ok){toast(r.error==='title'?'Please enter a name':'Could not save');return}
+  closeModal();toast('Saved');await loadContent();
+}
 async function delTest(id){
   const t=CA.tests.find(x=>x.id===id);
   if(!confirm(`Delete "${t.title}"? Students' past scores are kept, but they can no longer review the questions.`))return;
@@ -329,45 +364,5 @@ function renderSecs(){
   const tot=S.reduce((a,x)=>a+(+x.count||0),0);
   $('#secs').innerHTML=S.length?S.map((s,i)=>`<div class="row" style="margin-bottom:8px"><input type="text" value="${esc(s.name)}" placeholder="Section name" style="flex:2;min-width:130px" oninput="S[${i}].name=this.value"><input type="number" min="0" value="${s.count}" style="flex:1;min-width:80px" oninput="S[${i}].count=+this.value;secSum()"><span class="sm mut">questions</span><button class="iconbtn sm" onclick="S.splice(${i},1);renderSecs()">✕</button></div>`).join('')
     +`<div class="sm mut" id="ssum">Total ${tot} of ${Q.length} questions</div>`:'<div class="sm mut">No sections. The test will show all questions together.</div>';
-}
-function secSum(){const e=$('#ssum');if(e)e.textContent=`Total ${S.reduce((a,x)=>a+(+x.count||0),0)} of ${Q.length} questions`}
-function presetSec(k){S=k==='neet'?[{name:'Physics',count:45},{name:'Chemistry',count:45},{name:'Botany',count:45},{name:'Zoology',count:45}]:[{name:'Physics',count:30},{name:'Chemistry',count:30},{name:'Mathematics',count:30}];renderSecs()}
-function addSec(){S.push({name:'',count:0});renderSecs()}
-function clearSec(){S=[];Q.forEach(q=>q.sec='');renderSecs();render()}
-function applySec(){
-  if(!Q.length)return toast('Build the questions first');
-  let i=0;
-  for(const s of S){const n=Math.max(0,+s.count||0);for(let k=0;k<n&&i<Q.length;k++)Q[i++].sec=(s.name||'').trim()}
-  if(i<Q.length){const last=S.length?(S[S.length-1].name||'').trim():'';for(;i<Q.length;i++)Q[i].sec=last}
-  toast('Sections applied');render();
-}
-
-/* ---- question list ---- */
-function problems(q){
-  const p=[];
-  if(q.gap&&!q.q&&!q.img)p.push('Question missing in the file');
-  else if(!q.q.trim()&&!q.img)p.push('Question text is empty');
-  q.options.forEach((o,j)=>{if(!o.trim()&&!q.oimg[j])p.push('Option '+'ABCD'[j]+' is empty')});
-  if(q.answer==null)p.push('No correct answer set');
-  return p;
-}
-const bad=q=>problems(q).length>0;
-function summary(){
-  const bl=[];Q.forEach((q,i)=>{if(bad(q))bl.push(i)});
-  $('#sum').innerHTML=`${Q.length} questions · ${bl.length?`<span class="err">${bl.length} need attention</span>`:'<span class="okc">all look complete</span>'}`;
-  $('#probs').innerHTML=bl.length?`<div class="card" style="border-color:var(--bad)"><div class="row" style="justify-content:space-between"><b>Questions with problems</b>
-    <label class="chk" style="padding:0"><input type="checkbox" ${V.only?'checked':''} onchange="V.only=this.checked;V.page=0;render()"><span class="sm">Show only these</span></label></div>
-    <div class="plist">${bl.map(i=>`<button class="pchip" onclick="jumpQ(${i})" title="${esc(problems(Q[i]).join(', '))}">Q${i+1}<small>${esc(problems(Q[i])[0].replace('Question ','').replace('is empty','empty').replace('No correct answer set','no answer'))}</small></button>`).join('')}</div></div>`:'';
-}
-function visible(){const a=[];Q.forEach((q,i)=>{if(!V.only||bad(q))a.push(i)});return a}
-function cardHtml(i){
-  const q=Q[i],pr=problems(q),names=S.map(s=>s.name||'General');
-  return `<div class="card qed ${pr.length?'miss':''}" id="qc${i}" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><b>Question ${i+1}</b>
-    <span class="row" style="gap:6px">${pr.map(p=>`<span class="chip" style="background:var(--badSoft);color:var(--bad)">${esc(p)}</span>`).join('')}<button class="btn danger sm" onclick="delQ(${i})">Delete</button></span></div>
-    <textarea oninput="Q[${i}].q=this.value;touch(${i})" style="margin-top:8px">${esc(q.q)}</textarea>${imgCtl(i,'q','Add diagram')}
-    ${q.options.map((o,j)=>`<label class="l">Option ${'ABCD'[j]}</label><input type="text" value="${esc(o)}" oninput="Q[${i}].options[${j}]=this.value;touch(${i})">${imgCtl(i,j,'Option image')}`).join('')}
-    <div class="g2"><div><label class="l">Correct answer</label><select onchange="Q[${i}].answer=this.value===''?null:+this.value;touch(${i})"><option value="">Select…</option>${[0,1,2,3].map(j=>`<option value="${j}" ${q.answer===j?'selected':''}>${'ABCD'[j]}</option>`).join('')}</select></div>
-    ${names.length?`<div><label class="l">Section</label><select onchange="Q[${i}].sec=this.value">${['',...names].map(n=>`<option value="${esc(n)}" ${(q.sec||'')===n?'selected':''}>${n||'—'}</option>`).join('')}</select></div>`:''}</div>
-    <label class="l">Explanation (optional)</label><input type="text" value="${esc(q.explanation)}" oninput="Q[${i}].explanation=this.value">${imgCtl(i,'e','Explanation image')}</div>`;
 }
 ;(window.__p=window.__p||{})['admin2']=1;
