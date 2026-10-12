@@ -400,21 +400,43 @@ input:focus,textarea:focus,select:focus{background:var(--surface)}
 .scard,.card{transition:transform .18s,box-shadow .18s}
 @media(hover:hover){.scard:hover{transform:translateY(-3px);box-shadow:0 14px 34px var(--glow)}}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-.wrap>*{animation:rise .38s ease both}
-.wrap>*:nth-child(2){animation-delay:.04s}.wrap>*:nth-child(3){animation-delay:.08s}.wrap>*:nth-child(4){animation-delay:.12s}
+#app>.wrap{animation:pageIn .34s cubic-bezier(.22,.8,.24,1) both}
+@keyframes pageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .searchbox{position:relative;margin:4px 0 6px}
 .searchbox svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--mut)}
 .searchbox input{padding-left:42px;border-radius:14px;box-shadow:var(--shadow);background:var(--surface)}
 .bnav{display:none}
 @media(max-width:700px){
   .hometabs{display:none}
-  .wrap{padding-bottom:110px}
-  .bnav{display:flex;position:fixed;left:12px;right:12px;bottom:12px;z-index:30;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:22px;padding:6px;box-shadow:0 10px 36px rgba(0,0,0,.22);gap:4px}
+  body.hasnav .wrap{padding-bottom:110px}
+  body.hasnav .bnav{display:flex;position:fixed;left:12px;right:12px;bottom:12px;z-index:30;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:22px;padding:6px;box-shadow:0 10px 36px rgba(0,0,0,.22);gap:4px}
   .bnav button{flex:1;border:0;background:transparent;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;border-radius:16px;font-size:11px;font-weight:700;transition:background .2s,color .2s}
   .bnav button.on{background:var(--priSoft);color:var(--pri)}
   .toast{bottom:104px}
 }
 .cssbanner{position:fixed;left:12px;right:12px;top:12px;z-index:99;background:var(--warn);color:#fff;border-radius:14px;padding:12px 14px;font-weight:600;font-size:14px;box-shadow:var(--shadow)}
+
+/* ---- v4.5 students list (admin) ---- */
+.sstats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.sbox{background:var(--surface);border-radius:14px;padding:12px 8px;text-align:center;box-shadow:var(--shadow)}
+.sbox b{display:block;font-size:22px;letter-spacing:-.02em}.sbox span{font-size:12px;color:var(--mut)}
+.fseg{display:flex;width:100%}.fseg button{flex:1;white-space:nowrap}
+.srow2{display:flex;align-items:flex-start;gap:10px;padding:14px;margin-bottom:10px}
+.srow2.blk{opacity:.72}
+.srow2 .grow{flex:1;min-width:0}
+.srow2 .nm{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px}
+.srow2 .av{width:38px;height:38px;border-radius:50%;background:var(--surface2);color:var(--mut);display:grid;place-items:center;font-weight:800;flex:none}
+.srow2 .av.avp{background:var(--grad);color:#fff}
+.selbox{padding-top:9px}.selbox input{width:18px;height:18px;accent-color:var(--pri)}
+.tg{font-size:10.5px;font-weight:800;letter-spacing:.04em;padding:2px 8px;border-radius:99px;background:var(--surface2);color:var(--mut)}
+.tg.paid{background:var(--okSoft);color:var(--ok)}.tg.bad{background:var(--badSoft);color:var(--bad)}
+.accs{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.accchip{border:0;font:inherit;font-size:12px;font-weight:700;padding:5px 11px;border-radius:99px;background:var(--surface2);color:var(--mut);cursor:pointer;transition:background .15s,transform .08s}
+.accchip:active{transform:scale(.96)}
+.accchip.on{background:var(--okSoft);color:var(--ok)}
+.bulkbar{position:sticky;bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface);border-radius:16px;padding:10px 12px;box-shadow:0 10px 36px rgba(0,0,0,.25);margin-top:12px;z-index:5}
+.bulkbar select{flex:1;min-width:120px}
+@media(max-width:520px){.sstats{grid-template-columns:repeat(2,1fr)}.srow2{flex-wrap:wrap}.srow2>.btn{margin-left:auto}}
 
 </style>
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
@@ -434,9 +456,9 @@ input:focus,textarea:focus,select:focus{background:var(--surface)}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="parser.js"></script>
-<script src="admin1.js?v=8" onerror="(window.__miss=window.__miss||[]).push('admin1.js')"></script>
-<script src="admin2.js?v=8" onerror="(window.__miss=window.__miss||[]).push('admin2.js')"></script>
-<script src="admin3.js?v=8" onerror="(window.__miss=window.__miss||[]).push('admin3.js')"></script>
+<script src="admin1.js?v=9" onerror="(window.__miss=window.__miss||[]).push('admin1.js')"></script>
+<script src="admin2.js?v=9" onerror="(window.__miss=window.__miss||[]).push('admin2.js')"></script>
+<script src="admin3.js?v=9" onerror="(window.__miss=window.__miss||[]).push('admin3.js')"></script>
 
 </body>
 </html>
