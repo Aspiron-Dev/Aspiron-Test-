@@ -40,44 +40,25 @@ function splitOpts(block){
   const o=best.map((x,k)=>block.slice(x.e,k<3?best[k+1].s:undefined).replace(/\s*\n\s*/g,' ').trim());
   return{q,o};
 }
-const SUBJ=/^\s*(?:section\s*[-:]?\s*[A-Za-z0-9]+\s*[-:–—(\[]*\s*)?(physics|chemistry|botany|zoology|biology|mathematics|maths|math|english|hindi|reasoning|general\s*knowledge|general\s*awareness|gk|history|geography|polity|economics|science|computer|physical\s*chemistry|organic\s*chemistry|inorganic\s*chemistry|भौतिक\s*विज्ञान|रसायन\s*विज्ञान|जीव\s*विज्ञान|गणित)\s*[)\]]?\s*(?:[-:–—(\[]?\s*(?:section\s*[A-Za-z0-9]+)?\s*[)\]]?)?\s*$/i;
-const cap=s=>s.toLowerCase().replace(/\s+/g,' ').trim().replace(/\b([a-z])/g,c=>c.toUpperCase());
-function sectionName(ln){
-  const t=ln.trim();
-  if(!t||t.length>45||/^\d/.test(t))return null;
-  const m=t.match(SUBJ);
-  if(m)return cap(m[1]);
-  const g=t.match(/^section\s*[-:]?\s*([A-Za-z0-9]+)\s*$/i);
-  return g?'Section '+g[1].toUpperCase():null;
-}
 function parse(text,keyText){
   text=text.replace(/\r/g,'');
   const sp=splitKey(text);
   const kt=keyText&&keyText.trim()?keyText:sp.k;
   const key=parseKey(kt).map;
   const lines=sp.q.split('\n');
-  const blocks=[];let cur=null,sec='';
+  const blocks=[];let cur=null;
   const qre=/^\s*(?:Q\.?\s*)?(\d{1,3})\s*[\.\)]\s*(.*)$/i;
   for(const ln of lines){
     const m=ln.match(qre);
-    const n=m?+m[1]:0;
-    const next=blocks.length+1;
-    // accept the expected number, or a small jump (a missing question -> placeholder)
-    if(m&&n>=next&&n<=next+3&&(n===next||/^[A-Za-z(ऀ-ॿ\[]/.test(m[2]||'')||m[2]==='')){
-      for(let k=next;k<n;k++)blocks.push({lines:[''],sec,gap:true});
-      cur={lines:[m[2]],sec};blocks.push(cur);
-    }else{
-      const sn=sectionName(ln);
-      if(sn){sec=sn;if(cur===null)continue;cur=null;continue}
-      if(cur)cur.lines.push(ln);
-    }
+    if(m&&+m[1]===blocks.length+1){cur=[m[2]];blocks.push(cur)}
+    else if(cur)cur.push(ln);
   }
   const questions=blocks.map((b,i)=>{
-    const r=splitOpts(b.lines.join('\n'));
-    return{q:r.q,options:r.o,answer:key[i+1]==null?null:key[i+1],explanation:'',sec:b.sec||'',gap:!!b.gap};
+    const r=splitOpts(b.join('\n'));
+    return{q:r.q,options:r.o,answer:key[i+1]==null?null:key[i+1],explanation:''};
   });
   return{questions,keyFound:Object.keys(key).length};
 }
-const api={parse,parseKey,splitKey,splitOpts,sectionName};
+const api={parse,parseKey,splitKey,splitOpts};
 if(typeof module!=='undefined')module.exports=api;else root.CBTParser=api;
 })(this);
