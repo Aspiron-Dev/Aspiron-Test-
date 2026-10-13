@@ -60,11 +60,12 @@ let CAT=null, T=null, P=null, timer=null, INTEST=false, palOpen=false, warned=fa
 /* ---------- api ---------- */
 async function rpc(fn,args,noAuth){
   const body=noAuth?args:Object.assign({p_mobile:AUTH.mobile,p_code:AUTH.code,p_device:DEV},args||{});
+  const ac=new AbortController(),tmo=setTimeout(()=>ac.abort(),25000);
   try{
-    const r=await fetch(API+'/rest/v1/rpc/'+fn,{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const r=await fetch(API+'/rest/v1/rpc/'+fn,{signal:ac.signal,method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!r.ok)return{ok:false,error:'server',status:r.status};
     return await r.json();
-  }catch(e){return{ok:false,error:'network'}}
+  }catch(e){return{ok:false,error:'network'}}finally{clearTimeout(tmo)}
 }
 const AUTHERR=['invalid','blocked','pending','device_limit','locked','device'];
 function errText(r){
@@ -103,7 +104,7 @@ function openLook(){
 }
 function updateHeader(){
   $('#lg').innerHTML=ic('target',20);
-  $('#sn').textContent=CFG.SITE_NAME||'CBT Test Series';document.title=CFG.SITE_NAME||'CBT Test Series';
+  $('#sn').textContent=CFG.SITE_NAME||'CBT Test Series';{const sp=document.getElementById('spn');if(sp)sp.textContent=CFG.SITE_NAME||'CBT Test Series'}document.title=CFG.SITE_NAME||'CBT Test Series';
   $('#usr').innerHTML=AUTH?`<button class="chip-user" onclick="openProfile()" title="My profile"><span class="avatar">${esc((AUTH.name||'?').trim()[0].toUpperCase())}</span>${esc((AUTH.name||'').split(' ')[0])}</button>`:'';
 }
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}
@@ -114,7 +115,7 @@ function setNav(tab){
   $('#bnav').innerHTML=it.map(x=>`<button class="${tab===x[0]?'on':''}" onclick="location.hash='${x[1]}'">${ic(x[3],22)}${x[2]}</button>`).join('');
   document.body.classList.add('hasnav');
 }
-function setApp(h){document.body.classList.remove('hasnav');clearInterval(opTimer);opTimer=null;$('#app').innerHTML=h;window.scrollTo(0,0);startOp();loadCovers();countUp($('#app'))}
+function setApp(h){document.body.classList.remove('hasnav');clearInterval(opTimer);opTimer=null;$('#app').innerHTML=h;window.scrollTo(0,0);startOp();loadCovers();countUp($('#app'));hideSplash()}
 function loading(m){setApp(`<div class="loading"><div><div class="spin"></div>${esc(m||'Loading…')}</div></div>`)}
 const GR=[['#1d6fe8','#12a58a'],['#0e7490','#2563eb'],['#15803d','#0ea5a4'],['#334155','#1d6fe8'],['#0f766e','#16a34a'],['#475569','#0d9488']];
 function grad(id){let h=0;for(const c of String(id))h=(h*31+c.charCodeAt(0))>>>0;const g=GR[h%GR.length];return `linear-gradient(135deg,${g[0]},${g[1]})`}
@@ -207,7 +208,7 @@ async function loadCat(silent){
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AUTH&&!INTEST&&CAT&&Date.now()-CATAT>30000)route()});
 async function route(){
   if(INTEST||!AUTH)return;
-  if(!CAT){loading('Loading your tests…');if(!(await loadCat()))return}
+  if(!CAT){skelPage();if(!(await loadCat()))return}
   else if(Date.now()-CATAT>30000){await loadCat(true);if(!AUTH||INTEST)return}
   const h=location.hash||'#/';let m;
   if((m=h.match(/^#\/s\/(.+)$/)))return viewSeries(m[1]);
