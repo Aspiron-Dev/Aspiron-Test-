@@ -20,6 +20,11 @@ function instr(t,s){
 async function startTest(id){
   loading('Starting your test…');
   const r=await rpc('cbt_start',{p_test:id});
+  if(!r.ok&&(r.error==='network'||r.error==='server')){
+    const c=LS.get(tdKey(id),null),p0=getProg(id);
+    if(c&&p0&&c.sid===p0.sid&&p0.ends&&p0.ends>Date.now()+(p0.off||0)){T=c.test;P=p0;P.times=P.times||{};INTEST=true;warned=false;run();toast('Offline: test resumed from your phone');return}
+    setApp(`<div class="wrap"><div class="card empty">${ic('wifi',32)}<h3 style="margin:10px 0 4px;color:var(--tx)">No connection</h3><p class="sm">Internet is needed to start a test. Please check your connection.</p><button class="btn" onclick="startTest('${id}')">Try again</button> <button class="btn ghost" onclick="location.hash='#/';route()">Back</button></div></div>`);return;
+  }
   if(!r.ok){
     if(authErr(r))return;
     if(r.error==='locked'||r.error==='not_found')LS.del(progKey(id));
@@ -34,6 +39,7 @@ async function startTest(id){
   p.ends=r.session.ends_at;p.off=off;
   if(p.cur>=T.questions.length)p.cur=0;
   P=p;saveProg();
+  LS.set(tdKey(id),{test:T,sid:r.session.id});
   if(P.ends-(Date.now()+P.off)<=0){return finish(true)}
   INTEST=true;warned=false;run();
 }
@@ -45,7 +51,7 @@ let tmark=0,tk=0;
 function flushT(){if(!P||!tmark)return;const now=Date.now(),d=Math.min(1800,Math.max(0,Math.round((now-tmark)/100)/10));if(d){P.times=P.times||{};P.times[P.cur]=Math.round(((P.times[P.cur]||0)+d)*10)/10}tmark=now}
 document.addEventListener('visibilitychange',()=>{if(!INTEST||!P)return;if(document.hidden){flushT();tmark=0;saveProg()}else tmark=Date.now()});
 function run(){
-  document.body.classList.add('intest');palOpen=false;secSetup();tmark=Date.now();
+  document.body.classList.add('intest');palOpen=false;secSetup();tmark=Date.now();netPill();
   window.onbeforeunload=e=>{e.preventDefault();e.returnValue=''};
   clearInterval(timer);draw();timer=setInterval(tick,1000);tick();
 }
@@ -113,7 +119,7 @@ function submitAsk(){
 async function finish(auto){
   clearInterval(timer);window.onbeforeunload=null;flushT();
   const it={tid:P.tid,cid:P.cid,ans:P.ans,times:P.times||{},title:(T&&T.title)||P.title,ts:Date.now()};
-  addPend(it);LS.del(progKey(P.tid));
+  addPend(it);LS.del(progKey(P.tid));LS.del(tdKey(P.tid));
   INTEST=false;P=null;T=null;document.body.classList.remove('intest');
   await sendPending(it);
 }
@@ -147,7 +153,7 @@ async function flushPending(){
       const k=localStorage.key(i);
       if(k&&k.startsWith('cbt_prog_'+AUTH.mobile+'_')){
         const p=LS.get(k,null);
-        if(p&&p.ends&&p.ends<=Date.now()+(p.off||0)){addPend({tid:p.tid,cid:p.cid,ans:p.ans||{},times:p.times||{},title:p.title,ts:Date.now()});LS.del(k)}
+        if(p&&p.ends&&p.ends<=Date.now()+(p.off||0)){addPend({tid:p.tid,cid:p.cid,ans:p.ans||{},times:p.times||{},title:p.title,ts:Date.now()});LS.del(k);LS.del(tdKey(p.tid))}
       }
     }
   }catch(e){}
@@ -172,7 +178,7 @@ function countUp(root){
   });
 }
 async function openReview(id){
-  loading('Loading your answers…');
+  skelPage();
   const r=await rpc('cbt_review',{p_result:id});
   if(!r.ok){if(authErr(r))return;toast('Could not load this result.');route();return}
   if(r.gone){toast('This test is no longer available for review.');route();return}
