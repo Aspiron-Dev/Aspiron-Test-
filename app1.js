@@ -88,9 +88,9 @@ function authErr(r){
 }
 
 /* ---------- theme / header / helpers ---------- */
-function updateTheme(){$('#thm').innerHTML=ic('palette')}
-function setMode(t){document.documentElement.dataset.theme=t;LS.set('cbt_theme',t);openLook()}
-function setAccent(a){document.documentElement.dataset.accent=a;LS.set('cbt_accent',a);openLook()}
+function updateTheme(){$('#thm').innerHTML=ic('palette');syncTheme()}
+function setMode(t){document.documentElement.dataset.theme=t;LS.set('cbt_theme',t);syncTheme();openLook()}
+function setAccent(a){document.documentElement.dataset.accent=a;LS.set('cbt_accent',a);syncTheme();openLook()}
 function openLook(){
   const D=document.documentElement.dataset,dark=D.theme==='dark',ac=D.accent||'blue';
   const sw={blue:'#1d6fe8',green:'#12a56a',gray:'#5b6677'};
@@ -110,18 +110,18 @@ function toast(m){const t=document.createElement('div');t.className='toast';t.te
 function modal(h){$('#layer').innerHTML=`<div class="modal" onclick="if(event.target===this)closeModal()"><div class="box">${h}</div></div>`}
 function closeModal(){$('#layer').innerHTML=''}
 function setNav(tab){
-  const it=[['dash','#/','Home','target'],['series','#/series','Tests','book'],['bm','#/b','Saved','star'],['results','#/r','Results','trophy']];
+  const it=[['dash','#/','Home','target'],['series','#/series','Tests','book'],['mk','#/m','Mistakes','notebook'],['bm','#/b','Saved','star'],['results','#/r','Results','trophy']];
   $('#bnav').innerHTML=it.map(x=>`<button class="${tab===x[0]?'on':''}" onclick="location.hash='${x[1]}'">${ic(x[3],22)}${x[2]}</button>`).join('');
   document.body.classList.add('hasnav');
 }
-function setApp(h){document.body.classList.remove('hasnav');clearInterval(opTimer);opTimer=null;$('#app').innerHTML=h;window.scrollTo(0,0);startOp();loadCovers()}
+function setApp(h){document.body.classList.remove('hasnav');clearInterval(opTimer);opTimer=null;$('#app').innerHTML=h;window.scrollTo(0,0);startOp();loadCovers();countUp($('#app'))}
 function loading(m){setApp(`<div class="loading"><div><div class="spin"></div>${esc(m||'Loading…')}</div></div>`)}
 const GR=[['#1d6fe8','#12a58a'],['#0e7490','#2563eb'],['#15803d','#0ea5a4'],['#334155','#1d6fe8'],['#0f766e','#16a34a'],['#475569','#0d9488']];
 function grad(id){let h=0;for(const c of String(id))h=(h*31+c.charCodeAt(0))>>>0;const g=GR[h%GR.length];return `linear-gradient(135deg,${g[0]},${g[1]})`}
 const pct=(s,m)=>m?Math.max(0,Math.round(s*100/m)):0;
 function ring(p,size,sw,col){
   const r=(size-sw)/2,c=2*Math.PI*r;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="${sw}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${col||'var(--pri)'}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-Math.min(100,p)/100)}"/></svg>`;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="${sw}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${col||'var(--pri)'}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-Math.min(100,p)/100)}" style="--c:${c};animation:rg 1s cubic-bezier(.22,.8,.24,1) backwards"/></svg>`;
 }
 const ringCol=p=>p>=60?'var(--ok)':p>=35?'var(--warn)':'var(--bad)';
 function waLink(text){
@@ -214,6 +214,7 @@ async function route(){
   if((m=h.match(/^#\/f\/(.+)$/)))return viewFolder(m[1]);
   if(h==='#/r')return viewHome('results');
   if(h==='#/b')return viewBookmarks();
+  if(h==='#/m')return viewMistakes();
   if(h==='#/series')return viewHome('series');
   return viewHome('dash');
 }
@@ -291,60 +292,5 @@ function spark(vals){
   if(vals.length<2)return '';
   const w=220,h=54,mx=Math.max(100,...vals),pts=vals.map((v,i)=>[i*(w/(vals.length-1)),h-4-(v/mx)*(h-10)]);
   return `<svg viewBox="0 0 ${w} ${h}" class="spark"><polyline fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="${pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}"/>${pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3" fill="currentColor"/>`).join('')}</svg>`;
-}
-function tabsHtml(tab){
-  const b=(k,h,t)=>`<button class="${tab===k?'on':''}" onclick="location.hash='${h}'">${t}</button>`;
-  return `<div class="sec-h hometabs"><div class="seg">${b('dash','#/','Dashboard')}${b('series','#/series','Test series')}${b('bm','#/b','Bookmarks')}${b('results','#/r','Results')}</div></div>`;
-}
-function resultRow(x){
-  const p=pct(x.score,x.max);
-  return `<div class="rrow"><div class="mring">${ring(p,54,6,ringCol(p))}<span>${p}%</span></div>
-    <div class="grow"><b>${esc(x.title)}</b><span class="sm mut">${new Date(x.at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} · ${x.score}/${x.max} · ✓${x.correct} ✗${x.wrong}</span></div>
-    <button class="btn soft sm" onclick="openReview('${x.id}')">Review</button></div>`;
-}
-function viewHome(tab){
-  const R=CAT.results||[];
-  const P=pstats(R),avg=P.avg,best=P.best;
-  const hr=new Date().getHours(),gr=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
-  const nm=(AUTH.name||'').trim();
-  let o=`<div class="wrap">${tab!=='dash'?'':`<div class="hero"><div class="who"><div class="bigav">${esc(nm[0]||'?').toUpperCase()}</div>
-   <div><div class="sm" style="opacity:.85">${gr}</div><h1>${esc(nm.split(' ')[0])}</h1><span class="lvl">${P.lvl}</span></div>
-   <div class="streak"><b>${P.streak}🔥</b><span>day streak</span></div></div>
-  <div class="stats"><div class="stat"><b>${R.length}</b><span>Tests taken</span></div><div class="stat"><b>${avg}%</b><span>Average</span></div><div class="stat"><b>${best}%</b><span>Best</span></div></div></div>`}${tabsHtml(tab)}`;
-  if(tab==='dash')o+=dashBody(R,avg);
-  else if(tab==='series')o+=seriesList();
-  else{
-    if(!R.length)o+=`<div class="card empty">You have not attempted any test yet.</div>`;
-    else o+=`<div class="card">${R.map(resultRow).join('')}</div>`;
-  }
-  setApp(o+'</div>');setNav(tab);
-}
-function dashBody(R,avg){
-  let o='';
-  const prog=CAT.tests.filter(t=>t.in_progress&&!t.locked);
-  if(prog.length)o+=`<div class="h2s">${ic('play',20)} Continue your test</div>${prog.map(testRow).join('')}`;
-  const up=CAT.tests.filter(t=>isWait(t)).sort((a,b)=>a.opens_at-b.opens_at);
-  if(up.length)o+=`<div class="h2s">${ic('calendar',20)} Upcoming tests <span class="n">${up.length}</span></div>${up.map(testRow).join('')}`;
-  const P=pstats(R),acc=P.acc,cor=P.cor,secs=P.secs;
-  const trend=R.slice(0,10).reverse().map(x=>pct(x.score,x.max));
-  const nxt=CAT.tests.filter(t=>!t.locked&&!t.attempts&&!t.in_progress&&!isWait(t)&&CAT.series.some(s=>s.id===t.series_id&&(s.is_free||s.unlocked)))[0];
-  if(nxt)o+=`<div class="h2s">${ic('play',20)} Up next for you</div><div class="next"><div class="grow"><b>${esc(nxt.title)}</b><div class="sm mut">${nxt.questions} questions · ${nxt.duration} min</div></div><button class="btn sm" onclick="openTest('${nxt.id}')">Start</button></div>`;
-  if(R.length){
-    const mx=Math.max(1,...P.week.map(w=>w.n));
-    o+=`<div class="h2s">${ic('target',20)} Your performance</div><div class="dtop">
-      <div class="card"><div class="accwrap"><div class="ringbox">${ring(acc,96,10,ringCol(acc))}<span>${acc}%</span></div>
-        <div><b>Accuracy</b><div class="sm mut">${cor} correct of ${P.tot} attempted</div><div class="sm mut" style="margin-top:4px">${Math.round(secs/3600*10)/10}h practised · ${BM.size} bookmarks</div></div></div></div>
-      <div class="card"><b>This week</b><span class="sm mut"> · tests per day</span><div class="week">${P.week.map(w=>`<div><i class="${w.n?'':'z'}" style="height:${w.n?Math.max(14,w.n/mx*100):0}%"></i>${w.l}</div>`).join('')}</div></div></div>
-      ${trend.length>1?`<div class="card" style="margin-top:12px"><div class="row" style="justify-content:space-between"><b>Score trend</b><span class="sm mut">Last ${trend.length} tests · best ${P.best}%</span></div><div class="trend">${spark(trend)}</div></div>`:''}
-      <div class="h2s">${ic('trophy',20)} Achievements <span class="n">${P.badges.filter(b=>b.on).length}/${P.badges.length}</span></div><div class="badges">${P.badges.map(b=>`<div class="bdg ${b.on?'on':''}"><b>${b.i}</b>${b.t}</div>`).join('')}</div>
-      <div class="h2s">${ic('clock',20)} Recent results</div><div class="card">${R.slice(0,4).map(resultRow).join('')}</div>
-      ${R.length>4?`<div style="text-align:center;margin-top:10px"><button class="btn ghost sm" onclick="location.hash='#/r'">All results</button></div>`:''}`;
-  }else{
-    o+=`<div class="card empty" style="margin-top:16px">${ic('target',30)}<h3 style="margin:10px 0 4px;color:var(--tx)">Take your first test</h3><p class="sm">Your scores, accuracy and progress will appear here.</p><button class="btn" onclick="location.hash='#/series'">Browse test series</button></div>`;
-  }
-  const ser=CAT.series.map(s=>({s,st:seriesStats(s)})).filter(x=>x.st.n);
-  if(ser.length)o+=`<div class="h2s">${ic('book',20)} Series progress</div><div class="card">${ser.map(({s,st})=>{const p=Math.round(st.done*100/st.n);
-    return `<div class="prow" onclick="location.hash='#/s/${s.id}'"><div class="row sm" style="justify-content:space-between;margin-bottom:6px"><b>${esc(s.title)}</b><span class="mut">${st.done}/${st.n} attempted</span></div><div class="bar"><i style="width:${p}%"></i></div></div>`}).join('')}</div>`;
-  return o;
 }
 ;(window.__p=window.__p||{})['app1']=1;
