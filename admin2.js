@@ -21,6 +21,7 @@ function testModal(id){
    <label class="l">Test starts at (empty = open now)</label><input type="datetime-local" id="tos" value="${toLocal(t.opens_at)}">
    <label class="chk"><input type="checkbox" id="tl" ${t.lock_back?'checked':''}><span>Don't allow going back to previous questions</span></label>
    <label class="chk"><input type="checkbox" id="tp" ${t.free_preview?'checked':''}><span>Free preview (open even if the series is paid)</span></label>
+   <label class="chk"><input type="checkbox" id="tpr" ${PRAC.has(t.id)?'checked':''}><span>Practice mode (instant answer + explanation after each question)</span></label>
    <label class="chk"><input type="checkbox" id="ta" ${t.active?'checked':''}><span>Visible to students</span></label>
    <div class="row" style="margin-top:12px"><button class="btn" style="flex:1" onclick="saveTestMeta('${id}')">Save</button><button class="btn danger" onclick="delTest('${id}')">Delete</button></div>
    <p class="sm mut" style="margin:10px 0 0">${t.results} past attempt${t.results===1?'':'s'}. To change the questions, use the "Questions" button.</p>`,true);
@@ -31,6 +32,7 @@ async function saveTestMeta(id){
   const r=await A('test_save',{id,series_id:$('#ts').value,folder_id:fid,opens_at:fromLocal($('#tos').value),title:$('#tt').value,duration:+$('#td').value,correct:+$('#tc').value,wrong:+$('#tw').value,
     sort_order:+$('#to').value||0,lock_back:$('#tl').checked,free_preview:$('#tp').checked,active:$('#ta').checked});
   if(!r.ok){toast(r.error==='title'?'Please enter a name':'Could not save');return}
+  await setPrac(id,$('#tpr').checked);
   closeModal();toast('Saved');await loadContent();
 }
 async function delTest(id){
@@ -66,7 +68,8 @@ function buildCreate(){
    <div><label class="l">Negative marks</label><input type="number" step="0.25" id="nm" value="1"></div></div>
    <label class="l">Test starts at (optional)</label><input type="datetime-local" id="opens"><p class="mut sm" style="margin:6px 0 0">Students cannot start the test before this time. Leave empty to open it immediately. Time is as per this phone.</p>
    <label class="chk"><input type="checkbox" id="lock"><span>Don't allow going back to previous questions</span></label>
-   <label class="chk"><input type="checkbox" id="prev"><span>Free preview (open even if the series is paid)</span></label></div>
+   <label class="chk"><input type="checkbox" id="prev"><span>Free preview (open even if the series is paid)</span></label>
+   <label class="chk"><input type="checkbox" id="prac"><span>Practice mode: show the correct answer and explanation right after each question</span></label></div>
   <div class="card" style="margin-top:14px"><h3>3. Subjects / sections</h3>
    <p class="mut sm" style="margin:4px 0 10px">Optional. For tests like NEET, students see Physics / Chemistry / Botany / Zoology tabs. Subject headings in the paper are detected automatically; or set them here.</p>
    <div id="secs"></div>
@@ -105,7 +108,7 @@ function newTest(){
   Q=[];S=[];EDIT=null;PDFBUF=null;V={only:false,page:0};
   for(const id of ['raw','key','title','pf','opens'])$('#'+id).value='';
   for(const id of ['paper','keyf','jf'])$('#'+id).value='';
-  $('#pst').textContent='';$('#kst').textContent='';$('#dur').value=180;$('#pm').value=4;$('#nm').value=1;$('#lock').checked=false;$('#prev').checked=false;
+  $('#pst').textContent='';$('#kst').textContent='';$('#dur').value=180;$('#pm').value=4;$('#nm').value=1;$('#lock').checked=false;$('#prev').checked=false;$('#prac').checked=false;
   $('#sum').textContent='';$('#list').innerHTML='';$('#probs').innerHTML='';$('#outbox').style.display='none';$('#editbar').innerHTML='';$('#pubbtn').textContent='Publish test';$('#ocrbtn').style.display='none';
   renderSecs();
 }
