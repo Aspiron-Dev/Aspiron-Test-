@@ -1,3 +1,60 @@
+function tabsHtml(tab){
+  const b=(k,h,t)=>`<button class="${tab===k?'on':''}" onclick="location.hash='${h}'">${t}</button>`;
+  return `<div class="sec-h hometabs"><div class="seg">${b('dash','#/','Dashboard')}${b('series','#/series','Test series')}${b('mk','#/m','Mistakes')}${b('bm','#/b','Bookmarks')}${b('results','#/r','Results')}</div></div>`;
+}
+function resultRow(x){
+  const p=pct(x.score,x.max);
+  return `<div class="rrow"><div class="mring">${ring(p,54,6,ringCol(p))}<span>${p}%</span></div>
+    <div class="grow"><b>${esc(x.title)}</b><span class="sm mut">${new Date(x.at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} · ${x.score}/${x.max} · ✓${x.correct} ✗${x.wrong}</span></div>
+    <button class="btn soft sm" onclick="openReview('${x.id}')">Review</button></div>`;
+}
+function viewHome(tab){
+  const R=CAT.results||[];
+  const P=pstats(R),avg=P.avg,best=P.best;
+  const hr=new Date().getHours(),gr=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+  const nm=(AUTH.name||'').trim();
+  let o=`<div class="wrap">${tab!=='dash'?'':`<div class="hero"><div class="who"><div class="bigav">${esc(nm[0]||'?').toUpperCase()}</div>
+   <div><div class="sm" style="opacity:.85">${gr}</div><h1>${esc(nm.split(' ')[0])}</h1><span class="lvl">${P.lvl}</span></div>
+   <div class="streak"><b>${P.streak}🔥</b><span>day streak</span></div></div>
+  <div class="stats"><div class="stat"><b data-cu="${R.length}">${R.length}</b><span>Tests taken</span></div><div class="stat"><b data-cu="${avg}">${avg}%</b><span>Average</span></div><div class="stat"><b data-cu="${best}">${best}%</b><span>Best</span></div></div></div>`}${tabsHtml(tab)}`;
+  if(tab==='dash')o+=dashBody(R,avg);
+  else if(tab==='series')o+=seriesList();
+  else{
+    if(!R.length)o+=`<div class="card empty">You have not attempted any test yet.</div>`;
+    else o+=`<div class="card">${R.map(resultRow).join('')}</div>`;
+  }
+  setApp(o+'</div>');setNav(tab);
+  if(tab==='dash'&&R.length)loadIns();
+}
+function dashBody(R,avg){
+  let o='';
+  const prog=CAT.tests.filter(t=>t.in_progress&&!t.locked);
+  if(prog.length)o+=`<div class="h2s">${ic('play',20)} Continue your test</div>${prog.map(testRow).join('')}`;
+  const up=CAT.tests.filter(t=>isWait(t)).sort((a,b)=>a.opens_at-b.opens_at);
+  if(up.length)o+=`<div class="h2s">${ic('calendar',20)} Upcoming tests <span class="n">${up.length}</span></div>${up.map(testRow).join('')}`;
+  const P=pstats(R),acc=P.acc,cor=P.cor,secs=P.secs;
+  const trend=R.slice(0,10).reverse().map(x=>pct(x.score,x.max));
+  const nxt=CAT.tests.filter(t=>!t.locked&&!t.attempts&&!t.in_progress&&!isWait(t)&&CAT.series.some(s=>s.id===t.series_id&&(s.is_free||s.unlocked)))[0];
+  if(nxt)o+=`<div class="h2s">${ic('play',20)} Up next for you</div><div class="next"><div class="grow"><b>${esc(nxt.title)}</b><div class="sm mut">${nxt.questions} questions · ${nxt.duration} min</div></div><button class="btn sm" onclick="openTest('${nxt.id}')">Start</button></div>`;
+  if(R.length){
+    const mx=Math.max(1,...P.week.map(w=>w.n));
+    o+=`<div class="h2s">${ic('target',20)} Your performance</div><div class="dtop">
+      <div class="card"><div class="accwrap"><div class="ringbox">${ring(acc,96,10,ringCol(acc))}<span>${acc}%</span></div>
+        <div><b>Accuracy</b><div class="sm mut">${cor} correct of ${P.tot} attempted</div><div class="sm mut" style="margin-top:4px">${Math.round(secs/3600*10)/10}h practised · ${BM.size} bookmarks</div></div></div></div>
+      <div class="card"><b>This week</b><span class="sm mut"> · tests per day</span><div class="week">${P.week.map(w=>`<div><i class="${w.n?'':'z'}" style="height:${w.n?Math.max(14,w.n/mx*100):0}%"></i>${w.l}</div>`).join('')}</div></div></div>
+      ${trend.length>1?`<div class="card" style="margin-top:12px"><div class="row" style="justify-content:space-between"><b>Score trend</b><span class="sm mut">Last ${trend.length} tests · best ${P.best}%</span></div><div class="trend">${spark(trend)}</div></div>`:''}
+      <div id="ins"></div><div class="h2s">${ic('trophy',20)} Achievements <span class="n">${P.badges.filter(b=>b.on).length}/${P.badges.length}</span></div><div class="badges">${P.badges.map(b=>`<div class="bdg ${b.on?'on':''}"><b>${b.i}</b>${b.t}</div>`).join('')}</div>
+      <div class="h2s">${ic('clock',20)} Recent results</div><div class="card">${R.slice(0,4).map(resultRow).join('')}</div>
+      ${R.length>4?`<div style="text-align:center;margin-top:10px"><button class="btn ghost sm" onclick="location.hash='#/r'">All results</button></div>`:''}`;
+  }else{
+    o+=`<div class="card empty" style="margin-top:16px">${ic('target',30)}<h3 style="margin:10px 0 4px;color:var(--tx)">Take your first test</h3><p class="sm">Your scores, accuracy and progress will appear here.</p><button class="btn" onclick="location.hash='#/series'">Browse test series</button></div>`;
+  }
+  const ser=CAT.series.map(s=>({s,st:seriesStats(s)})).filter(x=>x.st.n);
+  if(ser.length)o+=`<div class="h2s">${ic('book',20)} Series progress</div><div class="card">${ser.map(({s,st})=>{const p=Math.round(st.done*100/st.n);
+    return `<div class="prow" onclick="location.hash='#/s/${s.id}'"><div class="row sm" style="justify-content:space-between;margin-bottom:6px"><b>${esc(s.title)}</b><span class="mut">${st.done}/${st.n} attempted</span></div><div class="bar"><i style="width:${p}%"></i></div></div>`}).join('')}</div>`;
+  return o;
+}
+
 function seriesList(){
   const free=CAT.series.filter(s=>s.is_free),paid=CAT.series.filter(s=>!s.is_free);
   let o=CAT.series.length>3?`<div class="searchbox">${ic('search',18)}<input type="search" placeholder="Search test series" oninput="filterSeries(this.value)"></div>`:'';
@@ -168,139 +225,5 @@ function openTest(id){
   RET=location.hash||'#/';
   if(getProg(id)||t.in_progress)return startTest(id);
   instr(t,s);
-}
-function instr(t,s){
-  const wait=isWait(t);
-  setApp(`<div class="wrap"><div class="ins card"><button class="btn ghost sm" onclick="route()">${ic('back')} Back</button>
-  <h1 style="font-size:24px;margin-top:16px">${esc(t.title)}</h1><p class="mut" style="margin:4px 0 0">${esc(s.title||'')}</p>
-  <div class="g3"><div><b>${t.questions}</b><span>Questions</span></div><div><b>${t.duration}</b><span>Minutes</span></div><div><b>+${t.correct} / −${t.wrong}</b><span>Marking</span></div></div>
-  <h3 style="font-size:15px;margin:6px 0">General instructions</h3>
-  <ul>
-   <li>${ic('clock')}<span>The countdown timer is shown at the top right. It <b>never pauses</b> – even if you refresh or close the page. The test submits automatically when time ends.</span></li>
-   <li>${ic('grid')}<span>The <b>Question Palette</b> shows the status of every question. Use it to jump to any question.</span></li>
-   <li><span class="lg-row"><i class="lg nv">1</i> Not visited <i class="lg na">2</i> Not answered <i class="lg ans">3</i> Answered <i class="lg mark">4</i> Marked for review <i class="lg mans">5</i> Answered &amp; marked</span></li>
-   <li>${ic('check')}<span><b>Save &amp; Next</b> saves your answer and moves ahead. <b>Mark for Review &amp; Next</b> flags the question to revisit. <b>Clear Response</b> removes your answer.</span></li>
-   <li>${ic('star')}<span>Tap <b>★</b> to bookmark a question for later and <b>⚑</b> to report a mistake in a question.</span></li>
-   <li>${ic('info')}<span>Correct answer <b>+${t.correct}</b> · Wrong answer <b>−${t.wrong}</b> · Unanswered <b>0</b>.</span></li>
-   <li>${ic(t.lock_back?'lock':'info')}<span>${t.lock_back?'<b>You cannot go back</b> to previous questions once you move ahead.':'You can move freely between questions and change answers at any time.'}</span></li>
-  </ul>
-  <label class="chk decl"><input type="checkbox" id="dc" onchange="$('#sb').disabled=!this.checked||${wait?'true':'false'}"><span class="sm">I have read and understood all the instructions. I am ready to begin the test.</span></label>
-  <button class="btn block" id="sb" disabled onclick="startTest('${t.id}')">${wait?`${ic('clock')} Opens in <span data-op="${t.opens_at}">--:--</span>`:`${ic('play')} Start test now`}</button></div></div>`);
-}
-
-async function startTest(id){
-  loading('Starting your test…');
-  const r=await rpc('cbt_start',{p_test:id});
-  if(!r.ok){
-    if(authErr(r))return;
-    if(r.error==='locked'||r.error==='not_found')LS.del(progKey(id));
-    if(r.error==='locked'){CAT=null;await route();toast('This test is locked.');return}
-    if(r.error==='not_open'){CAT=null;await route();toast('This test opens on '+fmtWhen(r.opens_at));return}
-    toast(r.error==='not_found'?'This test is no longer available.':errText(r));CAT=null;route();return;
-  }
-  T=r.test;const off=r.now-Date.now();SOFF=off;
-  let p=getProg(id);
-  if(!(p&&p.sid===r.session.id))p={tid:id,sid:r.session.id,cid:uuid(),ans:{},mark:{},vis:{0:1},cur:0,title:T.title};
-  p.ends=r.session.ends_at;p.off=off;
-  if(p.cur>=T.questions.length)p.cur=0;
-  P=p;saveProg();
-  if(P.ends-(Date.now()+P.off)<=0){return finish(true)}
-  INTEST=true;warned=false;run();
-}
-function secSetup(){
-  const names=[];T.questions.forEach(q=>{const s=q.sec||'';if(!names.includes(s))names.push(s)});
-  SEC={names,has:names.some(x=>x),of:i=>T.questions[i].sec||'',label:s=>s||'General'};
-}
-function run(){
-  document.body.classList.add('intest');palOpen=false;secSetup();
-  window.onbeforeunload=e=>{e.preventDefault();e.returnValue=''};
-  clearInterval(timer);draw();timer=setInterval(tick,1000);tick();
-}
-function tick(){
-  if(!P)return;
-  const left=Math.round((P.ends-(Date.now()+P.off))/1000);
-  const e=$('#tm');if(e){e.querySelector('span').textContent=fmt(left);e.classList.toggle('low',left<=300)}
-  if(T&&T.duration>10&&left<=300&&left>295&&!warned){warned=true;toast('Only 5 minutes left!')}
-  if(left<=0){clearInterval(timer);toast("Time's up! Submitting your test…");finish(true)}
-}
-const stOf=i=>{const has=P.ans[i]!=null,mk=P.mark[i];return mk?(has?'mans':'mark'):has?'ans':P.vis[i]?'na':'nv'};
-function countsOf(idx){
-  const c={nv:0,na:0,ans:0,mark:0,mans:0};idx.forEach(i=>c[stOf(i)]++);return c;
-}
-const allIdx=()=>T.questions.map((_,i)=>i);
-const secIdx=name=>allIdx().filter(i=>SEC.of(i)===name);
-function counts(){const c=countsOf(allIdx());return{a:c.ans+c.mans,u:T.questions.length-c.ans-c.mans,m:c.mark+c.mans,n:T.questions.length}}
-function palHtml(){
-  const lock=!!T.lock_back,cur=SEC.of(P.cur),idx=SEC.has?secIdx(cur):allIdx(),c=countsOf(idx);
-  return `${SEC.has?`<div class="sm mut" style="margin-bottom:8px"><b style="color:var(--tx)">${esc(SEC.label(cur))}</b></div>`:''}
-  <div class="pal">${idx.map(i=>`<button class="${stOf(i)} ${i===P.cur?'cur':''}" ${lock?'disabled':''} onclick="go(${i})">${i+1}</button>`).join('')}</div>
-  <div class="leg2"><span><i class="lg ans">${c.ans}</i>Answered</span><span><i class="lg na">${c.na}</i>Not answered</span><span><i class="lg nv">${c.nv}</i>Not visited</span><span><i class="lg mark">${c.mark}</i>Marked</span><span style="grid-column:1/3"><i class="lg mans">${c.mans}</i>Answered &amp; marked (will be evaluated)</span></div>`;
-}
-function draw(){
-  const n=T.questions.length,q=T.questions[P.cur],a=P.ans[P.cur],lock=!!T.lock_back;
-  P.vis[P.cur]=1;
-  const secTabs=SEC.has?`<div class="stabs">${SEC.names.map(s=>`<button class="${s===SEC.of(P.cur)?'on':''}" ${lock?'disabled':''} onclick="goSec(${JSON.stringify(s).replace(/"/g,'&quot;')})">${esc(SEC.label(s))}</button>`).join('')}</div>`:'';
-  $('#app').innerHTML=(`<div class="cbtbar"><div class="tb-l"><div class="tb-title">${esc(T.title)}</div><div class="sm mut cand">${ic('user',13)} ${esc(AUTH.name||'')}</div></div>
-   <div class="timer" id="tm">${ic('clock')}<span>--:--</span></div><button class="btn danger sm" onclick="submitAsk()">Submit</button></div>${secTabs}
-   <div class="tlayout"><section class="card qcard"><div class="qmeta"><b>Question ${P.cur+1} <span class="mut" style="font-weight:500">of ${n}</span></b><span class="chip ok">+${T.correct}</span><span class="chip warn">−${T.wrong}</span>${P.mark[P.cur]?'<span class="chip pri">Marked</span>':''}<span style="flex:1"></span>${bmBtn(P.tid,P.cur)}${rpBtn(P.tid,P.cur)}</div>
-   <div class="qtext">${esc(q.q)}</div>${imgTag(q.img)}
-   ${q.options.map((o,i)=>(o||(q.oimg&&q.oimg[i]))?`<button class="opt ${a===i?'sel':''}" onclick="sel(${i})"><span class="k">${L[i]}</span><span class="t">${esc(o)}${imgTag(q.oimg&&q.oimg[i],'oi')}</span></button>`:'').join('')}</section>
-   <aside class="side card"><div class="candbox"><div class="avatar" style="width:40px;height:40px;font-size:16px">${esc((AUTH.name||'?').trim()[0].toUpperCase())}</div><div><b>${esc(AUTH.name||'')}</b><div class="sm mut">Candidate</div></div></div>${palHtml()}
-   <button class="btn danger block" style="margin-top:14px" onclick="submitAsk()">Submit test</button></aside></div>
-   <div class="bbar"><div class="r"><button class="btn warn sm" onclick="markNext()">${ic('flag')} Mark &amp; Next</button><button class="btn ghost sm" onclick="clr()">Clear</button><button class="btn sm" onclick="saveNext()">Save &amp; Next ${ic('right')}</button></div>
-   <div class="r nav">${lock?'':`<button class="btn ghost sm" ${P.cur===0?'disabled':''} onclick="go(${P.cur-1})">${ic('left')} Back</button>`}<button class="btn soft sm only-m" onclick="pal(true)">${ic('grid')} Palette</button>${lock?'':`<button class="btn ghost sm" ${P.cur===n-1?'disabled':''} onclick="go(${P.cur+1})">Next ${ic('right')}</button>`}</div></div>
-   <div class="sheet ${palOpen?'open':''}" onclick="if(event.target===this)pal(false)"><div class="in"><div class="grab"></div><b>Question palette</b><div style="margin-top:12px">${palHtml()}</div>
-   <button class="btn danger block" style="margin-top:14px" onclick="submitAsk()">Submit test</button></div></div>`);
-  tick();
-}
-function pal(v){palOpen=v;const s=document.querySelector('.sheet');if(s)s.classList.toggle('open',v)}
-function go(i){if(i<0||i>=T.questions.length)return;P.cur=i;palOpen=false;saveProg();draw();window.scrollTo(0,0)}
-function goSec(name){const idx=secIdx(name);if(!idx.length)return;go(idx.includes(P.cur)?P.cur:idx[0])}
-function sel(i){P.ans[P.cur]=i;saveProg();draw()}
-function clr(){delete P.ans[P.cur];saveProg();draw()}
-function saveNext(){delete P.mark[P.cur];nxt()}
-function markNext(){P.mark[P.cur]=1;nxt()}
-function nxt(){if(P.cur<T.questions.length-1)P.cur++;saveProg();draw();window.scrollTo(0,0)}
-
-/* ---------- submitting (answers are marked on the server) ---------- */
-
-const pendKey=()=>'cbt_pend_'+AUTH.mobile;
-const getPend=()=>LS.get(pendKey(),[]);
-function addPend(it){const l=getPend().filter(x=>x.cid!==it.cid);l.push(it);LS.set(pendKey(),l)}
-function delPend(cid){LS.set(pendKey(),getPend().filter(x=>x.cid!==cid))}
-function submitAsk(){
-  const c=counts();
-  const rows=SEC.has?SEC.names.map(s=>{const idx=secIdx(s),k=countsOf(idx);return `<tr><td>${esc(SEC.label(s))}</td><td>${idx.length}</td><td>${k.ans+k.mans}</td><td>${k.na+k.nv}</td><td>${k.mark+k.mans}</td></tr>`}).join(''):'';
-  modal(`<h2>Submit test?</h2><p class="mut" style="margin:6px 0 0">You won't be able to change your answers after this.</p>
-  ${SEC.has?`<div class="scroll" style="margin-top:12px"><table class="tbl sm"><tr><th>Section</th><th>Total</th><th>Done</th><th>Left</th><th>Marked</th></tr>${rows}</table></div>`
-  :`<div class="mgrid"><div><b style="color:var(--ok)">${c.a}</b><span class="sm mut">Answered</span></div><div><b style="color:var(--bad)">${c.u}</b><span class="sm mut">Unanswered</span></div><div><b style="color:var(--pri)">${c.m}</b><span class="sm mut">Marked</span></div></div>`}
-  <div class="row" style="margin-top:16px"><button class="btn ghost" style="flex:1" onclick="closeModal()">Keep going</button><button class="btn danger" style="flex:1" onclick="closeModal();finish(false)">Submit</button></div>`);
-}
-async function finish(auto){
-  clearInterval(timer);window.onbeforeunload=null;
-  const it={tid:P.tid,cid:P.cid,ans:P.ans,title:(T&&T.title)||P.title,ts:Date.now()};
-  addPend(it);LS.del(progKey(P.tid));
-  INTEST=false;P=null;T=null;document.body.classList.remove('intest');
-  await sendPending(it);
-}
-let CURPEND=null;
-async function sendPending(it){
-  CURPEND=it;clearTimeout(retryT);loading('Submitting your answers…');
-  const r=await rpc('cbt_submit',{p_test:it.tid,p_answers:it.ans,p_client_id:it.cid});
-  if(r.ok){
-    delPend(it.cid);CAT=null;
-    RV={result:r.result,review:r.review,filter:'all'};
-    showResult();lb(r.result);return;
-  }
-  if(r.error==='network'||r.error==='server'){
-    setApp(`<div class="wrap"><div class="card empty">${ic('wifi',32)}<h3 style="margin:10px 0 4px">No connection</h3>
-      <p class="sm">Your answers are saved on this phone. We will keep trying to submit them. Please stay on this page.</p>
-      <button class="btn" onclick="sendPending(CURPEND)">Try again now</button></div></div>`);
-    retryT=setTimeout(()=>sendPending(it),8000);return;
-  }
-  if(authErr(r))return;
-  delPend(it.cid);CAT=null;
-  toast(r.error==='no_session'?'This attempt was already closed.':'Could not submit this test.');
-  location.hash=RET;route();
 }
 ;(window.__p=window.__p||{})['app2']=1;
