@@ -28,6 +28,8 @@ function viewHome(tab){
 }
 function dashBody(R,avg){
   let o='';
+  const pn=getPend();
+  if(pn.length)o+=`<div class="card pendc"><span class="mki">${ic('wifi',22)}</span><div class="grow"><b>${pn.length} test waiting to submit</b><div class="sm mut">Your answers are safe on this phone. They will be sent when internet is back.</div></div><button class="btn sm" onclick="retryPend()">Submit now</button></div>`;
   const prog=CAT.tests.filter(t=>t.in_progress&&!t.locked);
   if(prog.length)o+=`<div class="h2s">${ic('play',20)} Continue your test</div>${prog.map(testRow).join('')}`;
   const up=CAT.tests.filter(t=>isWait(t)).sort((a,b)=>a.opens_at-b.opens_at);
@@ -149,7 +151,7 @@ function testRow(t){
   const status=t.in_progress?'<span class="chip warn">In progress</span>':wait?`<span class="chip pri">${ic('calendar',12)} ${esc(fmtWhen(t.opens_at))}</span>`:t.locked?`<span class="chip lockbadge">${ic('lock',12)} Locked</span>`
     :t.attempts?`<span class="chip ok">Attempted ${t.attempts}×</span>`:'<span class="chip pri">New</span>';
   const cta=t.locked?`<button class="btn ghost sm" onclick="openTest('${t.id}')">${ic('lock')} Unlock</button>`
-    :(wait&&!t.in_progress)?`<button class="btn ghost sm" disabled>${ic('clock')} <span data-op="${t.opens_at}">--:--</span></button>`
+    :(wait&&!t.in_progress)?`<button class="btn ghost sm" disabled>${ic('clock')} <span data-op="${t.opens_at}">--:--</span></button><button class="btn soft sm" onclick="remindMe('${t.id}')">${ic('calendar')} Remind me</button>`
     :`<button class="btn sm" onclick="openTest('${t.id}')">${t.in_progress?'Resume':t.attempts?'Try again':'Start'} ${ic('right')}</button>`;
   return `<div class="card trow"><div class="tico">${ic(t.locked?'lock':wait?'calendar':'file')}</div>
    <div class="info"><h3>${esc(t.title)}</h3><div class="chips"><span class="chip">${t.questions} questions</span><span class="chip">${t.duration} min</span>${status}${t.free_preview&&t.locked===false?'<span class="chip pri">Free preview</span>':''}</div>
@@ -192,7 +194,7 @@ async function sendReport(tid,i){
   toast(r.ok?'Thank you! Your report was sent.':r.error==='limit'?'Too many reports today. Please try later.':'Could not send the report.');
 }
 async function viewBookmarks(){
-  loading('Loading bookmarks…');
+  skelPage();
   const r=await rpc('cbt_bookmarks',{});
   if(!r.ok){if(!authErr(r))toast('Could not load bookmarks.');return}
   const groups={};r.items.forEach(x=>{(groups[x.test_id]=groups[x.test_id]||{title:x.title,items:[]}).items.push(x)});
@@ -210,6 +212,7 @@ async function viewBookmarks(){
 }
 
 /* ---------- starting a test ---------- */
+const tdKey=id=>'cbt_td_'+AUTH.mobile+'_'+id;
 const progKey=id=>'cbt_prog_'+AUTH.mobile+'_'+id;
 const getProg=id=>LS.get(progKey(id),null);
 const saveProg=()=>LS.set(progKey(P.tid),P);
