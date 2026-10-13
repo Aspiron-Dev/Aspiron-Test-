@@ -39,7 +39,7 @@ async function init(){
   if(getComputedStyle(document.documentElement).getPropertyValue('--cssv').trim()!=='5'){const b=document.createElement('div');b.className='cssbanner';b.textContent='Design is not fully updated. Please upload the new style.css to GitHub, then refresh.';b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font-weight:600';document.body.appendChild(b)}
   if(!cloud)return login();
   if(!AUTH)return login();
-  loading('Loading…');
+  skelPage();
   await flushPending();
   // a test is still running on this device -> go straight back into it
   const rid=runningTest();
@@ -54,6 +54,13 @@ function runningTest(){
     }
   }catch(e){}
   return null;
+}
+let T0=Date.now();
+function hideSplash(){const e=document.getElementById('splash');if(!e||e.classList.contains('off'))return;setTimeout(()=>{e.classList.add('off');setTimeout(()=>e.remove(),700)},Math.max(0,700-(Date.now()-T0)))}
+setTimeout(hideSplash,5000);
+function skelPage(){
+  setApp(`<div class="wrap skpage"><div class="sk skhero"></div><div class="skrow"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
+  ${[1,2,3].map(()=>`<div class="card"><div class="sk" style="width:55%"></div><div class="sk" style="width:90%;margin-top:12px"></div><div class="sk" style="width:70%;margin-top:10px"></div></div>`).join('')}</div>`);
 }
 /* ---------- v4: dashboard insights, mistake notebook, PWA ---------- */
 IC.notebook='<path d="M5 3h12a2 2 0 012 2v16H7a2 2 0 01-2-2V3z"/><path d="M9 8h6M9 12h6"/>';
@@ -85,7 +92,7 @@ function insHtml(I){
 /* mistake notebook */
 let MK=null,MKN=0;
 async function viewMistakes(){
-  loading('Opening your notebook…');
+  skelPage();
   MK={kind:'all',sec:'',items:[],st:{},more:false,counts:null};
   const ok=await mkFetch(0);if(!ok)return;mkRender();
 }
@@ -138,6 +145,42 @@ async function mkDone(n){
 async function mkKind(k){MK.kind=k;MK.st={};if(await mkFetch(0))mkRender()}
 async function mkSec(s){MK.sec=s;MK.st={};if(await mkFetch(0))mkRender()}
 async function mkMore(){if(await mkFetch(MK.items.length)){const l=$('#mklist');if(l)l.innerHTML=mkList()}}
+/* offline safety + reminders */
+function netPill(){
+  let e=document.getElementById('netpill');
+  const off=!navigator.onLine;
+  if(!off||!INTEST){if(e)e.remove();return}
+  if(!e){e=document.createElement('div');e.id='netpill';document.body.appendChild(e)}
+  e.textContent='Offline · your answers are saved on this phone';
+}
+async function retryPend(){
+  const b=document.querySelector('.pendc .btn');if(b){b.disabled=true;b.textContent='Sending…'}
+  await flushPending();CAT=null;route();
+}
+let flushing=false;
+async function autoFlush(){
+  if(flushing||!AUTH||INTEST||!getPend().length)return;
+  flushing=true;try{await flushPending();if(!INTEST&&(location.hash===''||location.hash==='#/'||location.hash==='#/r')){CAT=null;route()}}finally{flushing=false}
+}
+window.addEventListener('online',()=>{netPill();setTimeout(autoFlush,800)});
+window.addEventListener('offline',netPill);
+function remindMe(id){
+  const t=CAT.tests.find(x=>x.id===id);if(!t||!t.opens_at)return;
+  const when=fmtWhen(t.opens_at),link=location.href.split('#')[0];
+  const msg=`Reminder: "${t.title}" starts ${when}. Open: ${link}`;
+  modal(`<h2>Remind me</h2><p class="mut sm" style="margin:4px 0 14px">${esc(t.title)} · ${esc(when)}</p>
+   <button class="btn block" onclick="addCal('${id}')">${ic('calendar')} Add to phone calendar (alarm)</button>
+   <a class="btn soft block" style="margin-top:10px;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">${ic('msg')} Send reminder on WhatsApp</a>
+   <button class="btn ghost block" style="margin-top:10px" onclick="closeModal()">Close</button>`);
+}
+function addCal(id){
+  const t=CAT.tests.find(x=>x.id===id);if(!t)return;
+  const z=ms=>new Date(ms).toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
+  const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//CBT//EN','BEGIN:VEVENT','UID:'+id+'@cbt','DTSTAMP:'+z(Date.now()),'DTSTART:'+z(t.opens_at),'DTEND:'+z(t.opens_at+(t.duration||60)*60000),
+    'SUMMARY:'+String(t.title).replace(/[\r\n,;]/g,' '),'DESCRIPTION:Test starts now. Open '+location.href.split('#')[0],'BEGIN:VALARM','TRIGGER:-PT15M','ACTION:DISPLAY','DESCRIPTION:Test starts in 15 minutes','END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([ics],{type:'text/calendar'}));a.download='test-reminder.ics';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
+  closeModal();toast('Open the downloaded file to add the reminder');
+}
 /* PWA */
 let DIP=null;
 function syncTheme(){try{const m=document.querySelector('meta[name=theme-color]');if(m)m.content=getComputedStyle(document.body).getPropertyValue('--bg').trim()||'#1d6fe8'}catch(e){}}
