@@ -1,3 +1,21 @@
+function jumpQ(i){RV.tab='sol';RV.filter='all';RV.sec='*';rRefresh();setTimeout(()=>{const e=document.getElementById('q'+i);if(e){e.scrollIntoView({behavior:'smooth',block:'center'});e.classList.add('flash')}},60)}
+function rvTime(A){
+  const {all,rec,hasT}=A;
+  if(!hasT)return `<div class="card empty">${ic('clock',30)}<h3 style="margin:10px 0 4px;color:var(--tx)">No time data for this attempt</h3><p class="sm">Question-wise time is recorded for tests you attempt from now on.</p></div>`;
+  const mx=Math.max(1,...all.map(x=>x.t||0));
+  const tc=avgT(all.filter(x=>x.st==='c')),tw=avgT(all.filter(x=>x.st==='w')),ta=avgT(all);
+  const slow=all.filter(x=>x.t>0).sort((a,b)=>b.t-a.t).slice(0,5);
+  let msg='Your time is spread evenly across questions.';
+  if(tc&&tw&&tw>tc*1.3)msg='You spend more time on questions you get wrong. Skip hard ones early and return to them at the end.';
+  else if(tc&&tw&&tw<tc*.7)msg='You answer wrong questions faster than correct ones. Slow down and double-check before moving on.';
+  const lab={c:'Correct',w:'Wrong',s:'Skipped'};
+  return `<div class="tiles"><div><b>${ta?fs(ta):'–'}</b><span>Avg / question</span></div><div><b style="color:var(--ok)">${tc?fs(tc):'–'}</b><span>On correct</span></div><div><b style="color:var(--bad)">${tw?fs(tw):'–'}</b><span>On wrong</span></div></div>
+   <div class="card" style="margin-top:12px"><b>Time per question</b><div class="sm mut">Tap a bar to open that question</div>
+   <div class="scroll"><div class="tchart" style="min-width:${Math.max(100,all.length*20)}px">${all.map(x=>`<button class="tb ${x.st}" onclick="jumpQ(${x.i})" aria-label="Q${x.i+1} ${fs(x.t)}"><i style="height:${x.t?Math.max(4,x.t/mx*100):2}%"></i><span>${x.i+1}</span></button>`).join('')}</div></div>
+   <div class="row sm" style="gap:12px;margin-top:6px"><span class="dot c"></span>Correct <span class="dot w"></span>Wrong <span class="dot s"></span>Skipped</div></div>
+   <div class="card tipc1" style="margin-top:12px">${ic('info',18)}<span>${msg}</span></div>
+   <div class="h2s" style="font-size:16px">${ic('clock',18)} Slowest questions</div><div class="card">${slow.map(x=>`<div class="lb" onclick="jumpQ(${x.i})" style="cursor:pointer"><span class="n">${x.i+1}</span><span style="flex:1">${esc((x.q.q||'').slice(0,46))}${(x.q.q||'').length>46?'…':''}</span><span class="chip ${x.st==='c'?'ok':''}">${lab[x.st]}</span><b>${fs(x.t)}</b></div>`).join('')}</div>`;
+}
 function rvSol(A){
   const {all,names,hasSec}=A,f=RV.filter,sf=RV.sec||'*',tid=A.rec.test_id;
   const items=all.filter(x=>(f==='all'||x.st===f)&&(!hasSec||sf==='*'||(x.q.sec||'')===sf));
