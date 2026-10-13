@@ -11,10 +11,11 @@ function instr(t,s){
    <li>${ic('check')}<span><b>Save &amp; Next</b> saves your answer and moves ahead. <b>Mark for Review &amp; Next</b> flags the question to revisit. <b>Clear Response</b> removes your answer.</span></li>
    <li>${ic('star')}<span>Tap <b>★</b> to bookmark a question for later and <b>⚑</b> to report a mistake in a question.</span></li>
    <li>${ic('info')}<span>Correct answer <b>+${t.correct}</b> · Wrong answer <b>−${t.wrong}</b> · Unanswered <b>0</b>.</span></li>
+   ${t.practice?`<li>${ic('check')}<span><b>Practice mode:</b> after you pick an option, the correct answer and explanation show immediately. You cannot change an answer after it is checked.</span></li>`:''}
    <li>${ic(t.lock_back?'lock':'info')}<span>${t.lock_back?'<b>You cannot go back</b> to previous questions once you move ahead.':'You can move freely between questions and change answers at any time.'}</span></li>
   </ul>
   <label class="chk decl"><input type="checkbox" id="dc" onchange="$('#sb').disabled=!this.checked||${wait?'true':'false'}"><span class="sm">I have read and understood all the instructions. I am ready to begin the test.</span></label>
-  <button class="btn block" id="sb" disabled onclick="startTest('${t.id}')">${wait?`${ic('clock')} Opens in <span data-op="${t.opens_at}">--:--</span>`:`${ic('play')} Start test now`}</button></div></div>`);
+  <button class="btn block" id="sb" disabled onclick="startTest('${t.id}')">${wait?`${ic('clock')} Opens in <span data-op="${t.opens_at}">--:--</span>`:`${ic('play')} ${t.practice?'Start practice':'Start test now'}`}</button></div></div>`);
 }
 
 async function startTest(id){
@@ -38,7 +39,7 @@ async function startTest(id){
   p.times=p.times||{};
   p.ends=r.session.ends_at;p.off=off;
   if(p.cur>=T.questions.length)p.cur=0;
-  P=p;saveProg();
+  P=p;PRACID[id]=!!T.practice;saveProg();
   LS.set(tdKey(id),{test:T,sid:r.session.id});
   if(P.ends-(Date.now()+P.off)<=0){return finish(true)}
   INTEST=true;warned=false;run();
@@ -63,6 +64,12 @@ function tick(){
   if(T&&T.duration>10&&left<=300&&left>295&&!warned){warned=true;toast('Only 5 minutes left!')}
   if(left<=0){clearInterval(timer);toast("Time's up! Submitting your test…");finish(true)}
 }
+const pracCls=(q,a,i)=>{if(!T.practice||a==null)return a===i?'sel':'';return i===q.answer?'ok':(i===a?'bad':'')};
+function pracFb(q,a){
+  if(!T.practice||a==null)return T.practice?`<div class="sm mut" style="margin-top:10px">Choose an option to see the answer.</div>`:'';
+  const good=a===q.answer;
+  return `<div class="pfb ${good?'g':'b'}"><b>${q.answer==null?'No answer key set for this question':good?'Correct! 🎉':'Not quite — correct answer is '+L[q.answer]}</b>${q.explanation||q.eimg?`<div style="margin-top:6px;white-space:pre-wrap">${esc(q.explanation||'')}${imgTag(q.eimg)}</div>`:''}</div>`;
+}
 const stOf=i=>{const has=P.ans[i]!=null,mk=P.mark[i];return mk?(has?'mans':'mark'):has?'ans':P.vis[i]?'na':'nv'};
 function countsOf(idx){
   const c={nv:0,na:0,ans:0,mark:0,mans:0};idx.forEach(i=>c[stOf(i)]++);return c;
@@ -84,7 +91,7 @@ function draw(){
    <div class="timer" id="tm">${ic('clock')}<span>--:--</span></div><button class="btn danger sm" onclick="submitAsk()">Submit</button></div>${secTabs}
    <div class="tlayout"><section class="card qcard"><div class="qmeta"><b>Question ${P.cur+1} <span class="mut" style="font-weight:500">of ${n}</span></b><span class="chip ok">+${T.correct}</span><span class="chip warn">−${T.wrong}</span>${P.mark[P.cur]?'<span class="chip pri">Marked</span>':''}<span style="flex:1"></span>${bmBtn(P.tid,P.cur)}${rpBtn(P.tid,P.cur)}</div>
    <div class="qtext">${esc(q.q)}</div>${imgTag(q.img)}
-   ${q.options.map((o,i)=>(o||(q.oimg&&q.oimg[i]))?`<button class="opt ${a===i?'sel':''}" onclick="sel(${i})"><span class="k">${L[i]}</span><span class="t">${esc(o)}${imgTag(q.oimg&&q.oimg[i],'oi')}</span></button>`:'').join('')}</section>
+   ${q.options.map((o,i)=>(o||(q.oimg&&q.oimg[i]))?`<button class="opt ${pracCls(q,a,i)}" ${T.practice&&a!=null?'':`onclick="sel(${i})"`}><span class="k">${L[i]}</span><span class="t">${esc(o)}${imgTag(q.oimg&&q.oimg[i],'oi')}</span></button>`:'').join('')}${pracFb(q,a)}</section>
    <aside class="side card"><div class="candbox"><div class="avatar" style="width:40px;height:40px;font-size:16px">${esc((AUTH.name||'?').trim()[0].toUpperCase())}</div><div><b>${esc(AUTH.name||'')}</b><div class="sm mut">Candidate</div></div></div>${palHtml()}
    <button class="btn danger block" style="margin-top:14px" onclick="submitAsk()">Submit test</button></aside></div>
    <div class="bbar"><div class="r"><button class="btn warn sm" onclick="markNext()">${ic('flag')} Mark &amp; Next</button><button class="btn ghost sm" onclick="clr()">Clear</button><button class="btn sm" onclick="saveNext()">Save &amp; Next ${ic('right')}</button></div>
@@ -96,8 +103,8 @@ function draw(){
 function pal(v){palOpen=v;const s=document.querySelector('.sheet');if(s)s.classList.toggle('open',v)}
 function go(i){if(i<0||i>=T.questions.length)return;flushT();P.cur=i;palOpen=false;saveProg();draw();window.scrollTo(0,0)}
 function goSec(name){const idx=secIdx(name);if(!idx.length)return;go(idx.includes(P.cur)?P.cur:idx[0])}
-function sel(i){flushT();P.ans[P.cur]=i;if(navigator.vibrate)navigator.vibrate(8);saveProg();draw()}
-function clr(){flushT();delete P.ans[P.cur];saveProg();draw()}
+function sel(i){if(T.practice&&P.ans[P.cur]!=null)return;flushT();P.ans[P.cur]=i;if(navigator.vibrate)navigator.vibrate(8);saveProg();draw()}
+function clr(){if(T.practice)return;flushT();delete P.ans[P.cur];saveProg();draw()}
 function saveNext(){delete P.mark[P.cur];nxt()}
 function markNext(){P.mark[P.cur]=1;nxt()}
 function nxt(){flushT();if(P.cur<T.questions.length-1)P.cur++;saveProg();draw();window.scrollTo(0,0)}
@@ -187,7 +194,7 @@ async function openReview(id){
 }
 async function lb(res){
   const rv=RV;
-  if(!res.test_id){rv.lb={ok:false};return}
+  if(!res.test_id||isPrac(res.test_id)){rv.lb={ok:false};const e0=$('#lb');if(e0)e0.innerHTML='';return}
   const r=await rpc('cbt_leaderboard',{p_test:res.test_id});
   rv.lb=r;if(RV===rv){const el=$('#lb');if(el){el.innerHTML=lbHtml(r);countUp(el)}}
 }
@@ -227,23 +234,5 @@ function rvSub(A){
   return tip+rows.map(r=>`<div class="card subc"><div class="row" style="justify-content:space-between"><b>${esc(r.s)}</b><span class="chip ${r.acc>=70?'ok':r.acc>=40?'warn':''}">${r.acc}% accuracy</span></div>
    <div class="stk"><i class="c" style="width:${r.n?r.c*100/r.n:0}%"></i><i class="w" style="width:${r.n?r.w*100/r.n:0}%"></i><i class="s" style="width:${r.n?r.k*100/r.n:0}%"></i></div>
    <div class="sm mut"><span style="color:var(--ok)">✓ ${r.c}</span> · <span style="color:var(--bad)">✗ ${r.w}</span> · Skipped ${r.k} · Marks <b style="color:var(--tx)">${r.marks}/${r.max}</b>${hasT&&r.t?` · ${fs(r.t)}/question`:''}</div></div>`).join('');
-}
-function jumpQ(i){RV.tab='sol';RV.filter='all';RV.sec='*';rRefresh();setTimeout(()=>{const e=document.getElementById('q'+i);if(e){e.scrollIntoView({behavior:'smooth',block:'center'});e.classList.add('flash')}},60)}
-function rvTime(A){
-  const {all,rec,hasT}=A;
-  if(!hasT)return `<div class="card empty">${ic('clock',30)}<h3 style="margin:10px 0 4px;color:var(--tx)">No time data for this attempt</h3><p class="sm">Question-wise time is recorded for tests you attempt from now on.</p></div>`;
-  const mx=Math.max(1,...all.map(x=>x.t||0));
-  const tc=avgT(all.filter(x=>x.st==='c')),tw=avgT(all.filter(x=>x.st==='w')),ta=avgT(all);
-  const slow=all.filter(x=>x.t>0).sort((a,b)=>b.t-a.t).slice(0,5);
-  let msg='Your time is spread evenly across questions.';
-  if(tc&&tw&&tw>tc*1.3)msg='You spend more time on questions you get wrong. Skip hard ones early and return to them at the end.';
-  else if(tc&&tw&&tw<tc*.7)msg='You answer wrong questions faster than correct ones. Slow down and double-check before moving on.';
-  const lab={c:'Correct',w:'Wrong',s:'Skipped'};
-  return `<div class="tiles"><div><b>${ta?fs(ta):'–'}</b><span>Avg / question</span></div><div><b style="color:var(--ok)">${tc?fs(tc):'–'}</b><span>On correct</span></div><div><b style="color:var(--bad)">${tw?fs(tw):'–'}</b><span>On wrong</span></div></div>
-   <div class="card" style="margin-top:12px"><b>Time per question</b><div class="sm mut">Tap a bar to open that question</div>
-   <div class="scroll"><div class="tchart" style="min-width:${Math.max(100,all.length*20)}px">${all.map(x=>`<button class="tb ${x.st}" onclick="jumpQ(${x.i})" aria-label="Q${x.i+1} ${fs(x.t)}"><i style="height:${x.t?Math.max(4,x.t/mx*100):2}%"></i><span>${x.i+1}</span></button>`).join('')}</div></div>
-   <div class="row sm" style="gap:12px;margin-top:6px"><span class="dot c"></span>Correct <span class="dot w"></span>Wrong <span class="dot s"></span>Skipped</div></div>
-   <div class="card tipc1" style="margin-top:12px">${ic('info',18)}<span>${msg}</span></div>
-   <div class="h2s" style="font-size:16px">${ic('clock',18)} Slowest questions</div><div class="card">${slow.map(x=>`<div class="lb" onclick="jumpQ(${x.i})" style="cursor:pointer"><span class="n">${x.i+1}</span><span style="flex:1">${esc((x.q.q||'').slice(0,46))}${(x.q.q||'').length>46?'…':''}</span><span class="chip ${x.st==='c'?'ok':''}">${lab[x.st]}</span><b>${fs(x.t)}</b></div>`).join('')}</div>`;
 }
 ;(window.__p=window.__p||{})['app3']=1;
