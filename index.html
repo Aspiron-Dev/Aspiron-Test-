@@ -1,14 +1,446 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="light" data-accent="blue">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#5b5bf0">
+<meta name="theme-color" content="#1d6fe8">
 <title>CBT Test Series</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-<script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t}catch(e){}</script>
+<style>
+:root{
+  --bg:#f3f6f9;--surface:#ffffff;--surface2:#eef2f6;--tx:#0e1b26;--mut:#5a6b7b;--bd:#dfe6ed;
+  --pri:#1d6fe8;--pri2:#10a37f;--priSoft:#e6f0fe;
+  --ok:#12945f;--okSoft:#e3f6ec;--bad:#dc3a4f;--badSoft:#fdecee;--warn:#c9780a;--warnSoft:#fff3df;
+  --shadow:0 1px 2px rgba(14,27,38,.05),0 8px 24px rgba(14,27,38,.07);
+  --grad:linear-gradient(135deg,#1d6fe8 0%,#12a58a 100%);
+  --glow:rgba(29,111,232,.30);
+  --r:16px;
+}
+html[data-theme="dark"]{
+  --bg:#0b1117;--surface:#131b23;--surface2:#1b2631;--tx:#e7eef5;--mut:#93a4b5;--bd:#26343f;
+  --pri:#5aa2ff;--pri2:#34d3a4;--priSoft:#14283f;
+  --ok:#4fd69a;--okSoft:#112d22;--bad:#ff7a8a;--badSoft:#35161c;--warn:#f5b84a;--warnSoft:#33260d;
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 10px 30px rgba(0,0,0,.4);
+  --grad:linear-gradient(135deg,#2b7be8 0%,#14b08f 100%);
+  --glow:rgba(43,123,232,.28);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:Inter,"Noto Sans Devanagari",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;transition:background .25s,color .25s}
+a{color:var(--pri)}
+svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* header */
+.hdr{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--bd)}
+.hdr-in{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.02em;font-size:17px;text-decoration:none;color:var(--tx)}
+.logo{width:34px;height:34px;border-radius:10px;background:var(--grad);display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px var(--glow)}
+.sp{flex:1}
+.iconbtn{width:38px;height:38px;border-radius:12px;border:1px solid var(--bd);background:var(--surface);color:var(--tx);display:grid;place-items:center;cursor:pointer;padding:0}
+.iconbtn:hover{border-color:var(--pri)}
+.chip-user{display:flex;align-items:center;gap:8px;border:1px solid var(--bd);background:var(--surface);border-radius:999px;padding:4px 12px 4px 4px;font-weight:600;font-size:14px;cursor:pointer;color:var(--tx)}
+.avatar{width:28px;height:28px;border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700}
+body.intest .hdr{display:none}
+
+.wrap{max-width:1080px;margin:0 auto;padding:20px 16px 80px}
+h1,h2,h3{letter-spacing:-.02em;margin:0}
+.mut{color:var(--mut)}
+.sm{font-size:13px}
+
+/* buttons */
+button{font:inherit;cursor:pointer}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;padding:11px 18px;font-weight:600;background:var(--grad);color:#fff;box-shadow:0 6px 16px var(--glow);transition:transform .08s,opacity .2s}
+.btn:active{transform:scale(.98)}
+.btn.ghost{background:var(--surface);color:var(--tx);border:1px solid var(--bd);box-shadow:none}
+.btn.soft{background:var(--priSoft);color:var(--pri);box-shadow:none}
+.btn.warn{background:var(--warnSoft);color:var(--warn);box-shadow:none}
+.btn.danger{background:var(--bad);box-shadow:none}
+.btn.sm{padding:7px 12px;font-size:13px;border-radius:10px}
+.btn.block{width:100%}
+.btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--bd);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)}
+.hero{background:var(--grad);color:#fff;border-radius:22px;padding:24px;position:relative;overflow:hidden;box-shadow:0 14px 40px var(--glow)}
+.hero:after{content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.12)}
+.hero h1{font-size:24px}
+.hero p{margin:6px 0 0;opacity:.88}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px;position:relative;z-index:1}
+.stat{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:10px 12px}
+.stat b{display:block;font-size:22px;letter-spacing:-.02em}
+.stat span{font-size:12px;opacity:.85}
+
+.seg{display:inline-flex;background:var(--surface2);border-radius:12px;padding:4px;gap:2px;max-width:100%;overflow:auto}
+.seg button{border:0;background:transparent;color:var(--mut);padding:8px 16px;border-radius:9px;font-weight:600;white-space:nowrap}
+.seg button.on{background:var(--surface);color:var(--tx);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.sec-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:24px 0 12px;flex-wrap:wrap}
+.sec-h h2{font-size:18px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.tcard{display:flex;flex-direction:column;gap:12px}
+.tcard h3{font-size:17px}
+.tico{width:42px;height:42px;border-radius:12px;background:var(--priSoft);color:var(--pri);display:grid;place-items:center}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface2);color:var(--mut);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600}
+.chip.ok{background:var(--okSoft);color:var(--ok)}
+.chip.pri{background:var(--priSoft);color:var(--pri)}
+.chip.warn{background:var(--warnSoft);color:var(--warn)}
+.bar{height:6px;border-radius:99px;background:var(--surface2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--grad);border-radius:99px}
+
+.rrow{display:flex;align-items:center;gap:14px}
+.rrow+.rrow{margin-top:10px}
+.mring{width:54px;height:54px;flex:none;position:relative}
+.mring span{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;font-weight:700}
+.rrow .grow{flex:1;min-width:0}
+.rrow .grow b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* forms */
+input[type=text],input[type=tel],input[type=number],input[type=password],input[type=search],textarea,select{font:inherit;width:100%;padding:11px 13px;border:1px solid var(--bd);border-radius:12px;background:var(--surface);color:var(--tx);outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--pri);box-shadow:0 0 0 3px color-mix(in srgb,var(--pri) 22%,transparent)}
+textarea{min-height:90px;resize:vertical}
+label.l{display:block;font-size:12px;font-weight:600;color:var(--mut);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.04em}
+.login{max-width:440px;margin:6vh auto 0}
+.login .logo{width:52px;height:52px;border-radius:16px;margin-bottom:14px}
+
+/* instructions */
+.ins{max-width:640px;margin:20px auto}
+.ins ul{padding-left:0;list-style:none;margin:14px 0}
+.ins li{display:flex;gap:10px;padding:10px 0;border-bottom:1px dashed var(--bd)}
+.ins li:last-child{border:0}
+.ins li svg{color:var(--pri);margin-top:2px}
+
+/* test */
+.tbar{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px;padding:10px 14px}
+.tb-title{font-weight:700;font-size:14px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-l{min-width:0;flex:1}
+.timer{display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums;font-weight:800;font-size:17px;background:var(--priSoft);color:var(--pri);padding:7px 12px;border-radius:12px}
+.timer.low{background:var(--bad);color:#fff;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.7}}
+.progress{height:3px;background:var(--surface2)}
+.progress i{display:block;height:100%;background:var(--grad);transition:width .25s}
+.tlayout{max-width:1080px;margin:0 auto;padding:16px 14px 150px;display:grid;grid-template-columns:1fr;gap:14px}
+.qcard{padding:20px}
+.qmeta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.qtext{white-space:pre-wrap;font-size:18px;line-height:1.6;margin-bottom:18px;font-weight:500}
+.opt{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;background:var(--surface);color:var(--tx);border:1.5px solid var(--bd);border-radius:14px;padding:13px 14px;margin-bottom:10px;transition:border-color .15s,background .15s}
+.opt:hover{border-color:var(--pri)}
+.opt .k{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bd);display:grid;place-items:center;font-weight:700;font-size:13px;flex:none;color:var(--mut)}
+.opt .t{white-space:pre-wrap;padding-top:3px}
+.opt.sel{border-color:var(--pri);background:var(--priSoft)}
+.opt.sel .k{background:var(--pri);border-color:var(--pri);color:#fff}
+.pal{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:8px}
+.pal button{height:42px;border-radius:11px;border:1.5px solid var(--bd);background:var(--surface);color:var(--tx);font-weight:600;font-size:14px;padding:0}
+.pal button.na{background:var(--badSoft);border-color:transparent;color:var(--bad)}
+.pal button.ans{background:var(--okSoft);border-color:transparent;color:var(--ok)}
+.pal button.mark{background:var(--priSoft);border-color:transparent;color:var(--pri)}
+.pal button.mans{background:var(--priSoft);border-color:var(--ok);color:var(--ok)}
+.pal button.cur{box-shadow:0 0 0 2.5px var(--pri)}
+.pal button:disabled{opacity:.55}
+.leg{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--mut);margin-top:14px}
+.leg i{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:5px;vertical-align:-2px}
+.side{display:none}
+.bbar{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--surface);border-top:1px solid var(--bd);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px}
+.bbar .r{display:flex;gap:8px;max-width:1080px;margin:0 auto;width:100%}
+.bbar .r>*{flex:1}
+.sheet{position:fixed;inset:0;z-index:40;background:rgba(5,8,20,.55);display:none;align-items:flex-end}
+.sheet.open{display:flex}
+.sheet .in{background:var(--surface);width:100%;max-height:82vh;overflow:auto;border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+.grab{width:42px;height:4px;border-radius:9px;background:var(--bd);margin:0 auto 14px}
+@media(min-width:960px){
+  .tlayout{grid-template-columns:1fr 320px;align-items:start}
+  .side{display:block;position:sticky;top:76px}
+  .only-m{display:none!important}
+}
+
+/* modal & toast */
+.modal{position:fixed;inset:0;z-index:60;background:rgba(5,8,20,.6);display:grid;place-items:center;padding:16px}
+.modal .box{background:var(--surface);border-radius:20px;padding:22px;max-width:420px;width:100%;box-shadow:var(--shadow);border:1px solid var(--bd)}
+.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}
+.mgrid div{background:var(--surface2);border-radius:12px;padding:10px;text-align:center}
+.mgrid b{display:block;font-size:20px}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;z-index:80;box-shadow:var(--shadow)}
+
+/* result */
+.rhero{text-align:center;padding:24px}
+.ring{width:150px;height:150px;margin:6px auto 10px;position:relative}
+.ring .c{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.ring .c b{font-size:30px;letter-spacing:-.03em;display:block;line-height:1.1}
+.s4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}
+.s4 div{background:var(--surface2);border-radius:12px;padding:10px 4px}
+.s4 b{display:block;font-size:19px}
+.s4 span{font-size:12px;color:var(--mut)}
+.rv{margin-bottom:12px}
+.ro{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1.5px solid var(--bd);border-radius:12px;margin-bottom:8px;white-space:pre-wrap}
+.ro.c{border-color:var(--ok);background:var(--okSoft)}
+.ro.w{border-color:var(--bad);background:var(--badSoft)}
+.ro .k{font-weight:700;min-width:20px}
+.tag{font-size:11px;font-weight:700;border-radius:99px;padding:2px 8px;margin-left:6px;white-space:nowrap}
+.tag.g{background:var(--ok);color:#fff}
+.tag.r{background:var(--bad);color:#fff}
+.exp{background:var(--warnSoft);color:var(--tx);border-radius:12px;padding:10px 12px;font-size:14px;white-space:pre-wrap;margin-top:8px}
+.lb{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--bd)}
+.lb:last-child{border:0}
+.lb .n{width:26px;height:26px;border-radius:50%;background:var(--surface2);display:grid;place-items:center;font-size:12px;font-weight:700}
+.lb.me{color:var(--pri);font-weight:700}
+
+/* admin */
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th,.tbl td{padding:10px 12px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}
+.tbl th{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.scroll{overflow:auto;border-radius:var(--r)}
+.qed{border-left:4px solid var(--pri)}
+.qed.miss{border-left-color:var(--bad)}
+.g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.empty{text-align:center;padding:36px 16px;color:var(--mut)}
+
+/* ================= v3: series / folders / admin ================= */
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.scard{padding:0;overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:transform .12s}
+.scard:active{transform:scale(.99)}
+.cover{height:96px;padding:14px;color:#fff;display:flex;justify-content:space-between;align-items:flex-start;position:relative;overflow:hidden}
+.cover:after{content:"";position:absolute;right:-30px;bottom:-56px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,.16)}
+.cover .ico{width:42px;height:42px;border-radius:13px;background:rgba(255,255,255,.22);display:grid;place-items:center;position:relative;z-index:1}
+.cover .ico svg{width:22px;height:22px}
+.pill{position:relative;z-index:1;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:800;letter-spacing:.03em;display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.95);color:#4338ca}
+.pill.free{color:#15803d}
+.pill.paid{color:#b45309}
+.pill svg{width:13px;height:13px}
+.scard .body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;flex:1}
+.scard h3{font-size:17px}
+.clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.crumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mut);margin-bottom:14px;flex-wrap:wrap}
+.crumb a{color:var(--mut);font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.crumb a:hover{color:var(--pri)}
+.sh{border-radius:22px;color:#fff;padding:22px;position:relative;overflow:hidden;box-shadow:0 14px 40px rgba(60,60,160,.25)}
+.sh:after{content:"";position:absolute;right:-50px;top:-60px;width:210px;height:210px;border-radius:50%;background:rgba(255,255,255,.14)}
+.sh h1{font-size:23px;position:relative;z-index:1}
+.sh p{margin:6px 0 0;opacity:.9;position:relative;z-index:1}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.fcard{display:flex;gap:12px;align-items:center;cursor:pointer;padding:14px;transition:transform .12s}
+.fcard:active{transform:scale(.99)}
+.fico{width:46px;height:46px;border-radius:13px;background:var(--warnSoft);color:var(--warn);display:grid;place-items:center;flex:none}
+.fcard b{display:block;line-height:1.25}
+.trow{display:flex;gap:12px;align-items:center;padding:14px 16px;flex-wrap:wrap}
+.trow+.trow{margin-top:10px}
+.trow .info{flex:1;min-width:190px}
+.trow .info h3{font-size:16px;margin-bottom:6px}
+.trow .acts{display:flex;gap:8px;flex-wrap:wrap}
+.banner{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--warnSoft);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);border-radius:14px;padding:12px 14px;margin:16px 0}
+.banner .t{flex:1;min-width:200px}
+.lockbadge{display:inline-flex;align-items:center;gap:5px}
+.loading{display:grid;place-items:center;min-height:55vh;text-align:center;color:var(--mut)}
+.spin{width:34px;height:34px;border:3px solid var(--surface2);border-top-color:var(--pri);border-radius:50%;animation:sp .8s linear infinite;margin:0 auto 14px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.err{color:var(--bad)}
+.okc{color:var(--ok)}
+.divider{display:flex;align-items:center;gap:10px;color:var(--mut);font-size:12px;margin:16px 0}
+.divider:before,.divider:after{content:"";flex:1;height:1px;background:var(--bd)}
+.big-code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:34px;font-weight:800;letter-spacing:.14em;text-align:center;background:var(--surface2);border-radius:14px;padding:16px 8px;margin:12px 0;user-select:all;-webkit-user-select:all}
+.intest .qcard{user-select:none;-webkit-user-select:none}
+.h2s{font-size:18px;margin:26px 0 12px;display:flex;align-items:center;gap:8px}
+.h2s .n{font-size:13px;font-weight:700;color:var(--mut)}
+
+/* admin */
+.atabs{display:flex;gap:6px;overflow:auto;padding-bottom:4px}
+.atabs button{border:0;background:var(--surface);color:var(--mut);padding:10px 16px;border-radius:12px;font-weight:700;white-space:nowrap;border:1px solid var(--bd)}
+.atabs button.on{background:var(--grad);color:#fff;border-color:transparent}
+.atabs .cnt{background:var(--bad);color:#fff;border-radius:999px;font-size:11px;padding:1px 7px;margin-left:6px}
+.pane{display:none;margin-top:16px}
+.pane.on{display:block}
+.srow{display:flex;gap:12px;align-items:center;padding:12px 14px}
+.srow+.srow{margin-top:8px}
+.srow .grow{flex:1;min-width:0}
+.srow .grow b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.av{width:40px;height:40px;border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;font-weight:800;flex:none}
+.reqcard{border:1.5px solid var(--warn);background:var(--warnSoft)}
+.acc{padding:0;overflow:hidden}
+.acc>.hd{display:flex;gap:12px;align-items:center;padding:14px 16px;cursor:pointer}
+.acc>.hd .grow{flex:1;min-width:0}
+.acc>.bd{display:none;border-top:1px solid var(--bd);padding:12px 16px 16px;background:var(--surface2)}
+.acc.open>.bd{display:block}
+.chev{transition:transform .2s}
+.acc.open .chev{transform:rotate(90deg)}
+.arow{display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--surface);border:1px solid var(--bd);border-radius:12px;margin-top:8px;flex-wrap:wrap}
+.arow .grow{flex:1;min-width:160px}
+.fhead{display:flex;gap:8px;align-items:center;margin-top:14px;font-weight:700}
+.modal .box.wide{max-width:560px;max-height:90vh;overflow:auto}
+.chk{display:flex;gap:10px;align-items:center;padding:8px 0}
+.chk input{width:20px;height:20px;flex:none}
+textarea.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+.btn.sm svg,.btn svg{width:16px;height:16px}
+
+/* ================= v4: CBT mode, dashboard, images ================= */
+.cbtbar{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:2px solid var(--pri);display:flex;align-items:center;gap:10px;padding:8px 14px}
+.cbtbar .cand{display:flex;align-items:center;gap:5px}
+.stabs{display:flex;gap:4px;overflow:auto;background:var(--surface2);padding:6px 10px;border-bottom:1px solid var(--bd);position:sticky;top:56px;z-index:19}
+.stabs button{border:1px solid var(--bd);background:var(--surface);color:var(--tx);padding:7px 16px;border-radius:8px;font-weight:700;font-size:13px;white-space:nowrap}
+.stabs button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.stabs button:disabled{opacity:.5}
+.bbar .r.nav .btn{flex:1}
+.lg{display:inline-grid;place-items:center;min-width:26px;height:26px;padding:0 5px;font-style:normal;font-weight:700;font-size:12px;border-radius:6px 6px 11px 11px;background:#e5e7eb;color:#374151;margin-right:6px;vertical-align:middle;position:relative}
+.lg.nv{background:#e5e7eb;color:#374151;border-radius:6px}
+.lg.na{background:#e5533d;color:#fff;border-radius:11px 11px 6px 6px}
+.lg.ans{background:#22a35a;color:#fff;border-radius:6px 6px 11px 11px}
+.lg.mark{background:#7c3aed;color:#fff;border-radius:50%}
+.lg.mans{background:#7c3aed;color:#fff;border-radius:50%}
+.lg.mans:after,.pal button.mans:after{content:"";position:absolute;right:-2px;bottom:-2px;width:11px;height:11px;border-radius:50%;background:#22a35a;border:2px solid var(--surface)}
+html[data-theme=dark] .lg.nv,html[data-theme=dark] .pal button.nv{background:#2a3454;color:#cbd5e1}
+.lg-row{line-height:2.2}
+.pal button{position:relative;border:0;color:#fff;font-weight:700}
+.pal button.nv{background:#e5e7eb;color:#374151;border-radius:8px}
+.pal button.na{background:#e5533d;color:#fff;border-radius:14px 14px 8px 8px}
+.pal button.ans{background:#22a35a;color:#fff;border-radius:8px 8px 14px 14px}
+.pal button.mark,.pal button.mans{background:#7c3aed;color:#fff;border-radius:50%}
+.pal button.cur{box-shadow:0 0 0 3px var(--tx)}
+.leg2{display:grid;grid-template-columns:1fr 1fr;gap:8px 6px;font-size:12px;color:var(--mut);margin-top:14px}
+.leg2 .lg{margin-right:5px}
+.candbox{display:flex;gap:10px;align-items:center;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--bd)}
+.qi{display:block;max-width:100%;max-height:340px;border-radius:10px;border:1px solid var(--bd);background:#fff;margin:4px 0 14px;cursor:zoom-in}
+.qi.oi{max-height:150px;margin:8px 0 0}
+.qt{white-space:pre-wrap;font-weight:500;margin-bottom:12px;line-height:1.6}
+.lightbox{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:14px}
+.lightbox img{max-width:100%;max-height:82vh;background:#fff;border-radius:8px}
+.iconbtn.sm{width:34px;height:34px;border-radius:10px}
+.iconbtn.bmb.on{background:#fef3c7;border-color:#f59e0b;color:#d97706}
+.iconbtn.bmb.on svg{fill:currentColor}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.dgrid div{background:var(--surface2);border-radius:12px;padding:12px;text-align:center}
+.dgrid b{display:block;font-size:22px;letter-spacing:-.02em}
+.dgrid span{font-size:12px;color:var(--mut)}
+.trend{margin-top:14px;color:var(--pri)}
+.spark{width:100%;max-width:360px;height:60px;display:block;margin-top:6px}
+.prow{padding:10px 0;cursor:pointer}
+.prow+.prow{border-top:1px dashed var(--bd)}
+.cover.hascov,.sh.hascov{background-size:cover!important;background-position:center!important}
+.cover.hascov .ico{display:none}
+.cover{height:110px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.g3 div{background:var(--surface2);border-radius:12px;padding:10px;text-align:center}
+.g3 b{display:block;font-size:17px}.g3 span{font-size:12px;color:var(--mut)}
+.decl{background:var(--surface2);border-radius:12px;padding:10px 12px;margin:12px 0}
+.tbl.sm th,.tbl.sm td{padding:7px 9px}
+
+/* v4 admin */
+.imgctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 2px}
+.imgctl .thumb{max-height:80px;max-width:140px;border-radius:8px;border:1px solid var(--bd);background:#fff}
+.plist{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;max-height:150px;overflow:auto}
+.pchip{border:1px solid var(--bad);background:var(--badSoft);color:var(--bad);border-radius:10px;padding:4px 10px;font-weight:700;font-size:13px;display:flex;flex-direction:column;align-items:flex-start;line-height:1.2}
+.pchip small{font-weight:500;font-size:10px}
+.cropwrap{overflow:auto;max-height:58vh;border:1px solid var(--bd);border-radius:10px;background:#888}
+.cropsel{position:absolute;border:2px dashed #ef4444;background:rgba(239,68,68,.15);pointer-events:none}
+.qed.flash{animation:fl 1.6s}
+@keyframes fl{0%,60%{box-shadow:0 0 0 4px var(--pri)}100%{box-shadow:none}}
+
+@media(max-width:520px){.seg button{padding:8px 11px;font-size:13.5px}.sec-h .seg{width:100%;display:flex}.sec-h .seg button{flex:1;padding:8px 6px}}
+
+/* ---- v4.1 dashboard & profile ---- */
+.hero{padding:20px}
+.hero .who{display:flex;align-items:center;gap:14px;position:relative;z-index:1}
+.hero .bigav{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.55);display:grid;place-items:center;font-size:24px;font-weight:800;flex:none}
+.hero .lvl{display:inline-block;margin-top:6px;font-size:12px;font-weight:700;background:rgba(255,255,255,.2);border-radius:99px;padding:2px 10px}
+.hero .streak{margin-left:auto;text-align:center;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);border-radius:14px;padding:6px 12px;position:relative;z-index:1}
+.hero .streak b{display:block;font-size:20px;line-height:1.1}.hero .streak span{font-size:11px;opacity:.9}
+.dtop{display:grid;grid-template-columns:1fr;gap:12px;margin-top:6px}
+@media(min-width:760px){.dtop{grid-template-columns:1fr 1fr}}
+.accwrap{display:flex;align-items:center;gap:16px}
+.accwrap .ringbox{position:relative;width:96px;height:96px;flex:none}
+.accwrap .ringbox span{position:absolute;inset:0;display:grid;place-items:center;font-weight:800;font-size:20px}
+.week{display:flex;align-items:flex-end;gap:8px;height:84px;margin-top:8px}
+.week div{flex:1;text-align:center;font-size:11px;color:var(--mut);display:flex;flex-direction:column;justify-content:flex-end;height:100%}
+.week i{display:block;border-radius:6px 6px 3px 3px;background:var(--grad);min-height:4px;margin-bottom:4px}
+.week i.z{background:var(--surface2)}
+.next{display:flex;align-items:center;gap:12px;background:var(--priSoft);border:1px solid var(--bd);border-radius:14px;padding:12px}
+.next .grow{flex:1;min-width:0}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.bdg{border:1px dashed var(--bd);border-radius:12px;padding:10px;text-align:center;font-size:12px;color:var(--mut);opacity:.7}
+.bdg.on{border:1px solid var(--pri2);background:var(--okSoft);color:var(--tx);opacity:1}
+.bdg b{display:block;font-size:20px}
+.prof{text-align:center}
+.prof .bigav{width:84px;height:84px;margin:4px auto 10px;border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;font-size:36px;font-weight:800;box-shadow:0 10px 26px var(--glow)}
+.prof .kv{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}
+.prof .kv div{background:var(--surface2);border-radius:12px;padding:10px 4px}.prof .kv b{display:block;font-size:18px}.prof .kv span{font-size:11px;color:var(--mut)}
+
+/* ---- v4.2  accent colours: blue / green / gray  x  light / dark ---- */
+html[data-theme="light"][data-accent="blue"]{--bg:#f1f5fb;--surface2:#e8eff9;--bd:#d9e3f1;--pri:#1d6fe8;--pri2:#3b9bff;--priSoft:#e4efff;--grad:linear-gradient(135deg,#1c5fe0 0%,#3b9bff 100%);--glow:rgba(29,111,232,.30)}
+html[data-theme="light"][data-accent="green"]{--bg:#f1f8f4;--surface2:#e6f3ec;--bd:#d5e8dc;--pri:#0f8a55;--pri2:#3cc47f;--priSoft:#dff4e8;--grad:linear-gradient(135deg,#0c7a4b 0%,#3cc47f 100%);--glow:rgba(15,138,85,.30)}
+html[data-theme="light"][data-accent="gray"]{--bg:#f3f4f6;--surface2:#eaecef;--bd:#dadde2;--pri:#3f4b5c;--pri2:#6b7686;--priSoft:#e6e9ee;--grad:linear-gradient(135deg,#2f3b4d 0%,#6b7686 100%);--glow:rgba(47,59,77,.28)}
+html[data-theme="dark"][data-accent="blue"]{--bg:#09111f;--surface:#101b2e;--surface2:#172640;--bd:#233654;--pri:#5aa2ff;--pri2:#3b9bff;--priSoft:#14284a;--grad:linear-gradient(135deg,#2160e0 0%,#3b9bff 100%);--glow:rgba(43,123,232,.30)}
+html[data-theme="dark"][data-accent="green"]{--bg:#09130e;--surface:#101c16;--surface2:#172a20;--bd:#233b2e;--pri:#4fd69a;--pri2:#34c47e;--priSoft:#12321f;--grad:linear-gradient(135deg,#11804f 0%,#34c47e 100%);--glow:rgba(52,196,126,.25)}
+html[data-theme="dark"][data-accent="gray"]{--bg:#0f1114;--surface:#171a1e;--surface2:#21252b;--bd:#2e333a;--pri:#b4bdca;--pri2:#8a95a5;--priSoft:#252a31;--grad:linear-gradient(135deg,#4a5463 0%,#7a8696 100%);--glow:rgba(0,0,0,.35)}
+.lookrow{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:8px 0 16px}
+.look{border:2px solid var(--bd);background:var(--surface);color:var(--tx);border-radius:14px;padding:12px 6px;text-align:center;font-weight:600;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.look.on{border-color:var(--pri);box-shadow:0 0 0 3px var(--priSoft)}
+.look i{width:34px;height:34px;border-radius:50%;display:block;border:2px solid rgba(127,127,127,.35)}
+.look.m i{border-radius:10px}
+
+/* ---- v4.3  flat modern look (no outlines), bottom nav, motion ---- */
+:root{--cssv:5}
+body{background-color:var(--bg);background-image:radial-gradient(900px 380px at 50% -120px,color-mix(in srgb,var(--pri) 14%,transparent),transparent);background-repeat:no-repeat;background-attachment:fixed}
+.card{border:0}
+.modal .box{border:0}
+.iconbtn,.chip-user{border:0;box-shadow:var(--shadow)}
+.iconbtn:hover{box-shadow:var(--shadow),0 0 0 2px var(--priSoft)}
+.btn.ghost{border:0;background:var(--surface2);color:var(--tx)}
+.hdr{border-bottom:0;box-shadow:0 1px 0 color-mix(in srgb,var(--bd) 55%,transparent)}
+input[type=text],input[type=tel],input[type=number],input[type=password],input[type=search],textarea,select{border:0;background:var(--surface2)}
+input:focus,textarea:focus,select:focus{background:var(--surface)}
+.hero .bigav{border:0;background:rgba(255,255,255,.22)}
+.hero .stat,.hero .streak{border:0;background:rgba(255,255,255,.16);backdrop-filter:blur(6px)}
+.hero:before{content:"";position:absolute;left:-40px;bottom:-70px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.08)}
+.look{border:0;background:var(--surface2);cursor:pointer;font-family:inherit;transition:background .15s,transform .1s}
+.look:active{transform:scale(.97)}
+.look.on{background:var(--priSoft);color:var(--pri);box-shadow:none}
+.look.on:after{content:"\2713";font-size:12px;line-height:1}
+.look i{border:0;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.next,.bdg,.bdg.on{border:0}
+.bdg{background:var(--surface2);opacity:.65}
+.bdg.on{background:var(--okSoft)}
+.scard,.card{transition:transform .18s,box-shadow .18s}
+@media(hover:hover){.scard:hover{transform:translateY(-3px);box-shadow:0 14px 34px var(--glow)}}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+#app>.wrap{animation:pageIn .34s cubic-bezier(.22,.8,.24,1) both}
+@keyframes pageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.searchbox{position:relative;margin:4px 0 6px}
+.searchbox svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--mut)}
+.searchbox input{padding-left:42px;border-radius:14px;box-shadow:var(--shadow);background:var(--surface)}
+.bnav{display:none}
+@media(max-width:700px){
+  .hometabs{display:none}
+  body.hasnav .wrap{padding-bottom:110px}
+  body.hasnav .bnav{display:flex;position:fixed;left:12px;right:12px;bottom:12px;z-index:30;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:22px;padding:6px;box-shadow:0 10px 36px rgba(0,0,0,.22);gap:4px}
+  .bnav button{flex:1;border:0;background:transparent;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;border-radius:16px;font-size:11px;font-weight:700;transition:background .2s,color .2s}
+  .bnav button.on{background:var(--priSoft);color:var(--pri)}
+  .toast{bottom:104px}
+}
+.cssbanner{position:fixed;left:12px;right:12px;top:12px;z-index:99;background:var(--warn);color:#fff;border-radius:14px;padding:12px 14px;font-weight:600;font-size:14px;box-shadow:var(--shadow)}
+
+/* ---- v4.4 cover/title layout, tags, glass ---- */
+.cover{height:auto;aspect-ratio:16/7;padding:0;display:grid;place-items:center}
+.cover:after{display:none}
+.cover .ico{margin:auto}
+.cover.hascov{background-size:cover!important;background-position:center!important}
+.scard .ttl,.shx .ttl{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.scard .ttl h3{flex:1;min-width:0}
+.shx{padding:0;overflow:hidden}
+.shx .shc{border-radius:0}
+.shx .shb{padding:16px 18px 18px}
+.shx h1{font-size:21px;flex:1;min-width:0}
+.shx p{margin:8px 0 0}
+.tag{flex:none;display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;letter-spacing:.03em;padding:3px 9px;border-radius:99px;background:var(--surface2);color:var(--mut);white-space:nowrap}
+.tag.free{background:var(--okSoft);color:var(--ok)}
+.tag.ok{background:var(--priSoft);color:var(--pri)}
+.tag.paid{background:var(--warnSoft);color:var(--warn)}
+.card{background:color-mix(in srgb,var(--surface) 82%,transparent);-webkit-backdrop-filter:blur(14px) saturate(1.25);backdrop-filter:blur(14px) saturate(1.25);
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 12px 30px -12px var(--glow),inset 0 1px 0 rgba(255,255,255,.55)}
+html[data-theme="dark"] .card{box-shadow:0 10px 30px rgba(0,0,0,.35),0 0 38px -14px var(--glow),inset 0 1px 0 rgba(255,255,255,.07)}
+body.intest .card,.tlayout .card{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--surface);box-shadow:var(--shadow)}
+
+</style>
+<script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
+<script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
 <script src="config.js"></script>
 </head>
 <body>
@@ -16,498 +448,15 @@
   <a class="brand" href="#/"><span class="logo" id="lg"></span><span id="sn">CBT Test Series</span></a>
   <div class="sp"></div>
   <div id="usr"></div>
-  <button class="iconbtn" id="thm" aria-label="Toggle theme" onclick="toggleTheme()"></button>
+  <button class="iconbtn" id="thm" aria-label="Appearance" onclick="openLook()"></button>
 </div></header>
 <main id="app"></main>
+<nav class="bnav" id="bnav"></nav>
 <div id="layer"></div>
 
-<script>
-const $=s=>document.querySelector(s);
-const LS={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
-const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmt=sec=>{sec=Math.max(0,Math.round(sec));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return (h?h+':':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')};
-const uuid=()=>(crypto.randomUUID?crypto.randomUUID():'id-'+Date.now()+'-'+Math.random().toString(16).slice(2));
-const IC={
- sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
- moon:'<path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/>',
- clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
- file:'<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
- grid:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
- flag:'<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
- right:'<path d="M9 6l6 6-6 6"/>',left:'<path d="M15 6l-6 6 6 6"/>',
- trophy:'<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 01-10 0z"/><path d="M17 5h3v2a3 3 0 01-3 3M7 5H4v2a3 3 0 003 3"/>',
- play:'<path d="M7 4l13 8-13 8z"/>',check:'<path d="M5 12l5 5L20 7"/>',
- lock:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/>',
- info:'<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/>',
- target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
- back:'<path d="M19 12H5M12 19l-7-7 7-7"/>',
- folder:'<path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>',
- logout:'<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>',
- book:'<path d="M4 19.5A2.5 2.5 0 016.5 17H20V3H6.5A2.5 2.5 0 004 5.5z"/><path d="M4 19.5V21h16"/>',
- crown:'<path d="M3 7l4 4 5-7 5 7 4-4-2 12H5z"/>',
- msg:'<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>',
- wifi:'<path d="M1 1l22 22M16.7 11.1A10.9 10.9 0 0119 12.6M5 12.6a10.9 10.9 0 015.2-2.5M8.5 16.1a6 6 0 016.9 0M12 20h.01"/>',
- eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>',
- key:'<circle cx="8" cy="15" r="4"/><path d="M10.8 12.2L21 2M16 7l3 3M14 9l2 2"/>'
-};
-const ic=(n,s)=>`<svg class="i" viewBox="0 0 24 24"${s?` style="width:${s}px;height:${s}px"`:''}>${IC[n]}</svg>`;
-const L='ABCD';
-const CFG=window.CBT_CONFIG||{};
-const API=String(CFG.SUPABASE_URL||'').replace(/\/$/,'');
-const cloud=!!(API&&CFG.SUPABASE_KEY);
+<script src="app1.js?v=9" onerror="(window.__miss=window.__miss||[]).push('app1.js')"></script>
+<script src="app2.js?v=9" onerror="(window.__miss=window.__miss||[]).push('app2.js')"></script>
+<script src="app3.js?v=9" onerror="(window.__miss=window.__miss||[]).push('app3.js')"></script>
 
-/* ---------- device id ---------- */
-function devId(){
-  let d=LS.get('cbt_dev',null);
-  if(!d||String(d).length<8){
-    try{d=Array.from(crypto.getRandomValues(new Uint8Array(10))).map(b=>b.toString(16).padStart(2,'0')).join('')}catch(e){d=(Math.random().toString(16).slice(2)+Math.random().toString(16).slice(2)).slice(0,20)}
-    LS.set('cbt_dev',d);
-  }
-  return d;
-}
-const DEV=devId();
-
-/* ---------- state ---------- */
-let AUTH=LS.get('cbt_auth',null);      // {mobile, code, name}
-let CAT=null, T=null, P=null, timer=null, INTEST=false, palOpen=false, warned=false, RV=null, retryT=null, RET='#/', LOGINERR='';
-
-/* ---------- api ---------- */
-async function rpc(fn,args,noAuth){
-  const body=noAuth?args:Object.assign({p_mobile:AUTH.mobile,p_code:AUTH.code,p_device:DEV},args||{});
-  try{
-    const r=await fetch(API+'/rest/v1/rpc/'+fn,{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!r.ok)return{ok:false,error:'server',status:r.status};
-    return await r.json();
-  }catch(e){return{ok:false,error:'network'}}
-}
-const AUTHERR=['invalid','blocked','pending','device_limit','locked','device'];
-function errText(r){
-  switch(r&&r.error){
-    case 'invalid':return 'Mobile number or access code is incorrect.';
-    case 'pending':return 'Your request is waiting for approval. You will receive your access code once the admin approves it.';
-    case 'blocked':return 'Your access has been blocked. Please contact the admin.';
-    case 'locked':return `Too many wrong attempts. Please try again in ${r.wait||15} minutes.`;
-    case 'device_limit':return 'This code is already active on the maximum number of devices. Ask the admin to reset your devices.';
-    case 'network':return 'No internet connection. Please check and try again.';
-    default:return 'Something went wrong. Please try again.';
-  }
-}
-function authErr(r){
-  if(r&&!r.ok&&AUTHERR.includes(r.error)){
-    LOGINERR=r.error==='invalid'?'Your session is no longer valid. Please sign in again.':errText(r);
-    AUTH=null;LS.del('cbt_auth');CAT=null;INTEST=false;document.body.classList.remove('intest');login();
-    return true;
-  }
-  return false;
-}
-
-/* ---------- theme / header / helpers ---------- */
-function updateTheme(){$('#thm').innerHTML=ic(document.documentElement.dataset.theme==='dark'?'sun':'moon')}
-function toggleTheme(){const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;LS.set('cbt_theme',t);updateTheme()}
-function updateHeader(){
-  $('#lg').innerHTML=ic('target',20);
-  $('#sn').textContent=CFG.SITE_NAME||'CBT Test Series';document.title=CFG.SITE_NAME||'CBT Test Series';
-  $('#usr').innerHTML=AUTH?`<button class="chip-user" onclick="signOut()" title="Sign out"><span class="avatar">${esc((AUTH.name||'?').trim()[0].toUpperCase())}</span>${esc((AUTH.name||'').split(' ')[0])}</button>`:'';
-}
-function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}
-function modal(h){$('#layer').innerHTML=`<div class="modal" onclick="if(event.target===this)closeModal()"><div class="box">${h}</div></div>`}
-function closeModal(){$('#layer').innerHTML=''}
-function setApp(h){$('#app').innerHTML=h;window.scrollTo(0,0)}
-function loading(m){setApp(`<div class="loading"><div><div class="spin"></div>${esc(m||'Loading…')}</div></div>`)}
-const GR=[['#5b5bf0','#8b5cf6'],['#0ea5e9','#6366f1'],['#10b981','#0ea5e9'],['#f59e0b','#ef4444'],['#ec4899','#8b5cf6'],['#14b8a6','#22c55e']];
-function grad(id){let h=0;for(const c of String(id))h=(h*31+c.charCodeAt(0))>>>0;const g=GR[h%GR.length];return `linear-gradient(135deg,${g[0]},${g[1]})`}
-const pct=(s,m)=>m?Math.max(0,Math.round(s*100/m)):0;
-function ring(p,size,sw,col){
-  const r=(size-sw)/2,c=2*Math.PI*r;
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="${sw}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${col||'var(--pri)'}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c*(1-Math.min(100,p)/100)}"/></svg>`;
-}
-const ringCol=p=>p>=60?'var(--ok)':p>=35?'var(--warn)':'var(--bad)';
-function waLink(text){
-  const n=String(CFG.CONTACT_WHATSAPP||'').replace(/\D/g,'');
-  return n?`https://wa.me/${n}?text=${encodeURIComponent(text)}`:'';
-}
-
-/* ---------- login / request ---------- */
-function login(mode){
-  INTEST=false;document.body.classList.remove('intest');clearTimeout(retryT);updateHeader();
-  if(!cloud){setApp(`<div class="wrap"><div class="card empty"><b>Website is not connected yet.</b><p class="sm">The admin needs to fill in config.js.</p></div></div>`);return}
-  if(mode==='request')return requestView();
-  const wa=waLink('Hi, I would like to get access to '+(CFG.SITE_NAME||'the test series')+'.');
-  setApp(`<div class="wrap"><div class="card login">
-   <div class="logo">${ic('key',26)}</div>
-   <h1 style="font-size:26px">Student login</h1>
-   <p class="mut" style="margin:6px 0 0">Enter your mobile number and the access code given to you.</p>
-   <label class="l">Mobile number</label><input type="tel" id="ph" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="10-digit mobile number">
-   <label class="l">Access code</label><input type="text" id="cd" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="12" placeholder="e.g. A1B2-C3D4">
-   <div id="er" class="sm err" style="min-height:22px;margin-top:8px">${esc(LOGINERR)}</div>
-   <button class="btn block" id="lbtn" onclick="doLogin()">Sign in ${ic('right')}</button>
-   <div class="divider">New student?</div>
-   <button class="btn ghost block" onclick="login('request')">Request access</button>
-   ${wa?`<a class="btn soft block" style="margin-top:10px;text-decoration:none" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Contact on WhatsApp</a>`:''}
-  </div></div>`);
-  LOGINERR='';
-  ['ph','cd'].forEach(id=>$('#'+id).addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()}));
-}
-async function doLogin(){
-  const m=$('#ph').value.replace(/\D/g,'').slice(-10),c=$('#cd').value.replace(/[^0-9a-zA-Z]/g,'').toUpperCase();
-  if(m.length!==10){$('#er').textContent='Please enter a valid 10-digit mobile number.';return}
-  if(c.length<4){$('#er').textContent='Please enter your access code.';return}
-  const b=$('#lbtn');b.disabled=true;b.textContent='Checking…';$('#er').textContent='';
-  const r=await rpc('cbt_login',{p_mobile:m,p_code:c,p_device:DEV},true);
-  if(!r.ok){$('#er').textContent=errText(r);b.disabled=false;b.innerHTML='Sign in '+ic('right');return}
-  AUTH={mobile:m,code:c,name:r.name};LS.set('cbt_auth',AUTH);updateHeader();CAT=null;
-  await flushPending();
-  location.hash='#/';route();
-}
-function requestView(){
-  setApp(`<div class="wrap"><div class="card login" id="rq">
-   <button class="btn ghost sm" onclick="login()">${ic('back')} Back</button>
-   <h1 style="font-size:24px;margin-top:16px">Request access</h1>
-   <p class="mut" style="margin:6px 0 0">Send your details. Once the admin approves you, you will get a personal access code.</p>
-   <label class="l">Full name</label><input type="text" id="rn" autocomplete="name" placeholder="e.g. Rahul Sharma">
-   <label class="l">Mobile number</label><input type="tel" id="rp" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="10-digit mobile number">
-   <div id="er" class="sm err" style="min-height:22px;margin-top:8px"></div>
-   <button class="btn block" id="rbtn" onclick="doRequest()">Send request</button>
-  </div></div>`);
-}
-async function doRequest(){
-  const n=$('#rn').value.trim(),m=$('#rp').value.replace(/\D/g,'').slice(-10);
-  if(n.length<2){$('#er').textContent='Please enter your name.';return}
-  if(m.length!==10){$('#er').textContent='Please enter a valid 10-digit mobile number.';return}
-  const b=$('#rbtn');b.disabled=true;b.textContent='Sending…';
-  const r=await rpc('cbt_request_access',{p_name:n,p_mobile:m},true);
-  if(!r.ok){$('#er').textContent=r.error==='blocked'?'Your access has been blocked. Please contact the admin.':r.error==='busy'?'Too many pending requests right now. Please try again later.':errText(r);b.disabled=false;b.textContent='Send request';return}
-  const wa=waLink(`Hi, I am ${n} (${m}). I have requested access to ${CFG.SITE_NAME||'the test series'}.`);
-  const msg=r.status==='approved'?`<h2>You are already approved</h2><p class="mut">Go back and sign in with your access code. If you lost your code, ask the admin for a new one.</p>`
-    :`<h2>Request sent ✓</h2><p class="mut">The admin will review your request. After approval you will receive an access code on your mobile. Then come back here and sign in.</p>`;
-  $('#rq').innerHTML=`<div class="logo" style="background:var(--ok)">${ic('check',26)}</div>${msg}
-    ${wa?`<a class="btn soft block" style="margin:8px 0;text-decoration:none" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Message the admin</a>`:''}
-    <button class="btn block" onclick="login()">Back to sign in</button>`;
-}
-function signOut(){
-  modal(`<h2>Sign out?</h2><p class="mut">You will need your access code to sign in again. Tests in progress stay saved on this device.</p>
-  <div class="row"><button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn danger" style="flex:1" onclick="doSignOut()">Sign out</button></div>`);
-}
-function doSignOut(){closeModal();AUTH=null;LS.del('cbt_auth');CAT=null;login()}
-
-/* ---------- catalog / routing ---------- */
-let CATAT=0;
-async function loadCat(silent){
-  const r=await rpc('cbt_catalog',{});
-  if(!r.ok){
-    if(authErr(r))return false;
-    if(!silent)setApp(`<div class="wrap"><div class="card empty">${ic('wifi',30)}<h3 style="margin:10px 0 4px">Could not load</h3><p class="sm">${esc(errText(r))}</p><button class="btn" onclick="route()">Try again</button></div></div>`);
-    return false;
-  }
-  CAT=r;CATAT=Date.now();if(r.name&&AUTH&&AUTH.name!==r.name){AUTH.name=r.name;LS.set('cbt_auth',AUTH);updateHeader()}
-  return true;
-}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AUTH&&!INTEST&&CAT&&Date.now()-CATAT>30000)route()});
-async function route(){
-  if(INTEST||!AUTH)return;
-  if(!CAT){loading('Loading your tests…');if(!(await loadCat()))return}
-  else if(Date.now()-CATAT>30000){await loadCat(true);if(!AUTH||INTEST)return}
-  const h=location.hash||'#/';let m;
-  if((m=h.match(/^#\/s\/(.+)$/)))return viewSeries(m[1]);
-  if((m=h.match(/^#\/f\/(.+)$/)))return viewFolder(m[1]);
-  if(h==='#/r')return viewHome('results');
-  return viewHome('series');
-}
-window.addEventListener('hashchange',()=>{if(!INTEST)route()});
-
-/* ---------- home ---------- */
-function viewHome(tab){
-  const R=CAT.results||[];
-  const avg=R.length?Math.round(R.reduce((a,x)=>a+pct(x.score,x.max),0)/R.length):0;
-  const best=R.length?Math.max(...R.map(x=>pct(x.score,x.max))):0;
-  const hr=new Date().getHours(),gr=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
-  let o=`<div class="wrap"><div class="hero"><h1>${gr}, ${esc((AUTH.name||'').split(' ')[0])}</h1><p>Pick a test series and practise in real exam mode.</p>
-  <div class="stats"><div class="stat"><b>${R.length}</b><span>Tests taken</span></div><div class="stat"><b>${avg}%</b><span>Average</span></div><div class="stat"><b>${best}%</b><span>Best</span></div></div></div>
-  <div class="sec-h"><div class="seg"><button class="${tab==='series'?'on':''}" onclick="location.hash='#/'">Test series</button><button class="${tab==='results'?'on':''}" onclick="location.hash='#/r'">My results</button></div></div>`;
-  if(tab==='series'){
-    const free=CAT.series.filter(s=>s.is_free),paid=CAT.series.filter(s=>!s.is_free);
-    if(!CAT.series.length)o+=`<div class="card empty">No test series have been added yet.</div>`;
-    if(free.length)o+=`<div class="h2s">${ic('book',20)} Free practice <span class="n">${free.length}</span></div><div class="sgrid">${free.map(seriesCard).join('')}</div>`;
-    if(paid.length)o+=`<div class="h2s">${ic('crown',20)} Premium series <span class="n">${paid.length}</span></div><div class="sgrid">${paid.map(seriesCard).join('')}</div>`;
-  }else{
-    if(!R.length)o+=`<div class="card empty">You have not attempted any test yet.</div>`;
-    else o+=`<div class="card">${R.map(x=>{const p=pct(x.score,x.max);return `<div class="rrow"><div class="mring">${ring(p,54,6,ringCol(p))}<span>${p}%</span></div>
-      <div class="grow"><b>${esc(x.title)}</b><span class="sm mut">${new Date(x.at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} · ${x.score}/${x.max} · ✓${x.correct} ✗${x.wrong}</span></div>
-      <button class="btn soft sm" onclick="openReview('${x.id}')">Review</button></div>`}).join('')}</div>`;
-  }
-  setApp(o+'</div>');
-}
-function seriesStats(s){
-  const ts=CAT.tests.filter(t=>t.series_id===s.id);
-  return{n:ts.length,done:ts.filter(t=>t.attempts>0).length,folders:CAT.folders.filter(f=>f.series_id===s.id).length};
-}
-function seriesCard(s){
-  const st=seriesStats(s),p=st.n?Math.round(st.done*100/st.n):0;
-  return `<div class="card scard" onclick="location.hash='#/s/${s.id}'">
-   <div class="cover" style="background:${grad(s.id)}"><div class="ico">${ic(s.is_free?'book':'crown')}</div>
-     ${s.is_free?`<span class="pill free">FREE</span>`:s.unlocked?`<span class="pill">${ic('check')} UNLOCKED</span>`:`<span class="pill paid">${ic('lock')} ${esc(s.price_label||'PREMIUM')}</span>`}</div>
-   <div class="body"><h3>${esc(s.title)}</h3>
-    ${s.description?`<div class="mut sm clamp2">${esc(s.description)}</div>`:''}
-    <div class="chips"><span class="chip">${st.n} test${st.n===1?'':'s'}</span>${st.folders?`<span class="chip">${st.folders} folder${st.folders===1?'':'s'}</span>`:''}</div>
-    ${st.n?`<div><div class="row sm mut" style="justify-content:space-between;margin-bottom:6px"><span>Attempted</span><b style="color:var(--tx)">${st.done}/${st.n}</b></div><div class="bar"><i style="width:${p}%"></i></div></div>`:''}
-    <button class="btn ${s.is_free||s.unlocked?'':'ghost'}" style="margin-top:auto">${s.is_free||s.unlocked?'Open':'View'} ${ic('right')}</button></div></div>`;
-}
-
-/* ---------- series & folder ---------- */
-function lockBanner(s){
-  if(s.is_free||s.unlocked)return '';
-  const wa=waLink(`Hi, I am ${AUTH.name} (${AUTH.mobile}). Please unlock "${s.title}" for me.`);
-  return `<div class="banner"><div style="color:var(--warn)">${ic('lock',26)}</div><div class="t"><b>Premium series</b><div class="sm mut">${esc(s.price_label?s.price_label+' · ':'')}Ask the admin to unlock this series for you. Some tests may be open as a free preview.</div></div>
-   ${wa?`<a class="btn sm" style="text-decoration:none" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Unlock</a>`:''}</div>`;
-}
-function viewSeries(id){
-  const s=CAT.series.find(x=>x.id===id);if(!s){location.hash='#/';return}
-  const folders=CAT.folders.filter(f=>f.series_id===id),root=CAT.tests.filter(t=>t.series_id===id&&!t.folder_id);
-  let o=`<div class="wrap"><div class="crumb"><a href="#/">${ic('back',14)} Test series</a></div>
-  <div class="sh" style="background:${grad(s.id)}"><div style="position:relative;z-index:1;margin-bottom:8px">${s.is_free?`<span class="pill free">FREE</span>`:s.unlocked?`<span class="pill">${ic('check')} UNLOCKED</span>`:`<span class="pill paid">${ic('lock')} ${esc(s.price_label||'PREMIUM')}</span>`}</div>
-   <h1>${esc(s.title)}</h1>${s.description?`<p>${esc(s.description)}</p>`:''}</div>${lockBanner(s)}`;
-  if(folders.length){
-    o+=`<div class="h2s">${ic('folder',20)} Folders <span class="n">${folders.length}</span></div><div class="fgrid">${folders.map(f=>{
-      const ts=CAT.tests.filter(t=>t.folder_id===f.id),d=ts.filter(t=>t.attempts>0).length;
-      return `<div class="card fcard" onclick="location.hash='#/f/${f.id}'"><div class="fico">${ic('folder',22)}</div><div style="flex:1;min-width:0"><b>${esc(f.title)}</b><span class="sm mut">${ts.length} test${ts.length===1?'':'s'}${ts.length?` · ${d} done`:''}</span></div>${ic('right')}</div>`}).join('')}</div>`;
-  }
-  if(root.length)o+=`<div class="h2s">${ic('file',20)} Tests <span class="n">${root.length}</span></div>${root.map(t=>testRow(t)).join('')}`;
-  if(!folders.length&&!root.length)o+=`<div class="card empty" style="margin-top:16px">No tests in this series yet.</div>`;
-  setApp(o+'</div>');
-}
-function viewFolder(id){
-  const f=CAT.folders.find(x=>x.id===id);if(!f){location.hash='#/';return}
-  const s=CAT.series.find(x=>x.id===f.series_id);if(!s){location.hash='#/';return}
-  const ts=CAT.tests.filter(t=>t.folder_id===id);
-  setApp(`<div class="wrap"><div class="crumb"><a href="#/">Test series</a> ${ic('right',12)} <a href="#/s/${s.id}">${esc(s.title)}</a></div>
-  <div class="sh" style="background:${grad(s.id)}"><div style="position:relative;z-index:1;margin-bottom:8px"><span class="pill">${ic('folder')} FOLDER</span></div><h1>${esc(f.title)}</h1><p>${esc(s.title)}</p></div>${lockBanner(s)}
-  <div class="h2s">${ic('file',20)} Tests <span class="n">${ts.length}</span></div>
-  ${ts.length?ts.map(t=>testRow(t)).join(''):'<div class="card empty">No tests in this folder yet.</div>'}</div>`);
-}
-function testRow(t){
-  const p=t.best!=null&&t.best_max?pct(t.best,t.best_max):null;
-  const last=(CAT.results||[]).find(r=>r.test_id===t.id);
-  const status=t.in_progress?'<span class="chip warn">In progress</span>':t.locked?`<span class="chip lockbadge">${ic('lock',12)} Locked</span>`
-    :t.attempts?`<span class="chip ok">Attempted ${t.attempts}×</span>`:'<span class="chip pri">New</span>';
-  const cta=t.locked?`<button class="btn ghost sm" onclick="openTest('${t.id}')">${ic('lock')} Unlock</button>`
-    :`<button class="btn sm" onclick="openTest('${t.id}')">${t.in_progress?'Resume':t.attempts?'Try again':'Start'} ${ic('right')}</button>`;
-  return `<div class="card trow"><div class="tico">${ic(t.locked?'lock':'file')}</div>
-   <div class="info"><h3>${esc(t.title)}</h3><div class="chips"><span class="chip">${t.questions} questions</span><span class="chip">${t.duration} min</span>${status}${t.free_preview&&t.locked===false?'<span class="chip pri">Free preview</span>':''}</div>
-   ${p!=null?`<div style="margin-top:10px"><div class="row sm mut" style="justify-content:space-between;margin-bottom:5px"><span>Best score</span><b style="color:var(--tx)">${t.best}/${t.best_max} · ${p}%</b></div><div class="bar"><i style="width:${p}%"></i></div></div>`:''}</div>
-   <div class="acts">${last?`<button class="btn soft sm" onclick="openReview('${last.id}')">${ic('eye')} Review</button>`:''}${cta}</div></div>`;
-}
-
-/* ---------- starting a test ---------- */
-const progKey=id=>'cbt_prog_'+AUTH.mobile+'_'+id;
-const getProg=id=>LS.get(progKey(id),null);
-const saveProg=()=>LS.set(progKey(P.tid),P);
-function openTest(id){
-  const t=CAT.tests.find(x=>x.id===id);if(!t)return;
-  const s=CAT.series.find(x=>x.id===t.series_id)||{};
-  if(t.locked){
-    const wa=waLink(`Hi, I am ${AUTH.name} (${AUTH.mobile}). Please unlock "${s.title}" for me.`);
-    return modal(`<div class="logo" style="background:var(--warn)">${ic('lock',24)}</div><h2>This test is locked</h2>
-      <p class="mut" style="margin:6px 0 14px">"${esc(s.title||'This series')}" is a premium series${s.price_label?' ('+esc(s.price_label)+')':''}. Ask the admin to unlock it for your account.</p>
-      <div class="row">${wa?`<a class="btn" style="flex:1;text-decoration:none" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Contact admin</a>`:''}<button class="btn ghost" style="flex:1" onclick="closeModal()">Close</button></div>`);
-  }
-  RET=location.hash||'#/';
-  if(getProg(id)||t.in_progress)return startTest(id);
-  instr(t,s);
-}
-function instr(t,s){
-  setApp(`<div class="wrap"><div class="ins card"><button class="btn ghost sm" onclick="route()">${ic('back')} Back</button>
-  <h1 style="font-size:24px;margin-top:16px">${esc(t.title)}</h1><p class="mut" style="margin:4px 0 0">${esc(s.title||'')}</p>
-  <ul>
-   <li>${ic('grid')}<span><b>${t.questions} questions</b> in <b>${t.duration} minutes</b></span></li>
-   <li>${ic('check')}<span>Correct answer <b>+${t.correct}</b> · Wrong answer <b>−${t.wrong}</b> · Unanswered <b>0</b></span></li>
-   <li>${ic('clock')}<span>The timer never pauses. It keeps running even if you refresh or close the page.</span></li>
-   <li>${ic('flag')}<span>Use <b>Mark</b> to flag questions you want to revisit.</span></li>
-   <li>${ic(t.lock_back?'lock':'info')}<span>${t.lock_back?'<b>You cannot go back</b> to previous questions once you move ahead.':'You can move freely between questions and change answers at any time.'}</span></li>
-   <li>${ic('trophy')}<span>The test is submitted automatically when time ends. Correct answers are shown after you submit.</span></li>
-  </ul><button class="btn block" onclick="startTest('${t.id}')">${ic('play')} Start test now</button></div></div>`);
-}
-async function startTest(id){
-  loading('Starting your test…');
-  const r=await rpc('cbt_start',{p_test:id});
-  if(!r.ok){
-    if(authErr(r))return;
-    if(r.error==='locked'||r.error==='not_found')LS.del(progKey(id));
-    if(r.error==='locked'){CAT=null;await route();toast('This test is locked.');return}
-    toast(r.error==='not_found'?'This test is no longer available.':errText(r));CAT=null;route();return;
-  }
-  T=r.test;const off=r.now-Date.now();
-  let p=getProg(id);
-  if(!(p&&p.sid===r.session.id))p={tid:id,sid:r.session.id,cid:uuid(),ans:{},mark:{},vis:{0:1},cur:0,title:T.title};
-  p.ends=r.session.ends_at;p.off=off;P=p;saveProg();
-  if(P.ends-(Date.now()+P.off)<=0){return finish(true)}
-  INTEST=true;warned=false;run();
-}
-function run(){
-  document.body.classList.add('intest');palOpen=false;
-  window.onbeforeunload=e=>{e.preventDefault();e.returnValue=''};
-  clearInterval(timer);draw();timer=setInterval(tick,1000);tick();
-}
-function tick(){
-  if(!P)return;
-  const left=Math.round((P.ends-(Date.now()+P.off))/1000);
-  const e=$('#tm');if(e){e.querySelector('span').textContent=fmt(left);e.classList.toggle('low',left<=300)}
-  if(T&&T.duration>10&&left<=300&&left>295&&!warned){warned=true;toast('Only 5 minutes left!')}
-  if(left<=0){clearInterval(timer);toast("Time's up! Submitting your test…");finish(true)}
-}
-function counts(){
-  const n=T.questions.length;let a=0,m=0;
-  for(let i=0;i<n;i++){if(P.ans[i]!=null)a++;if(P.mark[i])m++}
-  return{a,m,u:n-a,n};
-}
-function palHtml(){
-  const lock=!!T.lock_back;
-  return `<div class="pal">${T.questions.map((_,i)=>{
-    const has=P.ans[i]!=null,mk=P.mark[i];
-    let c=i===P.cur?'cur ':'';c+=mk?(has?'mans':'mark'):has?'ans':P.vis[i]?'na':'';
-    return `<button class="${c}" ${lock?'disabled':''} onclick="go(${i})">${i+1}</button>`}).join('')}</div>
-  <div class="leg"><span><i style="background:var(--okSoft)"></i>Answered</span><span><i style="background:var(--badSoft)"></i>Not answered</span><span><i style="background:var(--priSoft)"></i>Marked</span><span><i style="border:1.5px solid var(--bd)"></i>Not visited</span></div>`;
-}
-function draw(){
-  const n=T.questions.length,q=T.questions[P.cur],a=P.ans[P.cur],lock=!!T.lock_back,c=counts();
-  P.vis[P.cur]=1;
-  $('#app').innerHTML=(`<div class="tbar"><div class="tb-l"><div class="tb-title">${esc(T.title)}</div><div class="sm mut">${c.a} of ${n} answered</div></div>
-   <div class="timer" id="tm">${ic('clock')}<span>--:--</span></div><button class="btn danger sm" onclick="submitAsk()">Submit</button></div>
-   <div class="progress"><i style="width:${(P.cur+1)*100/n}%"></i></div>
-   <div class="tlayout"><section class="card qcard"><div class="qmeta"><b>Question ${P.cur+1}</b><span class="chip ok">+${T.correct}</span><span class="chip warn">−${T.wrong}</span>${P.mark[P.cur]?'<span class="chip pri">Marked for review</span>':''}</div>
-   <div class="qtext">${esc(q.q)}</div>
-   ${q.options.map((o,i)=>`<button class="opt ${a===i?'sel':''}" onclick="sel(${i})"><span class="k">${L[i]}</span><span class="t">${esc(o)}</span></button>`).join('')}</section>
-   <aside class="side card"><b>Question palette</b><div style="margin-top:12px">${palHtml()}</div>
-   <div class="mgrid" style="margin-bottom:0"><div><b>${c.a}</b><span class="sm mut">Answered</span></div><div><b>${c.u}</b><span class="sm mut">Left</span></div><div><b>${c.m}</b><span class="sm mut">Marked</span></div></div></aside></div>
-   <div class="bbar"><div class="r"><button class="btn warn sm" onclick="markNext()">${ic('flag')} ${P.mark[P.cur]?'Unmark':'Mark'}</button><button class="btn ghost sm" onclick="clr()">Clear</button><button class="btn soft sm only-m" onclick="pal(true)">${ic('grid')} Palette</button></div>
-   <div class="r">${lock?'':`<button class="btn ghost" ${P.cur===0?'disabled':''} onclick="go(${P.cur-1})">${ic('left')} Prev</button>`}<button class="btn" onclick="saveNext()" style="flex:2">${P.cur===n-1?'Save':'Save &amp; next'} ${ic('right')}</button></div></div>
-   <div class="sheet ${palOpen?'open':''}" onclick="if(event.target===this)pal(false)"><div class="in"><div class="grab"></div><b>Question palette</b><div style="margin-top:12px">${palHtml()}</div>
-   <div class="mgrid"><div><b>${c.a}</b><span class="sm mut">Answered</span></div><div><b>${c.u}</b><span class="sm mut">Left</span></div><div><b>${c.m}</b><span class="sm mut">Marked</span></div></div>
-   <button class="btn danger block" onclick="submitAsk()">Submit test</button></div></div>`);
-  tick();
-}
-function pal(v){palOpen=v;const s=document.querySelector('.sheet');if(s)s.classList.toggle('open',v)}
-function go(i){if(i<0||i>=T.questions.length)return;P.cur=i;palOpen=false;saveProg();draw();window.scrollTo(0,0)}
-function sel(i){P.ans[P.cur]=i;saveProg();draw()}
-function clr(){delete P.ans[P.cur];saveProg();draw()}
-function saveNext(){delete P.mark[P.cur];nxt()}
-function markNext(){if(P.mark[P.cur])delete P.mark[P.cur];else P.mark[P.cur]=1;nxt()}
-function nxt(){if(P.cur<T.questions.length-1)P.cur++;saveProg();draw();window.scrollTo(0,0)}
-
-/* ---------- submitting (answers are marked on the server) ---------- */
-const pendKey=()=>'cbt_pend_'+AUTH.mobile;
-const getPend=()=>LS.get(pendKey(),[]);
-function addPend(it){const l=getPend().filter(x=>x.cid!==it.cid);l.push(it);LS.set(pendKey(),l)}
-function delPend(cid){LS.set(pendKey(),getPend().filter(x=>x.cid!==cid))}
-function submitAsk(){
-  const c=counts();
-  modal(`<h2>Submit test?</h2><p class="mut" style="margin:6px 0 0">You won't be able to change your answers after this.</p>
-  <div class="mgrid"><div><b style="color:var(--ok)">${c.a}</b><span class="sm mut">Answered</span></div><div><b style="color:var(--bad)">${c.u}</b><span class="sm mut">Unanswered</span></div><div><b style="color:var(--pri)">${c.m}</b><span class="sm mut">Marked</span></div></div>
-  <div class="row"><button class="btn ghost" style="flex:1" onclick="closeModal()">Keep going</button><button class="btn danger" style="flex:1" onclick="closeModal();finish(false)">Submit</button></div>`);
-}
-async function finish(auto){
-  clearInterval(timer);window.onbeforeunload=null;
-  const it={tid:P.tid,cid:P.cid,ans:P.ans,title:(T&&T.title)||P.title,ts:Date.now()};
-  addPend(it);LS.del(progKey(P.tid));
-  INTEST=false;P=null;T=null;document.body.classList.remove('intest');
-  await sendPending(it);
-}
-let CURPEND=null;
-async function sendPending(it){
-  CURPEND=it;clearTimeout(retryT);loading('Submitting your answers…');
-  const r=await rpc('cbt_submit',{p_test:it.tid,p_answers:it.ans,p_client_id:it.cid});
-  if(r.ok){
-    delPend(it.cid);CAT=null;
-    RV={result:r.result,review:r.review,filter:'all'};
-    showResult();lb(r.result);return;
-  }
-  if(r.error==='network'||r.error==='server'){
-    setApp(`<div class="wrap"><div class="card empty">${ic('wifi',32)}<h3 style="margin:10px 0 4px">No connection</h3>
-      <p class="sm">Your answers are saved on this phone. We will keep trying to submit them. Please stay on this page.</p>
-      <button class="btn" onclick="sendPending(CURPEND)">Try again now</button></div></div>`);
-    retryT=setTimeout(()=>sendPending(it),8000);return;
-  }
-  if(authErr(r))return;
-  delPend(it.cid);CAT=null;
-  toast(r.error==='no_session'?'This attempt was already closed.':'Could not submit this test.');
-  location.hash=RET;route();
-}
-async function flushPending(){
-  if(!AUTH)return;
-  // expired local progress -> submit
-  try{
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      if(k&&k.startsWith('cbt_prog_'+AUTH.mobile+'_')){
-        const p=LS.get(k,null);
-        if(p&&p.ends&&p.ends<=Date.now()+(p.off||0)){addPend({tid:p.tid,cid:p.cid,ans:p.ans||{},title:p.title,ts:Date.now()});LS.del(k)}
-      }
-    }
-  }catch(e){}
-  for(const it of getPend()){
-    const r=await rpc('cbt_submit',{p_test:it.tid,p_answers:it.ans,p_client_id:it.cid});
-    if(r.ok||['no_session','not_found'].includes(r.error))delPend(it.cid);
-    if(r.ok)toast('Your earlier test was submitted.');
-  }
-}
-
-/* ---------- result / review ---------- */
-async function openReview(id){
-  loading('Loading your answers…');
-  const r=await rpc('cbt_review',{p_result:id});
-  if(!r.ok){if(authErr(r))return;toast('Could not load this result.');route();return}
-  if(r.gone){toast('This test is no longer available for review.');route();return}
-  RV={result:r.result,review:r.review,filter:'all'};showResult();lb(r.result);
-}
-async function lb(res){
-  if(!res.test_id)return;
-  const r=await rpc('cbt_leaderboard',{p_test:res.test_id});
-  const el=$('#lb');if(!el||!r.ok||!r.top||!r.top.length)return;
-  el.innerHTML=`<div class="card" style="margin-top:12px"><div class="row" style="justify-content:space-between;margin-bottom:6px"><b>${ic('trophy')} Leaderboard</b>${r.my_rank?`<span class="chip pri">Your rank #${r.my_rank} of ${r.total}</span>`:''}</div>
-   ${r.top.map(x=>`<div class="lb ${x.me?'me':''}"><span class="n">${x.rank}</span><span style="flex:1">${esc(x.name)}${x.me?' (you)':''}</span><b>${x.score}</b></div>`).join('')}</div>`;
-}
-function setFilter(f){RV.filter=f;showResult()}
-function doneResult(){RV=null;CAT=null;const h=RET&&RET!=='#/'?RET:'#/r';history.replaceState(null,'',h);route()}
-function showResult(){
-  document.body.classList.remove('intest');
-  const rec=RV.result,f=RV.filter,Qs=RV.review,ans=rec.answers||{};
-  const p=pct(rec.score,rec.max),col=ringCol(p),acc=rec.correct+rec.wrong?Math.round(rec.correct*100/(rec.correct+rec.wrong)):0;
-  const items=Qs.map((q,i)=>{const a=ans[i]!=null?+ans[i]:null;return{q,i,a,st:a==null?'s':(a===q.answer?'c':'w')}}).filter(x=>f==='all'||x.st===f);
-  const fb=(k,t)=>`<button class="${f===k?'on':''}" onclick="setFilter('${k}')">${t}</button>`;
-  setApp(`<div class="wrap"><div class="card rhero"><div class="mut sm">${esc(rec.title)}</div>
-   <div class="ring">${ring(p,150,12,col)}<div class="c"><div><b>${rec.score}</b><span class="sm mut">out of ${rec.max}</span></div></div></div>
-   <h2>${p>=75?'Excellent work! 🎉':p>=50?'Good effort 👍':'Keep practising 💪'}</h2><div class="mut sm" style="margin-top:4px">${p}% · Accuracy ${acc}% · Time ${fmt(rec.used)}${rec.late?' · Submitted late':''}</div>
-   <div class="s4"><div><b style="color:var(--ok)">${rec.correct}</b><span>Correct</span></div><div><b style="color:var(--bad)">${rec.wrong}</b><span>Wrong</span></div><div><b>${rec.skipped}</b><span>Skipped</span></div><div><b>${Qs.length}</b><span>Total</span></div></div></div>
-   <div id="lb"></div>
-   <div class="sec-h"><div class="seg">${fb('all','All')}${fb('c','Correct')}${fb('w','Wrong')}${fb('s','Skipped')}</div><button class="btn ghost sm" onclick="doneResult()">Done</button></div>
-   ${items.map(({q,i,a,st})=>`<div class="card rv"><div class="row" style="margin-bottom:8px"><b>Q${i+1}</b>${st==='c'?'<span class="chip ok">Correct</span>':st==='w'?'<span class="chip" style="background:var(--badSoft);color:var(--bad)">Wrong</span>':'<span class="chip">Skipped</span>'}</div>
-    <div style="white-space:pre-wrap;font-weight:500;margin-bottom:12px;line-height:1.6">${esc(q.q)}</div>
-    ${q.options.map((o,j)=>{const isC=j===q.answer,isY=j===a;return `<div class="ro ${isC?'c':(isY?'w':'')}"><span class="k">${L[j]}</span><span style="flex:1">${esc(o)}${isC||isY?`<span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${isC?'<span class="tag g" style="margin:0">Correct answer</span>':''}${isY&&!isC?'<span class="tag r" style="margin:0">Your answer</span>':''}${isY&&isC?'<span class="tag g" style="margin:0">Your answer</span>':''}</span>`:''}</span></div>`}).join('')}
-    ${q.explanation?`<div class="exp"><b>Explanation:</b> ${esc(q.explanation)}</div>`:''}</div>`).join('')||'<div class="card empty">Nothing to show here.</div>'}
-   <div style="text-align:center;margin-top:8px"><button class="btn" onclick="doneResult()">Back to tests</button></div></div>`);
-}
-
-/* ---------- boot ---------- */
-async function init(){
-  updateTheme();updateHeader();
-  if(!cloud)return login();
-  if(!AUTH)return login();
-  loading('Loading…');
-  await flushPending();
-  // a test is still running on this device -> go straight back into it
-  const rid=runningTest();
-  if(rid){RET='#/';return startTest(rid)}
-  route();
-}
-function runningTest(){
-  try{
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      if(k&&k.startsWith('cbt_prog_'+AUTH.mobile+'_')){const p=LS.get(k,null);if(p&&p.tid)return p.tid}
-    }
-  }catch(e){}
-  return null;
-}
-init();
-</script>
 </body>
 </html>
