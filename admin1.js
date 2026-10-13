@@ -81,7 +81,17 @@ async function tab(t){
   if(t==='results')await loadResults();
   if(t==='reports')await loadReports();
 }
-async function loadCatalog(){const r=await A('catalog');if(r.ok)CA={series:r.series,folders:r.folders,tests:r.tests};return r.ok}
+let PRAC=new Set();
+async function AP(action,data){
+  try{const r=await fetch(API+'/rest/v1/rpc/cbt_admin_practice',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_pw:PW,p_action:action,p_data:data||{}})});
+    return r.ok?await r.json():{ok:false}}catch(e){return{ok:false}}
+}
+async function setPrac(id,on){
+  const r=await AP('set',{id,on});
+  if(r.ok){if(on)PRAC.add(id);else PRAC.delete(id)}
+  else if(on)toast('Practice mode needs the v5 SQL update in Supabase');
+}
+async function loadCatalog(){const r=await A('catalog');if(r.ok){CA={series:r.series,folders:r.folders,tests:r.tests};const p=await AP('list');PRAC=new Set(p.ok?p.ids:[])}return r.ok}
 
 /* ================= STUDENTS ================= */
 async function loadStudents(){
