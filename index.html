@@ -445,7 +445,6 @@ input:focus,textarea:focus,select:focus{background:var(--surface)}
 html[data-theme="dark"] .card{box-shadow:0 10px 30px rgba(0,0,0,.35),0 0 38px -14px var(--glow),inset 0 1px 0 rgba(255,255,255,.07)}
 body.intest .card,.tlayout .card{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--surface);box-shadow:var(--shadow)}
 
-
 /* ===== v4 additions ===== */
 @keyframes rg{from{stroke-dashoffset:var(--c)}}
 @keyframes grow{from{width:0}}
@@ -499,12 +498,59 @@ body.intest .instbar{display:none}
 @media(min-width:701px){.instbar{bottom:20px}}
 @media(max-width:700px){.bnav button{font-size:10.5px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+/* ===== v4b: skeleton screens, splash, glass, smoother pages ===== */
+@keyframes pageIn2{from{opacity:0;transform:translateY(14px) scale(.985);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+#app>.wrap{animation:pageIn2 .42s cubic-bezier(.22,.8,.24,1) backwards}
+.grid>*{animation:rise .5s cubic-bezier(.22,.8,.24,1) backwards}
+.grid>*:nth-child(2){animation-delay:.05s}.grid>*:nth-child(3){animation-delay:.1s}.grid>*:nth-child(4){animation-delay:.15s}.grid>*:nth-child(n+5){animation-delay:.2s}
+.skpage .skhero{height:150px;border-radius:22px;margin-bottom:16px}
+.skpage .skrow{display:flex;gap:10px;margin-bottom:14px}.skpage .skrow>*{flex:1;height:46px;border-radius:14px}
+.skpage .card{margin-bottom:12px}
+.skpage .sk{background-color:var(--surface2)}
+#splash{position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:var(--bg);transition:opacity .5s,visibility .5s}
+#splash.off{opacity:0;visibility:hidden}
+#splash .in{text-align:center;animation:rise .6s cubic-bezier(.22,.8,.24,1) backwards}
+#splash .lg{width:76px;height:76px;margin:0 auto 16px;border-radius:24px;background:var(--grad);display:grid;place-items:center;color:#fff;box-shadow:0 14px 40px var(--glow);animation:breathe 2s ease-in-out infinite}
+#splash .lg svg{width:38px;height:38px}
+#splash b{font-size:20px;letter-spacing:-.02em}
+#splash .ld{width:120px;height:4px;border-radius:9px;background:var(--surface2);margin:18px auto 0;overflow:hidden}
+#splash .ld i{display:block;height:100%;width:40%;border-radius:9px;background:var(--grad);animation:ldm 1.1s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.06)}}
+@keyframes ldm{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
+/* glass */
+body{background-image:none}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(520px 420px at 8% -5%,color-mix(in srgb,var(--pri) 20%,transparent),transparent 70%),
+             radial-gradient(480px 420px at 100% 12%,color-mix(in srgb,var(--pri2) 17%,transparent),transparent 70%),
+             radial-gradient(520px 460px at 50% 112%,color-mix(in srgb,var(--pri) 14%,transparent),transparent 70%)}
+html[data-theme="dark"] body::before{opacity:.8}
+body.intest::before{display:none}
+.card,.tiles>div,.lb{ }
+.card{background:color-mix(in srgb,var(--surface) 78%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.55),var(--shadow)}
+html[data-theme="dark"] .card{background:color-mix(in srgb,var(--surface) 72%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),var(--shadow)}
+.tiles>div{background:color-mix(in srgb,var(--surface) 78%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),var(--shadow)}
+html[data-theme="dark"] .tiles>div{box-shadow:inset 0 1px 0 rgba(255,255,255,.07),var(--shadow)}
+.rankc,.hero,.rankc.card{background:var(--grad)!important}
+.hero{box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 14px 40px var(--glow)}
+.modal{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.modal .box{background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);animation:slideUp .3s cubic-bezier(.22,.8,.24,1)}
+.sheet .in{background:color-mix(in srgb,var(--surface) 90%,transparent);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.hdr{box-shadow:0 1px 0 rgba(255,255,255,.4) inset}
+.instbar{background:color-mix(in srgb,var(--surface) 86%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.btn:not(.ghost):not(.soft):not(.warn):not(.danger){box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 6px 16px var(--glow)}
+body.intest .card,body.intest .modal .box{backdrop-filter:none;-webkit-backdrop-filter:none}
+body.intest .card{background:var(--surface)}
+.seg{background:color-mix(in srgb,var(--surface2) 80%,transparent)}
+#netpill{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:90;background:var(--warn);color:#fff;font-weight:700;font-size:12.5px;padding:7px 14px;border-radius:99px;box-shadow:0 6px 20px rgba(0,0,0,.25);white-space:nowrap;animation:toastIn .3s}
+.pendc{display:flex;align-items:center;gap:12px;margin-bottom:12px;background:var(--warnSoft)}
+.pendc .mki{background:var(--warn);color:#fff}
 </style>
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
 <script src="config.js"></script>
 </head>
 <body>
+<div id="splash"><div class="in"><div class="lg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg></div><b id="spn">CBT Test Series</b><div class="ld"><i></i></div></div></div>
 <header class="hdr"><div class="hdr-in">
   <a class="brand" href="#/"><span class="logo" id="lg"></span><span id="sn">CBT Test Series</span></a>
   <div class="sp"></div>
@@ -516,10 +562,10 @@ body.intest .instbar{display:none}
 <div id="layer"></div>
 
 
-<script src="app1.js?v=10" onerror="(window.__miss=window.__miss||[]).push('app1.js')"></script>
-<script src="app2.js?v=10" onerror="(window.__miss=window.__miss||[]).push('app2.js')"></script>
-<script src="app3.js?v=10" onerror="(window.__miss=window.__miss||[]).push('app3.js')"></script>
-<script src="app4.js?v=10" onerror="(window.__miss=window.__miss||[]).push('app4.js')"></script>
+<script src="app1.js?v=12" onerror="(window.__miss=window.__miss||[]).push('app1.js')"></script>
+<script src="app2.js?v=12" onerror="(window.__miss=window.__miss||[]).push('app2.js')"></script>
+<script src="app3.js?v=12" onerror="(window.__miss=window.__miss||[]).push('app3.js')"></script>
+<script src="app4.js?v=12" onerror="(window.__miss=window.__miss||[]).push('app4.js')"></script>
 
 </body>
 </html>
