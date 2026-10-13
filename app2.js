@@ -95,7 +95,7 @@ const fsize=b=>b>1048576?(b/1048576).toFixed(1)+' MB':Math.max(1,Math.round(b/10
 function filesBlock(s){
   const fl=s.files||[];if(!fl.length)return '';
   return `<div class="h2s">${ic('file',20)} Syllabus &amp; schedule</div><div class="card">${fl.map(f=>`<div class="rrow"><div class="tico">${ic('file')}</div>
-    <div class="grow"><b>${esc(f.title)}</b><span class="sm mut">${KIND[f.kind]||'File'} · ${fsize(f.size)}</span></div>
+    <div class="grow"><b>${esc(f.title)}</b><span class="sm mut">${KIND[f.kind]||'File'}</span></div>
     <button class="btn soft sm" onclick="openFile('${f.id}')">${ic('download')} Open</button></div>`).join('')}</div>`;
 }
 async function openFile(id){
@@ -154,7 +154,7 @@ function testRow(t){
     :(wait&&!t.in_progress)?`<button class="btn ghost sm" disabled>${ic('clock')} <span data-op="${t.opens_at}">--:--</span></button><button class="btn soft sm" onclick="remindMe('${t.id}')">${ic('calendar')} Remind me</button>`
     :`<button class="btn sm" onclick="openTest('${t.id}')">${t.in_progress?'Resume':t.attempts?'Try again':'Start'} ${ic('right')}</button>`;
   return `<div class="card trow"><div class="tico">${ic(t.locked?'lock':wait?'calendar':'file')}</div>
-   <div class="info"><h3>${esc(t.title)}</h3><div class="chips"><span class="chip">${t.questions} questions</span><span class="chip">${t.duration} min</span>${status}${t.free_preview&&t.locked===false?'<span class="chip pri">Free preview</span>':''}</div>
+   <div class="info"><h3>${esc(t.title)}</h3><div class="chips"><span class="chip">${t.questions} questions</span><span class="chip">${t.duration} min</span>${t.practice?'<span class="chip ok">Practice</span>':''}${status}${t.free_preview&&t.locked===false?'<span class="chip pri">Free preview</span>':''}</div>
    ${p!=null?`<div style="margin-top:10px"><div class="row sm mut" style="justify-content:space-between;margin-bottom:5px"><span>Best score</span><b style="color:var(--tx)">${t.best}/${t.best_max} · ${p}%</b></div><div class="bar"><i style="width:${p}%"></i></div></div>`:''}</div>
    <div class="acts">${last?`<button class="btn soft sm" onclick="openReview('${last.id}')">${ic('eye')} Review</button>`:''}${cta}</div></div>`;
 }
@@ -212,6 +212,8 @@ async function viewBookmarks(){
 }
 
 /* ---------- starting a test ---------- */
+const PRACID={};
+const isPrac=id=>PRACID[id]||(CAT&&CAT.tests.some(t=>t.id===id&&t.practice));
 const tdKey=id=>'cbt_td_'+AUTH.mobile+'_'+id;
 const progKey=id=>'cbt_prog_'+AUTH.mobile+'_'+id;
 const getProg=id=>LS.get(progKey(id),null);
