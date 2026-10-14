@@ -62,19 +62,24 @@ let ST=[],CA={series:[],folders:[],tests:[]},Q=[],EDIT=null,CUR='students',OPEN=
 function shell(){
   $('#gear').style.display='';
   $('#root').innerHTML=`<div class="atabs">
+    <button id="tb_overview" onclick="tab('overview')">Overview</button>
     <button id="tb_students" onclick="tab('students')">Students <span class="cnt" id="pc" style="display:none"></span></button>
     <button id="tb_content" onclick="tab('content')">Series &amp; tests</button>
     <button id="tb_create" onclick="tab('create')">Create test</button>
     <button id="tb_results" onclick="tab('results')">Results</button>
     <button id="tb_reports" onclick="tab('reports')">Reports <span class="cnt" id="rc" style="display:none"></span></button></div>
-   <div class="pane" id="pn_students"></div><div class="pane" id="pn_content"></div><div class="pane" id="pn_create"></div><div class="pane" id="pn_results"></div><div class="pane" id="pn_reports"></div>`;
+   <div class="pane" id="pn_overview"></div><div class="pane" id="pn_students"></div><div class="pane" id="pn_content"></div><div class="pane" id="pn_create"></div><div class="pane" id="pn_results"></div><div class="pane" id="pn_reports"></div>`;
   buildCreate();
-  tab('students');
+  let t0='overview';try{t0=sessionStorage.getItem('adm_tab')||'overview'}catch(e){}
+  if(!['overview','students','content','create','results','reports'].includes(t0))t0='overview';
+  tab(t0);
   A('reports').then(r=>{if(r.ok){RP=r.reports;repBadge()}});
 }
 async function tab(t){
-  CUR=t;
-  for(const k of ['students','content','create','results','reports']){$('#tb_'+k).classList.toggle('on',k===t);$('#pn_'+k).classList.toggle('on',k===t)}
+  CUR=t;try{sessionStorage.setItem('adm_tab',t)}catch(e){}
+  for(const k of ['overview','students','content','create','results','reports']){$('#tb_'+k).classList.toggle('on',k===t);$('#pn_'+k).classList.toggle('on',k===t)}
+  const pn0=$('#pn_'+t);if(pn0&&!pn0.innerHTML.trim()&&t!=='create')pn0.innerHTML=askel();
+  if(t==='overview')await loadOverview();
   if(t==='students')await loadStudents();
   if(t==='content')await loadContent();
   if(t==='create'){await loadCatalog();syncSelects()}
@@ -119,7 +124,7 @@ function renderStudents(){
      <button class="btn sm" onclick="approve('${s.id}')">Approve</button><button class="btn ghost sm" onclick="reject('${s.id}')">Reject</button></div>`).join('')}`:''}
    <div class="sstats" id="sstats" style="margin-top:${pend.length?'22px':'0'}">${statsHtml()}</div>
    <div class="row" style="margin:12px 0 10px;gap:10px"><div style="flex:1;min-width:180px"><input type="search" id="sq" placeholder="Search name or mobile" value="${esc(SF.q)}" oninput="SF.q=this.value;drawList()"></div>
-     <button class="btn" onclick="addModal()">+ Add student</button></div>
+     <button class="btn soft" onclick="exportStudents()">CSV</button><button class="btn" onclick="addModal()">+ Add student</button></div>
    <div class="seg fseg" id="sseg"></div>
    <div class="row" style="margin:10px 0 12px;gap:10px">
      <select id="sb" style="flex:1;min-width:150px" onchange="SF.b=this.value;drawList()"><option value="all">All batches</option>${ps.map(x=>`<option value="${x.id}">${esc(x.title)} (${ST.filter(s=>(s.access||[]).includes(x.id)).length})</option>`).join('')}</select>
@@ -280,7 +285,7 @@ function testArow(t){
   return `<div class="arow"><div class="grow"><b>${esc(t.title)}</b><div class="sm mut">${t.questions} questions · ${t.duration} min · +${t.correct}/−${t.wrong} · ${t.results} attempts</div>
    <div class="chips" style="margin-top:6px">${t.opens_at?`<span class="chip pri">Starts ${new Date(+t.opens_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}</span>`:''}${t.problems?`<span class="chip" style="background:var(--badSoft);color:var(--bad)">${t.problems} need attention</span>`:''}${t.reports?`<span class="chip warn">${t.reports} report${t.reports==1?'':'s'}</span>`:''}</div></div>
    ${t.active?'':'<span class="chip">Hidden</span>'}${t.free_preview?'<span class="chip pri">Free preview</span>':''}
-   <button class="btn ghost sm" onclick="testModal('${t.id}')">Details</button><button class="btn soft sm" onclick="editQuestions('${t.id}')">Questions</button></div>`;
+   <button class="btn ghost sm" onclick="analytics('${t.id}')">Analytics</button><button class="btn ghost sm" onclick="testModal('${t.id}')">Details</button><button class="btn soft sm" onclick="editQuestions('${t.id}')">Questions</button></div>`;
 }
 function toggleAcc(id){OPEN[id]=!OPEN[id];$('#acc_'+id).classList.toggle('open',OPEN[id])}
 function seriesModal(id){
