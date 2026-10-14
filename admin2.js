@@ -23,7 +23,7 @@ function testModal(id){
    <label class="chk"><input type="checkbox" id="tp" ${t.free_preview?'checked':''}><span>Free preview (open even if the series is paid)</span></label>
    <label class="chk"><input type="checkbox" id="tpr" ${PRAC.has(t.id)?'checked':''}><span>Practice mode (instant answer + explanation after each question)</span></label>
    <label class="chk"><input type="checkbox" id="ta" ${t.active?'checked':''}><span>Visible to students</span></label>
-   <div class="row" style="margin-top:12px"><button class="btn" style="flex:1" onclick="saveTestMeta('${id}')">Save</button><button class="btn danger" onclick="delTest('${id}')">Delete</button></div>
+   <div class="row" style="margin-top:12px"><button class="btn" style="flex:1" onclick="saveTestMeta('${id}')">Save</button><button class="btn ghost" onclick="dupModal('${id}')">Duplicate</button><button class="btn danger" onclick="delTest('${id}')">Delete</button></div>
    <p class="sm mut" style="margin:10px 0 0">${t.results} past attempt${t.results===1?'':'s'}. To change the questions, use the "Questions" button.</p>`,true);
 }
 async function saveTestMeta(id){
