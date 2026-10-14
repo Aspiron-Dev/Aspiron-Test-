@@ -45,17 +45,10 @@ async function loadOverview(){
    ${att.length?`<div class="h2s">Needs attention</div><div class="card" style="padding:6px 14px">${att.join('')}</div>`:''}
    <div class="h2s">Attempts, last 7 days</div><div class="card"><div class="wk">${r.days.map(d=>`<div><i class="${d.n?'':'z'}" style="height:${d.n?Math.max(10,d.n/mx*100):0}%"></i><b>${d.n}</b>${d.d}</div>`).join('')}</div></div>
    <div class="h2s">Most attempted tests</div>${r.top.length?`<div class="card" style="padding:6px 14px">${r.top.map(t=>`<div class="attn" onclick="analytics('${t.id}')"><div class="grow"><b>${esc(t.title)}</b><div class="sm mut">${t.students} students · ${t.attempts} attempts · avg ${t.avg_pct==null?'–':t.avg_pct+'%'}</div></div><span class="btn soft sm">Analytics</span></div>`).join('')}</div>`:`<div class="card empty">No attempts yet.</div>`}
-   <div class="h2s">Announcement banner</div><div class="card"><p class="sm mut" style="margin:0 0 8px">One line shown at the top of every student's Home, for example: "Aaj 2 baje Test 5".</p>
-    <textarea id="nt" maxlength="300" placeholder="Write an announcement…" style="min-height:64px">${esc(n.text||'')}</textarea>
-    <label class="chk" style="margin-top:8px"><input type="checkbox" id="non" ${n.on?'checked':''}><span>Show to students</span></label>
-    <div class="row" style="margin-top:10px"><button class="btn" onclick="saveNotice()">Save announcement</button>${n.text?`<button class="btn ghost" onclick="$('#nt').value='';$('#non').checked=false;saveNotice()">Clear</button>`:''}</div></div>`;
+   <div class="h2s">Announcements</div><div id="annbox"><div class="card"><div class="sk" style="width:50%"></div></div></div>`;
+  loadAnnAdmin();
   countUp(el);
 }
-async function saveNotice(){
-  const r=await A2('notice_set',{text:$('#nt').value,on:$('#non').checked&&!!$('#nt').value.trim()});
-  toast(r.ok?($('#non').checked?'Announcement is live':'Saved (hidden)'):'Needs the v6 SQL update');
-}
-
 /* ---- test analytics ---- */
 let AN=null,ANS='no';
 async function analytics(id){
@@ -111,5 +104,66 @@ async function exportStudents(){
   if(!r.ok)return toast('Needs the v6 SQL update');
   const l=[['Name','Mobile','Status','Batches / paid series','Tests taken','Attempts','Average %','Joined','Last seen'].map(cq).join(',')].concat(r.rows.map(x=>[x.name,x.mobile,x.status,x.batches,x.tests,x.attempts,x.avg_pct==null?'':x.avg_pct,x.joined,x.last_seen].map(cq).join(',')));
   dl('students.csv',l);toast('Students CSV downloaded');
+}
+
+/* ---- announcements (image + link, edit, hide, delete) ---- */
+async function AA(action,data){
+  try{
+    const r=await fetch(API+'/rest/v1/rpc/cbt_admin_ann',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_pw:PW,p_action:action,p_data:data||{}})});
+    if(!r.ok)return{ok:false,error:'server'};
+    const j=await r.json();if(!j.ok&&['invalid','locked','not_set'].includes(j.error))gate(j.error);return j;
+  }catch(e){toast('No internet connection');return{ok:false,error:'network'}}
+}
+let ANNL=[],ANNIMG;
+async function loadAnnAdmin(){
+  const r=await AA('list');const box=$('#annbox');if(!box)return;
+  if(!r.ok){box.innerHTML=`<div class="card empty"><b>Announcements need the v7 SQL update.</b><p class="sm">Run supabase_v7_update.sql in Supabase SQL Editor once.</p></div>`;return}
+  ANNL=r.items;drawAnnAdmin();
+}
+function drawAnnAdmin(){
+  const box=$('#annbox');if(!box)return;
+  box.innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;gap:10px"><p class="sm mut" style="margin:0;flex:1">Students see these under the 🔔 bell on top. The newest one also shows on their Home.</p><button class="btn" onclick="annModal()">+ New</button></div>
+   ${ANNL.length?ANNL.map(x=>`<div class="annr ${x.active?'':'off'}"><div class="grow"><b>${esc(x.title||(x.text||'Photo').slice(0,50))}</b>
+     <div class="sm mut">${esc((x.text||'').slice(0,90))}${(x.text||'').length>90?'…':''}</div>
+     <div class="chips" style="margin-top:6px"><span class="chip">${new Date(x.at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</span>${x.active?'<span class="chip ok">Live</span>':'<span class="chip">Hidden</span>'}${x.img?'<span class="chip pri">📷 Image</span>':''}${x.link?'<span class="chip pri">🔗 Link</span>':''}</div></div>
+     <div class="acts"><button class="btn ghost sm" onclick="annModal('${x.id}')">Edit</button><button class="btn ghost sm" onclick="annToggle('${x.id}',${!x.active})">${x.active?'Hide':'Show'}</button><button class="btn danger sm" onclick="annDel('${x.id}')">Delete</button></div></div>`).join(''):`<div class="sm mut" style="padding:16px 2px">No announcements yet. Tap "+ New".</div>`}</div>`;
+}
+async function annModal(id){
+  const x=id?ANNL.find(v=>v.id===id):null;ANNIMG=undefined;
+  modal(`<h2>${x?'Edit':'New'} announcement</h2>
+   <label class="l">Title (optional)</label><input type="text" id="at" maxlength="80" value="${esc(x?x.title:'')}" placeholder="e.g. Test 5 today">
+   <label class="l">Message</label><textarea id="ab" maxlength="600" style="min-height:90px" placeholder="Write your message…">${esc(x?x.text:'')}</textarea>
+   <div class="g2"><div><label class="l">Link (optional)</label><input type="text" inputmode="url" id="al" value="${esc(x?x.link:'')}" placeholder="https://…"></div><div><label class="l">Button text</label><input type="text" id="alb" maxlength="40" value="${esc(x?x.label:'')}" placeholder="Open link"></div></div>
+   <label class="l">Image (optional)</label><div id="aprev" style="margin-bottom:8px"></div>
+   <div class="row"><label class="btn soft sm" style="cursor:pointer">📷 Choose image<input type="file" accept="image/*" style="display:none" onchange="annPick(this)"></label><button class="btn ghost sm" id="armv" style="display:none" onclick="ANNIMG='';annPrev(null)">Remove image</button></div>
+   <label class="chk" style="margin-top:12px"><input type="checkbox" id="aa" ${!x||x.active?'checked':''}><span>Show to students</span></label>
+   <div class="row" style="margin-top:14px"><button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn" style="flex:1" id="asv" onclick="annSave('${id||''}')">${x?'Save':'Publish'}</button></div>`,true);
+  if(x&&x.img){annPrev('loading');const r=await AA('img',{id});annPrev(r.ok?r.image:null)}
+}
+function annPrev(src){
+  const e=$('#aprev'),rm=$('#armv');if(!e)return;
+  if(src==='loading'){e.innerHTML='<div class="sk" style="height:90px;border-radius:12px"></div>';return}
+  e.innerHTML=src?`<img src="${src}" style="max-width:100%;max-height:180px;border-radius:12px">`:'';
+  if(rm)rm.style.display=src?'':'none';
+}
+async function annPick(inp){
+  const f=inp.files[0];if(!f)return;
+  try{const d=await compressDataUrl(await fileToUrl(f),900,.8);if(!d)throw 0;ANNIMG=d;annPrev(d)}catch(e){toast('Could not use this image')}
+}
+async function annSave(id){
+  const b=$('#asv');
+  const data={id:id||null,title:$('#at').value,text:$('#ab').value,link:$('#al').value,label:$('#alb').value,active:$('#aa').checked};
+  if(ANNIMG!==undefined)data.image=ANNIMG;
+  const hasImg=ANNIMG?true:(ANNIMG===undefined&&id&&(ANNL.find(v=>v.id===id)||{}).img);
+  if(!data.title.trim()&&!data.text.trim()&&!hasImg)return toast('Write a message or add an image');
+  b.disabled=true;b.textContent='Saving…';
+  const r=await AA('save',data);
+  if(!r.ok){b.disabled=false;b.textContent=id?'Save':'Publish';return toast(r.error==='link'?'That link does not look right':r.error==='image'?'Image is too big':r.error==='limit'?'Too many announcements (100). Delete some.':'Could not save (v7 SQL done?)')}
+  closeModal();toast(id?'Saved':'Published ✓');loadAnnAdmin();
+}
+async function annToggle(id,on){const r=await AA('toggle',{id,active:on});if(r.ok){toast(on?'Shown to students':'Hidden');loadAnnAdmin()}}
+async function annDel(id){
+  if(!confirm('Delete this announcement? Students will no longer see it.'))return;
+  const r=await AA('delete',{id});if(r.ok){toast('Deleted');loadAnnAdmin()}
 }
 ;(window.__p=window.__p||{})['admin4']=1;
