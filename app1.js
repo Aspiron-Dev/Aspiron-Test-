@@ -103,6 +103,7 @@ function openLook(){
    <button class="btn block" onclick="closeModal()">Done</button>`);
 }
 function updateHeader(){
+  {const bl=document.getElementById('bell');if(bl){bl.innerHTML=ic('bell',20);bl.style.display=AUTH?'':'none'}}
   $('#lg').innerHTML=ic('target',20);
   $('#sn').textContent=CFG.SITE_NAME||'CBT Test Series';{const sp=document.getElementById('spn');if(sp)sp.textContent=CFG.SITE_NAME||'CBT Test Series'}document.title=CFG.SITE_NAME||'CBT Test Series';
   $('#usr').innerHTML=AUTH?`<button class="chip-user" onclick="openProfile()" title="My profile"><span class="avatar">${esc((AUTH.name||'?').trim()[0].toUpperCase())}</span>${esc((AUTH.name||'').split(' ')[0])}</button>`:'';
@@ -191,7 +192,7 @@ function signOut(){
   modal(`<h2>Sign out?</h2><p class="mut">You will need your access code to sign in again. Tests in progress stay saved on this device.</p>
   <div class="row"><button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn danger" style="flex:1" onclick="doSignOut()">Sign out</button></div>`);
 }
-function doSignOut(){closeModal();AUTH=null;LS.del('cbt_auth');CAT=null;login()}
+function doSignOut(){closeModal();AUTH=null;ANN=null;LS.del('cbt_auth');CAT=null;login()}
 
 /* ---------- catalog / routing ---------- */
 let CATAT=0;
@@ -208,6 +209,7 @@ async function loadCat(silent){
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AUTH&&!INTEST&&CAT&&Date.now()-CATAT>30000)route()});
 async function route(){
   if(INTEST||!AUTH)return;
+  annLoad();
   if(!CAT){skelPage();if(!(await loadCat()))return}
   else if(Date.now()-CATAT>30000){await loadCat(true);if(!AUTH||INTEST)return}
   const h=location.hash||'#/';let m;
