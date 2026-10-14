@@ -163,6 +163,16 @@ async function mkDone(n){
 async function mkKind(k){MK.kind=k;MK.st={};if(await mkFetch(0))mkRender()}
 async function mkSec(s){MK.sec=s;MK.st={};if(await mkFetch(0))mkRender()}
 async function mkMore(){if(await mkFetch(MK.items.length)){const l=$('#mklist');if(l)l.innerHTML=mkList()}}
+/* announcement banner */
+IC.mega='<path d="M3 11v2a1 1 0 001 1h2l5 4V6L6 10H4a1 1 0 00-1 1z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 6a9 9 0 010 12"/>';
+let NOTICE=null;
+async function loadNotice(){
+  const el=$('#notice');if(!el)return;
+  if(!NOTICE||Date.now()-NOTICE.t>60000){const r=await rpc('cbt_notice',{});NOTICE={t:Date.now(),r:r.ok?r:null}}
+  const n=NOTICE.r,e2=$('#notice');if(!e2||!n||!n.on||!n.text)return;
+  if(LS.get('cbt_notice_seen',0)===n.at)return;
+  e2.innerHTML=`<div class="card notice"><span class="mki">${ic('mega',20)}</span><div class="grow"><b>Announcement</b><div style="margin-top:2px;white-space:pre-wrap">${esc(n.text)}</div></div><button class="iconbtn sm" aria-label="Dismiss" onclick="LS.set('cbt_notice_seen',${+n.at||0});this.closest('.card').remove()">${ic('x',16)}</button></div>`;
+}
 /* offline safety + reminders */
 function netPill(){
   let e=document.getElementById('netpill');
