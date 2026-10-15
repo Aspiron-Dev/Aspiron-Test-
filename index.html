@@ -648,6 +648,45 @@ html[data-theme="dark"] input[type=datetime-local]{color-scheme:dark}
 .tkwr.on{box-shadow:inset 0 0 0 2px var(--pri)}.tkwr .grow b{display:block;margin-bottom:6px}
 .tkmi{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;background:var(--surface2);color:var(--tx);border-radius:14px;padding:12px;margin-bottom:8px}
 .tkmi>span{font-size:20px;width:26px;text-align:center}.tkmi.warn b{color:var(--warn)}.tkmi.bad b{color:var(--bad)}
+
+/* ---- v9  test history, menu drawer, 6-item nav ---- */
+.hsseg{width:100%;display:flex}.hsseg button{flex:1}
+.hscard{display:flex;align-items:center;gap:12px;margin-top:10px;cursor:pointer;padding:14px}
+.hscard>svg.i{color:var(--mut);flex:none}
+.hsn{width:52px;height:52px;border-radius:14px;background:var(--priSoft);color:var(--pri);display:grid;place-items:center;align-content:center;flex:none;text-align:center;line-height:1.05}
+.hsn b{font-size:20px;display:block}.hsn span{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.hscard .grow b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hsp{width:64px;height:26px;color:var(--pri);flex:none}
+.hsum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.hsum div{background:var(--surface);border-radius:14px;padding:12px 4px;text-align:center;box-shadow:var(--shadow)}
+.hsum b{display:block;font-size:19px;line-height:1.1}.hsum span{font-size:10px;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.3px}
+.hdot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle}
+.hs4{margin:0}
+.hcmp .hcr{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--bd)}
+.hcr span:first-child{flex:1;color:var(--mut);font-size:14px}.hcr b{min-width:64px;text-align:right}
+.hdl{min-width:62px;text-align:center;font-size:12px;font-weight:800;border-radius:99px;padding:3px 8px;background:var(--surface2);color:var(--mut)}
+.hdl.g{background:var(--okSoft);color:var(--ok)}.hdl.b{background:var(--badSoft);color:var(--bad)}
+.hlist{padding:6px 14px}
+.hsrow{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--bd)}.hsrow:first-child{border-top:0}
+.hsrow.cur{background:var(--priSoft);margin:0 -14px;padding:12px 14px;border-radius:12px;border-top:0}
+.hsno{width:38px;height:38px;border-radius:12px;background:var(--surface2);display:grid;place-items:center;font-weight:800;font-size:13px;flex:none}
+.hsrow b small{font-weight:600;color:var(--mut)}
+.hsch{display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px;font-weight:700;margin-top:3px;color:var(--mut)}
+.hsch .g{color:var(--ok)}.hsch .r{color:var(--bad)}.hsch .a{color:var(--pri)}
+.rtabs .seg button{padding:9px 2px;font-size:12.5px}
+.bnav button{font-size:10.5px}
+.drw{position:fixed;inset:0;z-index:70;background:rgba(5,8,20,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:drwF .2s ease}
+.drp{position:absolute;left:0;top:0;bottom:0;width:min(82vw,320px);background:var(--surface);box-shadow:8px 0 40px rgba(0,0,0,.3);display:flex;flex-direction:column;animation:drwS .28s cubic-bezier(.22,.8,.24,1)}
+@keyframes drwF{from{opacity:0}to{opacity:1}}@keyframes drwS{from{transform:translateX(-100%)}to{transform:none}}
+.drh{display:flex;align-items:center;gap:12px;padding:calc(env(safe-area-inset-top,0px) + 18px) 16px 16px;background:var(--grad);color:#fff}
+.drh .bigav{width:46px;height:46px;font-size:19px;background:rgba(255,255,255,.22);color:#fff;flex:none}
+.drh .grow b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drx{border:0;background:rgba(255,255,255,.2);color:#fff;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;flex:none}
+.drl{flex:1;overflow-y:auto;padding:8px 10px 20px}
+.drs{font-size:10.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--mut);padding:14px 10px 6px}
+.dri{display:flex;align-items:center;gap:14px;width:100%;border:0;background:transparent;color:var(--tx);padding:12px 10px;border-radius:12px;font-size:15px;font-weight:600;text-align:left;text-decoration:none}
+.dri:active{background:var(--surface2)}.dri.on{background:var(--priSoft);color:var(--pri)}.dri svg{flex:none;color:var(--mut)}.dri.on svg{color:var(--pri)}
+.dri.out{color:var(--bad);margin-top:8px}.dri.out svg{color:var(--bad)}
 </style>
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
@@ -656,6 +695,7 @@ html[data-theme="dark"] input[type=datetime-local]{color-scheme:dark}
 <body>
 <div id="splash"><div class="in"><div class="lg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg></div><b id="spn">CBT Test Series</b><div class="ld"><i></i></div></div></div>
 <header class="hdr"><div class="hdr-in">
+  <button class="iconbtn" id="mnu" aria-label="Menu" onclick="openMenu()" style="display:none"></button>
   <a class="brand" href="#/"><span class="logo" id="lg"></span><span id="sn">CBT Test Series</span></a>
   <div class="sp"></div>
   <div id="usr"></div>
