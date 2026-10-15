@@ -94,12 +94,12 @@ function setMode(t){document.documentElement.dataset.theme=t;LS.set('cbt_theme',
 function setAccent(a){document.documentElement.dataset.accent=a;LS.set('cbt_accent',a);syncTheme();openLook()}
 function openLook(){
   const D=document.documentElement.dataset,dark=D.theme==='dark',ac=D.accent||'blue';
-  const sw={blue:'#1d6fe8',green:'#12a56a',gray:'#5b6677'};
-  modal(`<h2>Appearance</h2><p class="mut sm" style="margin:4px 0 12px">Choose a mode and a colour. That gives 6 looks in total.</p>
+  const sw={blue:'#1d6fe8',green:'#12a56a',gray:'#5b6677',cyber:'linear-gradient(135deg,#22d3ee,#6366f1)',royal:'linear-gradient(135deg,#7c3aed,#a78bfa)',rose:'linear-gradient(135deg,#e11d48,#fb7185)'};
+  modal(`<h2>Appearance</h2><p class="mut sm" style="margin:4px 0 12px">Choose a mode and a colour. That gives 12 looks in total.</p>
    <div class="sm mut" style="font-weight:600">Mode</div>
    <div class="lookrow" style="grid-template-columns:repeat(2,1fr)"><button class="look m ${dark?'':'on'}" onclick="setMode('light')"><i style="background:#fff"></i>Light</button><button class="look m ${dark?'on':''}" onclick="setMode('dark')"><i style="background:#2b3a52"></i>Dark</button></div>
    <div class="sm mut" style="font-weight:600">Colour</div>
-   <div class="lookrow">${['blue','green','gray'].map(a=>`<button class="look ${ac===a?'on':''}" onclick="setAccent('${a}')"><i style="background:${sw[a]}"></i>${a[0].toUpperCase()+a.slice(1)}</button>`).join('')}</div>
+   <div class="lookrow">${['blue','green','gray','cyber','royal','rose'].map(a=>`<button class="look ${ac===a?'on':''}" onclick="setAccent('${a}')"><i style="background:${sw[a]}"></i>${a[0].toUpperCase()+a.slice(1)}</button>`).join('')}</div>
    <button class="btn block" onclick="closeModal()">Done</button>`);
 }
 function updateHeader(){
@@ -218,6 +218,7 @@ async function route(){
   if(h==='#/r')return viewHome('results');
   if(h==='#/b')return viewBookmarks();
   if(h==='#/m')return viewMistakes();
+  if(h==='#/t')return viewTracker();
   if(h==='#/series')return viewHome('series');
   return viewHome('dash');
 }
@@ -287,6 +288,7 @@ function openProfile(){
    <div class="kv"><div><b>${P.n}</b><span>Tests</span></div><div><b>${P.avg}%</b><span>Average</span></div><div><b>${P.streak}🔥</b><span>Day streak</span></div></div>
    <div class="badges" style="text-align:left;margin-bottom:14px">${P.badges.map(b=>`<div class="bdg ${b.on?'on':''}"><b>${b.i}</b>${b.t}</div>`).join('')}</div>
    <div class="row" style="margin-bottom:8px"><button class="btn ghost" style="flex:1" onclick="closeModal();location.hash='#/b'">${ic('star')} Bookmarks (${BM.size})</button><button class="btn ghost" style="flex:1" onclick="openLook()">${ic('palette')} Appearance</button></div>
+   <div class="row" style="margin-bottom:8px"><button class="btn ghost" style="flex:1" onclick="closeModal();location.hash='#/t'">${ic('target')} Study tracker</button></div>
    ${wa?`<a class="btn soft block" style="text-decoration:none;margin-bottom:8px" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Contact admin</a>`:''}
    <div class="row"><button class="btn ghost" style="flex:1" onclick="closeModal()">Close</button><button class="btn danger" style="flex:1" onclick="closeModal();signOut()">Sign out</button></div></div>`);
 }
