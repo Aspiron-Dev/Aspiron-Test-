@@ -103,6 +103,7 @@ function openLook(){
    <button class="btn block" onclick="closeModal()">Done</button>`);
 }
 function updateHeader(){
+  mnuUpdate();
   {const bl=document.getElementById('bell');if(bl){bl.innerHTML=ic('bell',20);bl.style.display=AUTH?'':'none'}}
   $('#lg').innerHTML=ic('target',20);
   $('#sn').textContent=CFG.SITE_NAME||'CBT Test Series';{const sp=document.getElementById('spn');if(sp)sp.textContent=CFG.SITE_NAME||'CBT Test Series'}document.title=CFG.SITE_NAME||'CBT Test Series';
@@ -112,7 +113,7 @@ function toast(m){const t=document.createElement('div');t.className='toast';t.te
 function modal(h){$('#layer').innerHTML=`<div class="modal" onclick="if(event.target===this)closeModal()"><div class="box">${h}</div></div>`}
 function closeModal(){$('#layer').innerHTML=''}
 function setNav(tab){
-  const it=[['dash','#/','Home','target'],['series','#/series','Tests','book'],['mk','#/m','Mistakes','notebook'],['bm','#/b','Saved','star'],['results','#/r','Results','trophy']];
+  const it=[['dash','#/','Home','target'],['series','#/series','Tests','book'],['mk','#/m','Mistakes','notebook'],['bm','#/b','Saved','star'],['results','#/r','Results','trophy'],['tr','#/t','Tracker','tracker']];
   $('#bnav').innerHTML=it.map(x=>`<button class="${tab===x[0]?'on':''}" onclick="location.hash='${x[1]}'">${ic(x[3],22)}${x[2]}</button>`).join('');
   document.body.classList.add('hasnav');
 }
@@ -219,6 +220,7 @@ async function route(){
   if(h==='#/b')return viewBookmarks();
   if(h==='#/m')return viewMistakes();
   if(h==='#/t')return viewTracker();
+  if((m=h.match(/^#\/h\/(.+)$/)))return viewHistory(decodeURIComponent(m[1]));
   if(h==='#/series')return viewHome('series');
   return viewHome('dash');
 }
@@ -288,7 +290,6 @@ function openProfile(){
    <div class="kv"><div><b>${P.n}</b><span>Tests</span></div><div><b>${P.avg}%</b><span>Average</span></div><div><b>${P.streak}🔥</b><span>Day streak</span></div></div>
    <div class="badges" style="text-align:left;margin-bottom:14px">${P.badges.map(b=>`<div class="bdg ${b.on?'on':''}"><b>${b.i}</b>${b.t}</div>`).join('')}</div>
    <div class="row" style="margin-bottom:8px"><button class="btn ghost" style="flex:1" onclick="closeModal();location.hash='#/b'">${ic('star')} Bookmarks (${BM.size})</button><button class="btn ghost" style="flex:1" onclick="openLook()">${ic('palette')} Appearance</button></div>
-   <div class="row" style="margin-bottom:8px"><button class="btn ghost" style="flex:1" onclick="closeModal();location.hash='#/t'">${ic('target')} Study tracker</button></div>
    ${wa?`<a class="btn soft block" style="text-decoration:none;margin-bottom:8px" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Contact admin</a>`:''}
    <div class="row"><button class="btn ghost" style="flex:1" onclick="closeModal()">Close</button><button class="btn danger" style="flex:1" onclick="closeModal();signOut()">Sign out</button></div></div>`);
 }
