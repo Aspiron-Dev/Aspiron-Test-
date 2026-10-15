@@ -21,13 +21,13 @@ function viewHome(tab){
   else if(tab==='series')o+=seriesList();
   else{
     if(!R.length)o+=`<div class="card empty">You have not attempted any test yet.</div>`;
-    else o+=`<div class="card">${R.map(resultRow).join('')}</div>`;
+    else o+=histList(R);
   }
   setApp(o+'</div>');setNav(tab);
   if(tab==='dash'){loadNotice();cdTick();if(R.length)loadIns()}
 }
 function dashBody(R,avg){
-  let o='<div id="notice"></div>'+cdCard()+trkMini();
+  let o='<div id="notice"></div>'+cdCard();
   const pn=getPend();
   if(pn.length)o+=`<div class="card pendc"><span class="mki">${ic('wifi',22)}</span><div class="grow"><b>${pn.length} test waiting to submit</b><div class="sm mut">Your answers are safe on this phone. They will be sent when internet is back.</div></div><button class="btn sm" onclick="retryPend()">Submit now</button></div>`;
   const prog=CAT.tests.filter(t=>t.in_progress&&!t.locked);
