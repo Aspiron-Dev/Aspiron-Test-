@@ -30,7 +30,7 @@ function rvSol(A){
     ${q.explanation||q.eimg?`<div class="exp"><b>Explanation:</b> ${esc(q.explanation||'')}${imgTag(q.eimg)}</div>`:''}</div>`).join('')||'<div class="card empty">Nothing to show here.</div>'}
    <div style="text-align:center;margin-top:8px"><button class="btn" onclick="doneResult()">Back to tests</button></div>`;
 }
-function rBody(){const A=rAnalyse();return RV.tab==='sub'?rvSub(A):RV.tab==='time'?rvTime(A):RV.tab==='sol'?rvSol(A):rvOv(A)}
+function rBody(){const A=rAnalyse();return RV.tab==='his'?rvHis(A):RV.tab==='sub'?rvSub(A):RV.tab==='time'?rvTime(A):RV.tab==='sol'?rvSol(A):rvOv(A)}
 function rRefresh(){const b=$('#rbody');if(!b)return;b.innerHTML=rBody();document.querySelectorAll('#rtabs button').forEach(x=>x.classList.toggle('on',x.dataset.t===RV.tab));countUp(b)}
 function rTab(t){RV.tab=t;rRefresh();const e=$('#rtabs');if(e&&e.getBoundingClientRect().top<0)window.scrollTo({top:Math.max(0,e.parentElement.offsetTop-10),behavior:'smooth'})}
 function setFilter(f){RV.filter=f;rRefresh()}
@@ -46,7 +46,7 @@ function showResult(){
    <div class="ring">${ring(p,150,12,col)}<div class="c"><div><b data-cu="${rec.score}">${rec.score}</b><span class="sm mut">out of ${rec.max}</span></div></div></div>
    <h2>${p>=75?'Excellent work! 🎉':p>=50?'Good effort 👍':'Keep practising 💪'}</h2><div class="mut sm" style="margin-top:4px">${p}%${rec.late?' · Submitted late':''}</div>
    <div class="s4"><div><b style="color:var(--ok)">${rec.correct}</b><span>Correct</span></div><div><b style="color:var(--bad)">${rec.wrong}</b><span>Wrong</span></div><div><b>${rec.skipped}</b><span>Skipped</span></div><div><b>${A.Qs.length}</b><span>Total</span></div></div></div>
-   <div class="rtabs"><div class="seg" id="rtabs">${tb('ov','Overview')}${A.hasSec?tb('sub','Subjects'):''}${tb('time','Time')}${tb('sol','Solutions')}</div></div>
+   <div class="rtabs"><div class="seg" id="rtabs">${tb('ov','Overview')}${A.hasSec?tb('sub','Subjects'):''}${tb('time','Time')}${tb('sol','Solutions')}${tb('his','History')}</div></div>
    <div id="rbody">${rBody()}</div></div>`);
 }
 
