@@ -242,5 +242,124 @@ function trkMenu(){
    ${it('🗑️','Reset everything','Delete all weeks, subjects and tasks','trkResetAll()','bad')}
   </div><button class="btn ghost block" style="margin-top:10px" onclick="closeModal()">Close</button>`);
 }
+/* ---------- icons for the new nav / menu ---------- */
+IC.tracker='<path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.3 1.3L7 5M3.5 12l1.3 1.3L7 11M3.5 18l1.3 1.3L7 17"/>';
+IC.menu='<path d="M4 7h16M4 12h16M4 17h16"/>';
+IC.hist='<path d="M3 12a9 9 0 109-9 9.7 9.7 0 00-6.7 2.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>';
+
+/* ---------- test history (every attempt of every test) ---------- */
+let HV='test';
+const fN=n=>Math.round((+n||0)*100)/100;
+const fDate=ms=>new Date(ms).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+const fDur=s=>{s=Math.max(0,Math.round(s||0));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return h?h+'h '+String(m).padStart(2,'0')+'m':m?m+'m '+String(x).padStart(2,'0')+'s':x+'s'};
+const hAcc=x=>x.correct+x.wrong?Math.round(x.correct*100/(x.correct+x.wrong)):0;
+const hKey=x=>x.test_id||('n:'+x.title);
+function hGroups(R){
+  const m=new Map();
+  R.forEach(x=>{const k=hKey(x);if(!m.has(k))m.set(k,[]);m.get(k).push(x)});
+  const out=[];
+  m.forEach((a,k)=>{a.sort((p,q)=>p.at-q.at);out.push({key:k,title:a[a.length-1].title,att:a,last:a[a.length-1].at})});
+  return out.sort((p,q)=>q.last-p.last);
+}
+const hAttempts=key=>hGroups((CAT&&CAT.results)||[]).find(g=>g.key===key);
+function hSpark(a){
+  const v=a.map(x=>pct(x.score,x.max)).slice(-8),w=64,h=26;if(v.length<2)return '';
+  const pts=v.map((p,i)=>(i*(w/(v.length-1))).toFixed(1)+','+(h-3-(Math.max(0,p)/100)*(h-6)).toFixed(1)).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" class="hsp"><polyline fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" points="${pts}"/></svg>`;
+}
+function histList(R){
+  const seg=`<div class="seg hsseg"><button class="${HV==='test'?'on':''}" onclick="HV='test';route()">By test</button><button class="${HV==='all'?'on':''}" onclick="HV='all';route()">All attempts</button></div>`;
+  if(HV==='all')return seg+`<div class="card" style="margin-top:12px">${R.map(resultRow).join('')}</div>`;
+  const G=hGroups(R);
+  return seg+`<p class="sm mut" style="margin:10px 2px">Tap a test to see every attempt, your progress and a full analysis.</p>`+G.map(g=>{
+    const a=g.att,l=a[a.length-1],lp=pct(l.score,l.max),best=Math.max(...a.map(x=>pct(x.score,x.max)));
+    const d=a.length>1?lp-pct(a[a.length-2].score,a[a.length-2].max):null;
+    return `<div class="card hscard" onclick="location.hash='#/h/${encodeURIComponent(g.key)}'">
+     <div class="hsn"><b>${a.length}</b><span>${a.length>1?'attempts':'attempt'}</span></div>
+     <div class="grow"><b>${esc(g.title)}</b><div class="sm mut">Latest ${lp}% · Best ${best}%${!d?'':` · <span style="color:var(${d>0?'--ok':'--bad'});font-weight:700">${d>0?'▲':'▼'} ${Math.abs(d)}%</span>`}</div><div class="sm mut">${fDate(l.at)}${isPrac(l.test_id)?' · Practice':''}</div></div>
+     ${hSpark(a)}${ic('right',16)}</div>`;
+  }).join('');
+}
+function dChip(cur,prev,upGood,unit){
+  const d=fN(cur-prev);if(!d)return `<span class="hdl">–</span>`;
+  const good=upGood?d>0:d<0;
+  return `<span class="hdl ${good?'g':'b'}">${d>0?'▲':'▼'} ${Math.abs(d)}${unit||''}</span>`;
+}
+function hTrend(a){
+  const L=a.slice(-15),off=a.length-L.length,bh=100,bw=Math.max(30,Math.floor(300/L.length)),W=L.length*bw+12;
+  const best=Math.max(...L.map(x=>pct(x.score,x.max)));
+  let bars='',pts=[];
+  L.forEach((x,i)=>{
+    const p=Math.max(0,pct(x.score,x.max)),h=Math.round(p/100*bh),cx=6+i*bw+bw/2,isB=p===best&&L.length>1,isL=i===L.length-1;
+    bars+=`<rect x="${(cx-bw*.3).toFixed(1)}" y="${bh-h}" width="${(bw*.6).toFixed(1)}" height="${Math.max(h,2)}" rx="5" style="fill:${isL?'var(--pri)':isB?'var(--ok)':'color-mix(in srgb,var(--pri) 30%,transparent)'}"/><text x="${cx.toFixed(1)}" y="${bh-h-5}" text-anchor="middle" font-size="9.5" font-weight="700" style="fill:var(--tx)">${p}%</text><text x="${cx.toFixed(1)}" y="${bh+15}" text-anchor="middle" font-size="9.5" style="fill:var(--mut)">A${off+i+1}</text>`;
+    pts.push(cx.toFixed(1)+','+(bh-h));
+  });
+  return `<div style="overflow-x:auto"><svg viewBox="0 0 ${W} ${bh+22}" style="min-width:${Math.min(W,300)}px;width:100%;overflow:visible"><polyline fill="none" stroke="var(--pri)" stroke-width="1.6" stroke-dasharray="4 3" opacity=".55" points="${pts.join(' ')}"/>${bars}</svg></div><div class="sm mut" style="margin-top:6px"><span class="hdot" style="background:var(--pri)"></span>Latest <span class="hdot" style="background:var(--ok);margin-left:10px"></span>Best</div>`;
+}
+function histRev(id){RET=location.hash;openReview(id)}
+function attRow(x,n,best,cur){
+  const p=pct(x.score,x.max);
+  return `<div class="hsrow ${cur?'cur':''}"><div class="hsno">#${n}</div><div class="grow"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b>${fN(x.score)}<small>/${fN(x.max)}</small> <span class="mut sm">· ${p}%</span></b>${best?'<span class="chip pri">Best</span>':''}</div>
+   <div class="sm mut">${fDate(x.at)} · ${fDur(x.used)}${x.late?' · Late':''}</div>
+   <div class="hsch"><span class="g">✓ ${x.correct}</span><span class="r">✗ ${x.wrong}</span><span>⊘ ${x.skipped}</span><span class="a">${hAcc(x)}% acc</span></div></div>
+   ${cur?'<span class="chip">Viewing</span>':`<button class="btn soft sm" onclick="histRev('${x.id}')">Review</button>`}</div>`;
+}
+function viewHistory(key){
+  const g=hAttempts(key);
+  if(!g){location.hash='#/r';return}
+  const a=g.att,n=a.length,l=a[n-1],f=a[0],P=a.map(x=>pct(x.score,x.max)),best=Math.max(...P),bi=P.lastIndexOf(best);
+  const avg=Math.round(P.reduce((s,v)=>s+v,0)/n),imp=P[n-1]-P[0];
+  const tot=a.reduce((s,x)=>s+(x.used||0),0);
+  let cmp='';
+  if(n>1){
+    const p=a[n-2];
+    const r=(lb,c,pv,up,u,fmt)=>`<div class="hcr"><span>${lb}</span><b>${fmt?fmt(c):fN(c)+(u||'')}</b>${dChip(c,pv,up,u)}</div>`;
+    cmp=`<div class="h2s">${ic('target',20)} Latest vs previous</div><div class="card hcmp"><div class="sm mut" style="margin-bottom:8px">Attempt ${n} compared with attempt ${n-1}</div>
+     ${r('Marks',l.score,p.score,true)}${r('Correct',l.correct,p.correct,true)}${r('Wrong',l.wrong,p.wrong,false)}${r('Skipped',l.skipped,p.skipped,false)}${r('Accuracy',hAcc(l),hAcc(p),true,'%')}${r('Time taken',Math.round((l.used||0)/60),Math.round((p.used||0)/60),false,' min')}</div>`;
+  }
+  const rows=[...a].map((x,i)=>({x,i})).reverse().map(o=>attRow(o.x,o.i+1,n>1&&o.i===bi,false)).join('');
+  setApp(`<div class="wrap"><div class="crumb"><a href="#/r">${ic('back',14)} Results</a></div>
+   <h1 class="tkh" style="font-size:22px">${esc(g.title)}</h1><div class="sm mut" style="margin:4px 0 14px">${n} attempt${n>1?'s':''} · first ${fDate(f.at)}${n>1?' · last '+fDate(l.at):''}${isPrac(l.test_id)?' · Practice test':''}</div>
+   <div class="hsum"><div><b data-cu="${n}">${n}</b><span>Attempts</span></div><div><b>${best}%</b><span>Best score</span></div><div><b>${avg}%</b><span>Average</span></div><div><b style="color:var(${imp>=0?'--ok':'--bad'})">${n>1?(imp>=0?'+':'')+imp+'%':'–'}</b><span>Improvement</span></div></div>
+   <div class="card" style="margin-top:12px"><div class="row" style="justify-content:space-between"><b>Score in every attempt</b><span class="sm mut">${n>15?'Last 15':'All'} attempts</span></div><div style="margin-top:12px">${hTrend(a)}</div></div>
+   <div class="card hlast" style="margin-top:12px"><div class="row" style="justify-content:space-between;margin-bottom:10px"><b>Latest attempt (#${n})</b><span class="sm mut">${fDate(l.at)}</span></div>
+    <div class="s4 hs4"><div><b style="color:var(--ok)">${l.correct}</b><span>Correct</span></div><div><b style="color:var(--bad)">${l.wrong}</b><span>Wrong</span></div><div><b>${l.skipped}</b><span>Skipped</span></div><div><b>${fN(l.score)}</b><span>Marks / ${fN(l.max)}</span></div></div>
+    <div class="row" style="margin-top:12px"><span class="chip">Accuracy ${hAcc(l)}%</span><span class="chip">Time ${fDur(l.used)}</span><span class="chip">Total practice ${fDur(tot)}</span></div>
+    <button class="btn block" style="margin-top:12px" onclick="histRev('${l.id}')">${ic('eye')} Review latest attempt (solutions + analysis)</button></div>
+   ${cmp}<div class="h2s">${ic('hist',20)} All attempts</div><div class="card hlist">${rows}</div></div>`);
+  setNav('results');
+}
+function rvHis(A){
+  const rec=A.rec,g=hAttempts(hKey(rec));
+  if(!g)return `<div class="card empty">No history found for this test.</div>`;
+  const a=g.att,n=a.length,P=a.map(x=>pct(x.score,x.max)),best=Math.max(...P);
+  const rows=[...a].map((x,i)=>({x,i})).reverse().map(o=>attRow(o.x,o.i+1,n>1&&P[o.i]===best&&o.i===P.lastIndexOf(best),o.x.id===rec.id)).join('');
+  return `<div class="card"><div class="row" style="justify-content:space-between"><b>${n} attempt${n>1?'s':''} of this test</b><span class="sm mut">Best ${best}%</span></div>${n>1?`<div style="margin-top:12px">${hTrend(a)}</div>`:`<p class="sm mut" style="margin:8px 0 0">This is your first attempt. Attempt it again to see your progress here.</p>`}</div>
+   <div class="card hlist" style="margin-top:12px">${rows}</div>
+   <button class="btn soft block" style="margin-top:12px" onclick="RV=null;location.hash='#/h/${encodeURIComponent(g.key)}'">${ic('target')} Open full history dashboard</button>`;
+}
+
+/* ---------- 3-line menu (side drawer) ---------- */
+function mnuUpdate(){
+  const b=document.getElementById('mnu');if(!b)return;
+  b.innerHTML=ic('menu',22);b.style.display=AUTH?'':'none';
+}
+function openMenu(){
+  if(!AUTH)return;
+  const R=CAT?CAT.results||[]:[],P=pstats(R),nm=AUTH.name||'';
+  const cur=(location.hash||'#/').replace(/^#\/?/,'');
+  const go=h=>`closeModal();location.hash='${h}'`;
+  const it=(i,t,f,on)=>`<button class="dri ${on?'on':''}" onclick="${f}">${ic(i,20)}<span>${t}</span></button>`;
+  const wa=waLink('Hello, I am '+nm+' ('+AUTH.mobile+'). I need help.');
+  const canIns=!isStandalone()&&!LS.get('cbt_noinst',0)&&(typeof DIP!=='undefined'&&DIP);
+  $('#layer').innerHTML=`<div class="drw" onclick="if(event.target===this)closeModal()"><aside class="drp">
+   <div class="drh"><div class="bigav">${esc(nm.trim()[0]||'?').toUpperCase()}</div><div class="grow"><b>${esc(nm)}</b><div class="sm" style="opacity:.85">+91 ${esc(maskMob(AUTH.mobile))} · ${P.lvl}</div></div><button class="drx" onclick="closeModal()" aria-label="Close">${ic('x',18)}</button></div>
+   <div class="drl"><div class="drs">Study</div>
+   ${it('target','Home',go('#/'),cur===''||cur==='/')}${it('book','Test series',go('#/series'),cur==='series')}${it('hist','Results &amp; test history',go('#/r'),cur==='r'||cur.indexOf('h/')===0)}${it('notebook','Mistake notebook',go('#/m'),cur==='m')}${it('star','Saved questions',go('#/b'),cur==='b')}${it('tracker','Study tracker',go('#/t'),cur==='t')}
+   <div class="drs">More</div>
+   ${it('calendar','Exam countdown','closeModal();cdEdit()')}${it('bell','Announcements','closeModal();openAnn()')}${it('palette','Appearance','openLook()')}${it('user','My profile','closeModal();openProfile()')}
+   ${canIns?it('download','Install app',"closeModal();showInstall(false)"):''}${wa?`<a class="dri" href="${wa}" target="_blank" rel="noopener">${ic('msg',20)}<span>Contact admin</span></a>`:''}
+   <button class="dri out" onclick="closeModal();signOut()">${ic('logout',20)}<span>Sign out</span></button></div></aside></div>`;
+}
 init();
 ;(window.__p=window.__p||{})['app6']=1;
