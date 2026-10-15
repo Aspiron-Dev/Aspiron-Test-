@@ -44,5 +44,4 @@ if(/iphone|ipad|ipod/i.test(navigator.userAgent)&&!isStandalone())setTimeout(()=
 window.addEventListener('offline',()=>toast('You are offline'));
 window.addEventListener('online',()=>toast('Back online'));
 if('serviceWorker' in navigator&&/^https?:/.test(location.protocol))window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
-init();
 ;(window.__p=window.__p||{})['app5']=1;
