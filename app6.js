@@ -354,7 +354,6 @@ function openMenu(){
   const cur=(location.hash||'#/').replace(/^#\/?/,'');
   const go=h=>`closeModal();location.hash='${h}'`;
   const it=(i,t,f,on,c)=>`<button class="dri ${on?'on':''} ${c||''}" onclick="${f}">${ic(i,22)}<span>${t}</span></button>`;
-  const wa=waLink('Hello, I am '+nm+' ('+AUTH.mobile+'). I need help.');
   $('#layer').innerHTML=`<div class="drw" onclick="if(event.target===this)closeModal()"><aside class="drp sb">
    <div class="sbh"><button class="sbx" onclick="closeModal()" aria-label="Close">${ic('x',18)}</button>
     <div class="sbav">${pfInner(nm)}</div><b class="sbn">${esc(nm)}</b><div class="sbs">${esc(sub)}</div>
@@ -363,7 +362,7 @@ function openMenu(){
    ${it('sun','Theme Settings','openLook()')}<div class="sbd"></div>
    ${it('grid','Home',go('#/'),cur===''||cur==='/')}${it('file','Test Series',go('#/series'),cur==='series')}${it('hist','Test History',go('#/r'),cur==='r'||cur.indexOf('h/')===0)}${it('notebook','Mistake Notebook',go('#/m'),cur==='m')}${it('bmark','Saved Questions',go('#/b'),cur==='b')}${it('pulse','Study Tracker',go('#/t'),cur==='t')}${it('bell','Notifications',go('#/n'),cur==='n')}
    <div class="sbd"></div>
-   ${it('calendar','Exam Countdown','closeModal();cdEdit()')}${isStandalone()?'':it('download','Install App','closeModal();installApp()')}${wa?`<a class="dri" href="${wa}" target="_blank" rel="noopener">${ic('mail',22)}<span>Contact Us</span></a>`:''}
+   ${it('calendar','Exam Countdown','closeModal();cdEdit()')}${isStandalone()?'':it('download','Install App','closeModal();installApp()')}<a class="dri" href="https://t.me/StudentsHelpCentreBot" target="_blank" rel="noopener">${ic('mail',22)}<span>Contact Us</span></a>
    ${it('logout','Logout','closeModal();signOut()',0,'out')}</div></aside></div>`;
 }
 
