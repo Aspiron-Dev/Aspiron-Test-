@@ -105,7 +105,7 @@ function updateHeader(){
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}
 function modal(h){$('#layer').innerHTML=`<div class="modal" onclick="if(event.target===this)closeModal()"><div class="box">${h}</div></div>`}
 function closeModal(){$('#layer').innerHTML=''}
-const NAVIT=[['dash','#/','Home','grid'],['series','#/series','Tests','file'],['mk','#/m','Mistakes','notebook'],['bm','#/b','Saved','bmark'],['results','#/r','Results','hist'],['tr','#/t','Tracker','pulse']];
+const NAVIT=[['dash','#/','Home','grid'],['series','#/series','Tests','file'],['mk','#/m','Mistakes','notebook'],['bm','#/b','Saved','bmark'],['results','#/r','Results','trophy'],['tr','#/t','Tracker','pulse']];
 function setNav(tab){
   const bn=$('#bnav');
   if(!bn.children.length)bn.innerHTML=NAVIT.map(x=>`<button data-k="${x[0]}" onclick="location.hash='${x[1]}'">${ic(x[3],22)}${x[2]}</button>`).join('');
