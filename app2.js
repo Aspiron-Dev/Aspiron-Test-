@@ -13,7 +13,7 @@ function viewHome(tab){
   const P=pstats(R),avg=P.avg,best=P.best;
   const hr=new Date().getHours(),gr=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
   const nm=(AUTH.name||'').trim();
-  let o=`<div class="wrap">${tab!=='dash'?'':`<div class="hero"><div class="who"><div class="bigav">${esc(nm[0]||'?').toUpperCase()}</div>
+  let o=`<div class="wrap">${tab!=='dash'?'':`<div class="hero"><div class="who"><div class="bigav">${pfInner(nm)}</div>
    <div><div class="sm" style="opacity:.85">${gr}</div><h1>${esc(nm.split(' ')[0])}</h1><span class="lvl${/Achiever|Champion/.test(P.lvl)?' gold':''}">${/Achiever|Champion/.test(P.lvl)?ic('crown',12):''}${P.lvl}</span></div>
    <div class="streak"><b>${P.streak}🔥</b><span>day streak</span></div></div>
   <div class="stats"><div class="stat"><b data-cu="${R.length}">${R.length}</b><span>Tests taken</span></div><div class="stat"><b data-cu="${avg}">${avg}%</b><span>Average</span></div><div class="stat"><b data-cu="${best}">${best}%</b><span>Best</span></div></div></div>`}${tabsHtml(tab)}`;
