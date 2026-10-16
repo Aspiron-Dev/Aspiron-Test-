@@ -120,24 +120,11 @@ IC.chart2='<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/>';
   let o=`<div class="wrap home2">`;
   const pn=getPend();
   if(pn.length)o+=`<div class="card pendc"><span class="mki">${ic('wifi',22)}</span><div class="grow"><b>${pn.length} test waiting to submit</b><div class="sm mut">Your answers are safe on this phone. They will be sent when internet is back.</div></div><button class="btn sm" onclick="retryPend()">Submit now</button></div>`;
-  o+=promoHtml()+cdCard();
+  o+=promoHtml()+cdCard()+liveHtml();
   const prog=CAT.tests.filter(t=>t.in_progress&&!t.locked);
   if(prog.length)o+=`<div class="h2s">${ic('play',20)} Continue your test</div>${prog.map(testRow).join('')}`;
   o+=dashPerf(R)+dashTracker();
   o+=`<div class="h2s">${ic('trophy',20)} Leaderboard <span class="n">overall</span></div><div id="dlb">${INS&&INS.b?dashLb(INS.b):R.length?`<div class="card"><div class="sk" style="width:50%"></div><div class="sk" style="height:60px;margin-top:12px"></div></div>`:dashLb(null)}</div>`;
-  const up=CAT.tests.filter(t=>isWait(t)).sort((a,b)=>a.opens_at-b.opens_at);
-  if(up.length)o+=`<div class="h2s">${ic('calendar',20)} Upcoming tests <span class="n">${up.length}</span></div>${up.map(testRow).join('')}`;
-  const nxt=CAT.tests.filter(t=>!t.locked&&!t.attempts&&!t.in_progress&&!isWait(t)&&CAT.series.some(s=>s.id===t.series_id&&(s.is_free||s.unlocked)))[0];
-  if(nxt)o+=`<div class="h2s">${ic('play',20)} Up next for you</div><div class="next"><div class="grow"><b>${esc(nxt.title)}</b><div class="sm mut">${nxt.questions} questions · ${nxt.duration} min</div></div><button class="btn sm" onclick="openTest('${nxt.id}')">Start</button></div>`;
-  if(R.length){
-    const P=pstats(R);
-    o+=`<div id="ins"></div><div class="h2s">${ic('trophy',20)} Achievements <span class="n">${P.badges.filter(b=>b.on).length}/${P.badges.length}</span></div><div class="badges">${P.badges.map(b=>`<div class="bdg ${b.on?'on':''}"><b>${b.i}</b>${b.t}</div>`).join('')}</div>
-     <div class="h2s">${ic('clock',20)} Recent results</div><div class="card">${R.slice(0,4).map(resultRow).join('')}</div>
-     ${R.length>4?`<div style="text-align:center;margin-top:10px"><button class="btn ghost sm" onclick="location.hash='#/r'">All results</button></div>`:''}`;
-  }
-  const ser=CAT.series.map(s=>({s,st:seriesStats(s)})).filter(x=>x.st.n);
-  if(ser.length)o+=`<div class="h2s">${ic('book',20)} Series progress</div><div class="card">${ser.map(({s,st})=>{const p=Math.round(st.done*100/st.n);
-    return `<div class="prow" onclick="location.hash='#/s/${s.id}'"><div class="row sm" style="justify-content:space-between;margin-bottom:6px"><b>${esc(s.title)}</b><span class="mut">${st.done}/${st.n} attempted</span></div><div class="bar"><i style="width:${p}%"></i></div></div>`}).join('')}</div>`;
   setApp(o+'</div>');setNav('dash');prefetchTabs();
   cdTick();promoStart();annLoad();
   const d=document.querySelector('.dash');if(d)countUp(d);
@@ -157,8 +144,8 @@ function shareSeries(id){
 }
 {const _vs=viewSeries;viewSeries=function(id){
   const r=_vs(id);
-  const b=document.querySelector('.shx .shb');
-  if(b&&!b.querySelector('.shbtn'))b.insertAdjacentHTML('beforeend',`<button class="btn soft sm shbtn" onclick="shareSeries('${id}')">${ic('share',15)} Share this series</button>`);
+    const cv=document.querySelector('.shx .shc');
+  if(cv&&!cv.querySelector('.shbtn'))cv.insertAdjacentHTML('beforeend',`<button class="shbtn" aria-label="Share" title="Share" onclick="event.stopPropagation();shareSeries('${id}')">${ic('share',18)}</button>`);
   return r;
 }}
 const DEEP=/^#\/(s|f|series|t|m|b|r|n)(\/|$)/;
@@ -175,4 +162,27 @@ if(!AUTH&&DEEP.test(location.hash||''))LS.set('cbt_after',location.hash);
   return r;
 }}
 if(!AUTH&&LS.get('cbt_after',null)&&document.querySelector('#app .card'))login();
+
+/* ---------- live test card (shows only while a test is open and not yet attempted) ---------- */
+function liveSeen(){
+  const k='cbt_tseen_'+AUTH.mobile;let m=LS.get(k,null),ch=0;
+  if(!m){m={};CAT.tests.forEach(t=>m[t.id]=0);ch=1}
+  CAT.tests.forEach(t=>{if(!(t.id in m)){m[t.id]=Date.now();ch=1}});
+  if(ch)LS.set(k,m);return m;
+}
+function liveTests(){
+  const m=liveSeen(),now=srvNow(),W=3*864e5;
+  return CAT.tests.filter(t=>!t.locked&&!t.attempts&&!t.in_progress&&!t.practice&&!isWait(t)&&CAT.series.some(s=>s.id===t.series_id)
+    &&(t.opens_at?now-t.opens_at<W:Date.now()-(m[t.id]||0)<W)).sort((a,b)=>(b.opens_at||m[b.id]||0)-(a.opens_at||m[a.id]||0)).slice(0,2);
+}
+function liveHtml(){
+  const L=liveTests();if(!L.length)return '';
+  return L.map(t=>{const s=CAT.series.find(x=>x.id===t.series_id)||{};
+    return `<div class="card livec" onclick="openTest('${t.id}')"><div class="livet"><span class="liveb"><i></i>LIVE</span><span class="sm mut">${t.opens_at?'Started '+new Date(t.opens_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):'Available now'}</span></div>
+     <b class="livett">${esc(t.title)}</b><div class="sm mut">${esc(s.title||'')}${s.title?' · ':''}${t.questions} questions · ${t.duration} min</div>
+     <button class="btn block" style="margin-top:12px" onclick="event.stopPropagation();openTest('${t.id}')">${ic('play',16)} Attempt now</button></div>`}).join('');
+}
+
+/* notifications page: full screen, no bottom bar */
+{const _vn=viewNotices;viewNotices=async function(){const r=await _vn.apply(this,arguments);if(location.hash==='#/n')document.body.classList.remove('hasnav');return r}}
 ;(window.__p=window.__p||{})['app8']=1;
