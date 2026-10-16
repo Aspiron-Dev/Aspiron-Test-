@@ -62,4 +62,22 @@ async function bnMove(i,d){
   const j=i+d;if(j<0||j>=BNL.length)return;[BNL[i],BNL[j]]=[BNL[j],BNL[i]];drawBanners();
   const r=await AB('order',{ids:BNL.map(x=>x.id)});if(!r.ok){toast('Could not save order');loadBanners()}
 }
+
+/* ---------- share links for each series ---------- */
+function shareSeriesAdm(id){
+  const s=CA.series.find(x=>x.id===id);if(!s)return;
+  const url=siteUrl()+'#/s/'+id,msg=`${s.title}\n${s.description?s.description+'\n':''}\nOpen: ${url}`;
+  modal(`<h2>Share “${esc(s.title)}”</h2><p class="sm mut" style="margin:4px 0 10px">Send this link anywhere — WhatsApp, Telegram, Instagram bio, banners. It opens this series directly. New students can tap “Request access” and you approve them.</p>
+   <div class="row"><input type="text" readonly value="${esc(url)}" style="flex:1" onclick="this.select()"><button class="btn sm" onclick="copyText('${esc(url)}')">Copy</button></div>
+   <div class="row" style="margin-top:12px"><a class="btn soft" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">${ai('wa',16)} WhatsApp</a><a class="btn soft" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(s.title)}">Telegram</a></div>
+   <p class="sm mut" style="margin:12px 0 0">Tip: use <b>#/s/${id}</b> as the link of a Home banner to open this series from the banner.</p>
+   <button class="btn ghost block" style="margin-top:12px" onclick="closeModal()">Done</button>`);
+}
+{const _rc=renderContent;renderContent=async function(){
+  const r=await _rc.apply(this,arguments);
+  CA.series.forEach(s=>{const row=document.querySelector(`#acc_${s.id} .bd .row`);if(row&&!row.querySelector('.shs'))row.insertAdjacentHTML('beforeend',`<button class="btn soft sm shs" onclick="shareSeriesAdm('${s.id}')">🔗 Share link</button>`)});
+  const top=document.querySelector('#pn_content > .row');
+  if(top&&!document.getElementById('sitelink'))top.insertAdjacentHTML('afterend',`<div class="card" id="sitelink" style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="grow" style="min-width:180px"><b>Website link</b><div class="sm mut" style="word-break:break-all">${esc(siteUrl())}</div></div><button class="btn soft sm" onclick="copyText('${esc(siteUrl())}')">Copy</button><a class="btn soft sm" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent((CFG.SITE_NAME||'Test series')+'\n'+siteUrl())}">${ai('wa',14)} WhatsApp</a></div>`);
+  return r;
+}}
 ;(window.__p=window.__p||{})['admin6']=1;

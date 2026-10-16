@@ -143,4 +143,36 @@ IC.chart2='<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/>';
   const d=document.querySelector('.dash');if(d)countUp(d);
   if(R.length)loadDash();
 }}
+
+/* ---------- shareable links: series pages + open the right page after sign-in ---------- */
+IC.share='<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>';
+const siteBase=()=>location.href.replace(/[#?].*$/,'').replace(/index\.html$/,'');
+async function shareLink(url,title,text){
+  if(navigator.share){try{await navigator.share({title,text,url});return}catch(e){if(e&&e.name==='AbortError')return}}
+  try{await navigator.clipboard.writeText(url);toast('Link copied')}catch(e){prompt('Copy this link',url)}
+}
+function shareSeries(id){
+  const s=(CAT&&CAT.series||[]).find(x=>x.id===id);if(!s)return;
+  shareLink(siteBase()+'#/s/'+id,s.title,`${s.title} — ${CFG.SITE_NAME||'Test series'}`);
+}
+{const _vs=viewSeries;viewSeries=function(id){
+  const r=_vs(id);
+  const b=document.querySelector('.shx .shb');
+  if(b&&!b.querySelector('.shbtn'))b.insertAdjacentHTML('beforeend',`<button class="btn soft sm shbtn" onclick="shareSeries('${id}')">${ic('share',15)} Share this series</button>`);
+  return r;
+}}
+const DEEP=/^#\/(s|f|series|t|m|b|r|n)(\/|$)/;
+if(!AUTH&&DEEP.test(location.hash||''))LS.set('cbt_after',location.hash);
+{const _dl=doLogin;doLogin=async function(){
+  await _dl();
+  const w=LS.get('cbt_after',null);
+  if(AUTH&&w){LS.del('cbt_after');location.hash=w}
+}}
+{const _lg=login;login=function(mode){
+  const r=_lg(mode);
+  const w=LS.get('cbt_after',null),c=document.querySelector('#app .card');
+  if(w&&c&&!mode&&!document.getElementById('afterNote'))c.insertAdjacentHTML('afterbegin',`<div id="afterNote" class="sm" style="background:var(--priSoft);color:var(--pri);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-weight:600">Sign in to open the link you were sent. New here? Tap “Request access”.</div>`);
+  return r;
+}}
+if(!AUTH&&LS.get('cbt_after',null)&&document.querySelector('#app .card'))login();
 ;(window.__p=window.__p||{})['app8']=1;
