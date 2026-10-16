@@ -344,22 +344,27 @@ function mnuUpdate(){
   const b=document.getElementById('mnu');if(!b)return;
   b.innerHTML=ic('menu',22);b.style.display=AUTH?'':'none';
 }
+IC.bmark='<path d="M6 3h12v18l-6-4-6 4z"/>';
+IC.pulse='<path d="M3 12h4l3-8 4 16 3-8h4"/>';
+IC.mail='<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>';
 function openMenu(){
   if(!AUTH)return;
-  const R=CAT?CAT.results||[]:[],P=pstats(R),nm=AUTH.name||'';
+  const R=CAT?CAT.results||[]:[],P=pstats(R),nm=pfName()||AUTH.name||'',o=pfGet();
+  const sub=[o.exam,o.cls].filter(Boolean).join(' · ')||('+91 '+maskMob(AUTH.mobile)+' · '+P.lvl);
   const cur=(location.hash||'#/').replace(/^#\/?/,'');
   const go=h=>`closeModal();location.hash='${h}'`;
-  const it=(i,t,f,on)=>`<button class="dri ${on?'on':''}" onclick="${f}">${ic(i,20)}<span>${t}</span></button>`;
+  const it=(i,t,f,on,c)=>`<button class="dri ${on?'on':''} ${c||''}" onclick="${f}">${ic(i,22)}<span>${t}</span></button>`;
   const wa=waLink('Hello, I am '+nm+' ('+AUTH.mobile+'). I need help.');
-  const canIns=!isStandalone()&&!LS.get('cbt_noinst',0)&&(typeof DIP!=='undefined'&&DIP);
-  $('#layer').innerHTML=`<div class="drw" onclick="if(event.target===this)closeModal()"><aside class="drp">
-   <div class="drh"><div class="bigav">${pfInner(nm)}</div><div class="grow"><b>${esc(nm)}</b><div class="sm" style="opacity:.85">+91 ${esc(maskMob(AUTH.mobile))} · ${P.lvl}</div></div><button class="drx" onclick="closeModal()" aria-label="Close">${ic('x',18)}</button></div>
-   <div class="drl"><div class="drs">Study</div>
-   ${it('target','Home',go('#/'),cur===''||cur==='/')}${it('book','Test series',go('#/series'),cur==='series')}${it('hist','Results &amp; test history',go('#/r'),cur==='r'||cur.indexOf('h/')===0)}${it('notebook','Mistake notebook',go('#/m'),cur==='m')}${it('star','Saved questions',go('#/b'),cur==='b')}${it('tracker','Study tracker',go('#/t'),cur==='t')}
-   <div class="drs">More</div>
-   ${it('calendar','Exam countdown','closeModal();cdEdit()')}${it('bell','Notifications',go('#/n'),cur==='n')}${it('palette','Theme settings','openLook()')}${it('user','My profile','closeModal();openProfile()')}
-   ${isStandalone()?'':it('download','Install app',"closeModal();installApp()")}${wa?`<a class="dri" href="${wa}" target="_blank" rel="noopener">${ic('msg',20)}<span>Contact admin</span></a>`:''}
-   <button class="dri out" onclick="closeModal();signOut()">${ic('logout',20)}<span>Sign out</span></button></div></aside></div>`;
+  $('#layer').innerHTML=`<div class="drw" onclick="if(event.target===this)closeModal()"><aside class="drp sb">
+   <div class="sbh"><button class="sbx" onclick="closeModal()" aria-label="Close">${ic('x',18)}</button>
+    <div class="sbav">${pfInner(nm)}</div><b class="sbn">${esc(nm)}</b><div class="sbs">${esc(sub)}</div>
+    <button class="sbvp" onclick="closeModal();openProfile()">View Profile →</button></div>
+   <div class="drl">
+   ${it('sun','Theme Settings','openLook()')}<div class="sbd"></div>
+   ${it('grid','Home',go('#/'),cur===''||cur==='/')}${it('file','Test Series',go('#/series'),cur==='series')}${it('hist','Test History',go('#/r'),cur==='r'||cur.indexOf('h/')===0)}${it('notebook','Mistake Notebook',go('#/m'),cur==='m')}${it('bmark','Saved Questions',go('#/b'),cur==='b')}${it('pulse','Study Tracker',go('#/t'),cur==='t')}${it('bell','Notifications',go('#/n'),cur==='n')}
+   <div class="sbd"></div>
+   ${it('calendar','Exam Countdown','closeModal();cdEdit()')}${isStandalone()?'':it('download','Install App','closeModal();installApp()')}${wa?`<a class="dri" href="${wa}" target="_blank" rel="noopener">${ic('mail',22)}<span>Contact Us</span></a>`:''}
+   ${it('logout','Logout','closeModal();signOut()',0,'out')}</div></aside></div>`;
 }
 
 /* ===== v12: profile (photo + details), bottom sheets, header ===== */
