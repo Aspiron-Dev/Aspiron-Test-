@@ -36,7 +36,7 @@ function lbTest(t){
    ${lbPodium(r.top,r.my_rank)}${lbRows(r.top.slice(0,10),r.my_rank,r.my_score)}
    <div class="sm mut" style="text-align:center;margin-top:8px">${r.total} student${r.total==1?'':'s'} attempted · best score per student</div></div>`;
 }
-function dashLb(b){
+function lbFull(b){
   if(typeof CAT==='undefined'||!CAT)return '';
   const T=lbTests(),n=T.length+1;LBI=Math.min(LBI,n-1);
   const tabs=[`<button class="${LBI===0?'on':''}" onclick="lbGo(0)">🏆 Overall</button>`,...T.map((t,i)=>`<button class="${LBI===i+1?'on':''}" onclick="lbGo(${i+1})">${esc(t.title)}</button>`)].join('');
@@ -64,4 +64,40 @@ async function lbLoad(){
 addEventListener('resize',()=>{const t=$('#lbtrack');if(t)t.scrollLeft=LBI*t.clientWidth;lbMark()});
 /* refresh per-test ranks when the student comes back to Home */
 {const _vh3=viewHome;viewHome=function(tab){if(tab==='dash')for(const k in LBC)if(LBC[k]&&Date.now()-(LBC[k]._t||(LBC[k]._t=Date.now()))>120000)delete LBC[k];return _vh3.apply(this,arguments)}}
+
+/* ---------- Home: compact rank card → full leaderboard lives in Results ---------- */
+function dashLb(b){
+  const go=`HV='lb';location.hash='#/r'`;
+  if(!b||!b.my_rank)return `<div class="card lbteaser" onclick="${go}"><div class="lbti">🏆</div><div class="grow"><b>Leaderboard</b><div class="sm mut">Attempt a test to get your rank in every test.</div></div>${ic('right',18)}</div>`;
+  const tot=b.total||1,beat=tot>1?Math.round((tot-b.my_rank)*100/(tot-1)):100,t3=(b.top||[]).slice(0,3);
+  return `<div class="card lbteaser" onclick="${go}"><div class="lbmr"><span>Rank</span><b>#${b.my_rank}</b></div>
+   <div class="grow"><b>Ahead of ${beat}% students</b><div class="sm mut">of ${tot} · tap to see test-wise ranks</div>
+   <div class="lbt3">${t3.map((x,i)=>`<span class="m${i+1}">${['🥇','🥈','🥉'][i]} ${lbFirst(x)}</span>`).join('')}</div></div>${ic('right',18)}</div>`;
+}
+
+/* ---------- Results page: summary + Leaderboard / By test / All attempts ---------- */
+if(typeof HV!=='undefined')HV='lb';
+{const _hl=histList;histList=function(R){
+  const P=pstats(R),b=INS&&INS.b,last=R[0],lp=last?pct(last.score,last.max):0,prev=R[1]?pct(R[1].score,R[1].max):null;
+  const vals=R.slice(0,10).reverse().map(x=>pct(x.score,x.max));
+  const hero=`<div class="card rshero"><div class="rsk"><div><b>${R.length}</b><span>Attempts</span></div><div><b>${P.avg}%</b><span>Average</span></div><div><b>${P.best}%</b><span>Best</span></div><div><b>${b&&b.my_rank?'#'+b.my_rank:'–'}</b><span>Overall rank</span></div></div>
+    <div class="rsl"><div><span class="sm mut">Latest</span> <b>${lp}%</b> ${prev==null?'':`<span class="dlt ${lp-prev>0?'g':lp-prev<0?'b':''}">${lp-prev>0?'▲':lp-prev<0?'▼':''} ${Math.abs(lp-prev)}%</span>`}<div class="sm mut">${esc(last?last.title:'')}</div></div>${vals.length>1?`<div class="rsspark">${spark(vals)}</div>`:''}</div></div>`;
+  const seg=`<div class="seg hsseg rs3"><button class="${HV==='lb'?'on':''}" onclick="HV='lb';route()">🏆 Leaderboard</button><button class="${HV==='test'?'on':''}" onclick="HV='test';route()">By test</button><button class="${HV==='all'?'on':''}" onclick="HV='all';route()">All attempts</button></div>`;
+  if(HV==='lb'){
+    if(!b)setTimeout(async()=>{const r=await rpc('cbt_overall',{});if(r.ok){INS=INS||{t:Date.now(),a:null,b:null};INS.b=r;const e=$('#rlb');if(e){e.innerHTML=lbFull(r)}const k=document.querySelector('.rsk div:last-child b');if(k&&r.my_rank)k.textContent='#'+r.my_rank}},0);
+    return hero+seg+`<div id="rlb" style="margin-top:12px">${lbFull(b||null)}</div>`;
+  }
+  const h=_hl(R).replace(/^<div class="seg hsseg">[\s\S]*?<\/div>/,'');
+  if(HV==='test')setTimeout(rsRanks,0);
+  return hero+seg+h;
+}}
+async function rsRanks(){
+  const ids=[...new Set((CAT.results||[]).map(r=>r.test_id))].filter(id=>!isPrac(id)).slice(0,12);
+  await Promise.all(ids.map(async id=>{if(!LBC[id]){const r=await rpc('cbt_leaderboard',{p_test:id});LBC[id]=r&&r.ok?r:{ok:false}}}));
+  document.querySelectorAll('.hscard').forEach(c=>{
+    const m=(c.getAttribute('onclick')||'').match(/#\/h\/([^']+)/);if(!m)return;
+    const g=hAttempts(decodeURIComponent(m[1]));if(!g)return;const r=LBC[g.att[g.att.length-1].test_id];
+    if(r&&r.ok&&r.my_rank&&!c.querySelector('.rkc')){const b=c.querySelector('.grow b');if(b)b.insertAdjacentHTML('afterend',`<span class="rkc ${r.my_rank<=3?'top':''}">${r.my_rank<=3?['🥇','🥈','🥉'][r.my_rank-1]:'🏆'} Rank ${r.my_rank}/${r.total}</span>`)}
+  });
+}
 ;(window.__p=window.__p||{})['app10']=1;
