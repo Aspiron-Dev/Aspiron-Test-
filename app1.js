@@ -207,7 +207,7 @@ async function loadCat(silent){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AUTH&&!INTEST&&CAT&&Date.now()-CATAT>30000)route()});
 const navTab=h=>/^#\/(s|f)\//.test(h)||h==='#/series'?'series':/^#\/h\//.test(h)||h==='#/r'?'results':h==='#/m'?'mk':h==='#/b'?'bm':h==='#/t'?'tr':'dash';
-const NAVRK=h=>{const t=NAVIT.findIndex(x=>x[0]===navTab(h));return /^#\/(s|f|h)\//.test(h)?t+0.5:t};
+const NAVRK=h=>{const t=NAVIT.findIndex(x=>x[0]===navTab(h));return /^#\/(s|f|h)\//.test(h)||h==='#/n'?t+0.5:t};
 let LASTRK=null;
 function pgAnim(ap){
   if(!PGDX){ap.classList.remove('pg');return}
@@ -249,6 +249,7 @@ async function route0(){
   if(h==='#/b')return viewBookmarks();
   if(h==='#/m')return viewMistakes();
   if(h==='#/t')return viewTracker();
+  if(h==='#/n')return viewNotices();
   if((m=h.match(/^#\/h\/(.+)$/)))return viewHistory(decodeURIComponent(m[1]));
   if(h==='#/series')return viewHome('series');
   return viewHome('dash');

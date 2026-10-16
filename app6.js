@@ -357,8 +357,8 @@ function openMenu(){
    <div class="drl"><div class="drs">Study</div>
    ${it('target','Home',go('#/'),cur===''||cur==='/')}${it('book','Test series',go('#/series'),cur==='series')}${it('hist','Results &amp; test history',go('#/r'),cur==='r'||cur.indexOf('h/')===0)}${it('notebook','Mistake notebook',go('#/m'),cur==='m')}${it('star','Saved questions',go('#/b'),cur==='b')}${it('tracker','Study tracker',go('#/t'),cur==='t')}
    <div class="drs">More</div>
-   ${it('calendar','Exam countdown','closeModal();cdEdit()')}${it('bell','Announcements','closeModal();openAnn()')}${it('palette','Theme settings','openLook()')}${it('user','My profile','closeModal();openProfile()')}
-   ${canIns?it('download','Install app',"closeModal();showInstall(false)"):''}${wa?`<a class="dri" href="${wa}" target="_blank" rel="noopener">${ic('msg',20)}<span>Contact admin</span></a>`:''}
+   ${it('calendar','Exam countdown','closeModal();cdEdit()')}${it('bell','Notifications',go('#/n'),cur==='n')}${it('palette','Theme settings','openLook()')}${it('user','My profile','closeModal();openProfile()')}
+   ${isStandalone()?'':it('download','Install app',"closeModal();installApp()")}${wa?`<a class="dri" href="${wa}" target="_blank" rel="noopener">${ic('msg',20)}<span>Contact admin</span></a>`:''}
    <button class="dri out" onclick="closeModal();signOut()">${ic('logout',20)}<span>Sign out</span></button></div></aside></div>`;
 }
 
@@ -433,5 +433,46 @@ function pfPhoto(inp){
   r.readAsDataURL(f);
 }
 (function(){const h=()=>{const e=document.querySelector('.hdr');if(e)e.classList.toggle('sc',window.scrollY>6)};window.addEventListener('scroll',h,{passive:true});h()})();
+
+/* ===== v15: Notifications page + Install app ===== */
+function openAnn(){if(location.hash==='#/n')route();else location.hash='#/n'}
+const fullDate=ms=>new Date(ms).toLocaleString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true});
+const relT=ms=>{const s=(Date.now()-ms)/1000;if(s<60)return 'just now';if(s<3600)return Math.floor(s/60)+' min ago';if(s<86400)return Math.floor(s/3600)+' h ago';const d=Math.floor(s/86400);return d===1?'yesterday':d<30?d+' days ago':''};
+async function viewNotices(){
+  if(!ANN)setApp(`<div class="wrap"><div class="crumb"><a href="#/">${ic('back',16)} Home</a></div><h1 class="ntitle">Notifications</h1>${[1,2].map(()=>`<div class="card"><div class="sk" style="width:55%"></div><div class="sk" style="width:90%;margin-top:12px"></div><div class="sk" style="width:70%;margin-top:10px"></div></div>`).join('')}</div>`);
+  const l=await annLoad(!ANN||Date.now()-ANNT>20000)||[];
+  if(location.hash!=='#/n')return;
+  const seen=LS.get('cbt_ann_seen',0),nNew=l.filter(x=>x.at>seen).length;
+  if(l.length)LS.set('cbt_ann_seen',Math.max(seen,...l.map(x=>x.at)));
+  bellUpdate();
+  const card=x=>{const u=safeUrl(x.link),isNew=x.at>seen,long=(x.text||'').length>320;
+    return `<article class="card ncard${isNew?' isnew':''}"><div class="nctop"><span class="nico">${ic('bell',18)}</span><div class="grow"><h3>${esc(x.title||'Announcement')}</h3><div class="nmeta">${fullDate(x.at)}${relT(x.at)?' · '+relT(x.at):''}</div></div>${isNew?'<span class="newb">NEW</span>':''}</div>
+     ${x.text?`<div class="nbody${long?' clamp':''}">${linkify(x.text)}</div>${long?`<button class="nmore" onclick="this.previousElementSibling.classList.remove('clamp');this.remove()">Read more</button>`:''}`:''}
+     ${x.img?`<div class="annimg" data-ai="${x.id}"><div class="sk" style="height:160px;border-radius:14px;margin-top:12px"></div></div>`:''}
+     ${u?`<a class="btn soft sm nlink" href="${esc(u)}" target="_blank" rel="noopener noreferrer">${esc(x.label||'Open link')} ↗</a>`:''}</article>`};
+  setApp(`<div class="wrap ntf"><div class="crumb"><a href="#/">${ic('back',16)} Home</a></div>
+   <div class="nhead"><div><h1 class="ntitle">Notifications</h1><div class="sm mut">${l.length?`${l.length} notice${l.length==1?'':'s'}${nNew?` · <b style="color:var(--pri)">${nNew} new</b>`:''}`:'Nothing yet'}</div></div>
+   <button class="iconbtn" aria-label="Refresh" onclick="ANNT=0;viewNotices()">${ic('reset',18)}</button></div>
+   ${l.length?l.map(card).join(''):`<div class="card empty"><div style="color:var(--pri)">${ic('bell',34)}</div><h3 style="margin:10px 0 4px;color:var(--tx)">No notifications yet</h3><p class="sm">Notices from your teacher will appear here.</p></div>`}</div>`);
+  setNav('dash');
+  l.filter(x=>x.img).forEach(async x=>{
+    let im=ANNIMG[x.id];
+    if(!im){const r=await rpc('cbt_notice_img',{p_id:x.id});im=r.ok?r.image:null;if(im)ANNIMG[x.id]=im}
+    const el=document.querySelector(`[data-ai="${x.id}"]`);if(!el)return;
+    el.innerHTML=im?`<img class="qi zm nimg" src="${im}" alt="">`:'';
+  });
+}
+if(!IC.reset)IC.reset='<path d="M3 12a9 9 0 109-9 9.7 9.7 0 00-6.7 2.8L3 8"/><path d="M3 3v5h5"/>';
+function installApp(){
+  if(isStandalone()){toast('The app is already installed');return}
+  if(typeof DIP!=='undefined'&&DIP){const p=DIP;DIP=null;p.prompt();p.userChoice&&p.userChoice.then(c=>{if(c&&c.outcome==='accepted')toast('Installing…')}).catch(()=>{});return}
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const st=ios?[['Open this site in <b>Safari</b>'],['Tap the <b>Share</b> button (square with an arrow)'],['Tap <b>Add to Home Screen</b>, then <b>Add</b>']]
+    :[['Open this site in <b>Chrome</b>'],['Tap the <b>⋮</b> menu at the top right'],['Tap <b>Install app</b> or <b>Add to Home screen</b>, then <b>Install</b>']];
+  sheet(`<h2 class="sht">Install the app</h2><div class="shl"></div>
+   <div class="instv"><span class="instico">${ic('download',26)}</span><p class="sm mut" style="margin:0">Open the test series like an app — full screen, from your home screen, no app store needed.</p></div>
+   <ol class="isteps">${st.map((s,i)=>`<li><b class="n">${i+1}</b><span>${s[0]}</span></li>`).join('')}</ol>
+   <button class="btn block" onclick="closeModal()">Got it</button>`,'inst');
+}
 init();
 ;(window.__p=window.__p||{})['app6']=1;
