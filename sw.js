@@ -16,7 +16,7 @@ self.addEventListener('fetch',e=>{
 // Tap on a phone notification: open (or focus) the app on the Notifications page.
 self.addEventListener('notificationclick',e=>{
   e.notification.close();
-  const url=new URL('./'+((e.notification.data&&e.notification.data.url)||''),self.registration.scope).href;
+  const url=new URL('index.html'+((e.notification.data&&e.notification.data.url)||''),self.registration.scope).href;
   e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(l=>{
     for(const c of l){if('focus' in c){c.navigate(url).catch(()=>{});return c.focus()}}
     return clients.openWindow(url);
