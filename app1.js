@@ -91,16 +91,17 @@ function authErr(r){
 /* ---------- theme / header / helpers ---------- */
 function updateTheme(){$('#thm').innerHTML=ic('palette');syncTheme()}
 function fadeTx(){const h=document.documentElement;h.classList.add('tx');setTimeout(()=>h.classList.remove('tx'),600)}
-function setMode(t){fadeTx();document.documentElement.dataset.theme=t;LS.set('cbt_theme',t);syncTheme();openLook()}
+function setMode(t){fadeTx();const h=document.documentElement;h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';else delete h.dataset.oled;LS.set('cbt_theme',t);syncTheme();openLook()}
 function setAccent(a){fadeTx();document.documentElement.dataset.accent=a;LS.set('cbt_accent',a);syncTheme();openLook()}
 function openLook(){
-  const D=document.documentElement.dataset,dark=D.theme==='dark',ac=D.accent||'blue';
+  const D=document.documentElement.dataset,oled=D.oled==='1',light=D.theme==='light',dark=D.theme==='dark'&&!oled,ac=D.accent||'cyber';
   const sw={blue:'#1d6fe8',green:'#12a56a',gray:'#5b6677',cyber:'linear-gradient(135deg,#22d3ee,#6366f1)',royal:'linear-gradient(135deg,#7c3aed,#a78bfa)',rose:'linear-gradient(135deg,#e11d48,#fb7185)'};
-  modal(`<h2>Appearance</h2><p class="mut sm" style="margin:4px 0 12px">Choose a mode and a colour. That gives 12 looks in total.</p>
+  const nm={cyber:'Cyber Blue',green:'Emerald',royal:'Royal Purple',blue:'Classic Blue',rose:'Rose',gray:'Slate'};
+  modal(`<h2>Appearance</h2><p class="mut sm" style="margin:4px 0 12px">Pick a mode and an accent colour. Your choice is saved on this phone.</p>
    <div class="sm mut" style="font-weight:600">Mode</div>
-   <div class="lookrow" style="grid-template-columns:repeat(2,1fr)"><button class="look m ${dark?'':'on'}" onclick="setMode('light')"><i style="background:#fff"></i>Light</button><button class="look m ${dark?'on':''}" onclick="setMode('dark')"><i style="background:#2b3a52"></i>Dark</button></div>
+   <div class="lookrow"><button class="look m ${light?'on':''}" onclick="setMode('light')"><i style="background:#fff"></i>Light</button><button class="look m ${dark?'on':''}" onclick="setMode('dark')"><i style="background:#2b3a52"></i>Dark</button><button class="look m ${oled?'on':''}" onclick="setMode('oled')"><i style="background:#000;box-shadow:0 0 0 1px #444"></i>True Black</button></div>
    <div class="sm mut" style="font-weight:600">Colour</div>
-   <div class="lookrow">${['blue','green','gray','cyber','royal','rose'].map(a=>`<button class="look ${ac===a?'on':''}" onclick="setAccent('${a}')"><i style="background:${sw[a]}"></i>${a[0].toUpperCase()+a.slice(1)}</button>`).join('')}</div>
+   <div class="lookrow">${['cyber','green','royal','blue','rose','gray'].map(a=>`<button class="look ${ac===a?'on':''}" onclick="setAccent('${a}')"><i style="background:${sw[a]}"></i>${nm[a]}</button>`).join('')}</div>
    <button class="btn block" onclick="closeModal()">Done</button>`);
 }
 function updateHeader(){
