@@ -80,4 +80,47 @@ function shareSeriesAdm(id){
   if(top&&!document.getElementById('sitelink'))top.insertAdjacentHTML('afterend',`<div class="card" id="sitelink" style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="grow" style="min-width:180px"><b>Website link</b><div class="sm mut" style="word-break:break-all">${esc(siteUrl())}</div></div><button class="btn soft sm" onclick="copyText('${esc(siteUrl())}')">Copy</button><a class="btn soft sm" style="text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent((CFG.SITE_NAME||'Test series')+'\n'+siteUrl())}">${ai('wa',14)} WhatsApp</a></div>`);
   return r;
 }}
+
+/* ---------- push notifications to students' phones (works even when their app is closed) ---------- */
+let PUSHON=true;
+async function sendPush(o){
+  try{
+    const r=await fetch(CFG.SUPABASE_URL+'/functions/v1/send-push',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(Object.assign({pw:PW},o))});
+    const j=await r.json().catch(()=>({ok:false,error:'server'}));
+    if(j.ok)toast(j.total?`📲 Sent to ${j.sent} phone${j.sent==1?'':'s'}`:'📲 No phones have turned on notifications yet');
+    else toast(r.status===404?'Phone push is not set up yet (see setup steps)':'Phone push failed: '+(j.error||r.status));
+    return j;
+  }catch(e){toast('Phone push failed (network)');return{ok:false}}
+}
+{const _am=annModal;annModal=async function(id){
+  const r=_am.apply(this,arguments);
+  const chk=document.querySelector('#layer #aa');
+  if(chk&&!document.getElementById('apush'))chk.closest('label').insertAdjacentHTML('afterend',`<label class="chk" style="margin-top:8px"><input type="checkbox" id="apush" ${id?'':'checked'} onchange="PUSHON=this.checked"><span>📲 Also send to students' phones (even if the app is closed)</span></label>`);
+  PUSHON=!id;return r;
+}}
+{const _aa=AA;AA=async function(action,data){
+  const r=await _aa(action,data);
+  if(action==='save'&&r&&r.ok&&data&&data.active&&PUSHON){
+    PUSHON=false;
+    sendPush({title:(data.title||'').trim()||'New notice',body:(data.text||'').trim().slice(0,180)||'Tap to read',url:'#/n',tag:'ann-'+(r.id||data.id||Date.now())});
+  }
+  return r;
+}}
+async function pushCount(){
+  try{const r=await fetch(API+'/rest/v1/rpc/cbt_admin_push_count',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_pw:PW})});return r.ok?await r.json():{ok:false}}catch(e){return{ok:false}}
+}
+{const _ln=loadNotices;loadNotices=async function(){
+  const r=await _ln.apply(this,arguments);
+  const box=document.getElementById('annbox');if(!box||document.getElementById('pushc'))return r;
+  box.insertAdjacentHTML('beforebegin',`<div class="card" id="pushc" style="margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div style="font-size:26px">📲</div><div class="grow" style="min-width:180px"><b>Phone notifications</b><div class="sm mut" id="pushn">Checking…</div></div><button class="btn soft sm" onclick="pushTest()">Send a test</button></div>`);
+  const c=await pushCount(),e=document.getElementById('pushn');
+  if(e)e.innerHTML=c.ok?`<b>${c.students}</b> student${c.students==1?'':'s'} on <b>${c.phones}</b> phone${c.phones==1?'':'s'} will get your notices on their phone, even when the app is closed.`:'Not set up yet — run <b>supabase_v10_push.sql</b> and deploy the <b>send-push</b> function (see setup steps).';
+  return r;
+}}
+function pushTest(){
+  modal(`<h2>📲 Send a phone notification</h2><p class="sm mut" style="margin:4px 0 0">Goes to every student who turned on notifications.</p>
+   <label class="l">Title</label><input type="text" id="pt" maxlength="60" value="Test notification">
+   <label class="l">Message</label><input type="text" id="pb" maxlength="150" value="Notifications are working 🎉">
+   <div class="row" style="margin-top:14px"><button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn" style="flex:1" onclick="const t=$('#pt').value,b=$('#pb').value;closeModal();sendPush({title:t,body:b,url:'#/n'})">Send</button></div>`);
+}
 ;(window.__p=window.__p||{})['admin6']=1;

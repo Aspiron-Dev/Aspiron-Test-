@@ -25,5 +25,5 @@ self.addEventListener('notificationclick',e=>{
 // Ready for server push (Web Push / FCM) later: shows whatever the server sends.
 self.addEventListener('push',e=>{
   let d={};try{d=e.data?e.data.json():{}}catch(_){d={body:e.data&&e.data.text()}}
-  e.waitUntil(self.registration.showNotification(d.title||'New notice',{body:d.body||'',icon:'icon-192.png',badge:'icon-192.png',data:{url:d.url||'#/n'}}));
+  e.waitUntil(self.registration.showNotification(d.title||'New notice',{body:d.body||'',icon:'icon-192.png',badge:'icon-192.png',tag:d.tag||undefined,data:{url:d.url||'#/n'}}));
 });

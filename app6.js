@@ -275,7 +275,7 @@ function histList(R){
     const a=g.att,l=a[a.length-1],lp=pct(l.score,l.max),best=Math.max(...a.map(x=>pct(x.score,x.max)));
     const d=a.length>1?lp-pct(a[a.length-2].score,a[a.length-2].max):null;
     return `<div class="card hscard" onclick="location.hash='#/h/${encodeURIComponent(g.key)}'">
-     <div class="hsn"><b>${a.length}</b><span>${a.length>1?'attempts':'attempt'}</span></div>
+     <div class="hsn"><b>${a.length}</b><span>${a.length>1?'tries':'try'}</span></div>
      <div class="grow"><b>${esc(g.title)}</b><div class="sm mut">Latest ${lp}% · Best ${best}%${!d?'':` · <span style="color:var(${d>0?'--ok':'--bad'});font-weight:700">${d>0?'▲':'▼'} ${Math.abs(d)}%</span>`}</div><div class="sm mut">${fDate(l.at)}${isPrac(l.test_id)?' · Practice':''}</div></div>
      ${hSpark(a)}${ic('right',16)}</div>`;
   }).join('');
