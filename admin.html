@@ -636,6 +636,24 @@ body.admx .hdr{background:color-mix(in srgb,var(--bg) 80%,transparent);border-bo
 .rk.r1{background:#f5c542;color:#4a3500}.rk.r2{background:#cfd6de;color:#2b3440}.rk.r3{background:#e0a56b;color:#4a2a08}.rk.up{background:#dcfce7;color:#15803d}.rk.bad{background:#ffe4e6;color:#be123c}
 .inend{text-align:right;display:flex;flex-direction:column;align-items:flex-end}.inmini{height:4px;border-radius:9px;background:var(--surface2);margin-top:5px;max-width:160px;overflow:hidden}.inmini i{display:block;height:100%}
 .inspark{width:100%;height:70px;display:block}
+
+/* ---- v11 students ---- */
+.sstats.st6{grid-template-columns:repeat(6,1fr)}@media(max-width:760px){.sstats.st6{grid-template-columns:repeat(3,1fr)}}
+.sseg3{display:flex;overflow-x:auto;scrollbar-width:none;max-width:100%}.sseg3::-webkit-scrollbar{display:none}.sseg3 button{white-space:nowrap}
+.srow3{display:grid;grid-template-columns:auto auto 1fr;align-items:start;gap:10px;padding:14px;margin-bottom:10px;transition:box-shadow .15s}
+.srow3.blk{opacity:.72}.srow3.sel{box-shadow:0 0 0 2px var(--pri)}
+.srow3 .grow{min-width:0;cursor:pointer}.srow3 .nm{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px}
+.av3{position:relative;width:42px;height:42px;border-radius:50%;background:var(--surface2);color:var(--mut);display:grid;place-items:center;font-weight:800;cursor:pointer}.av3.avp{background:var(--grad);color:#fff}
+.av3 .dot{position:absolute;right:-1px;bottom:-1px;width:13px;height:13px;border-radius:50%;border:2.5px solid var(--surface);background:#cbd5e1}
+.dot.live{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.25)}.dot.today{background:#86efac}.dot.week{background:#fcd34d}.dot.old{background:#fb923c}.dot.never{background:#cbd5e1}
+.s3m{display:flex;flex-wrap:wrap;gap:4px 12px}.seen.live,.seen.today{color:var(--ok);font-weight:600}.seen.old{color:var(--warn)}.seen.never{color:var(--bad)}
+.s3p{display:flex;align-items:center;gap:10px;margin-top:7px;font-size:12px;color:var(--mut)}.bar3{flex:1;max-width:160px;height:5px;border-radius:9px;background:var(--surface2);overflow:hidden}.bar3 i{display:block;height:100%}
+.s3a{display:flex;gap:6px;align-items:center}
+.s3f{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-left:52px}.s3f .accs{margin:0}
+.mgp .sbox b{font-size:17px}.mgp a.btn{text-decoration:none}
+.tg.new{background:#e0f2fe;color:#0369a1}
+.mgp .sstats{grid-template-columns:repeat(4,1fr)}
+@media(max-width:560px){.s3f{padding-left:0}.s3a{margin-left:auto}}
 </style>
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['admin1', 'admin2', 'admin3', 'admin4'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
@@ -661,6 +679,7 @@ body.admx .hdr{background:color-mix(in srgb,var(--bg) 80%,transparent);border-bo
 <script src="admin5.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin5.js')"></script>
 <script src="admin6.js?v=3" onerror="(window.__miss=window.__miss||[]).push('admin6.js')"></script>
 <script src="admin7.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin7.js')"></script>
+<script src="admin8.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin8.js')"></script>
 
 </body>
 </html>
