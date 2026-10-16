@@ -1021,9 +1021,33 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 .liveb{display:inline-flex;align-items:center;gap:6px;background:var(--bad);color:#fff;font-size:11px;font-weight:800;letter-spacing:.8px;border-radius:99px;padding:4px 10px}
 .liveb i{width:7px;height:7px;border-radius:50%;background:#fff;animation:livep 1.2s ease-in-out infinite}@keyframes livep{50%{opacity:.25;transform:scale(.7)}}
 .shx .shc{position:relative}.shbtn{position:absolute;top:12px;right:12px;width:40px;height:40px;border-radius:50%;border:0;display:grid;place-items:center;background:rgba(255,255,255,.92);color:#0f172a;box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer}
+
+/* ---- v20 test series list + series page ---- */
+.slhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 14px}.slt{font-size:26px;margin:0 0 2px}
+.slring{position:relative;display:grid;place-items:center}.slring span{position:absolute;font-weight:800;font-size:13px}
+.chiprow .chip small{opacity:.6;font-weight:800;margin-left:2px}
+.sgrid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.scard2{padding:0;overflow:hidden;cursor:pointer;display:flex;flex-direction:column}
+.cover.sc2c{aspect-ratio:auto;height:120px;display:flex;align-items:flex-start;justify-content:space-between;padding:12px}
+.cover.sc2c .ico{margin:0}.cover.sc2c .tag{margin:0;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.cover.sc2c .tag.free{background:#fff;color:#047857}
+.sc2b{padding:14px 16px 16px;display:flex;flex-direction:column;gap:9px;flex:1}.sc2b h3{font-size:18px;margin:0}
+.sc2s{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--mut);font-weight:600}.sc2s span{display:inline-flex;align-items:center;gap:5px}
+.scnext{display:flex;align-items:center;gap:8px;font-size:13px;padding:8px 10px;border-radius:12px;background:var(--priSoft);color:var(--tx)}.scnext svg{color:var(--pri);flex:none}
+.scnext.live{background:color-mix(in srgb,var(--bad) 9%,var(--surface));font-weight:600}.scnext.prog{background:var(--warnSoft)}.scnext.prog svg{color:var(--warn)}
+.sc2f{display:flex;align-items:flex-end;gap:14px;margin-top:auto;padding-top:4px}.sc2f .btn{flex:none}
+.sv2 .svk{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.sv2 .svk div{background:var(--surface2);border-radius:12px;padding:9px 4px;text-align:center}.sv2 .svk b{display:block;font-size:17px}.sv2 .svk span{font-size:10.5px;color:var(--mut);font-weight:600}
+.svhl{display:flex;align-items:center;gap:12px;margin-top:12px;border-left:4px solid var(--pri)!important}.svhl.live{border-left-color:var(--bad)!important}.svhl.prog{border-left-color:var(--warn)!important}
+.svhl b{display:block;font-size:16px;margin-top:6px}.svhlk{display:flex}
+.fc2 .bar{height:5px}
+.sv2 .shc.cover{aspect-ratio:auto;height:150px}
+.trow{border-left:4px solid transparent!important}.trow.st-new{border-left-color:var(--pri)!important}.trow.st-live{border-left-color:var(--bad)!important}
+.trow.st-done{border-left-color:var(--ok)!important}.trow.st-wait{border-left-color:var(--bd)!important}.trow.st-prog{border-left-color:var(--warn)!important}.trow.st-lock{border-left-color:var(--bd)!important;opacity:.85}
+.trow .liveb{font-size:10.5px;padding:3px 9px}
 </style>
 <script>(function(){try{var h=document.documentElement,t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';h.dataset.accent=JSON.parse(localStorage.getItem('cbt_accent'))||'cyber'}catch(e){document.documentElement.dataset.theme='light';document.documentElement.dataset.accent='cyber'}})()</script>
-<script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6', 'app7', 'app8'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
+<script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6', 'app7', 'app8', 'app9'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
 <script src="config.js"></script>
 </head>
 <body>
@@ -1049,6 +1073,7 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 <script src="app6.js?v=21" onerror="(window.__miss=window.__miss||[]).push('app6.js')"></script>
 <script src="app7.js?v=1" onerror="(window.__miss=window.__miss||[]).push('app7.js')"></script>
 <script src="app8.js?v=3" onerror="(window.__miss=window.__miss||[]).push('app8.js')"></script>
+<script src="app9.js?v=1" onerror="(window.__miss=window.__miss||[]).push('app9.js')"></script>
 
 </body>
 </html>
