@@ -90,4 +90,37 @@ function svDraw(){const root=CAT.tests.filter(t=>t.series_id===SVID&&!t.folder_i
   if(st==='live')h=h.replace('<span class="chip pri">New</span>','<span class="liveb"><i></i>LIVE</span>');
   return h;
 }}
+
+/* ---------- phone notifications: one-tap switch, friendly help when the browser has blocked them ---------- */
+const npInApp=()=>/FBAN|FBAV|Instagram|Line\/|Telegram|WhatsApp|; wv\)|\bwv\b/i.test(navigator.userAgent);
+function npSw(){const w=document.getElementById('npsw');if(w){w.classList.toggle('on',npOn());const sm=w.parentElement.querySelector('small');if(sm)sm.textContent=npOn()?'On · new notices appear on your phone':'Get new notices in your phone’s notification bar'}}
+function npEnable(){LS.set('cbt_np',1);LS.set('cbt_np_last',Math.max(LS.get('cbt_np_last',0),...(ANN||[]).map(x=>x.at),Date.now()-6e4));npSw();toast('Phone notifications on 🔔')}
+async function npToggle(){
+  if(npOn()){LS.set('cbt_np',0);npSw();toast('Phone notifications off');return}
+  if(!npSup()||npInApp())return npHelp('app');
+  let r=Notification.permission;
+  if(r==='default'){try{r=await Notification.requestPermission()}catch(e){r=Notification.permission}}
+  if(r==='granted')return npEnable();
+  npHelp(r==='denied'?'blocked':'ask');
+}
+function npHelp(kind){
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent),url=location.href.split('#')[0];
+  const chrome=/android/i.test(navigator.userAgent)?`intent://${url.replace(/^https?:\/\//,'')}#Intent;scheme=https;package=com.android.chrome;end`:url;
+  const steps=kind==='app'?(ios?[['Tap <b>⋯</b> or the share button at the top'],['Choose <b>Open in Safari</b>'],['Add the site to your Home Screen, open it from there and turn notifications on']]
+      :[['Tap <b>⋮</b> at the top right'],['Choose <b>Open in Chrome</b> (or "Open in browser")'],['Open Settings there and turn notifications on']])
+    :ios?[['Add this site to your <b>Home Screen</b> (Share → Add to Home Screen)'],['Open it from the Home Screen icon'],['Turn on Phone Notifications again and tap <b>Allow</b>']]
+    :[['Tap the <b>🔒 lock / ⓘ icon</b> next to the website address at the top'],['Tap <b>Permissions</b> → <b>Notifications</b>'],['Choose <b>Allow</b>, then come back here — it switches on by itself']];
+  sheet(`<h2 class="sht">${ic('bell',20)} Turn on notifications</h2><div class="shl"></div>
+   <p class="sm mut" style="margin:0 0 12px">${kind==='app'?'You opened the site inside another app (like WhatsApp or Telegram). Notifications only work in your phone’s browser.':kind==='blocked'?'Notifications were blocked for this site earlier. Your phone only lets <b>you</b> unblock them — it takes 10 seconds:':'Tap <b>Allow</b> when your phone asks. If no question appeared, do this once:'}</p>
+   <ol class="isteps">${steps.map((x,i)=>`<li><b class="n">${i+1}</b><span>${x[0]}</span></li>`).join('')}</ol>
+   ${kind==='app'?`<a class="btn block" style="text-decoration:none" href="${esc(chrome)}">${ic('right',16)} Open in Chrome</a>`:`<button class="btn block" onclick="npRetry()">${ic('check',16)} I have allowed it — check again</button>`}
+   <p class="sm mut" style="margin:12px 0 0;text-align:center">Notices will always appear on the 🔔 bell inside the app too.</p>`,'nphelp');
+}
+async function npRetry(){
+  let r=npSup()?Notification.permission:'denied';
+  if(r==='default'){try{r=await Notification.requestPermission()}catch(e){}}
+  if(r==='granted'){closeModal();npEnable();openSettings()}else toast('Still blocked — follow the steps above')
+}
+if(npSup()&&navigator.permissions&&navigator.permissions.query)navigator.permissions.query({name:'notifications'}).then(p=>{p.onchange=()=>{
+  if(p.state==='granted'&&LS.get('cbt_np',0)!==1&&AUTH){npEnable();const h=document.querySelector('#layer .bsheet[data-id="nphelp"]');if(h)closeModal()}}}).catch(()=>{});
 ;(window.__p=window.__p||{})['app9']=1;
