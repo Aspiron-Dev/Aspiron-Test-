@@ -801,44 +801,72 @@ body.intest~*,html:has(body.intest):after{display:none}
 .stat span,.tiles span{font-family:var(--fb);font-size:11.5px;white-space:nowrap}
 .brand{font-size:15px}.brand #sn{max-width:44vw;letter-spacing:.01em}
 
-/* ---- v12 design script: RGB glass lighting, slide transitions, glow nav ---- */
-/* 1. Soft diffused RGB light behind the UI (theme-aware, slow drift) */
-body::after{content:"";position:fixed;inset:-20%;z-index:-1;pointer-events:none;opacity:.55;filter:blur(60px);
-  background:
-    radial-gradient(38% 32% at 18% 22%,rgba(34,211,238,.35),transparent 70%),
-    radial-gradient(34% 30% at 82% 30%,rgba(99,102,241,.30),transparent 70%),
-    radial-gradient(40% 34% at 62% 86%,rgba(16,185,129,.28),transparent 70%);
+/* ---- v13 master design: triple theme, accents, glass, RGB glow, slide, micro-interactions ---- */
+html{--accent-color:var(--pri);--crimson:#dc143c;--orange:#f97316;--gold:#d9a441;--e2:cubic-bezier(.4,0,.2,1)}
+/* secondary accents: Crimson (errors), Warm Orange (warnings), Gold (premium/badges) */
+html[data-theme="light"]{--warn:#ea580c;--warnSoft:#fff0e2;--bad:#dc143c;--badSoft:#fde8ed;--gold-tx:#9a6a12}
+html[data-theme="dark"]{--warn:#fb923c;--warnSoft:#3a2210;--bad:#ff4d6d;--badSoft:#3a1018;--gold-tx:#f3d27a}
+.tag.paid{background:color-mix(in srgb,var(--gold) 20%,transparent);color:var(--gold-tx)}
+.bdg.on{box-shadow:0 0 0 1px color-mix(in srgb,var(--gold) 50%,transparent),0 8px 22px -10px var(--gold)}
+/* True Black (OLED): dark mode + data-oled */
+html[data-theme="dark"][data-oled="1"],html[data-theme="dark"][data-oled="1"][data-accent]{--bg:#000;--surface:#0a0a0c;--surface2:#131316;--bd:#1f1f24;--glass:rgba(255,255,255,.05)}
+html[data-oled="1"] body::before{opacity:.55}
+html[data-oled="1"] body::after{opacity:.32}
+html[data-oled="1"] .hdr{background:rgba(0,0,0,.6)}
+
+/* ambient RGB light behind the UI (slow drift) */
+body::after{content:"";position:fixed;inset:-20%;z-index:-1;pointer-events:none;opacity:.5;filter:blur(60px);will-change:transform;
+  background:radial-gradient(38% 32% at 18% 22%,rgba(34,211,238,.35),transparent 70%),radial-gradient(34% 30% at 82% 30%,rgba(99,102,241,.30),transparent 70%),radial-gradient(40% 34% at 62% 86%,rgba(16,185,129,.28),transparent 70%);
   animation:rgbDrift 22s ease-in-out infinite alternate}
-html[data-theme=dark] body::after{opacity:.5}
-html[data-theme=light] body::after{opacity:.38}
+html[data-theme=light] body::after{opacity:.36}
 html[data-accent=green] body::after{background:radial-gradient(38% 32% at 18% 22%,rgba(16,185,129,.38),transparent 70%),radial-gradient(34% 30% at 82% 30%,rgba(52,211,153,.28),transparent 70%),radial-gradient(40% 34% at 62% 86%,rgba(34,211,238,.24),transparent 70%)}
+html[data-accent=royal] body::after{background:radial-gradient(38% 32% at 18% 22%,rgba(139,92,246,.38),transparent 70%),radial-gradient(34% 30% at 82% 30%,rgba(236,72,153,.24),transparent 70%),radial-gradient(40% 34% at 62% 86%,rgba(99,102,241,.28),transparent 70%)}
 @keyframes rgbDrift{0%{transform:translate3d(-3%,-2%,0) rotate(0deg) scale(1)}50%{transform:translate3d(3%,2%,0) rotate(6deg) scale(1.06)}100%{transform:translate3d(-2%,4%,0) rotate(-5deg) scale(1.02)}}
 body.intest::after{display:none}
-/* 2. Frosted glass: semi-transparent RGBA + blur */
-.card,.tiles>div,.hsum div,.modal .box,.sheet .in,.instbar{
-  background:color-mix(in srgb,var(--surface) 58%,transparent);
-  -webkit-backdrop-filter:blur(22px) saturate(1.7);backdrop-filter:blur(22px) saturate(1.7);
-  border:1px solid color-mix(in srgb,var(--pri) 14%,rgba(255,255,255,.35))}
-html[data-theme=dark] .card,html[data-theme=dark] .tiles>div,html[data-theme=dark] .hsum div{border-color:color-mix(in srgb,var(--pri) 20%,rgba(255,255,255,.06))}
+
+/* frosted glass: light .65 / dark+OLED .05, blur(12px), 1px hairline */
+html[data-theme="light"] .card,html[data-theme="light"] .tiles>div,html[data-theme="light"] .hsum div{background:rgba(255,255,255,.65)}
+html[data-theme="dark"] .card,html[data-theme="dark"] .tiles>div,html[data-theme="dark"] .hsum div{background:rgba(255,255,255,.05)}
+.card,.tiles>div,.hsum div,.instbar{-webkit-backdrop-filter:blur(12px) saturate(1.5);backdrop-filter:blur(12px) saturate(1.5)}
+.card,.tiles>div,.hsum div{border:1px solid rgba(255,255,255,.1)!important}
 body.intest .card,.tlayout .card{background:var(--surface)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
-/* 3. Slide transitions between screens (direction set by JS) */
-@keyframes slideInR{from{opacity:0;transform:translate3d(38px,0,0) scale(.99)}to{opacity:1;transform:none}}
-@keyframes slideInL{from{opacity:0;transform:translate3d(-38px,0,0) scale(.99)}to{opacity:1;transform:none}}
-html.nav-fwd #app>*{animation:slideInR .42s var(--ease,cubic-bezier(.22,.8,.24,1)) both!important;animation-delay:0s!important}
-html.nav-back #app>*{animation:slideInL .42s var(--ease,cubic-bezier(.22,.8,.24,1)) both!important;animation-delay:0s!important}
-html.nav-fwd #app>.wrap>*,html.nav-back #app>.wrap>*{animation-delay:0s!important}
-/* 4. Glowing active + tapped icons in bottom nav */
-.bnav button.on{color:var(--pri)}
-.bnav button.on svg{opacity:1;filter:drop-shadow(0 0 6px var(--pri)) drop-shadow(0 0 14px var(--glow))}
-.bnav button.tap svg{animation:tapGlow .55s var(--ease,cubic-bezier(.22,.8,.24,1))}
+/* ambient glow behind the major cards */
+html[data-theme] .rhero,html[data-theme] .tkhero,html[data-theme] .cdc,html[data-theme] .shx{box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 0 60px -14px var(--glow),0 14px 40px rgba(0,0,0,.14)}
+/* modals: soft glow behind + glass box */
+.modal{background:radial-gradient(60% 45% at 50% 50%,color-mix(in srgb,var(--accent-color) 26%,transparent),rgba(5,8,20,.62) 75%)}
+#layer .modal .box{background:color-mix(in srgb,var(--surface) 80%,transparent);-webkit-backdrop-filter:blur(12px) saturate(1.5);backdrop-filter:blur(12px) saturate(1.5);border:1px solid rgba(255,255,255,.1);box-shadow:0 0 90px -12px var(--glow),0 24px 60px rgba(0,0,0,.35)}
+
+/* floating glass dock + glow + underline */
+@media(max-width:700px){
+  body.hasnav .bnav{border:1px solid rgba(255,255,255,.1);border-radius:24px}
+  .bnav button.on svg{opacity:1;filter:drop-shadow(0 0 8px var(--accent-color)) drop-shadow(0 0 16px var(--glow))}
+  .bnav button.on{color:var(--accent-color)}
+  .bnav button.on:before{content:"";position:absolute;bottom:2px;left:50%;width:18px;height:3px;margin-left:-9px;border-radius:99px;background:var(--accent-color);box-shadow:0 0 10px var(--accent-color),0 0 20px var(--glow);animation:ulIn .4s var(--e2)}
+}
+@keyframes ulIn{from{transform:scaleX(0);opacity:0}}
+.bnav button.tap svg{animation:tapGlow .55s var(--e2)}
 .bnav button.tap:after{content:"";position:absolute;left:50%;top:44%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:radial-gradient(circle,var(--glow),transparent 70%);animation:tapRing .55s ease-out forwards;pointer-events:none}
-@keyframes tapGlow{0%{transform:scale(.8);filter:drop-shadow(0 0 0 transparent)}55%{transform:scale(1.25);filter:drop-shadow(0 0 10px var(--pri)) drop-shadow(0 0 22px var(--pri))}100%{transform:scale(1.1)}}
+@keyframes tapGlow{0%{transform:scale(.8)}55%{transform:scale(1.25);filter:drop-shadow(0 0 10px var(--accent-color)) drop-shadow(0 0 22px var(--accent-color))}100%{transform:scale(1.1)}}
 @keyframes tapRing{from{opacity:.9;transform:scale(.4)}to{opacity:0;transform:scale(1.8)}}
-.btn:active,.iconbtn:active,.look:active{box-shadow:0 0 0 3px color-mix(in srgb,var(--pri) 30%,transparent),0 0 22px var(--glow)}
-.iconbtn.tap{box-shadow:0 0 0 3px color-mix(in srgb,var(--pri) 28%,transparent),0 0 20px var(--glow)}
-@media(prefers-reduced-motion:reduce){body::after{animation:none}html.nav-fwd #app>*,html.nav-back #app>*{animation:none!important}}
+.btn.tap,.look.tap,.scard.tap,.fcard.tap,.hscard.tap,.mkcard.tap,.iconbtn.tap{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent-color) 30%,transparent),0 0 24px var(--glow)}
+
+/* horizontal slide + fade between sections (direction via --dx, set by JS) */
+@keyframes slideIn{from{opacity:0;transform:translate3d(var(--dx,40px),0,0)}to{opacity:1;transform:none}}
+html.slide #app>*{animation:slideIn .35s var(--e2) both!important;animation-delay:0s!important}
+html.slide #app>.wrap>*{animation-delay:0s!important}
+html.slide body.intest #app>*,body.intest #app>*{animation:none!important}
+
+/* micro-interactions: hover + tap scale(1.02) */
+.btn,button.chip,.pill,.tag,.look,.seg button,.tkwk,.bdg,.iconbtn,.scard,.fcard,.hscard,.mkcard{transition:transform .35s var(--e2),box-shadow .35s var(--e2),background .35s var(--e2),color .35s var(--e2)}
+@media(hover:hover){
+  .btn:hover,button.chip:hover,.look:hover,.seg button:hover,.iconbtn:hover,.fcard:hover,.hscard:hover,.mkcard:hover,.bdg:hover{transform:scale(1.02)}
+  .scard:hover{transform:translateY(-4px) scale(1.02)}
+}
+.btn:active,button.chip:active,.look:active,.seg button:active,.iconbtn:active,.scard:active,.fcard:active,.hscard:active,.mkcard:active,.tksub:active{transform:scale(1.02)!important}
+.btn:active,.iconbtn:active,.look:active{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent-color) 30%,transparent),0 0 22px var(--glow)}
+@media(prefers-reduced-motion:reduce){body::after{animation:none}html.slide #app>*{animation:none!important}}
 </style>
-<script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));document.documentElement.dataset.accent=a||'cyber'}catch(e){}</script>
+<script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t==='oled'?'dark':t;if(t==='oled')document.documentElement.dataset.oled='1';var a=JSON.parse(localStorage.getItem('cbt_accent'));document.documentElement.dataset.accent=a||'cyber'}catch(e){}</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
 <script src="config.js"></script>
 </head>
@@ -857,33 +885,30 @@ html.nav-fwd #app>.wrap>*,html.nav-back #app>.wrap>*{animation-delay:0s!importan
 <div id="layer"></div>
 
 
-<script src="app1.js?v=17" onerror="(window.__miss=window.__miss||[]).push('app1.js')"></script>
+<script>
+/* v13: slide direction by section order + tap glow (additive; runs before the app scripts) */
+(function(){
+  var h=document.documentElement,tabs={'':0,'#/':0,'#/series':1,'#/m':2,'#/b':3,'#/r':4,'#/t':5};
+  function rk(x){x=x||'#/';if(tabs[x]!=null)return tabs[x];if(/^#\/s\//.test(x))return 10;if(/^#\/f\//.test(x))return 11;if(/^#\/h\//.test(x))return 12;return 0}
+  var prev=rk(location.hash);
+  addEventListener('hashchange',function(){
+    var n=rk(location.hash);
+    h.style.setProperty('--dx',n<prev?'-40px':'40px');
+    h.classList.add('slide');prev=n;
+  });
+  document.addEventListener('pointerdown',function(e){
+    var b=e.target.closest&&e.target.closest('.bnav button,.iconbtn,.btn,.look,.scard,.fcard,.hscard,.mkcard');
+    if(!b)return;b.classList.remove('tap');void b.offsetWidth;b.classList.add('tap');
+    setTimeout(function(){b.classList.remove('tap')},600);
+  },{passive:true});
+})();
+</script>
+<script src="app1.js?v=18" onerror="(window.__miss=window.__miss||[]).push('app1.js')"></script>
 <script src="app2.js?v=17" onerror="(window.__miss=window.__miss||[]).push('app2.js')"></script>
 <script src="app3.js?v=17" onerror="(window.__miss=window.__miss||[]).push('app3.js')"></script>
 <script src="app4.js?v=17" onerror="(window.__miss=window.__miss||[]).push('app4.js')"></script>
 <script src="app5.js?v=17" onerror="(window.__miss=window.__miss||[]).push('app5.js')"></script>
 <script src="app6.js?v=17" onerror="(window.__miss=window.__miss||[]).push('app6.js')"></script>
 
-<script>
-/* v12: slide direction + tap glow (additive, touches no app logic) */
-(function(){
-  var h=document.documentElement,idx=+(history.state&&history.state.__i||0),last=location.hash;
-  try{history.replaceState({__i:idx},'')}catch(e){}
-  function dir(d){h.classList.remove('nav-fwd','nav-back');void h.offsetWidth;h.classList.add(d)}
-  addEventListener('hashchange',function(){
-    var st=history.state&&history.state.__i, d='nav-fwd';
-    if(st==null){idx++;try{history.replaceState({__i:idx},'')}catch(e){}}
-    else{d=st<idx?'nav-back':'nav-fwd';idx=st}
-    dir(d);last=location.hash;
-    setTimeout(function(){h.classList.remove('nav-fwd','nav-back')},600);
-  });
-  addEventListener('popstate',function(e){var st=e.state&&e.state.__i;if(st!=null&&st<idx){idx=st;dir('nav-back')}});
-  document.addEventListener('pointerdown',function(e){
-    var b=e.target.closest&&e.target.closest('.bnav button,.iconbtn');
-    if(!b)return;b.classList.remove('tap');void b.offsetWidth;b.classList.add('tap');
-    setTimeout(function(){b.classList.remove('tap')},600);
-  },{passive:true});
-})();
-</script>
 </body>
 </html>
