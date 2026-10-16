@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="admin.webmanifest">
+<meta name="theme-color" content="#1e1b4b">
+<link rel="apple-touch-icon" href="admin-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Admin">
 <title>Admin · CBT Test Series</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -617,6 +622,20 @@ body.admx .hdr{background:color-mix(in srgb,var(--bg) 80%,transparent);border-bo
 .bnr{display:flex;gap:12px;align-items:flex-start}.bnr>img,.bnph{width:132px;aspect-ratio:16/7.5;object-fit:cover;border-radius:10px;flex:none;background:var(--surface2)}
 .bnph{display:grid;place-items:center;font-size:11px;font-weight:700;padding:6px;text-align:center;background:linear-gradient(135deg,#1e3a8a,#7c3aed);color:#fff}
 @media(max-width:560px){.bnr{flex-direction:column}.bnr>img,.bnph{width:100%}}
+
+/* ---- v10 insights ---- */
+.sstats.in8{grid-template-columns:repeat(4,1fr)}@media(max-width:560px){.sstats.in8{grid-template-columns:repeat(2,1fr)}}
+.inseg{display:inline-flex}.inseg2{display:flex;width:100%;overflow:auto}.inseg2 button{flex:1;white-space:nowrap}.inseg2 b{margin-left:4px}
+.inbars{display:flex;align-items:flex-end;gap:3px;height:130px}.inbars div{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;min-width:0}
+.inbars i{display:block;width:100%;max-width:22px;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,#6366f1,#0ea5e9)}.inbars i.z{background:var(--surface2)}
+.inbars span{font-size:10px;color:var(--mut);height:12px}.inbars.dist b{font-size:10.5px;height:14px}
+.inbars i.cb{background:#f43f5e}.inbars i.cw{background:#f59e0b}.inbars i.cg{background:#10b981}.inbars i.z{background:var(--surface2)!important}
+.ingrid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}@media(max-width:760px){.ingrid{grid-template-columns:1fr}}
+.inlist{display:flex;flex-direction:column}.inr{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--bd);cursor:pointer}.inr:last-child{border-bottom:0}.inr .grow{flex:1;min-width:0}.inr .grow b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inr .rk{min-width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:12.5px;background:var(--surface2);flex:none;padding:0 4px}
+.rk.r1{background:#f5c542;color:#4a3500}.rk.r2{background:#cfd6de;color:#2b3440}.rk.r3{background:#e0a56b;color:#4a2a08}.rk.up{background:#dcfce7;color:#15803d}.rk.bad{background:#ffe4e6;color:#be123c}
+.inend{text-align:right;display:flex;flex-direction:column;align-items:flex-end}.inmini{height:4px;border-radius:9px;background:var(--surface2);margin-top:5px;max-width:160px;overflow:hidden}.inmini i{display:block;height:100%}
+.inspark{width:100%;height:70px;display:block}
 </style>
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['admin1', 'admin2', 'admin3', 'admin4'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
@@ -641,6 +660,7 @@ body.admx .hdr{background:color-mix(in srgb,var(--bg) 80%,transparent);border-bo
 <script src="admin4.js?v=13" onerror="(window.__miss=window.__miss||[]).push('admin4.js')"></script>
 <script src="admin5.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin5.js')"></script>
 <script src="admin6.js?v=3" onerror="(window.__miss=window.__miss||[]).push('admin6.js')"></script>
+<script src="admin7.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin7.js')"></script>
 
 </body>
 </html>
