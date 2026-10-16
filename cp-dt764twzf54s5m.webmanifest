@@ -1,10 +1,10 @@
 {
-  "id": "./admin.html",
+  "id": "./cp-dt764twzf54s5m.html",
   "name": "Aspiron Admin",
   "short_name": "Admin",
   "description": "Admin control centre for the test series",
-  "start_url": "./admin.html",
-  "scope": "./admin.html",
+  "start_url": "./cp-dt764twzf54s5m.html",
+  "scope": "./cp-dt764twzf54s5m.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0f172a",

@@ -26,7 +26,7 @@ function ago(ms){
   if(s<60)return 'just now';if(s<3600)return Math.floor(s/60)+' min ago';if(s<86400)return Math.floor(s/3600)+' h ago';
   return Math.floor(s/86400)+' d ago';
 }
-const siteUrl=()=>location.href.replace(/[#?].*$/,'').replace(/admin\.html$/,'');
+const siteUrl=()=>location.href.replace(/[#?].*$/,'').replace(/[^/]*\.html$/,'');
 
 /* ---------- api ---------- */
 let PW='';try{PW=sessionStorage.getItem('adm_pw')||''}catch(e){}

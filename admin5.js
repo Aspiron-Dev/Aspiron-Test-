@@ -36,7 +36,7 @@ const XTRA=['live','notices'];
 const TTL={overview:'Home',live:'Live test monitor',students:'Students',content:'Series & tests',create:'Create test',results:'Results',notices:'Notices',reports:'Reports'};
 
 function navHtml(){
-  return `<a class="sbrand" href="admin.html"><span class="logo"><svg class="i" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg></span><span><b>Admin</b><small>Control centre</small></span></a>
+  return `<a class="sbrand" href=""><span class="logo"><svg class="i" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/></svg></span><span><b>Admin</b><small>Control centre</small></span></a>
    <button class="sfind" onclick="openFind()">${ai('search',16)}<span>Search…</span><kbd>/</kbd></button>
    <div class="snav">${NAVX.map(([k,l])=>`<button class="sni" data-k="${k}" onclick="tab('${k}')">${ai(k,19)}<span>${l}</span><em class="nb" id="nb_${k}"></em></button>`).join('')}</div>
    <div class="sfoot"><a class="sni" href="index.html" target="_blank" rel="noopener">${ai('site',19)}<span>Student site</span></a>
