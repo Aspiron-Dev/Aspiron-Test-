@@ -14,7 +14,7 @@ function viewHome(tab){
   const hr=new Date().getHours(),gr=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
   const nm=(AUTH.name||'').trim();
   let o=`<div class="wrap">${tab!=='dash'?'':`<div class="hero"><div class="who"><div class="bigav">${esc(nm[0]||'?').toUpperCase()}</div>
-   <div><div class="sm" style="opacity:.85">${gr}</div><h1>${esc(nm.split(' ')[0])}</h1><span class="lvl">${P.lvl}</span></div>
+   <div><div class="sm" style="opacity:.85">${gr}</div><h1>${esc(nm.split(' ')[0])}</h1><span class="lvl${/Achiever|Champion/.test(P.lvl)?' gold':''}">${/Achiever|Champion/.test(P.lvl)?ic('crown',12):''}${P.lvl}</span></div>
    <div class="streak"><b>${P.streak}🔥</b><span>day streak</span></div></div>
   <div class="stats"><div class="stat"><b data-cu="${R.length}">${R.length}</b><span>Tests taken</span></div><div class="stat"><b data-cu="${avg}">${avg}%</b><span>Average</span></div><div class="stat"><b data-cu="${best}">${best}%</b><span>Best</span></div></div></div>`}${tabsHtml(tab)}`;
   if(tab==='dash')o+=dashBody(R,avg);
@@ -75,7 +75,7 @@ const badge=s=>s.is_free?`<span class="pill free">FREE</span>`:s.unlocked?`<span
 function seriesCard(s){
   const st=seriesStats(s),p=st.n?Math.round(st.done*100/st.n):0;
   return `<div class="card scard" onclick="location.hash='#/s/${s.id}'">
-   <div class="cover" style="background:${grad(s.id)}" data-cov="${s.id}" data-v="${s.cover_v||0}"><div class="ico">${ic(s.is_free?'book':'crown')}</div></div>
+   <div class="cover" style="background:${grad(s.id)}" data-cov="${s.id}" data-v="${s.cover_v||0}">${s.is_free?'':`<span class="prem">${ic('crown',12)} PREMIUM</span>`}<div class="ico">${ic(s.is_free?'book':'crown')}</div></div>
    <div class="body"><div class="ttl"><h3>${esc(s.title)}</h3>${tag(s)}</div>
     ${s.description?`<div class="mut sm clamp2">${esc(s.description)}</div>`:''}
     <div class="chips"><span class="chip">${st.n} test${st.n===1?'':'s'}</span>${st.folders?`<span class="chip">${st.folders} folder${st.folders===1?'':'s'}</span>`:''}${(s.files||[]).length?`<span class="chip pri">${ic('file',12)} Syllabus</span>`:''}</div>
