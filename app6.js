@@ -344,22 +344,29 @@ function mnuUpdate(){
   const b=document.getElementById('mnu');if(!b)return;
   b.innerHTML=ic('menu',22);b.style.display=AUTH?'':'none';
 }
+IC.bmark='<path d="M6 3h12v18l-6-4-6 4z"/>';
+IC.pulse='<path d="M3 12h4l3-8 4 16 3-8h4"/>';
+const HELP_URL='https://t.me/StudentsHelpCentreBot';
+IC.gear='<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 01-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 010-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 014 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 010 4h-.1a1.7 1.7 0 00-1.5 1z"/>';
+IC.mail='<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>';
 function openMenu(){
   if(!AUTH)return;
-  const R=CAT?CAT.results||[]:[],P=pstats(R),nm=AUTH.name||'';
+  const R=CAT?CAT.results||[]:[],P=pstats(R),nm=pfName()||AUTH.name||'',o=pfGet();
+  const sub=[o.exam,o.cls].filter(Boolean).join(' · ')||('+91 '+maskMob(AUTH.mobile)+' · '+P.lvl);
   const cur=(location.hash||'#/').replace(/^#\/?/,'');
   const go=h=>`closeModal();location.hash='${h}'`;
-  const it=(i,t,f,on)=>`<button class="dri ${on?'on':''}" onclick="${f}">${ic(i,20)}<span>${t}</span></button>`;
-  const wa=waLink('Hello, I am '+nm+' ('+AUTH.mobile+'). I need help.');
-  const canIns=!isStandalone()&&!LS.get('cbt_noinst',0)&&(typeof DIP!=='undefined'&&DIP);
-  $('#layer').innerHTML=`<div class="drw" onclick="if(event.target===this)closeModal()"><aside class="drp">
-   <div class="drh"><div class="bigav">${pfInner(nm)}</div><div class="grow"><b>${esc(nm)}</b><div class="sm" style="opacity:.85">+91 ${esc(maskMob(AUTH.mobile))} · ${P.lvl}</div></div><button class="drx" onclick="closeModal()" aria-label="Close">${ic('x',18)}</button></div>
-   <div class="drl"><div class="drs">Study</div>
-   ${it('target','Home',go('#/'),cur===''||cur==='/')}${it('book','Test series',go('#/series'),cur==='series')}${it('hist','Results &amp; test history',go('#/r'),cur==='r'||cur.indexOf('h/')===0)}${it('notebook','Mistake notebook',go('#/m'),cur==='m')}${it('star','Saved questions',go('#/b'),cur==='b')}${it('tracker','Study tracker',go('#/t'),cur==='t')}
-   <div class="drs">More</div>
-   ${it('calendar','Exam countdown','closeModal();cdEdit()')}${it('bell','Notifications',go('#/n'),cur==='n')}${it('palette','Theme settings','openLook()')}${it('user','My profile','closeModal();openProfile()')}
-   ${isStandalone()?'':it('download','Install app',"closeModal();installApp()")}${wa?`<a class="dri" href="${wa}" target="_blank" rel="noopener">${ic('msg',20)}<span>Contact admin</span></a>`:''}
-   <button class="dri out" onclick="closeModal();signOut()">${ic('logout',20)}<span>Sign out</span></button></div></aside></div>`;
+  const it=(i,t,f,on,c)=>`<button class="dri ${on?'on':''} ${c||''}" onclick="${f}">${ic(i,22)}<span>${t}</span></button>`;
+  $('#layer').innerHTML=`<div class="drw" onclick="if(event.target===this)closeModal()"><aside class="drp sb">
+   <div class="sbh"><button class="sbx" onclick="closeModal()" aria-label="Close">${ic('x',18)}</button>
+    <div class="sbav">${pfInner(nm)}</div><b class="sbn">${esc(nm)}</b><div class="sbs">${esc(sub)}</div>
+    <button class="sbvp" onclick="closeModal();openProfile()">View Profile →</button></div>
+   <div class="drl">
+   ${it('sun','Theme Settings','openLook()')}<div class="sbd"></div>
+   ${it('grid','Home',go('#/'),cur===''||cur==='/')}${it('file','Test Series',go('#/series'),cur==='series')}${it('hist','Test History',go('#/r'),cur==='r'||cur.indexOf('h/')===0)}${it('notebook','Mistake Notebook',go('#/m'),cur==='m')}${it('bmark','Saved Questions',go('#/b'),cur==='b')}${it('pulse','Study Tracker',go('#/t'),cur==='t')}${it('bell','Notifications',go('#/n'),cur==='n')}
+${it('calendar','Exam Countdown','closeModal();cdEdit()')}
+   <div class="sbd"></div>
+   ${it('gear','Settings','openSettings()')}${it('info','About Us','openAbout()')}${it('file','Terms &amp; Conditions','openTerms()')}<a class="dri" href="${HELP_URL}" target="_blank" rel="noopener">${ic('mail',22)}<span>Contact Us</span></a>
+   ${it('logout','Logout','closeModal();signOut()',0,'out')}</div></aside></div>`;
 }
 
 /* ===== v12: profile (photo + details), bottom sheets, header ===== */
@@ -476,3 +483,75 @@ function installApp(){
 }
 init();
 ;(window.__p=window.__p||{})['app6']=1;
+
+/* ===== v17: Settings / About / Terms sheets, bell-only notices, phone notifications ===== */
+const SN=()=>esc(CFG.SITE_NAME||'CBT Test Series');
+function stRow(i,t,d,f,right){return `<button class="strow" onclick="${f}"><span class="stic">${ic(i,20)}</span><span class="grow"><b>${t}</b>${d?`<small>${d}</small>`:''}</span>${right||ic('right',18)}</button>`}
+function openSettings(){
+  const np=npOn();
+  sheet(`<h2 class="sht">Settings</h2><div class="shl"></div>
+   ${stRow('user','Profile Settings','Name, photo, class and target exam','openProfile()')}
+   ${stRow('palette','Theme &amp; Colours','Light, dark and colour palette','openLook()')}
+   ${stRow('bell','Phone Notifications',np?'On · new notices appear on your phone':'Get new notices in your phone’s notification bar','npToggle()',`<span class="tkoff${np?' on':''}" id="npsw"><i></i></span>`)}
+   ${stRow('calendar','Exam Countdown','Set your exam date','closeModal();cdEdit()')}
+   ${isStandalone()?'':stRow('download','Install App','Add to your home screen','closeModal();installApp()')}
+   ${stRow('file','Terms &amp; Conditions','','openTerms()')}
+   <button class="btn danger block" style="margin-top:14px" onclick="closeModal();signOut()">${ic('logout')} Logout</button>`,'set');
+}
+function openAbout(){
+  sheet(`<h2 class="sht">About Us</h2><div class="shl"></div><div class="legal">
+   <p><b>${SN()}</b> is an online test series platform for NEET, JEE and board exam students. Our goal is simple: give every student real exam-like practice, honest analysis and the habit of regular revision.</p>
+   <h4>What you get</h4>
+   <ul><li>Chapter-wise and full-length tests in a real CBT (computer based test) format</li><li>Instant results with score, accuracy, rank and time analysis</li><li>Test history to track your progress attempt by attempt</li><li>Mistake notebook and saved questions for quick revision</li><li>Study tracker and exam countdown to stay on schedule</li><li>Notices and updates directly from your teacher</li></ul>
+   <h4>Need help?</h4><p>Message us on Telegram any time and our team will get back to you.</p>
+   <a class="btn soft block" style="text-decoration:none" href="${HELP_URL}" target="_blank" rel="noopener">${ic('mail')} Contact Us</a></div>`,'about');
+}
+function openTerms(){
+  const n=SN();
+  sheet(`<h2 class="sht">Terms &amp; Conditions</h2><div class="shl"></div><div class="legal">
+   <p class="sm mut">Last updated: October 2026</p>
+   <p>By creating an account or using ${n} ("we", "us", "the platform") you agree to these terms. Please read them carefully.</p>
+   <h4>1. Your account</h4><p>Access is given against your registered mobile number. Keep your login details private. One account is for one student only — sharing an account with others may lead to it being blocked without notice.</p>
+   <h4>2. Use of content</h4><p>All questions, solutions, tests, PDFs and other material on the platform are for your personal study only. Copying, recording, screenshotting for sharing, reselling or uploading this content anywhere else is not allowed.</p>
+   <h4>3. Fair attempts</h4><p>Attempt tests honestly. Using unfair means, multiple accounts, scripts or tampering with the app may lead to your result being cancelled and your account being suspended.</p>
+   <h4>4. Results and ranks</h4><p>Scores, ranks, percentiles and predictions are given to help you prepare. They are indicative only and do not guarantee any result in the actual exam.</p>
+   <h4>5. Fees and access</h4><p>If a course or test series is paid, its access period and fee are as communicated to you at the time of joining. Fees once paid are not refundable unless clearly stated otherwise.</p>
+   <h4>6. Your data</h4><p>We store your name, mobile number and test attempts to run the platform and show your results. Profile details and photo you add are saved on your own phone. We do not sell your personal data to anyone.</p>
+   <h4>7. Notifications</h4><p>We may send you notices about tests, results and updates inside the app and, if you allow it, as phone notifications. You can turn phone notifications off any time in Settings.</p>
+   <h4>8. Availability</h4><p>We try to keep the platform running at all times, but it may sometimes be unavailable due to maintenance or network issues. Answers given while offline are saved on your phone and sent when you are back online.</p>
+   <h4>9. Independence</h4><p>${n} is an independent educational platform and is not linked to NTA, NCERT, CBSE or any exam authority. Exam names are used only to describe the syllabus.</p>
+   <h4>10. Changes</h4><p>We may update these terms, features or tests from time to time. Continuing to use the platform means you accept the updated terms.</p>
+   <h4>11. Contact</h4><p>For any question or complaint, message us on Telegram: <a href="${HELP_URL}" target="_blank" rel="noopener">@StudentsHelpCentreBot</a>.</p></div>`,'terms');
+}
+
+/* notices: no pop-up card on screen, only the count on the bell */
+function loadNotice(){const e=$('#notice');if(e)e.innerHTML='';annLoad()}
+
+/* phone notifications (system notification bar) for new notices */
+const npSup=()=>'Notification' in window&&'serviceWorker' in navigator;
+const npOn=()=>npSup()&&Notification.permission==='granted'&&LS.get('cbt_np',0)===1;
+async function npToggle(){
+  if(!npSup()){toast('This browser does not support notifications');return}
+  if(npOn()){LS.set('cbt_np',0);toast('Phone notifications off')}
+  else{
+    if(Notification.permission==='denied'){toast('Notifications are blocked. Allow them in browser site settings.');return}
+    const r=Notification.permission==='granted'?'granted':await Notification.requestPermission();
+    if(r!=='granted'){toast('Permission not given');return}
+    LS.set('cbt_np',1);LS.set('cbt_np_last',Math.max(LS.get('cbt_np_last',0),...(ANN||[]).map(x=>x.at),Date.now()-6e4));toast('Phone notifications on')
+  }
+  const w=document.getElementById('npsw');if(w){w.classList.toggle('on',npOn());const sm=w.parentElement.querySelector('small');if(sm)sm.textContent=npOn()?'On · new notices appear on your phone':'Get new notices in your phone’s notification bar'}
+}
+async function npCheck(){
+  if(!npOn()||!ANN||!ANN.length)return;
+  const last=LS.get('cbt_np_last',0),nw=ANN.filter(x=>x.at>last).sort((a,b)=>a.at-b.at);
+  if(!nw.length)return;
+  LS.set('cbt_np_last',Math.max(...nw.map(x=>x.at)));
+  if(document.visibilityState==='visible'&&location.hash==='#/n')return;
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    nw.slice(-3).forEach(x=>reg.showNotification(x.title||CFG.SITE_NAME||'New notice',{body:(x.text||'Tap to open').replace(/\s+/g,' ').slice(0,180),icon:'icon-192.png',badge:'icon-192.png',tag:'ann-'+x.id,data:{url:'#/n'}}));
+  }catch(e){}
+}
+{const _al=annLoad;annLoad=async function(f){const r=await _al(f);npCheck();return r}}
+setInterval(()=>{if(AUTH&&!INTEST)annLoad(true)},60000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&AUTH)annLoad(true)});
