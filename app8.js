@@ -22,7 +22,7 @@ function promoSlide(x,i){
   const u=x.link||'',ext=/^https?:\/\//i.test(u);
   const on=u?(ext?`href="${esc(u)}" target="_blank" rel="noopener noreferrer"`:`href="${esc(u)}"`):'';
   const inner=x.img&&/^data:image\/|^https:\/\//.test(x.img)?`<img src="${x.img}" alt="${esc(x.title||'')}" loading="${i?'lazy':'eager'}" draggable="false">`
-   :`<div class="pmtx pm${x.c||'abc'[i%3]}"><div class="pmb"><b>${esc(x.title||'')}</b>${x.text?`<span>${esc(x.text)}</span>`:''}${u?`<em>${esc(x.label||'Open')} →</em>`:''}</div><i class="pmo1"></i><i class="pmo2"></i></div>`;
+   :`<div class="pmtx pv${x.c||'abc'[i%3]}"><div class="pmb"><b>${esc(x.title||'')}</b>${x.text?`<span>${esc(x.text)}</span>`:''}${u?`<em>${esc(x.label||'Open')} →</em>`:''}</div><i class="pmo1"></i><i class="pmo2"></i></div>`;
   return u?`<a class="pms" ${on}>${inner}</a>`:`<div class="pms">${inner}</div>`;
 }
 function promoHtml(){

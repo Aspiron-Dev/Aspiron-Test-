@@ -989,7 +989,7 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 .pms{flex:0 0 100%;scroll-snap-align:center;aspect-ratio:16/7.5;display:block;text-decoration:none;color:#fff;position:relative;overflow:hidden;background:var(--surface2)}
 .pms img{width:100%;height:100%;object-fit:cover;display:block;user-select:none}
 .pmtx{position:absolute;inset:0;display:flex;align-items:center;padding:18px 20px;overflow:hidden}
-.pmtx.pma{background:linear-gradient(135deg,#0f172a,#1e3a8a 55%,#7c3aed)}.pmtx.pmb{background:var(--grad)}.pmtx.pmc{background:linear-gradient(135deg,#0e7490,#0ea5e9 60%,#22d3ee)}
+.pmtx.pva{background:linear-gradient(135deg,#0f172a,#1e3a8a 55%,#7c3aed)}.pmtx.pvb{background:var(--grad)}.pmtx.pvc{background:linear-gradient(135deg,#0e7490,#0ea5e9 60%,#22d3ee)}
 .pmb{position:relative;z-index:1;max-width:78%}.pmb b{display:block;font-family:var(--fh);font-size:21px;line-height:1.15}.pmb span{display:block;font-size:13px;opacity:.88;margin-top:6px;line-height:1.4}
 .pmb em{display:inline-block;font-style:normal;margin-top:12px;background:#fff;color:#0f172a;border-radius:99px;padding:6px 14px;font-size:12.5px;font-weight:800}
 .pmo1,.pmo2{position:absolute;border-radius:50%;background:rgba(255,255,255,.12)}.pmo1{width:180px;height:180px;right:-50px;top:-60px}.pmo2{width:120px;height:120px;right:40px;bottom:-60px;background:rgba(255,255,255,.08)}
@@ -1051,6 +1051,15 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 @keyframes npring{0%,60%,100%{transform:rotate(0)}10%,30%{transform:rotate(-10deg)}20%,40%{transform:rotate(10deg)}}
 .npli{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:16px}.npli span{background:var(--surface2);border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:600}
 .hsn{width:50px!important;height:50px!important;overflow:hidden}.hsn span{font-size:9px!important;letter-spacing:.2px!important}
+.askx{text-align:center;padding:6px 2px 2px}.askx h2{font-size:20px;margin:12px 0 6px}.askx p{margin:0;line-height:1.5}
+.askic{width:64px;height:64px;margin:4px auto 0;border-radius:20px;display:grid;place-items:center;font-size:30px;background:var(--warnSoft)}.askic.bad{background:var(--badSoft)}
+.tkday{display:flex;align-items:center;gap:14px;padding:14px 16px}
+.tkdk{display:flex;gap:16px;flex:none}.tkdk div{text-align:center}.tkdk b{display:block;font-size:22px;line-height:1.1}.tkdk span{font-size:10.5px;color:var(--mut);font-weight:600}
+.tkdw{flex:1;display:flex;align-items:flex-end;gap:6px;height:54px}.tkdw div{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px}
+.tkdw i{display:block;width:100%;max-width:18px;border-radius:5px;background:color-mix(in srgb,var(--pri) 45%,transparent)}.tkdw i.z{background:var(--surface2)}.tkdw .t i{background:var(--grad)}
+.tkdw span{font-size:10px;color:var(--mut);font-weight:700}.tkdw .t span{color:var(--pri)}
+.undo{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:90;background:#0f172a;color:#fff;border-radius:14px;padding:10px 10px 10px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 10px 30px rgba(0,0,0,.3);font-size:14px;animation:toastPop .3s var(--spring)}
+.undo button{border:0;background:rgba(255,255,255,.14);color:#7dd3fc;font-weight:800;border-radius:10px;padding:7px 12px;font:inherit;font-size:13px;font-weight:800}
 </style>
 <script>(function(){try{var h=document.documentElement,t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';h.dataset.accent=JSON.parse(localStorage.getItem('cbt_accent'))||'cyber'}catch(e){document.documentElement.dataset.theme='light';document.documentElement.dataset.accent='cyber'}})()</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6', 'app7', 'app8', 'app9'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
@@ -1078,8 +1087,8 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 <script src="app5.js?v=18" onerror="(window.__miss=window.__miss||[]).push('app5.js')"></script>
 <script src="app6.js?v=22" onerror="(window.__miss=window.__miss||[]).push('app6.js')"></script>
 <script src="app7.js?v=1" onerror="(window.__miss=window.__miss||[]).push('app7.js')"></script>
-<script src="app8.js?v=3" onerror="(window.__miss=window.__miss||[]).push('app8.js')"></script>
-<script src="app9.js?v=4" onerror="(window.__miss=window.__miss||[]).push('app9.js')"></script>
+<script src="app8.js?v=4" onerror="(window.__miss=window.__miss||[]).push('app8.js')"></script>
+<script src="app9.js?v=5" onerror="(window.__miss=window.__miss||[]).push('app9.js')"></script>
 
 </body>
 </html>

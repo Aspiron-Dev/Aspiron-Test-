@@ -171,4 +171,73 @@ async function pushOff(){
 {const _en=npEnable;npEnable=function(){_en();pushSync(true)}}
 {const _tg=npToggle;npToggle=async function(){const was=npOn();await _tg();if(was&&!npOn())pushOff()}}
 setTimeout(()=>pushSync(),4000);
+
+/* ---------- in-app Yes / No confirm (instead of the browser's "site says…" popup) ---------- */
+let ASKCB=null;
+function askYes(o){
+  ASKCB=o.yes;
+  sheet(`<div class="askx"><div class="askic ${o.danger?'bad':''}">${o.icon||'⚠️'}</div><h2>${esc(o.title)}</h2>${o.msg?`<p class="mut">${o.msg}</p>`:''}
+   <div class="row" style="margin-top:16px"><button class="btn ghost" style="flex:1" onclick="ASKCB=null;closeModal()">${esc(o.no||'No, keep it')}</button>
+   <button class="btn ${o.danger?'danger':''}" style="flex:1" onclick="const f=ASKCB;ASKCB=null;closeModal();if(f)f()">${esc(o.ok||'Yes, delete')}</button></div></div>`,'ask');
+}
+function cdDel(){askYes({icon:'⏳',title:'Remove the countdown?',msg:'You can set a new exam date any time.',ok:'Yes, remove',danger:1,yes:()=>{LS.del(cdKey());cdRefresh();toast('Countdown removed')}})}
+function trkDelWeek(i){
+  const w=TK.weeks[i];if(i<1||!w)return;const s=trkStats(w);
+  askYes({icon:'🗓️',title:`Delete “${w.label}”?`,msg:`This week${s.total?` and its <b>${s.total} task${s.total>1?'s':''}</b>`:''} will be deleted. This cannot be undone.`,danger:1,
+    yes:()=>{TK.weeks.splice(i,1);if(TK.cur>=TK.weeks.length)TK.cur=TK.weeks.length-1;else if(TK.cur>i)TK.cur--;trkSave();trkRender();toast(w.label+' deleted')}});
+}
+function trkResetWeek(){askYes({icon:'↺',title:'Reset this week?',msg:'All tasks of this week will be marked as pending again.',ok:'Yes, reset',yes:()=>{trkW().subjects.forEach(s=>s.tasks.forEach(t=>{t.done=false;delete t.at}));trkSave();trkRender();toast('Week reset')}})}
+function trkResetAll(){askYes({icon:'🗑️',title:'Delete everything?',msg:'<b>All weeks, subjects and tasks</b> will be deleted. This cannot be undone.',ok:'Yes, delete all',danger:1,yes:()=>{LS.del(trkKey());LS.del(trkDayKey());TK=null;trkLoad();TKS=-1;trkRender();toast('Tracker reset')}})}
+function trkDelSubj(si){
+  const s=trkW().subjects[si];if(!s)return;
+  askYes({icon:s.emoji||'📚',title:`Remove ${s.name}?`,msg:`It will be removed from this week${s.tasks.length?` with its <b>${s.tasks.length} task${s.tasks.length>1?'s':''}</b>`:''}.`,ok:'Yes, remove',danger:1,yes:()=>{trkW().subjects.splice(si,1);TKS=-1;trkSave();trkRender()}});
+}
+
+/* ---------- tracker upgrades: today count, daily streak, celebrations, undo, carry over ---------- */
+const trkDayKey=()=>'cbt_trkd_'+AUTH.mobile;
+const tDay=(d=new Date())=>d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+function trkDays(add){const o=LS.get(trkDayKey(),{});if(add){const k=tDay();o[k]=Math.max(0,(o[k]||0)+add);LS.set(trkDayKey(),o)}return o}
+function trkStreak(){const o=trkDays();let n=0,d=new Date();if(!o[tDay(d)])d.setDate(d.getDate()-1);while(o[tDay(d)]>0){n++;d.setDate(d.getDate()-1)}return n}
+function trkTog(si,ti){
+  const s=trkW().subjects[si],t=s.tasks[ti];if(!t)return;
+  t.done=!t.done;
+  if(t.done){t.at=Date.now();trkDays(1);if(navigator.vibrate)navigator.vibrate(12)}
+  else{if(t.at&&tDay(new Date(t.at))===tDay())trkDays(-1);delete t.at}
+  trkSave();trkRender();
+  if(t.done){
+    const all=trkStats(trkW());
+    if(all.total&&all.done===all.total)toast('🏆 Week complete! Amazing work');
+    else if(s.tasks.every(x=>x.done))toast(`🎉 ${s.name} done for this week!`);
+  }
+}
+let TKUNDO=null;
+function trkDelTask(si,ti){
+  const s=trkW().subjects[si],t=s.tasks.splice(ti,1)[0];if(!t)return;
+  TKUNDO={sid:s.id,ti,t};trkSave();trkRender();
+  const old=document.getElementById('tkundo');if(old)old.remove();
+  const d=document.createElement('div');d.id='tkundo';d.className='undo';d.innerHTML=`<span>Task deleted</span><button onclick="trkUndo()">UNDO</button>`;document.body.appendChild(d);
+  setTimeout(()=>{if(d.parentNode)d.remove()},4500);
+}
+function trkUndo(){
+  const u=TKUNDO;TKUNDO=null;const e=document.getElementById('tkundo');if(e)e.remove();if(!u)return;
+  const s=trkW().subjects.find(x=>x.id===u.sid);if(!s)return;s.tasks.splice(Math.min(u.ti,s.tasks.length),0,u.t);trkSave();trkRender();
+}
+function trkCarry(){
+  const T=trkLoad(),i=T.cur;if(i<1){toast('There is no previous week');return}
+  const prev=T.weeks[i-1],cur=T.weeks[i];let n=0;
+  prev.subjects.forEach(ps=>{const p=ps.tasks.filter(t=>!t.done);if(!p.length)return;
+    let cs=cur.subjects.find(x=>x.id===ps.id);if(!cs){cs={id:ps.id,name:ps.name,emoji:ps.emoji,color:ps.color,tasks:[]};cur.subjects.push(cs)}
+    p.forEach(t=>{if(!cs.tasks.some(x=>x.text===t.text)){cs.tasks.push({id:trkId(),text:t.text,done:false});n++}})});
+  trkSave();closeModal();trkRender();toast(n?`${n} pending task${n>1?'s':''} moved from ${prev.label}`:'No pending tasks in '+prev.label);
+}
+{const _th=trkHtml;trkHtml=function(){
+  let h=_th();
+  const o=trkDays(),td=o[tDay()]||0,st=trkStreak(),wk=[];for(let k=6;k>=0;k--){const d=new Date();d.setDate(d.getDate()-k);wk.push({l:d.toLocaleDateString('en-IN',{weekday:'narrow'}),n:o[tDay(d)]||0,t:k===0})}
+  const mx=Math.max(1,...wk.map(x=>x.n));
+  const strip=`<div class="card tkday"><div class="tkdk"><div><b>${td}</b><span>done today</span></div><div><b>${st}🔥</b><span>day streak</span></div></div>
+    <div class="tkdw">${wk.map(x=>`<div class="${x.t?'t':''}"><i style="height:${x.n?Math.max(18,x.n/mx*100):6}%" class="${x.n?'':'z'}"></i><span>${x.l}</span></div>`).join('')}</div></div>`;
+  const i=h.indexOf('<div class="tkweeks">');
+  return i>-1?h.slice(0,i)+strip+h.slice(i):h+strip;
+}}
+{const _tm=trkMenu;trkMenu=function(){_tm();const l=document.querySelector('#layer .tkmi');if(l&&TK&&TK.cur>0)l.insertAdjacentHTML('afterend',`<button class="tkmi" onclick="trkCarry()"><span>⇢</span><div><b>Carry over pending tasks</b><div class="sm mut">Copy unfinished tasks from ${esc(TK.weeks[TK.cur-1].label)}</div></div></button>`)}}
 ;(window.__p=window.__p||{})['app9']=1;
