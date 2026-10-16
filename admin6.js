@@ -1,0 +1,65 @@
+/* ================= v9 admin: Home banners (promo slider on the student Home page) ================= */
+async function AB(action,data){
+  try{
+    const r=await fetch(API+'/rest/v1/rpc/cbt_admin_banners',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_pw:PW,p_action:action,p_data:data||{}})});
+    if(!r.ok)return{ok:false,error:r.status===404?'missing':'server'};
+    const j=await r.json();if(!j.ok&&['invalid','locked','not_set'].includes(j.error))gate(j.error);return j;
+  }catch(e){return{ok:false,error:'network'}}
+}
+AI.banners='<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 15l5-5 4 4 3-3 8 8"/><circle cx="16" cy="9" r="1.5"/>';
+NAVX.splice(NAVX.findIndex(x=>x[0]==='notices')+1,0,['banners','Home banners']);
+XTRA.push('banners');TTL.banners='Home banners';
+{const _t=tab;tab=async function(t){const r=await _t(t);if(t==='banners')return loadBanners();return r}}
+{const _m=openMore;openMore=function(){_m();const g=document.querySelector('#layer .mgrid2');if(g&&!g.querySelector('[data-bn]'))g.insertAdjacentHTML('afterbegin',`<button class="mitem" data-bn onclick="closeModal();tab('banners')">${ai('banners',20)}<span>Home banners</span><em class="nb"></em></button>`)}}
+
+let BNL=[],BNIMG;
+async function loadBanners(){
+  const p=$('#pn_banners');if(!p)return;
+  if(!p.querySelector('#bnbox'))p.innerHTML=`<div class="phead"><div><h1>Home banners</h1><p class="sm mut">These slide automatically at the top of every student's Home page. Tap a banner and it opens its link — your test series, a WhatsApp group, a partner website, anything.</p></div></div><div id="bnbox"><div class="card"><div class="sk" style="width:50%"></div></div></div>`;
+  const r=await AB('list');const box=$('#bnbox');if(!box)return;
+  if(!r.ok){box.innerHTML=`<div class="card empty"><b>${r.error==='missing'?'One-time setup needed':'Could not load'}</b><p class="sm">${r.error==='missing'?'Open Supabase → SQL Editor, paste the file <b>supabase_v9_banners.sql</b> and press Run once. Then refresh this page.':'Check your internet and try again.'}</p></div>`;return}
+  BNL=r.items||[];drawBanners();
+}
+function drawBanners(){
+  const box=$('#bnbox');if(!box)return;
+  box.innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;gap:10px"><p class="sm mut" style="margin:0;flex:1">Best image size: <b>1200 × 560 px</b> (wide). If no banner is live, students see the default banners.</p><button class="btn" onclick="bnModal()">+ New banner</button></div>
+   ${BNL.length?BNL.map((x,i)=>`<div class="annr bnr ${x.active?'':'off'}">${x.img?`<img src="${x.img}" alt="">`:`<div class="bnph">${esc(x.title||'Text banner')}</div>`}<div class="grow"><b>${esc(x.title||'(no title)')}</b>
+     <div class="sm mut" style="word-break:break-all">${x.link?esc(x.link):'No link'}</div>
+     <div class="chips" style="margin-top:6px"><span class="chip">#${i+1}</span>${x.active?'<span class="chip ok">Live</span>':'<span class="chip">Hidden</span>'}</div>
+     <div class="acts"><button class="btn ghost sm" ${i?'':'disabled'} onclick="bnMove(${i},-1)">↑</button><button class="btn ghost sm" ${i<BNL.length-1?'':'disabled'} onclick="bnMove(${i},1)">↓</button><button class="btn ghost sm" onclick="bnModal('${x.id}')">Edit</button><button class="btn ghost sm" onclick="bnToggle('${x.id}',${!x.active})">${x.active?'Hide':'Show'}</button><button class="btn danger sm" onclick="bnDel('${x.id}')">Delete</button></div></div></div>`).join('')
+   :`<div class="sm mut" style="padding:18px 4px;text-align:center">No banners yet. Add your first one — e.g. your All India Test Series, your WhatsApp channel, or a partner's course.</div>`}</div>`;
+}
+function bnModal(id){
+  const x=id?BNL.find(v=>v.id===id):null;BNIMG=undefined;
+  modal(`<h2>${x?'Edit':'New'} banner</h2>
+   <label class="l">Banner image</label><div id="bnprev" style="margin-bottom:8px">${x&&x.img?`<img src="${x.img}" style="width:100%;border-radius:12px">`:''}</div>
+   <div class="row"><label class="btn soft sm" style="cursor:pointer">📷 Choose image<input type="file" accept="image/*" style="display:none" onchange="bnPick(this)"></label><button class="btn ghost sm" id="bnrm" style="${x&&x.img?'':'display:none'}" onclick="BNIMG='';$('#bnprev').innerHTML='';this.style.display='none'">Remove image</button></div>
+   <p class="sm mut" style="margin:6px 0 0">No image? Students see a coloured card with the title and text below.</p>
+   <label class="l">Title</label><input type="text" id="bnt" maxlength="60" value="${esc(x?x.title:'')}" placeholder="e.g. AITS 2027 — Join now">
+   <label class="l">Short text (for banners without image)</label><input type="text" id="bnx" maxlength="120" value="${esc(x?x.text||'':'')}" placeholder="e.g. Real NEET pattern · All-India rank">
+   <label class="l">Link when tapped</label><input type="text" inputmode="url" id="bnl" value="${esc(x?x.link:'')}" placeholder="https://… or https://wa.me/91… or #/series">
+   <label class="chk" style="margin-top:12px"><input type="checkbox" id="bna" ${!x||x.active?'checked':''}><span>Show to students</span></label>
+   <div class="row" style="margin-top:14px"><button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn" style="flex:1" id="bnsv" onclick="bnSave('${id||''}')">${x?'Save':'Publish'}</button></div>`,true);
+}
+async function bnPick(inp){
+  const f=inp.files[0];if(!f)return;
+  try{const d=await compressDataUrl(await fileToUrl(f),1200,.82);if(!d)throw 0;BNIMG=d;$('#bnprev').innerHTML=`<img src="${d}" style="width:100%;border-radius:12px">`;$('#bnrm').style.display=''}catch(e){toast('Could not use this image')}
+}
+async function bnSave(id){
+  const b=$('#bnsv'),data={id:id||null,title:$('#bnt').value.trim(),text:$('#bnx').value.trim(),link:$('#bnl').value.trim(),active:$('#bna').checked};
+  if(BNIMG!==undefined)data.image=BNIMG;
+  const hasImg=BNIMG?true:(BNIMG===undefined&&id&&(BNL.find(v=>v.id===id)||{}).img);
+  if(!hasImg&&!data.title)return toast('Add an image or a title');
+  if(data.link&&!/^(https?:\/\/|#\/)/i.test(data.link))return toast('Link must start with https:// (or #/ for a page in the app)');
+  b.disabled=true;b.textContent='Saving…';
+  const r=await AB('save',data);
+  if(!r.ok){b.disabled=false;b.textContent=id?'Save':'Publish';return toast(r.error==='link'?'That link does not look right':r.error==='image'?'Image is too big':r.error==='limit'?'Too many banners (20). Delete some.':'Could not save')}
+  closeModal();toast(id?'Banner saved':'Banner published');loadBanners();
+}
+async function bnToggle(id,on){const r=await AB('toggle',{id,active:on});if(r.ok){toast(on?'Banner is live':'Banner hidden');loadBanners()}else toast('Could not update')}
+async function bnDel(id){if(!confirm('Delete this banner?'))return;const r=await AB('delete',{id});if(r.ok){toast('Deleted');loadBanners()}else toast('Could not delete')}
+async function bnMove(i,d){
+  const j=i+d;if(j<0||j>=BNL.length)return;[BNL[i],BNL[j]]=[BNL[j],BNL[i]];drawBanners();
+  const r=await AB('order',{ids:BNL.map(x=>x.id)});if(!r.ok){toast('Could not save order');loadBanners()}
+}
+;(window.__p=window.__p||{})['admin6']=1;
