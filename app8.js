@@ -124,7 +124,7 @@ IC.chart2='<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/>';
   const prog=CAT.tests.filter(t=>t.in_progress&&!t.locked);
   if(prog.length)o+=`<div class="h2s">${ic('play',20)} Continue your test</div>${prog.map(testRow).join('')}`;
   o+=dashPerf(R)+dashTracker();
-  o+=`<div class="h2s">${ic('trophy',20)} Leaderboard <span class="n">overall</span></div><div id="dlb">${INS&&INS.b?dashLb(INS.b):R.length?`<div class="card"><div class="sk" style="width:50%"></div><div class="sk" style="height:60px;margin-top:12px"></div></div>`:dashLb(null)}</div>`;
+  o+=`<div class="h2s">${ic('trophy',20)} Leaderboard</div><div id="dlb">${INS&&INS.b?dashLb(INS.b):R.length?`<div class="card"><div class="sk" style="width:50%"></div><div class="sk" style="height:60px;margin-top:12px"></div></div>`:dashLb(null)}</div>`;
   setApp(o+'</div>');setNav('dash');prefetchTabs();
   cdTick();promoStart();annLoad();
   const d=document.querySelector('.dash');if(d)countUp(d);

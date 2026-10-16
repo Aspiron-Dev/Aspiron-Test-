@@ -1061,9 +1061,34 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 .tkdw span{font-size:10px;color:var(--mut);font-weight:700}.tkdw .t span{color:var(--pri)}
 .undo{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:90;background:#0f172a;color:#fff;border-radius:14px;padding:10px 10px 10px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 10px 30px rgba(0,0,0,.3);font-size:14px;animation:toastPop .3s var(--spring)}
 .undo button{border:0;background:rgba(255,255,255,.14);color:#7dd3fc;font-weight:800;border-radius:10px;padding:7px 12px;font:inherit;font-size:13px;font-weight:800}
+
+/* ---- v21 swipeable leaderboard ---- */
+.lbtabs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0 10px}.lbtabs::-webkit-scrollbar{display:none}
+.lbtabs button{flex:none;border:0;font:inherit;font-size:12.5px;font-weight:700;padding:7px 13px;border-radius:99px;background:var(--surface2);color:var(--mut);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.lbtabs button.on{background:var(--grad);color:#fff;box-shadow:0 6px 16px -6px var(--glow)}
+.lbtrack{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;align-items:flex-start;transition:height .3s var(--ease);margin:0 -2px;padding:0 2px 6px}.lbtrack::-webkit-scrollbar{display:none}
+.lbslide{flex:0 0 100%;scroll-snap-align:center;padding:16px;min-width:0;box-sizing:border-box}
+.lbsh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.lbsh b{display:block;font-family:var(--fh);font-size:17px;line-height:1.2}
+.lbk{font-size:10.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--pri)}.lbt{font-size:12px;color:var(--mut);white-space:nowrap;background:var(--surface2);padding:3px 9px;border-radius:99px}
+.lbme{display:flex;align-items:center;gap:12px;margin-top:12px;padding:12px;border-radius:16px;background:var(--priSoft)}.lbme.na{background:var(--surface2)}
+.lbmr{flex:none;width:74px;height:66px;border-radius:16px;background:var(--grad);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 8px 20px -10px var(--glow)}.lbmr span{font-size:10px;opacity:.85}.lbmr b{font-family:var(--fh);font-size:24px;line-height:1.1}
+.lbm4{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;text-align:center}.lbm4 b{display:block;font-size:15px}.lbm4 span{font-size:10px;color:var(--mut)}
+.lbpod{display:grid;grid-template-columns:1fr 1.15fr 1fr;align-items:end;gap:8px;margin:18px 0 6px}
+.pd{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}.pd.empty{visibility:hidden}
+.pav{position:relative;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:18px;color:#fff;background:linear-gradient(135deg,#94a3b8,#64748b);margin-bottom:6px}
+.pav i{position:absolute;top:-17px;font-style:normal;font-size:18px}
+.p1 .pav{width:58px;height:58px;font-size:22px;background:linear-gradient(135deg,#fcd34d,#f59e0b);box-shadow:0 0 0 4px rgba(245,158,11,.25)}.p2 .pav{background:linear-gradient(135deg,#e2e8f0,#94a3b8);color:#334155}.p3 .pav{background:linear-gradient(135deg,#fdba74,#c2410c)}
+.pd b{font-size:12.5px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pd span{font-size:12px;color:var(--mut);font-weight:700}
+.pst{width:100%;margin-top:6px;border-radius:12px 12px 4px 4px;display:grid;place-items:center;font-family:var(--fh);font-weight:800;color:#fff;font-size:20px}
+.p1 .pst{height:70px;background:linear-gradient(180deg,#f59e0b,#d97706)}.p2 .pst{height:52px;background:linear-gradient(180deg,#94a3b8,#64748b)}.p3 .pst{height:40px;background:linear-gradient(180deg,#fb923c,#c2410c)}
+.pd.me b{color:var(--pri)}
+.lbr{border-top:1px solid var(--bd);margin-top:4px}.lbr .lb{padding:9px 2px}.lbmine{background:var(--priSoft);border-radius:12px;padding:9px 8px!important;margin-top:6px}
+.lbem{text-align:center;padding:22px 8px;color:var(--mut)}.lbem p{margin:8px 0 10px}
+.lbnav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:6px}.lbdots{display:flex;gap:6px}.lbdots i{width:7px;height:7px;border-radius:99px;background:var(--bd);transition:width .3s,background .3s}.lbdots i.on{width:20px;background:var(--pri)}
+.lbhint{text-align:center;margin-top:4px}
 </style>
 <script>(function(){try{var h=document.documentElement,t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';h.dataset.accent=JSON.parse(localStorage.getItem('cbt_accent'))||'cyber'}catch(e){document.documentElement.dataset.theme='light';document.documentElement.dataset.accent='cyber'}})()</script>
-<script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6', 'app7', 'app8', 'app9'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
+<script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6', 'app7', 'app8', 'app9', 'app10'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
 <script src="config.js"></script>
 </head>
 <body>
@@ -1088,8 +1113,9 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 <script src="app5.js?v=18" onerror="(window.__miss=window.__miss||[]).push('app5.js')"></script>
 <script src="app6.js?v=22" onerror="(window.__miss=window.__miss||[]).push('app6.js')"></script>
 <script src="app7.js?v=1" onerror="(window.__miss=window.__miss||[]).push('app7.js')"></script>
-<script src="app8.js?v=4" onerror="(window.__miss=window.__miss||[]).push('app8.js')"></script>
+<script src="app8.js?v=5" onerror="(window.__miss=window.__miss||[]).push('app8.js')"></script>
 <script src="app9.js?v=5" onerror="(window.__miss=window.__miss||[]).push('app9.js')"></script>
+<script src="app10.js?v=1" onerror="(window.__miss=window.__miss||[]).push('app10.js')"></script>
 
 </body>
 </html>
