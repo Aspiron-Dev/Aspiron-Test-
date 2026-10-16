@@ -123,4 +123,31 @@ async function npRetry(){
 }
 if(npSup()&&navigator.permissions&&navigator.permissions.query)navigator.permissions.query({name:'notifications'}).then(p=>{p.onchange=()=>{
   if(p.state==='granted'&&LS.get('cbt_np',0)!==1&&AUTH){npEnable();const h=document.querySelector('#layer .bsheet[data-id="nphelp"]');if(h)closeModal()}}}).catch(()=>{});
+
+/* ---------- one-time "turn on notifications" popup for new users ---------- */
+let NPASKT=null;
+function npAskMaybe(){
+  clearTimeout(NPASKT);
+  if(!AUTH||INTEST||!npSup()||npInApp())return;
+  const k='cbt_npask_'+AUTH.mobile;if(LS.get(k,0))return;
+  if(Notification.permission==='granted'){if(LS.get('cbt_np',0)!==1)npEnable();LS.set(k,1);return}
+  if(Notification.permission==='denied'){LS.set(k,1);return}
+  NPASKT=setTimeout(()=>{
+    if(INTEST||location.hash.replace('#','').replace('/','')!==''||$('#layer').innerHTML)return;
+    LS.set(k,1);
+    sheet(`<div class="npask"><div class="npbell">${ic('bell',34)}<i></i></div>
+     <h2>Never miss an update</h2><p class="mut">Turn on notifications to know instantly when a new test goes live, results are out or your teacher posts a notice.</p>
+     <div class="npli"><span>🔴 New test is live</span><span>📊 Results &amp; ranks</span><span>📢 Important notices</span></div>
+     <button class="btn block" onclick="npAskYes()">${ic('bell',16)} Allow notifications</button>
+     <button class="btn ghost block" style="margin-top:8px" onclick="closeModal()">Not now</button>
+     <p class="sm mut" style="margin:10px 0 0">You can change this any time in ☰ Menu → Settings.</p></div>`,'npask');
+  },2500);
+}
+async function npAskYes(){
+  let r=Notification.permission;
+  if(r==='default'){try{r=await Notification.requestPermission()}catch(e){r=Notification.permission}}
+  closeModal();
+  if(r==='granted')npEnable();else if(r==='denied')npHelp('blocked');
+}
+{const _vh2=viewHome;viewHome=function(tab){const r=_vh2.apply(this,arguments);if(tab==='dash')npAskMaybe();return r}}
 ;(window.__p=window.__p||{})['app9']=1;
