@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="CBT Tests">
 <title>CBT Test Series</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#f3f6f9;--surface:#ffffff;--surface2:#eef2f6;--tx:#0e1b26;--mut:#5a6b7b;--bd:#dfe6ed;
@@ -687,6 +687,119 @@ html[data-theme="dark"] input[type=datetime-local]{color-scheme:dark}
 .dri{display:flex;align-items:center;gap:14px;width:100%;border:0;background:transparent;color:var(--tx);padding:12px 10px;border-radius:12px;font-size:15px;font-weight:600;text-align:left;text-decoration:none}
 .dri:active{background:var(--surface2)}.dri.on{background:var(--priSoft);color:var(--pri)}.dri svg{flex:none;color:var(--mut)}.dri.on svg{color:var(--pri)}
 .dri.out{color:var(--bad);margin-top:8px}.dri.out svg{color:var(--bad)}
+
+/* ---- v10 LUX: premium glass, gold, motion ---- */
+:root{--gold:#d9a441;--gold2:#f3d27a;--goldg:linear-gradient(135deg,#f6dc8f,#d9a441 55%,#b9822a);--ease:cubic-bezier(.22,.8,.24,1);--glass:color-mix(in srgb,var(--surface) 62%,transparent);--glassb:color-mix(in srgb,#fff 38%,transparent)}
+html[data-theme=dark]{--glass:color-mix(in srgb,var(--surface) 55%,transparent);--glassb:rgba(255,255,255,.09)}
+h1,h2,h3,.hero h1,#splash b{font-family:Sora,Inter,"Noto Sans Devanagari",system-ui,sans-serif;letter-spacing:-.02em}
+/* ambient aurora background */
+body::before{background:radial-gradient(520px 380px at 8% -4%,color-mix(in srgb,var(--pri) 24%,transparent),transparent 70%),radial-gradient(460px 360px at 100% 18%,color-mix(in srgb,var(--pri2) 18%,transparent),transparent 70%),radial-gradient(420px 300px at 40% 108%,color-mix(in srgb,var(--gold) 12%,transparent),transparent 70%)!important}
+/* glass cards */
+.card{background:var(--glass);border:1px solid var(--glassb)!important;-webkit-backdrop-filter:blur(18px) saturate(1.5);backdrop-filter:blur(18px) saturate(1.5);box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 10px 30px rgba(15,23,42,.07);transition:transform .35s var(--ease),box-shadow .35s var(--ease)}
+html[data-theme=dark] .card{box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 12px 34px rgba(0,0,0,.35)}
+.scard:active,.card:active{transform:scale(.985)}
+@media(hover:hover){.scard:hover{transform:translateY(-4px);box-shadow:0 18px 44px var(--glow)}}
+body.intest .card,.tlayout .card{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:var(--surface)}
+/* hero */
+.hero{background:var(--grad);border:1px solid rgba(255,255,255,.28);box-shadow:0 18px 50px var(--glow),0 1px 0 rgba(255,255,255,.4) inset}
+.hero:before{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.22) 48%,transparent 66%);transform:translateX(-120%);animation:shine 5.5s ease-in-out 1.2s infinite;pointer-events:none}
+@keyframes shine{0%,55%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+.hero .lvl{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.hero .lvl.gold{background:var(--goldg);color:#5b3b05;border-color:rgba(255,255,255,.6);box-shadow:0 4px 14px rgba(217,164,65,.5)}
+.hero .lvl svg{vertical-align:-2px;margin-right:3px}
+/* buttons */
+.btn{box-shadow:0 8px 22px var(--glow),0 1px 0 rgba(255,255,255,.35) inset;transition:transform .25s var(--ease),box-shadow .25s var(--ease),opacity .2s}
+.btn:active{transform:scale(.96)}
+.btn.gold{background:var(--goldg);color:#4a3003;box-shadow:0 8px 22px rgba(217,164,65,.45)}
+/* premium badge on paid covers */
+.prem{position:absolute;left:12px;top:12px;z-index:2;display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:800;letter-spacing:.9px;color:#4a3003;background:var(--goldg);border-radius:99px;padding:4px 10px 4px 8px;box-shadow:0 4px 14px rgba(217,164,65,.55)}
+.prem svg{width:12px;height:12px;fill:currentColor}
+.prem:after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.7) 50%,transparent 70%);transform:translateX(-130%);animation:shine 4s ease-in-out infinite}
+.prem{overflow:hidden}
+.h2s svg{color:var(--gold)}
+/* header glass */
+.hdr{background:color-mix(in srgb,var(--bg) 66%,transparent);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6)}
+/* bottom nav floating glass with sliding pill */
+@media(max-width:700px){
+ body.hasnav .bnav{--n:6;--i:0;background:var(--glass);border:1px solid var(--glassb);-webkit-backdrop-filter:blur(22px) saturate(1.7);backdrop-filter:blur(22px) saturate(1.7);box-shadow:0 14px 40px rgba(15,23,42,.22),0 1px 0 rgba(255,255,255,.4) inset;position:fixed;animation:navin .6s var(--ease) backwards}
+ .bnav:before{content:"";position:absolute;top:6px;bottom:6px;left:6px;width:calc((100% - 12px - 20px)/6);border-radius:16px;background:var(--priSoft);box-shadow:0 0 0 1px color-mix(in srgb,var(--pri) 25%,transparent) inset;transform:translateX(calc(var(--i)*(100% + 4px)));transition:transform .45s var(--ease)}
+ .bnav button{position:relative;z-index:1;background:transparent!important;transition:color .3s,transform .3s var(--ease)}
+ .bnav button.on{transform:translateY(-1px)}
+ .bnav button.on svg{animation:pop .45s var(--ease)}
+}
+@keyframes navin{from{transform:translateY(90px);opacity:0}}
+@keyframes pop{0%{transform:scale(.7)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+/* page entrance + stagger */
+#app>*{animation:rise .55s var(--ease) backwards}
+#app>*:nth-child(2){animation-delay:.05s}#app>*:nth-child(3){animation-delay:.1s}#app>*:nth-child(4){animation-delay:.15s}#app>*:nth-child(5){animation-delay:.2s}#app>*:nth-child(n+6){animation-delay:.25s}
+.sgrid>*{animation:rise .55s var(--ease) backwards}.sgrid>*:nth-child(2){animation-delay:.07s}.sgrid>*:nth-child(3){animation-delay:.14s}.sgrid>*:nth-child(n+4){animation-delay:.2s}
+@keyframes rise{from{opacity:0;transform:translateY(14px) scale(.985)}}
+/* theme crossfade */
+html.tx *,html.tx *:before,html.tx *:after{transition:background-color .45s ease,color .45s ease,border-color .45s ease,box-shadow .45s ease!important}
+/* progress bars glow */
+.bar i{background:var(--grad);box-shadow:0 0 12px var(--glow);transition:width .9s var(--ease)}
+/* modal & drawer */
+.drp{background:var(--glass)!important;-webkit-backdrop-filter:blur(26px) saturate(1.6);backdrop-filter:blur(26px) saturate(1.6)}
+#layer .box{-webkit-backdrop-filter:blur(26px) saturate(1.6);backdrop-filter:blur(26px) saturate(1.6);border:1px solid var(--glassb)}
+/* splash: never block taps, quick fade */
+#splash{transition:opacity .4s,visibility .4s}#splash.off{pointer-events:none}
+#splash .lg{background:var(--grad);box-shadow:0 16px 46px var(--glow),0 0 0 1px rgba(255,255,255,.3) inset}
+/* login glass */
+.card.login{background:var(--glass);box-shadow:0 24px 70px var(--glow),0 1px 0 rgba(255,255,255,.4) inset}
+.card.login .logo{box-shadow:0 14px 36px var(--glow)}
+input,select,textarea{transition:border-color .25s,box-shadow .25s}
+input:focus,select:focus,textarea:focus{box-shadow:0 0 0 4px color-mix(in srgb,var(--pri) 18%,transparent)}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* ---- v11 Aspiron-kit techniques: fonts, shine, grain, spring ---- */
+:root{--spring:cubic-bezier(.34,1.56,.64,1);--fh:Syne,"Noto Sans Devanagari",system-ui,sans-serif;--fb:"DM Sans",Inter,"Noto Sans Devanagari",system-ui,sans-serif;--fm:"JetBrains Mono",ui-monospace,monospace}
+body{font-family:var(--fb)}
+h1,h2,h3,.hero h1,#splash b,.brand,.h2s,.card.login h1,.card.login h2{font-family:var(--fh)!important;font-weight:700}
+.brand #sn{font-weight:800;letter-spacing:.02em}
+/* numbers in mono */
+.stat b,.tiles b,.timer,.hs b,.countdown b,.cdn,.big,.score,.hcmp b,.hdl b{font-family:var(--fm);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.drs,.rtabs .seg button,.tiles span,.stat span{font-family:var(--fm)}
+.drs{font-size:10px;letter-spacing:2px}
+/* card top shine + corner light (kit recipe) */
+.card{position:relative;overflow:hidden;backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8)}
+.card:before{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5) 30%,rgba(255,255,255,.8) 50%,rgba(255,255,255,.5) 70%,transparent);pointer-events:none;z-index:1}
+html[data-theme=dark] .card:before{background:linear-gradient(90deg,transparent,rgba(255,255,255,.14) 30%,rgba(255,255,255,.24) 50%,rgba(255,255,255,.14) 70%,transparent)}
+.card:after{content:"";position:absolute;left:0;top:0;width:40%;height:40%;background:radial-gradient(ellipse at top left,rgba(255,255,255,.35),transparent 70%);pointer-events:none;border-radius:16px 0 0 0}
+html[data-theme=dark] .card:after{background:radial-gradient(ellipse at top left,rgba(255,255,255,.06),transparent 70%)}
+.scard.card:after{display:none}
+body.intest .card:before,body.intest .card:after,.tlayout .card:before,.tlayout .card:after{display:none}
+.card.tap:active,.scard:active{transform:scale(.972)}
+.btn:active{transform:scale(.97)}
+/* film grain */
+html:after{content:"";position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.03;mix-blend-mode:overlay;background-size:200px 200px;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+html[data-theme=light]:after{opacity:.016}
+body.intest~*,html:has(body.intest):after{display:none}
+/* nav: spring pill, glowing active icon, uppercase micro-labels */
+@media(max-width:700px){
+ .bnav:before{transition:transform .45s var(--spring)}
+ .bnav button{font-size:9px!important;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:var(--mut)}
+ .bnav button svg{opacity:.55;transition:transform .3s var(--spring),opacity .22s,filter .22s}
+ .bnav button.on{color:var(--pri)}
+ .bnav button.on svg{opacity:1;transform:translateY(-1px) scale(1.1);filter:drop-shadow(0 0 5px var(--glow))}
+ .bnav button:active svg{transform:scale(.9)}
+}
+/* logo shimmer on brand name */
+.brand #sn{background:linear-gradient(100deg,var(--tx) 0%,var(--tx) 40%,var(--pri) 50%,var(--tx) 60%,var(--tx) 100%);background-size:250% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:logoShim 6s linear infinite}
+@keyframes logoShim{0%{background-position:-300% center}100%{background-position:300% center}}
+/* toast + modal spring */
+.toast{animation:toastPop .35s var(--spring)}
+@keyframes toastPop{from{opacity:0;transform:translateX(-50%) translateY(18px) scale(.92)}}
+#layer .box{animation:sheetUp .4s cubic-bezier(.4,0,.2,1)}
+@keyframes sheetUp{from{opacity:0;transform:translateY(40px) scale(.98)}}
+/* splash: spinning ring like Aspiron */
+#splash .lg{position:relative}
+#splash .lg:before{content:"";position:absolute;inset:-9px;border-radius:30px;border:1.5px solid transparent;border-top-color:var(--pri);border-right-color:color-mix(in srgb,var(--pri2) 40%,transparent);animation:spl 1.6s linear infinite}
+@keyframes spl{to{transform:rotate(360deg)}}
+/* tiny eyebrow label helper */
+.eyebrow{font-family:var(--fm);font-size:10px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--mut)}
+.gtxt{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.stat span,.tiles span{font-family:var(--fb);font-size:11.5px;white-space:nowrap}
+.brand{font-size:15px}.brand #sn{max-width:44vw;letter-spacing:.01em}
 </style>
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
@@ -707,12 +820,12 @@ html[data-theme="dark"] input[type=datetime-local]{color-scheme:dark}
 <div id="layer"></div>
 
 
-<script src="app1.js?v=16" onerror="(window.__miss=window.__miss||[]).push('app1.js')"></script>
-<script src="app2.js?v=16" onerror="(window.__miss=window.__miss||[]).push('app2.js')"></script>
-<script src="app3.js?v=16" onerror="(window.__miss=window.__miss||[]).push('app3.js')"></script>
-<script src="app4.js?v=16" onerror="(window.__miss=window.__miss||[]).push('app4.js')"></script>
-<script src="app5.js?v=16" onerror="(window.__miss=window.__miss||[]).push('app5.js')"></script>
-<script src="app6.js?v=16" onerror="(window.__miss=window.__miss||[]).push('app6.js')"></script>
+<script src="app1.js?v=17" onerror="(window.__miss=window.__miss||[]).push('app1.js')"></script>
+<script src="app2.js?v=17" onerror="(window.__miss=window.__miss||[]).push('app2.js')"></script>
+<script src="app3.js?v=17" onerror="(window.__miss=window.__miss||[]).push('app3.js')"></script>
+<script src="app4.js?v=17" onerror="(window.__miss=window.__miss||[]).push('app4.js')"></script>
+<script src="app5.js?v=17" onerror="(window.__miss=window.__miss||[]).push('app5.js')"></script>
+<script src="app6.js?v=17" onerror="(window.__miss=window.__miss||[]).push('app6.js')"></script>
 
 </body>
 </html>
