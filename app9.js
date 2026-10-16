@@ -150,4 +150,25 @@ async function npAskYes(){
   if(r==='granted')npEnable();else if(r==='denied')npHelp('blocked');
 }
 {const _vh2=viewHome;viewHome=function(tab){const r=_vh2.apply(this,arguments);if(tab==='dash')npAskMaybe();return r}}
+
+/* ---------- Web Push: lets notices reach the phone even when the app is closed ---------- */
+const b64u=s=>{const p='='.repeat((4-s.length%4)%4),r=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from(r,c=>c.charCodeAt(0))};
+async function pushSync(force){
+  try{
+    if(!AUTH||!CFG.VAPID_PUBLIC||!npSup()||!('PushManager' in window)||Notification.permission!=='granted'||LS.get('cbt_np',0)!==1)return;
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(CFG.VAPID_PUBLIC)});
+    const k=AUTH.mobile+'|'+sub.endpoint,last=LS.get('cbt_push_ok',null);
+    if(!force&&last&&last.k===k&&Date.now()-last.t<3*864e5)return;
+    const r=await rpc('cbt_push_save',{p_sub:sub.toJSON(),p_on:true});
+    if(r&&r.ok)LS.set('cbt_push_ok',{k,t:Date.now()});
+  }catch(e){}
+}
+async function pushOff(){
+  try{const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();if(sub){await rpc('cbt_push_save',{p_sub:sub.toJSON(),p_on:false});await sub.unsubscribe()}LS.del('cbt_push_ok')}catch(e){}
+}
+{const _en=npEnable;npEnable=function(){_en();pushSync(true)}}
+{const _tg=npToggle;npToggle=async function(){const was=npOn();await _tg();if(was&&!npOn())pushOff()}}
+setTimeout(()=>pushSync(),4000);
 ;(window.__p=window.__p||{})['app9']=1;

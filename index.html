@@ -1050,6 +1050,7 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 .npbell i{position:absolute;top:14px;right:16px;width:12px;height:12px;border-radius:50%;background:var(--bad);border:2px solid #fff}
 @keyframes npring{0%,60%,100%{transform:rotate(0)}10%,30%{transform:rotate(-10deg)}20%,40%{transform:rotate(10deg)}}
 .npli{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:16px}.npli span{background:var(--surface2);border-radius:99px;padding:6px 12px;font-size:12.5px;font-weight:600}
+.hsn{width:50px!important;height:50px!important;overflow:hidden}.hsn span{font-size:9px!important;letter-spacing:.2px!important}
 </style>
 <script>(function(){try{var h=document.documentElement,t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';h.dataset.accent=JSON.parse(localStorage.getItem('cbt_accent'))||'cyber'}catch(e){document.documentElement.dataset.theme='light';document.documentElement.dataset.accent='cyber'}})()</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6', 'app7', 'app8', 'app9'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
@@ -1075,10 +1076,10 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 <script src="app3.js?v=18" onerror="(window.__miss=window.__miss||[]).push('app3.js')"></script>
 <script src="app4.js?v=18" onerror="(window.__miss=window.__miss||[]).push('app4.js')"></script>
 <script src="app5.js?v=18" onerror="(window.__miss=window.__miss||[]).push('app5.js')"></script>
-<script src="app6.js?v=21" onerror="(window.__miss=window.__miss||[]).push('app6.js')"></script>
+<script src="app6.js?v=22" onerror="(window.__miss=window.__miss||[]).push('app6.js')"></script>
 <script src="app7.js?v=1" onerror="(window.__miss=window.__miss||[]).push('app7.js')"></script>
 <script src="app8.js?v=3" onerror="(window.__miss=window.__miss||[]).push('app8.js')"></script>
-<script src="app9.js?v=3" onerror="(window.__miss=window.__miss||[]).push('app9.js')"></script>
+<script src="app9.js?v=4" onerror="(window.__miss=window.__miss||[]).push('app9.js')"></script>
 
 </body>
 </html>
