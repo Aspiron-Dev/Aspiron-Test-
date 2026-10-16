@@ -800,8 +800,45 @@ body.intest~*,html:has(body.intest):after{display:none}
 .gtxt{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .stat span,.tiles span{font-family:var(--fb);font-size:11.5px;white-space:nowrap}
 .brand{font-size:15px}.brand #sn{max-width:44vw;letter-spacing:.01em}
+
+/* ---- v12 design script: RGB glass lighting, slide transitions, glow nav ---- */
+/* 1. Soft diffused RGB light behind the UI (theme-aware, slow drift) */
+body::after{content:"";position:fixed;inset:-20%;z-index:-1;pointer-events:none;opacity:.55;filter:blur(60px);
+  background:
+    radial-gradient(38% 32% at 18% 22%,rgba(34,211,238,.35),transparent 70%),
+    radial-gradient(34% 30% at 82% 30%,rgba(99,102,241,.30),transparent 70%),
+    radial-gradient(40% 34% at 62% 86%,rgba(16,185,129,.28),transparent 70%);
+  animation:rgbDrift 22s ease-in-out infinite alternate}
+html[data-theme=dark] body::after{opacity:.5}
+html[data-theme=light] body::after{opacity:.38}
+html[data-accent=green] body::after{background:radial-gradient(38% 32% at 18% 22%,rgba(16,185,129,.38),transparent 70%),radial-gradient(34% 30% at 82% 30%,rgba(52,211,153,.28),transparent 70%),radial-gradient(40% 34% at 62% 86%,rgba(34,211,238,.24),transparent 70%)}
+@keyframes rgbDrift{0%{transform:translate3d(-3%,-2%,0) rotate(0deg) scale(1)}50%{transform:translate3d(3%,2%,0) rotate(6deg) scale(1.06)}100%{transform:translate3d(-2%,4%,0) rotate(-5deg) scale(1.02)}}
+body.intest::after{display:none}
+/* 2. Frosted glass: semi-transparent RGBA + blur */
+.card,.tiles>div,.hsum div,.modal .box,.sheet .in,.instbar{
+  background:color-mix(in srgb,var(--surface) 58%,transparent);
+  -webkit-backdrop-filter:blur(22px) saturate(1.7);backdrop-filter:blur(22px) saturate(1.7);
+  border:1px solid color-mix(in srgb,var(--pri) 14%,rgba(255,255,255,.35))}
+html[data-theme=dark] .card,html[data-theme=dark] .tiles>div,html[data-theme=dark] .hsum div{border-color:color-mix(in srgb,var(--pri) 20%,rgba(255,255,255,.06))}
+body.intest .card,.tlayout .card{background:var(--surface)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+/* 3. Slide transitions between screens (direction set by JS) */
+@keyframes slideInR{from{opacity:0;transform:translate3d(38px,0,0) scale(.99)}to{opacity:1;transform:none}}
+@keyframes slideInL{from{opacity:0;transform:translate3d(-38px,0,0) scale(.99)}to{opacity:1;transform:none}}
+html.nav-fwd #app>*{animation:slideInR .42s var(--ease,cubic-bezier(.22,.8,.24,1)) both!important;animation-delay:0s!important}
+html.nav-back #app>*{animation:slideInL .42s var(--ease,cubic-bezier(.22,.8,.24,1)) both!important;animation-delay:0s!important}
+html.nav-fwd #app>.wrap>*,html.nav-back #app>.wrap>*{animation-delay:0s!important}
+/* 4. Glowing active + tapped icons in bottom nav */
+.bnav button.on{color:var(--pri)}
+.bnav button.on svg{opacity:1;filter:drop-shadow(0 0 6px var(--pri)) drop-shadow(0 0 14px var(--glow))}
+.bnav button.tap svg{animation:tapGlow .55s var(--ease,cubic-bezier(.22,.8,.24,1))}
+.bnav button.tap:after{content:"";position:absolute;left:50%;top:44%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:radial-gradient(circle,var(--glow),transparent 70%);animation:tapRing .55s ease-out forwards;pointer-events:none}
+@keyframes tapGlow{0%{transform:scale(.8);filter:drop-shadow(0 0 0 transparent)}55%{transform:scale(1.25);filter:drop-shadow(0 0 10px var(--pri)) drop-shadow(0 0 22px var(--pri))}100%{transform:scale(1.1)}}
+@keyframes tapRing{from{opacity:.9;transform:scale(.4)}to{opacity:0;transform:scale(1.8)}}
+.btn:active,.iconbtn:active,.look:active{box-shadow:0 0 0 3px color-mix(in srgb,var(--pri) 30%,transparent),0 0 22px var(--glow)}
+.iconbtn.tap{box-shadow:0 0 0 3px color-mix(in srgb,var(--pri) 28%,transparent),0 0 20px var(--glow)}
+@media(prefers-reduced-motion:reduce){body::after{animation:none}html.nav-fwd #app>*,html.nav-back #app>*{animation:none!important}}
 </style>
-<script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
+<script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));document.documentElement.dataset.accent=a||'cyber'}catch(e){}</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
 <script src="config.js"></script>
 </head>
@@ -827,5 +864,26 @@ body.intest~*,html:has(body.intest):after{display:none}
 <script src="app5.js?v=17" onerror="(window.__miss=window.__miss||[]).push('app5.js')"></script>
 <script src="app6.js?v=17" onerror="(window.__miss=window.__miss||[]).push('app6.js')"></script>
 
+<script>
+/* v12: slide direction + tap glow (additive, touches no app logic) */
+(function(){
+  var h=document.documentElement,idx=+(history.state&&history.state.__i||0),last=location.hash;
+  try{history.replaceState({__i:idx},'')}catch(e){}
+  function dir(d){h.classList.remove('nav-fwd','nav-back');void h.offsetWidth;h.classList.add(d)}
+  addEventListener('hashchange',function(){
+    var st=history.state&&history.state.__i, d='nav-fwd';
+    if(st==null){idx++;try{history.replaceState({__i:idx},'')}catch(e){}}
+    else{d=st<idx?'nav-back':'nav-fwd';idx=st}
+    dir(d);last=location.hash;
+    setTimeout(function(){h.classList.remove('nav-fwd','nav-back')},600);
+  });
+  addEventListener('popstate',function(e){var st=e.state&&e.state.__i;if(st!=null&&st<idx){idx=st;dir('nav-back')}});
+  document.addEventListener('pointerdown',function(e){
+    var b=e.target.closest&&e.target.closest('.bnav button,.iconbtn');
+    if(!b)return;b.classList.remove('tap');void b.offsetWidth;b.classList.add('tap');
+    setTimeout(function(){b.classList.remove('tap')},600);
+  },{passive:true});
+})();
+</script>
 </body>
 </html>
