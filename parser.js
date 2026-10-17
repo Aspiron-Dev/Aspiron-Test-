@@ -21,20 +21,29 @@ function parseKey(t){
   return{map,count};
 }
 function splitOpts(block){
-  const re=/(?:^|\s)(?:\(([A-Da-d1-4])\)|([A-Da-d])[\.\)])\s*/g;
+  // marker must follow a space/line start; trailing spaces are not eaten, so "of (A)\n(2)" still finds (2)
+  const re=/(?:\(([A-Da-d1-4])\)|([A-Da-d])[\.\)])/g;
   const ms=[];let m;
   while((m=re.exec(block))){
-    const ch=m[1]||m[2];
+    if(m.index&&!/\s/.test(block[m.index-1]))continue;
+    const ch=m[1]||m[2],pre=block.slice(0,m.index);
     const v=/\d/.test(ch)?(+ch-1):ch.toLowerCase().charCodeAt(0)-97;
-    ms.push({v,s:m.index,e:re.lastIndex});
+    let e=re.lastIndex;while(e<block.length&&/[ \t]/.test(block[e]))e++;
+    // ls = marker starts a line (or follows a wide gap, as in 2-column options)
+    ms.push({v,s:m.index,e,d:/\d/.test(ch),ls:/(^|\n)[ \t]*$/.test(pre)||/\S {2,}$/.test(pre)});
   }
-  let best=null;
+  // every A,B,C,D (or 1-4) run of one style; "Assertion (A)" / "Both (A) and (R)" make extra runs
+  const runs=[];
   for(let i=0;i<ms.length;i++){
     if(ms[i].v!==0)continue;
     const seq=[ms[i]];let need=1;
-    for(let j=i+1;j<ms.length&&need<4;j++){if(ms[j].v===need){seq.push(ms[j]);need++}}
-    if(seq.length===4)best=seq;
+    for(let j=i+1;j<ms.length&&need<4;j++){if(ms[j].v===need&&ms[j].d===ms[i].d){seq.push(ms[j]);need++}}
+    if(seq.length===4)runs.push(seq);
   }
+  // a later run wins (options come after "match the following" lists), unless it starts inside
+  // the earlier run's options and fewer of its markers start a line (A-R statements)
+  let best=null;const sc=r=>r.filter(x=>x.ls).length;
+  for(const r of runs){if(!best||r[0].s>best[3].s||sc(r)>=sc(best))best=r}
   if(!best)return{q:block.trim(),o:['','','','']};
   const q=block.slice(0,best[0].s).trim();
   const o=best.map((x,k)=>block.slice(x.e,k<3?best[k+1].s:undefined).replace(/\s*\n\s*/g,' ').trim());
@@ -50,6 +59,7 @@ function sectionName(ln){
   const g=t.match(/^section\s*[-:]?\s*([A-Za-z0-9]+)\s*$/i);
   return g?'Section '+g[1].toUpperCase():null;
 }
+const AR=['Both Assertion (A) and Reason (R) are true and R is the correct explanation of A','Both Assertion (A) and Reason (R) are true but R is not the correct explanation of A','Assertion (A) is true but Reason (R) is false','Assertion (A) is false but Reason (R) is true'];
 function parse(text,keyText){
   text=text.replace(/\r/g,'');
   const sp=splitKey(text);
@@ -74,6 +84,8 @@ function parse(text,keyText){
   }
   const questions=blocks.map((b,i)=>{
     const r=splitOpts(b.lines.join('\n'));
+    // Assertion–Reason printed without options: use the standard four
+    if(!r.o.some(Boolean)&&/assertion/i.test(r.q)&&/reason/i.test(r.q))r.o=AR.slice();
     return{q:r.q,options:r.o,answer:key[i+1]==null?null:key[i+1],explanation:'',sec:b.sec||'',gap:!!b.gap};
   });
   return{questions,keyFound:Object.keys(key).length};

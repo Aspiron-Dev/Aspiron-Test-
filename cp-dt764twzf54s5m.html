@@ -676,6 +676,14 @@ body.admx .hdr{background:color-mix(in srgb,var(--bg) 80%,transparent);border-bo
 .pqrows{max-height:620px;overflow:auto}.pqr{display:flex;gap:10px;padding:10px 4px;border-bottom:1px solid var(--bd)}.pqr.chk{background:color-mix(in srgb,#f59e0b 9%,transparent)}
 .pqn{width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;font-weight:800;font-size:12px;flex:none}.pqtx{margin-bottom:6px}
 .pqsel{display:flex;flex-wrap:wrap;gap:6px}.pqsel select{width:auto;max-width:100%;padding:6px 10px;font-size:13px}
+#raw{min-height:220px!important}#key{min-height:150px!important}
+#raw,#key,.qed textarea{cursor:pointer}
+body.feon{overflow:hidden}
+#fed{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;flex-direction:column;padding:max(10px,env(safe-area-inset-top)) 12px max(10px,env(safe-area-inset-bottom))}
+#fed .fehd{display:flex;align-items:center;gap:10px;padding:2px 0 10px}
+#fed .fehd b{font-size:16px}
+#fed .fehint{margin:-2px 0 8px}
+#fed textarea{flex:1;width:100%;min-height:0;resize:none;font:15px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;padding:14px;border-radius:14px;cursor:text}
 </style>
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['admin1', 'admin2', 'admin3', 'admin4'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
@@ -693,7 +701,7 @@ body.admx .hdr{background:color-mix(in srgb,var(--bg) 80%,transparent);border-bo
 <div id="layer"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="parser.js"></script>
+<script src="parser.js?v=2"></script>
 <script src="admin1.js?v=12" onerror="(window.__miss=window.__miss||[]).push('admin1.js')"></script>
 <script src="admin2.js?v=12" onerror="(window.__miss=window.__miss||[]).push('admin2.js')"></script>
 <script src="admin3.js?v=12" onerror="(window.__miss=window.__miss||[]).push('admin3.js')"></script>
@@ -705,6 +713,7 @@ body.admx .hdr{background:color-mix(in srgb,var(--bg) 80%,transparent);border-bo
 <script src="admin9.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin9.js')"></script>
 <script src="pyq-syllabus.js?v=2"></script>
 <script src="admin10.js?v=2" onerror="(window.__miss=window.__miss||[]).push('admin10.js')"></script>
+<script src="admin11.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin11.js')"></script>
 
 </body>
 </html>
