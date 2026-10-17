@@ -692,6 +692,43 @@ body.feon{overflow:hidden}
 .mgt{font-size:11.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);margin:16px 2px 8px}
 .mhead+.mgt{margin-top:6px}
 .asheet .box{max-height:calc(100dvh - 24px);overflow:auto}
+/* ---- layout v2: centre create button, section tabs, app-style home ---- */
+#adock .dfab{flex:1.1;color:var(--pri)}
+#adock .dfab i{display:grid;place-items:center;width:52px;height:52px;margin-top:-26px;border-radius:18px;background:var(--grad);color:#fff;box-shadow:0 10px 22px color-mix(in srgb,var(--pri) 38%,transparent),0 0 0 5px var(--bg);transition:transform .15s}
+#adock .dfab i svg{stroke-width:2.6}
+#adock .dfab:active i{transform:scale(.94)}
+#adock .dfab.on{background:transparent}
+#adock button span{text-transform:none;letter-spacing:.1px;font-size:10.5px}
+#hubbar{position:sticky;top:var(--hdrh,57px);z-index:15;margin:-6px -16px 14px;padding:8px 16px 10px;background:color-mix(in srgb,var(--bg) 86%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid var(--hair)}
+#hubbar .hbin{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#hubbar .hbin::-webkit-scrollbar{display:none}
+.hbt{flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--hair);background:var(--surface);color:var(--mut);font:600 13px inherit;font-family:inherit;padding:8px 13px;border-radius:999px;cursor:pointer;white-space:nowrap;position:relative}
+.hbt svg{width:15px;height:15px}
+.hbt.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+.hbt .nb{position:static;margin:0 0 0 2px}
+.hbt .nb:not(.on){display:none}
+.appsec{display:flex;flex-direction:column;gap:12px;margin:14px 0 6px}
+.appgrp{background:var(--surface);border:1px solid var(--hair);border-radius:20px;padding:14px 12px 10px;box-shadow:var(--shadow)}
+.appgt{font-size:11.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);margin:0 4px 10px}
+.apps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 6px}
+@media(min-width:600px){.apps{grid-template-columns:repeat(6,1fr)}}
+@media(min-width:1100px){.apps{grid-template-columns:repeat(8,1fr)}}
+.app{border:0;background:none;color:var(--tx);display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 2px;cursor:pointer;border-radius:14px;font-family:inherit}
+.app:hover .appic{transform:translateY(-2px)}
+.app:active .appic{transform:scale(.94)}
+.appic{position:relative;width:52px;height:52px;border-radius:16px;display:grid;place-items:center;transition:transform .15s;color:var(--ac);background:color-mix(in srgb,var(--ac) 13%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ac) 18%,transparent)}
+.appic .nb{position:absolute;top:-5px;right:-6px;margin:0}
+.appic .nb:not(.on){display:none}
+.appl{font-size:12px;font-weight:600;line-height:1.25;text-align:center;max-width:76px}
+.c-stu{--ac:#2f6fe4}.c-cre{--ac:#7c4ddb}.c-sto{--ac:#0f9b6c}.c-app{--ac:#d9730d}
+:root[data-theme="dark"] .c-stu{--ac:#6ea0ff}:root[data-theme="dark"] .c-cre{--ac:#a98bff}:root[data-theme="dark"] .c-sto{--ac:#3cc995}:root[data-theme="dark"] .c-app{--ac:#f2a24a}
+.admx #pn_overview .qa{display:none}
+.cregrid{display:grid;grid-template-columns:1fr;gap:8px}
+@media(min-width:520px){.cregrid{grid-template-columns:1fr 1fr}}
+.creit{display:flex;align-items:center;gap:12px;text-align:left;padding:12px;border-radius:16px;border:1px solid var(--hair);background:var(--surface2);color:var(--tx);cursor:pointer;font-family:inherit}
+.creit:active{transform:scale(.99)}
+.creic{flex:none;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--grad);color:#fff}
+.cretx b{display:block;font-size:14.5px}.cretx small{display:block;color:var(--mut);font-size:12.5px;margin-top:1px}
 </style>
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['admin1', 'admin2', 'admin3', 'admin4'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
@@ -724,6 +761,7 @@ body.feon{overflow:hidden}
 <script src="admin11.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin11.js')"></script>
 <script src="admin12.js?v=11" onerror="(window.__miss=window.__miss||[]).push('admin12.js')"></script>
 <script src="admin13.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin13.js')"></script>
+<script src="admin14.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin14.js')"></script>
 
 </body>
 </html>
