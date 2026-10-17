@@ -673,6 +673,9 @@ body.admx .hdr{background:color-mix(in srgb,var(--bg) 80%,transparent);border-bo
 @media(max-width:560px){.s3f{padding-left:0}.s3a{margin-left:auto}}
 #lockv{position:fixed;inset:0;z-index:999;backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);background:color-mix(in srgb,var(--bg) 70%,transparent);display:none;place-items:center}body.privacy #lockv{display:grid}
 .pwm{height:6px;border-radius:9px;background:var(--surface2);overflow:hidden;margin-top:8px}.pwm i{display:block;height:100%;transition:width .2s,background .2s}
+.pqrows{max-height:620px;overflow:auto}.pqr{display:flex;gap:10px;padding:10px 4px;border-bottom:1px solid var(--bd)}.pqr.chk{background:color-mix(in srgb,#f59e0b 9%,transparent)}
+.pqn{width:30px;height:30px;border-radius:9px;background:var(--surface2);display:grid;place-items:center;font-weight:800;font-size:12px;flex:none}.pqtx{margin-bottom:6px}
+.pqsel{display:flex;flex-wrap:wrap;gap:6px}.pqsel select{width:auto;max-width:100%;padding:6px 10px;font-size:13px}
 </style>
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['admin1', 'admin2', 'admin3', 'admin4'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
@@ -700,6 +703,8 @@ body.admx .hdr{background:color-mix(in srgb,var(--bg) 80%,transparent);border-bo
 <script src="admin7.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin7.js')"></script>
 <script src="admin8.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin8.js')"></script>
 <script src="admin9.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin9.js')"></script>
+<script src="pyq-syllabus.js?v=1"></script>
+<script src="admin10.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin10.js')"></script>
 
 </body>
 </html>
