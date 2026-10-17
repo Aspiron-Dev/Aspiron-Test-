@@ -1129,6 +1129,10 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 @media (prefers-reduced-motion:reduce){.upc.today,.lvtd{animation:none}}
 .home2 .livec,.home2 .upc{margin-top:14px!important;margin-bottom:0}
 .home2 .cdc+.livec,.home2 .cdc+.upc{margin-top:16px!important}
+.albtn{gap:5px;flex:none}.albtn svg{flex:none}
+.upc .albtn{width:38px;height:38px;padding:0;border-radius:50%;justify-content:center}
+.albtn.on svg{animation:alring 1s ease-in-out 1}
+@keyframes alring{0%,100%{transform:rotate(0)}20%{transform:rotate(18deg)}40%{transform:rotate(-14deg)}60%{transform:rotate(9deg)}80%{transform:rotate(-5deg)}}
 </style>
 <script>(function(){try{var h=document.documentElement,t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';h.dataset.accent=JSON.parse(localStorage.getItem('cbt_accent'))||'cyber'}catch(e){document.documentElement.dataset.theme='light';document.documentElement.dataset.accent='cyber'}})()</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6', 'app7', 'app8', 'app9', 'app10', 'app11', 'app12'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
@@ -1150,18 +1154,18 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 
 
 <script src="app1.js?v=20" onerror="(window.__miss=window.__miss||[]).push('app1.js')"></script>
-<script src="app2.js?v=18" onerror="(window.__miss=window.__miss||[]).push('app2.js')"></script>
+<script src="app2.js?v=19" onerror="(window.__miss=window.__miss||[]).push('app2.js')"></script>
 <script src="app3.js?v=18" onerror="(window.__miss=window.__miss||[]).push('app3.js')"></script>
 <script src="app4.js?v=18" onerror="(window.__miss=window.__miss||[]).push('app4.js')"></script>
 <script src="app5.js?v=18" onerror="(window.__miss=window.__miss||[]).push('app5.js')"></script>
 <script src="app6.js?v=22" onerror="(window.__miss=window.__miss||[]).push('app6.js')"></script>
 <script src="app7.js?v=1" onerror="(window.__miss=window.__miss||[]).push('app7.js')"></script>
 <script src="app8.js?v=5" onerror="(window.__miss=window.__miss||[]).push('app8.js')"></script>
-<script src="app9.js?v=5" onerror="(window.__miss=window.__miss||[]).push('app9.js')"></script>
+<script src="app9.js?v=6" onerror="(window.__miss=window.__miss||[]).push('app9.js')"></script>
 <script src="app10.js?v=2" onerror="(window.__miss=window.__miss||[]).push('app10.js')"></script>
 <script src="pyq-syllabus.js?v=2"></script>
 <script src="app11.js?v=1" onerror="(window.__miss=window.__miss||[]).push('app11.js')"></script>
-<script src="app12.js?v=2" onerror="(window.__miss=window.__miss||[]).push('app12.js')"></script>
+<script src="app12.js?v=3" onerror="(window.__miss=window.__miss||[]).push('app12.js')"></script>
 
 </body>
 </html>
