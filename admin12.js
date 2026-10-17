@@ -299,9 +299,11 @@ async function stoApprove(code,btn){
     const l=await A('students');st=l.ok?(l.students||[]).find(x=>x.mobile===o.mobile):null;
   }else if(st.status==='pending'){
     r=await A('student_approve',{id:st.id});if(!r.ok)return fail('Could not approve the student');acc=r.code;done.push('Request approved');
-  }else if(confirm(`${st.name} already has an account and an access code.\n\nOK = make a NEW access code (old code and their devices stop working)\nCancel = keep their current code`)){
+  }else if(confirm(`${st.name} already has an account and an access code.\n\nOK = keep their current code (recommended — they stay signed in)\nCancel = make a NEW code (they are signed out on all phones)`)){
+    done.push('Existing account (current code kept)');
+  }else{
     r=await A('student_code',{id:st.id});if(r.ok){acc=r.code;done.push('New access code made')}
-  }else done.push('Existing account (current code kept)');
+  }
   if(sid&&st){
     r=await A('grant',{student_id:st.id,series_id:sid,on:true});if(!r.ok)return fail('Could not unlock the series');
     done.push(`Unlocked: ${ser?ser.title:o.item_title}`);
