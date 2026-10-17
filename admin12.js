@@ -21,7 +21,9 @@ async function loadStore(){
   if(!CA.series.length)loadCatalog();
   const r=await ASTO('get');
   if(!r.ok){$('#stobody').innerHTML=`<div class="card empty"><b>${r.error==='missing'?'One-time setup needed':'Could not load'}</b><p class="sm">${r.error==='missing'?'Open Supabase → SQL Editor, paste <b>supabase_v13_store.sql</b> and press Run once. Then refresh.':'Check your internet and try again.'}</p></div>`;return}
-  SS=Object.assign(SS,{settings:r.settings||{},items:r.items||[],orders:r.orders||[]});stoDraw();navBadges();
+  SS=Object.assign(SS,{settings:r.settings||{},items:r.items||[],orders:r.orders||[]});
+  SS.sched={};try{const q=await fetch(API+'/rest/v1/rpc/cbt_store_schedules',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:'{}'});if(q.ok){const j=await q.json();(j.items||[]).forEach(x=>SS.sched[x.id]=x)}else SS.sched=null}catch(e){}
+  stoDraw();navBadges();
   if(SS.items.length&&!('image' in SS.items[0]))stoNeedFix('Photos are switched off in the database.');
 }
 function stoDraw(){
@@ -39,7 +41,7 @@ function stoDraw(){
     <div id="stol">${OL.length?OL.map(stoOrd).join(''):'<p class="sm mut">No orders here.</p>'}</div></div>
    <div class="h2s">📦 Test series on the store <span class="n">${SS.items.length}</span></div>
    ${SS.items.map((x,i)=>`<div class="card" style="display:flex;gap:12px;align-items:center;margin-bottom:10px">${x.image?`<img src="${esc(x.image)}" alt="" style="width:64px;height:40px;object-fit:cover;border-radius:8px;flex:none">`:''}<div style="flex:1;min-width:0"><b>${esc(x.title)}</b> ${x.active?'':'<span class="chip">Hidden</span>'}
-     <div class="sm mut">₹${x.price}${x.mrp?` <s>₹${x.mrp}</s>`:''} · ${(x.features||[]).length} features${x.series_id?' · unlocks: '+esc((CA.series.find(z=>z.id===x.series_id)||{}).title||'series'):''}</div></div>
+     <div class="sm mut">₹${x.price}${x.mrp?` <s>₹${x.mrp}</s>`:''} · ${(x.features||[]).length} features${SS.sched&&SS.sched[x.id]?' · 📅 schedule':''}${x.series_id?' · unlocks: '+esc((CA.series.find(z=>z.id===x.series_id)||{}).title||'series'):''}</div></div>
      <button class="btn ghost sm" onclick="stoEdit(${i})">Edit</button></div>`).join('')}
    <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="stoPick()">⚡ Add from your series</button><button class="btn ghost" onclick="stoEdit(-1)">➕ Add manually</button>${SS.items.some(x=>x.series_id)?'<button class="btn ghost" id="stors" onclick="stoResync(this)">🔄 Update all from series</button>':''}</div>
    <div class="h2s">💳 Payment details</div>
@@ -71,7 +73,7 @@ async function stoSaveSet(b){
 }
 function stoEdit(i){
   const x=i>=0?SS.items[i]:{title:'',subtitle:'',price:'',mrp:'',badge:'',features:[],color:'blue',series_id:'',active:true,sort_order:SS.items.length};
-  STOIMG=x.image||'';
+  STOIMG=x.image||'';STOFILE=null;
   modal(`<div class="stohd"><h2>${i>=0?'Edit':'Add'} test series</h2><button class="iconbtn" onclick="closeModal()" aria-label="Close">✕</button></div><p class="sm mut" style="margin:2px 0 10px">Preview — this is how students see it on the store:</p><div id="p_prev"></div>
    <label class="l">Name</label><input type="text" id="p_t" maxlength="80" value="${esc(x.title)}" placeholder="e.g. NEET 2027 All India Test Series">
    <label class="l">Short line (optional)</label><input type="text" id="p_s" maxlength="200" value="${esc(x.subtitle)}" placeholder="e.g. 30 full tests · Oct to April">
@@ -82,7 +84,9 @@ function stoEdit(i){
     <div><label class="l">Order on page</label><input type="number" id="p_o" value="${esc(x.sort_order||0)}"></div></div>
    <label class="l">Photo on the store card</label><div class="row" style="gap:8px;align-items:center"><div id="p_img">${stoImgHtml()}</div>
     <label class="btn soft sm" style="cursor:pointer">📷 Upload<input type="file" accept="image/*" style="display:none" onchange="stoImgUp(this)"></label><button class="btn ghost sm" onclick="stoImgSet('')">Remove</button></div>
-      <label class="l">Features (one per line)</label><textarea id="p_f" style="min-height:130px" placeholder="30 full-length NEET mock tests&#10;All-India rank after every test&#10;Detailed solutions">${esc((x.features||[]).join('\n'))}</textarea>
+      <label class="l">Schedule for students (PDF or photo, up to 5 MB)</label><div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><div id="p_sch" class="sm" style="flex:1;min-width:140px">${stoSchHtml(x.id)}</div>
+    <label class="btn soft sm" style="cursor:pointer">📅 Upload<input type="file" accept="application/pdf,image/*" style="display:none" onchange="stoSchUp(this,'${x.id||''}')"></label>${SS.sched&&SS.sched[x.id]?`<button class="btn ghost sm" onclick="stoSchDel('${x.id}')">Remove</button>`:''}</div>
+   <label class="l">Features (one per line)</label><textarea id="p_f" style="min-height:130px" placeholder="30 full-length NEET mock tests&#10;All-India rank after every test&#10;Detailed solutions">${esc((x.features||[]).join('\n'))}</textarea>
    <label class="chk"><input type="checkbox" id="p_a" ${x.active?'checked':''}><span>Show on the store page</span></label>
    <div class="row stofoot">${i>=0?`<button class="btn danger" onclick="stoDel(${i})">Delete</button>`:''}<button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn" style="flex:1" id="p_go" onclick="stoSave(${i})">Save</button></div>`);
   stoSheet();
@@ -97,6 +101,7 @@ async function stoSave(i){
   if(d.image&&d.image.length>700000){try{d.image=await compressDataUrl(d.image,800,.7)||d.image}catch(e){}}
   const r=await ASTO('save_item',d);b.disabled=false;b.textContent='Save';
   if(!r.ok)return toast('Could not save');
+  if(STOFILE&&(r.id||d.id)){const q=await stoSchSend(r.id||d.id,STOFILE.data,STOFILE.name);if(!q.ok)toast(q.msg)}
   closeModal();await loadStore();
   // make sure the photo really reached the database
   const it=SS.items.find(x=>x.id===(r.id||d.id));
@@ -226,5 +231,39 @@ function stoNeedFix(why){
   b.insertAdjacentHTML('afterbegin',`<div class="card" id="stofix" style="border:2px solid var(--warn);background:var(--warnSoft)"><b>⚠️ ${esc(why)} One-time fix needed</b>
    <p class="sm" style="margin:6px 0 0">Open Supabase → SQL Editor → New query, paste the file <b>supabase_v17_store_fix.sql</b> and press Run. Then refresh this page and save the photo again.</p></div>`);
   b.scrollIntoView({behavior:'smooth',block:'start'});
+}
+/* ---------- schedule file (PDF / photo) for a store item ---------- */
+let STOFILE=null;
+const kb=n=>n>1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
+function stoSchHtml(id){
+  if(STOFILE)return `📎 <b>${esc(STOFILE.name)}</b> · ${kb(STOFILE.size)} <span class="mut">(saved with the series)</span>`;
+  if(SS.sched===null)return '<span class="mut">Run supabase_v18_store_schedule.sql once to turn this on</span>';
+  const f=SS.sched&&SS.sched[id];return f?`📎 <b>${esc(f.name)}</b> · ${kb(f.size)}`:'<span class="mut">No schedule yet</span>';
+}
+async function stoSchSend(id,data,name){
+  try{
+    const r=await fetch(API+'/rest/v1/rpc/cbt_admin_store_schedule',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_pw:PW,p_item:id,p_data:data,p_name:name})});
+    if(!r.ok)return{ok:false,msg:r.status===404?'Run supabase_v18_store_schedule.sql once in Supabase':'Could not save the schedule'};
+    const j=await r.json();return j.ok?{ok:true}:{ok:false,msg:j.error==='size'?'File is too big (max 5 MB)':j.error==='type'?'Use a PDF or a photo':'Could not save the schedule'};
+  }catch(e){return{ok:false,msg:'No internet'}}
+}
+async function stoSchUp(inp,id){
+  const f=inp.files[0];if(!f)return;
+  if(f.size>5*1048576)return toast('File is too big (max 5 MB)');
+  const isPdf=f.type==='application/pdf'||/\.pdf$/i.test(f.name);if(!isPdf&&!/^image\//.test(f.type))return toast('Use a PDF or a photo');
+  const box=$('#p_sch');if(box)box.innerHTML='Uploading…';
+  let data=await fileToUrl(f);
+  if(isPdf)data=data.replace(/^data:[^;]*;/,'data:application/pdf;');
+  else{try{data=await compressDataUrl(data,1600,.82)||data}catch(e){}}
+  const name=f.name.replace(/\.[a-z0-9]+$/i,'').slice(0,80)||'Schedule';
+  if(!id){STOFILE={data,name,size:Math.round(data.length*3/4)};if(box)box.innerHTML=stoSchHtml('');return}
+  const r=await stoSchSend(id,data,name);
+  if(!r.ok){if(box)box.innerHTML=stoSchHtml(id);return toast(r.msg)}
+  SS.sched=SS.sched||{};SS.sched[id]={id,name,size:Math.round(data.length*3/4)};if(box)box.innerHTML=stoSchHtml(id);toast('Schedule saved ✓');stoDraw();
+}
+async function stoSchDel(id){
+  if(!confirm('Remove the schedule from this series?'))return;
+  const r=await stoSchSend(id,'','');if(!r.ok)return toast(r.msg);
+  if(SS.sched)delete SS.sched[id];const box=$('#p_sch');if(box)box.innerHTML=stoSchHtml(id);toast('Schedule removed');stoDraw();
 }
 ;(window.__p=window.__p||{})['admin12']=1;
