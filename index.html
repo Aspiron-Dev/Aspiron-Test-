@@ -1127,6 +1127,8 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 @keyframes lvbeat{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
 @keyframes lvglow{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--bad) 0%,transparent)}50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--bad) 14%,transparent)}}
 @media (prefers-reduced-motion:reduce){.upc.today,.lvtd{animation:none}}
+.home2 .livec,.home2 .upc{margin-top:14px!important;margin-bottom:0}
+.home2 .cdc+.livec,.home2 .cdc+.upc{margin-top:16px!important}
 </style>
 <script>(function(){try{var h=document.documentElement,t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';h.dataset.accent=JSON.parse(localStorage.getItem('cbt_accent'))||'cyber'}catch(e){document.documentElement.dataset.theme='light';document.documentElement.dataset.accent='cyber'}})()</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6', 'app7', 'app8', 'app9', 'app10', 'app11', 'app12'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
@@ -1159,7 +1161,7 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 <script src="app10.js?v=2" onerror="(window.__miss=window.__miss||[]).push('app10.js')"></script>
 <script src="pyq-syllabus.js?v=2"></script>
 <script src="app11.js?v=1" onerror="(window.__miss=window.__miss||[]).push('app11.js')"></script>
-<script src="app12.js?v=1" onerror="(window.__miss=window.__miss||[]).push('app12.js')"></script>
+<script src="app12.js?v=2" onerror="(window.__miss=window.__miss||[]).push('app12.js')"></script>
 
 </body>
 </html>
