@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.supabase.co; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#f3f6f9">
+<title>Test Series Store</title>
+<meta name="description" content="NEET test series — see what's inside and buy with UPI.">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f6f9;--surface:#fff;--surface2:#eef2f6;--tx:#0e1b26;--mut:#5a6b7b;--bd:#dfe6ed;--pri:#1d6fe8;--priSoft:#e6f0fe;--ok:#12945f;--okSoft:#e3f6ec;--bad:#dc3a4f;--warn:#b26a06;--warnSoft:#fff3df;
+  --shadow:0 1px 2px rgba(14,27,38,.05),0 8px 24px rgba(14,27,38,.07);--grad:linear-gradient(135deg,#1d6fe8 0%,#12a58a 100%);--fh:'Syne',Inter,sans-serif}
+@media (prefers-color-scheme:dark){:root{--bg:#09111f;--surface:#101b2e;--surface2:#172640;--tx:#e6edf6;--mut:#93a4b8;--bd:#233654;--pri:#5aa2ff;--priSoft:#14284a;--ok:#34c38f;--okSoft:#10302a;--warn:#f0a63a;--warnSoft:#33270f;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35)}}
+*{box-sizing:border-box;margin:0}
+body{font:15px/1.5 Inter,system-ui,sans-serif;color:var(--tx);background:var(--bg);background-image:radial-gradient(900px 380px at 50% -120px,color-mix(in srgb,var(--pri) 14%,transparent),transparent);background-repeat:no-repeat;min-height:100vh;-webkit-tap-highlight-color:transparent}
+.wrap{max-width:760px;margin:0 auto;padding:16px 16px 60px}
+header{display:flex;align-items:center;gap:10px;padding:6px 0 18px}
+header img{width:40px;height:40px;border-radius:12px}
+header b{font-family:var(--fh);font-size:20px;letter-spacing:.3px}
+header .grow{flex:1}
+.hero{background:var(--grad);color:#fff;border-radius:22px;padding:22px 20px;position:relative;overflow:hidden;box-shadow:0 12px 30px color-mix(in srgb,var(--pri) 30%,transparent)}
+.hero h1{font-family:var(--fh);font-size:26px;line-height:1.15;margin-bottom:6px}
+.hero p{opacity:.9;font-size:14px}
+.hero:after{content:"";position:absolute;right:-50px;top:-50px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.12)}
+.trust{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.trust span{background:rgba(255,255,255,.18);border-radius:99px;padding:5px 11px;font-size:12px;font-weight:600}
+h2{font-family:var(--fh);font-size:19px;margin:24px 0 12px}
+.grid{display:grid;gap:14px}
+@media (min-width:640px){.grid{grid-template-columns:1fr 1fr}}
+.card{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+.card.hl{outline:2.5px solid var(--pri);outline-offset:2px}
+.ctop{padding:18px 18px 14px;color:#fff;position:relative}
+.ctop h3{font-family:var(--fh);font-size:20px;line-height:1.2;padding-right:70px}
+.ctop p{font-size:13px;opacity:.92;margin-top:4px}
+.badge{position:absolute;top:14px;right:14px;background:#fff;color:#111;font-size:11px;font-weight:800;border-radius:99px;padding:4px 9px;letter-spacing:.3px}
+.c-blue{background:linear-gradient(135deg,#1d6fe8,#3b9bff)}.c-green{background:linear-gradient(135deg,#0f9d6b,#12a58a)}.c-purple{background:linear-gradient(135deg,#6d3fe0,#a855f7)}
+.c-orange{background:linear-gradient(135deg,#e8590c,#f59f00)}.c-red{background:linear-gradient(135deg,#d6336c,#f03e3e)}.c-dark{background:linear-gradient(135deg,#1e293b,#475569)}
+.cbody{padding:14px 18px 18px;display:flex;flex-direction:column;gap:12px;flex:1}
+.price{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.price b{font-family:var(--fh);font-size:28px}
+.price s{color:var(--mut);font-size:15px}
+.price em{font-style:normal;background:var(--okSoft);color:var(--ok);font-size:12px;font-weight:700;border-radius:99px;padding:2px 8px}
+ul.f{list-style:none;padding:0;display:flex;flex-direction:column;gap:7px;flex:1}
+ul.f li{display:flex;gap:8px;font-size:14px}
+ul.f li:before{content:"✓";flex:none;width:20px;height:20px;border-radius:50%;background:var(--okSoft);color:var(--ok);font-size:12px;font-weight:800;display:grid;place-items:center;margin-top:1px}
+.row{display:flex;gap:10px}
+.btn{appearance:none;border:0;font:600 15px Inter,sans-serif;border-radius:14px;padding:13px 16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;color:#fff;background:var(--grad);box-shadow:0 6px 16px color-mix(in srgb,var(--pri) 28%,transparent)}
+.btn.soft{background:var(--surface2);color:var(--tx);box-shadow:none}
+.btn.tg{background:linear-gradient(135deg,#229ed9,#2aabee)}
+.btn.block{width:100%}
+.btn:disabled{opacity:.6}
+.btn:active{transform:scale(.98)}
+.empty{padding:30px 20px;text-align:center;color:var(--mut)}
+.how{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);padding:16px 18px}
+.how ol{padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+footer{text-align:center;color:var(--mut);font-size:12px;margin-top:28px}
+footer a{color:var(--pri)}
+/* checkout sheet */
+.ov{position:fixed;inset:0;background:rgba(5,12,22,.55);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;z-index:50;animation:fi .2s}
+.sheet{background:var(--surface);width:100%;max-width:480px;max-height:94vh;overflow:auto;border-radius:24px 24px 0 0;padding:16px 18px max(20px,env(safe-area-inset-bottom));animation:su .25s ease-out}
+@media (min-width:640px){.ov{align-items:center}.sheet{border-radius:24px}}
+@keyframes fi{from{opacity:0}}@keyframes su{from{transform:translateY(40px);opacity:.4}}
+.shd{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.shd .grow{flex:1;min-width:0}.shd b{font-size:16px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.x{border:0;background:var(--surface2);color:var(--tx);width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;flex:none}
+.steps{display:flex;gap:6px;margin-bottom:16px}
+.steps i{flex:1;height:5px;border-radius:9px;background:var(--surface2)}.steps i.on{background:var(--pri)}
+.sm{font-size:13px}.mut{color:var(--mut)}
+label{display:block;font-size:13px;font-weight:600;color:var(--mut);margin:12px 0 6px}
+input{width:100%;font:16px Inter,sans-serif;border:0;border-radius:12px;padding:13px 14px;background:var(--surface2);color:var(--tx);outline:none}
+input:focus{box-shadow:0 0 0 2px var(--pri)}
+.err{color:var(--bad);font-size:13px;min-height:20px;margin-top:8px}
+.amt{text-align:center;margin:2px 0 10px}.amt b{font-family:var(--fh);font-size:34px}
+.qr{background:#fff;border-radius:18px;padding:14px;width:min(250px,72vw);margin:0 auto;display:block}
+.qr svg{display:block;width:100%;height:auto}
+.verify{display:flex;gap:10px;align-items:flex-start;background:var(--warnSoft);color:var(--warn);border-radius:14px;padding:10px 12px;font-size:13px;margin:12px 0}
+.kv{background:var(--surface2);border-radius:14px;padding:4px 12px;margin:10px 0}
+.kv div{display:flex;align-items:center;gap:10px;padding:9px 0}.kv div+div{border-top:1px solid var(--bd)}
+.kv span{color:var(--mut);font-size:12px;width:78px;flex:none}.kv b{flex:1;min-width:0;word-break:break-all;font-size:14px}
+.cp{border:0;background:var(--priSoft);color:var(--pri);font:700 12px Inter,sans-serif;border-radius:99px;padding:6px 11px;cursor:pointer;flex:none}
+.code{font-family:ui-monospace,Menlo,monospace;letter-spacing:1px}
+.bigok{width:64px;height:64px;border-radius:50%;background:var(--okSoft);color:var(--ok);display:grid;place-items:center;font-size:30px;margin:4px auto 10px}
+.msg{background:var(--surface2);border-radius:14px;padding:12px;font-size:13px;white-space:pre-wrap;margin:10px 0}
+.st{display:flex;gap:12px;margin:12px 0}.st i{flex:none;width:28px;height:28px;border-radius:50%;background:var(--priSoft);color:var(--pri);font-style:normal;font-weight:800;display:grid;place-items:center;font-size:14px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0e1b26;color:#fff;border-radius:12px;padding:10px 16px;font-size:14px;z-index:99;max-width:90vw}
+.sk{background:linear-gradient(90deg,var(--surface2),var(--surface),var(--surface2));background-size:200% 100%;animation:sk 1.2s infinite;border-radius:20px;height:280px}
+@keyframes sk{to{background-position:-200% 0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><img src="icon-192.png" alt=""><b class="grow" id="sname">Test Series</b><a class="btn soft" style="padding:9px 14px;font-size:14px" href="index.html">Student login</a></header>
+  <div class="hero"><h1>Crack NEET with real exam practice</h1><p>All-India test series on the real NEET pattern, with rank, detailed analysis and solutions.</p>
+    <div class="trust"><span>✓ Real NEET pattern</span><span>✓ All-India rank</span><span>✓ Detailed solutions</span></div></div>
+  <h2>Our test series</h2>
+  <div class="grid" id="list"><div class="sk"></div><div class="sk"></div></div>
+  <h2>How to buy</h2>
+  <div class="how"><ol><li>Tap <b>Buy now</b> and enter your name and mobile number.</li><li>Pay by scanning the QR or with the UPI ID.</li><li>Send the payment screenshot on Telegram.</li><li>Register on the website. Your series is unlocked on your mobile number.</li></ol></div>
+  <footer>Payments go only to the UPI ID shown on this page. Need help? <a id="ftg" href="#" rel="noopener" target="_blank">Message us on Telegram</a></footer>
+</div>
+<script src="config.js"></script>
+<script src="qrcode.js"></script>
+<script src="store.js?v=1"></script>
+</body>
+</html>
