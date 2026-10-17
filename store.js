@@ -82,8 +82,8 @@ async function share(id){
 function sheet(step,body){
   let ov=$('.ov');
   if(!ov){ov=document.createElement('div');ov.className='ov';ov.addEventListener('click',e=>{if(e.target===ov)closeSheet()});document.body.appendChild(ov);document.body.style.overflow='hidden'}
-  ov.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="shd"><div class="grow"><b>${esc(IT.title)}</b><span class="sm mut">Step ${step} of 4</span></div><button class="x" data-close aria-label="Close">✕</button></div>
-   <div class="steps">${[1,2,3,4].map(i=>`<i class="${i<=step?'on':''}"></i>`).join('')}</div>${body}</div>`;
+  ov.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="shd"><div class="grow"><b>${esc(IT.title)}</b><span class="sm mut">Step ${step} of 5</span></div><button class="x" data-close aria-label="Close">✕</button></div>
+   <div class="steps">${[1,2,3,4,5].map(i=>`<i class="${i<=step?'on':''}"></i>`).join('')}</div>${body}</div>`;
 }
 function closeSheet(){const o=$('.ov');if(o)o.remove();document.body.style.overflow=''}
 function buy(id){
@@ -127,22 +127,51 @@ function payStep(){
     <div><span>Order code</span><b class="code">${esc(ORD.code)}</b><button class="cp" data-copy="${esc(ORD.code)}" data-what="Code copied">Copy</button></div></div>
    <p class="sm mut">If you pay with the UPI ID, write the order code <b class="code">${esc(ORD.code)}</b> in the payment note.</p>
    ${mob?`<a class="btn soft block" style="margin-top:12px" href="${esc(upiLink())}">Open UPI app</a>`:''}
-   <button class="btn block" style="margin-top:10px" data-step="3">I have paid → Next</button>
+   <button class="btn block" style="margin-top:10px" data-step="paid">I have paid → Next</button>
    ${s.note?`<p class="sm mut" style="margin-top:10px">${esc(s.note)}</p>`:''}
    <p class="sm mut" style="text-align:center;margin-top:12px">For ${esc(ORD.name)} · ${esc(ORD.mobile)} · <a href="#" data-redo style="color:var(--pri)">change</a></p>`);
 }
-function tgText(){return `Payment done ✅\nOrder code: ${ORD.code}\nSeries: ${ORD.title}\nAmount: ${inr(ORD.amount)}\nName: ${ORD.name}\nMobile: ${ORD.mobile}\n(Screenshot attached)`}
+function tgText(){return `Payment done ✅\nOrder code: ${ORD.code}\nSeries: ${ORD.title}\nAmount: ${inr(ORD.amount)}\nStudent name: ${ORD.name}\nMobile: ${ORD.mobile}\nPaid from account of: ${ORD.payer||'-'}\nUTR / Transaction ID: ${ORD.utr||'-'}\n📎 Payment screenshot attached`}
+/* step 3: who paid (account holder name) + UTR, saved with the order */
+function paidStep(){
+  sheet(3,`<div class="bigok">🧾</div><h3 style="text-align:center;margin-bottom:6px">Payment details</h3>
+   <p class="sm mut" style="text-align:center">This helps us find your payment quickly.</p>
+   <label for="py">Name on the account you paid from <span style="color:var(--bad)">*</span></label>
+   <input id="py" maxlength="60" autocomplete="off" value="${esc(ORD.payer||'')}" placeholder="As shown in your UPI app, e.g. Ramesh Kumar">
+   <p class="sm mut" style="margin-top:6px">If a parent or friend paid, write their name.</p>
+   <label for="pu">UTR / Transaction ID <span class="mut">(recommended)</span></label>
+   <input id="pu" maxlength="30" inputmode="text" autocomplete="off" value="${esc(ORD.utr||'')}" placeholder="12-digit number in your UPI app" style="font-family:ui-monospace,Menlo,monospace;letter-spacing:1px">
+   <details class="hint"><summary>Where do I find the UTR?</summary><p>Open your UPI app → payment history → tap this payment. Look for <b>UTR</b>, <b>UPI Ref No.</b> or <b>Transaction ID</b> (usually 12 digits).</p></details>
+   <div class="err" id="er"></div>
+   <button class="btn block" id="pgo" data-paidgo>Save & continue →</button>
+   <button class="btn soft block" style="margin-top:10px" data-step="back2">← Back to payment</button>`);
+}
+async function paidGo(){
+  const py=$('#py').value.trim(),pu=$('#pu').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase(),er=$('#er');
+  if(py.length<2)return er.textContent='Please write the name on the account you paid from.';
+  if(pu&&pu.length<6)return er.textContent='This UTR looks too short. Check it, or leave it empty.';
+  const b=$('#pgo');b.disabled=true;b.textContent='Saving…';er.textContent='';
+  const r=await rpc('cbt_store_paid',{p_code:ORD.code,p_mobile:ORD.mobile,p_payer:py,p_utr:pu});
+  b.disabled=false;b.textContent='Save & continue →';
+  // if the server is not updated yet, the details still go in the Telegram message
+  if(!r.ok&&r.error!=='missing'&&r.error!=='server'){
+    if(r.error==='network')return er.textContent='No internet. Please try again.';
+    if(r.error==='order'){localStorage.removeItem('store_ord');return er.textContent='This order was not found. Please close and tap Buy again.'}
+  }
+  ORD.payer=py;ORD.utr=pu;LSs('store_ord',ORD);tgStep();
+}
 const tgLink=txt=>'https://t.me/'+encodeURIComponent(tgUser())+(txt?'?text='+encodeURIComponent(txt):'');
 function tgStep(){
-  sheet(3,`<div class="bigok">📸</div><h3 style="text-align:center;margin-bottom:6px">Verify your payment</h3>
-   <p class="sm mut" style="text-align:center">Tap the button below. Our support chat opens with your payment details already written — just <b>attach your payment screenshot</b> and send.</p>
+  sheet(4,`<h3 style="text-align:center;margin:4px 0 6px">Verify your payment</h3>
+   <div class="attach"><div class="attico">📎<i>🖼️</i></div><div><b>Attach your payment screenshot</b><p>Without the screenshot we cannot verify your payment.</p></div></div>
+   <ol class="howto"><li>Tap the blue button below — our support chat opens with your details already written.</li><li>Tap <b>📎</b> (attach) in the chat and choose your <b>payment screenshot</b>.</li><li>Tap <b>Send</b>.</li></ol>
    <div class="msg">${esc(tgText())}</div>
    <a class="btn tg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(tgLink(tgText()))}">✔ Click here to verify your payment</a>
    <p class="sm mut" style="text-align:center;margin-top:8px">The message is also copied, so you can paste it if it doesn't appear.</p>
-   <button class="btn soft block" style="margin-top:10px" data-step="4">I have sent it → Next</button>`);
+   <button class="btn soft block" style="margin-top:10px" data-step="5">I have sent the screenshot → Next</button>`);
 }
 function doneStep(){
-  sheet(4,`<div class="bigok">✓</div><h3 style="text-align:center;margin-bottom:4px">Thank you!</h3>
+  sheet(5,`<div class="bigok">✓</div><h3 style="text-align:center;margin-bottom:4px">Thank you!</h3>
    <p class="sm mut" style="text-align:center">Our team will check your payment and send you everything on Telegram.</p>
    <div class="st"><i>1</i><div><b>We verify your payment</b><div class="sm mut">Using your screenshot and order code <b class="code">${esc(ORD.code)}</b>.</div></div></div>
    <div class="st"><i>2</i><div><b>You get your login details on Telegram</b><div class="sm mut">The website link and your personal access code, for mobile ${esc(ORD.mobile)}.</div></div></div>
@@ -163,10 +192,12 @@ document.addEventListener('click',e=>{
   else if(t.dataset.copy)copy(t.dataset.copy,t.dataset.what);
   else if('copyMsg' in t.dataset)copy(tgText(),'Message copied');
   else if('verify' in t.dataset){try{navigator.clipboard.writeText(tgText())}catch(_){}}
-  else if(t.dataset.step==='3')tgStep();
-  else if(t.dataset.step==='4')doneStep();
+  else if(t.dataset.step==='paid')paidStep();
+  else if(t.dataset.step==='back2')payStep();
+  else if('paidgo' in t.dataset)paidGo();
+  else if(t.dataset.step==='5')doneStep();
 });
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();if(e.key==='Enter'&&$('#go'))order()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();if(e.key==='Enter'&&$('#go'))order();else if(e.key==='Enter'&&$('#pgo'))paidGo()});
 /* ---------- schedule (PDF / photo) ---------- */
 let SCH={};
 const fsize=n=>n>1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';

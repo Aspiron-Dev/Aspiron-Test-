@@ -35,7 +35,7 @@ function stoDraw(){
    <div class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:0"><b>Store link</b><div class="sm mut" style="word-break:break-all">${esc(stoUrl())}</div></div>
      <button class="btn ghost sm" onclick="copyText(stoUrl())">Copy link</button><a class="btn sm" style="text-decoration:none" href="store.html" target="_blank" rel="noopener">Open</a></div>
    <div class="h2s">🧾 Orders to check <span class="n">${pend}</span></div>
-   <div class="card"><p class="sm mut" style="margin-top:0">Match the <b>order code</b> in the student's Telegram message with the payment screenshot (amount and note), then unlock the series for that mobile in <b>Students</b> and mark it paid.</p>
+   <div class="card"><p class="sm mut" style="margin-top:0">Check the payment screenshot on Telegram: <b>order code</b>, <b>amount</b>, <b>paid-from name</b> and <b>UTR</b> must match your bank / UPI app. Then tap <b>✅ Approve &amp; unlock</b> — it creates the student, makes the access code, unlocks the series and marks the order paid.</p>
     <div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:10px">${[['pending','Pending'],['paid','Paid'],['rejected','Rejected'],['all','All']].map(([k,l])=>`<button class="btn ${SS.of===k?'':'ghost'} sm" onclick="SS.of='${k}';stoDraw()">${l}</button>`).join('')}
      <input type="search" id="stoq" placeholder="Search code / mobile / name" style="flex:1;min-width:160px" oninput="stoFilter(this.value)"></div>
     <div id="stol">${OL.length?OL.map(stoOrd).join(''):'<p class="sm mut">No orders here.</p>'}</div></div>
@@ -55,9 +55,12 @@ function stoDraw(){
 function stoOrd(o){
   const t=new Date(o.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
   const st={pending:'<span class="chip warn">Pending</span>',paid:'<span class="chip ok">Paid</span>',rejected:'<span class="chip" style="background:var(--badSoft);color:var(--bad)">Rejected</span>'}[o.status]||'';
-  return `<div class="stoo" data-k="${esc((o.code+' '+o.mobile+' '+o.name).toLowerCase())}" style="display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--bd);flex-wrap:wrap">
-   <div style="flex:1;min-width:180px"><b style="font-family:monospace;letter-spacing:.5px">${esc(o.code)}</b> ${st}<div class="sm"><b>${esc(o.name)}</b> · ${esc(o.mobile)}</div><div class="sm mut">${esc(o.item_title)} · ₹${o.amount} · ${t}</div></div>
-   <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn ghost sm" onclick="stoUnlock('${esc(o.mobile)}')" title="Open this student and give the series">🔓 Unlock</button><button class="btn ghost sm" onclick="stoReply('${esc(o.code)}')" title="Copy a reply with the website link">📋 Reply</button>${o.status!=='paid'?`<button class="btn sm" onclick="stoSt('${esc(o.code)}','paid')">✓ Paid</button>`:''}${o.status==='pending'?`<button class="btn ghost sm" onclick="stoSt('${esc(o.code)}','rejected')">Reject</button>`:''}${o.status!=='pending'?`<button class="btn ghost sm" onclick="stoSt('${esc(o.code)}','pending')">Undo</button>`:''}</div></div>`;
+  const dup=o.utr&&SS.orders.some(x=>x.code!==o.code&&x.utr===o.utr);
+  const pay=o.payer||o.utr?`<div class="sm" style="margin-top:3px;background:var(--surface2);border-radius:8px;padding:5px 8px">💳 Paid from: <b>${esc(o.payer||'—')}</b>${o.utr?` · UTR <b style="font-family:monospace">${esc(o.utr)}</b>`:''}${dup?' <span class="chip" style="background:var(--badSoft);color:var(--bad)">⚠️ UTR used in another order</span>':''}</div>`
+    :(o.status==='pending'?'<div class="sm mut" style="margin-top:3px">Waiting for the student to pay</div>':'');
+  return `<div class="stoo" data-k="${esc((o.code+' '+o.mobile+' '+o.name+' '+(o.payer||'')+' '+(o.utr||'')).toLowerCase())}" style="display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--bd);flex-wrap:wrap">
+   <div style="flex:1;min-width:200px"><b style="font-family:monospace;letter-spacing:.5px">${esc(o.code)}</b> ${st}<div class="sm"><b>${esc(o.name)}</b> · ${esc(o.mobile)}</div><div class="sm mut">${esc(o.item_title)} · ₹${o.amount} · ${t}</div>${pay}</div>
+   <div class="row" style="gap:6px;flex-wrap:wrap">${o.status!=='paid'?`<button class="btn sm" onclick="stoApprove('${esc(o.code)}',this)" title="Create / approve the student, make the access code, unlock the series and mark paid">✅ Approve &amp; unlock</button>`:''}<button class="btn ghost sm" onclick="stoUnlock('${esc(o.mobile)}')" title="Open this student">👤 Student</button><button class="btn ghost sm" onclick="stoReply('${esc(o.code)}')" title="Copy a reply with the website link">📋 Reply</button>${o.status==='pending'?`<button class="btn ghost sm" onclick="stoSt('${esc(o.code)}','rejected')">Reject</button>`:''}${o.status!=='pending'?`<button class="btn ghost sm" onclick="stoSt('${esc(o.code)}','pending')">Undo</button>`:''}</div></div>`;
 }
 function stoFilter(q){q=q.trim().toLowerCase();document.querySelectorAll('#stol .stoo').forEach(e=>e.style.display=!q||e.dataset.k.includes(q)?'':'none')}
 async function stoSt(code,status){
@@ -277,6 +280,44 @@ async function stoAudit(){
    <p class="sm mut">Every change of UPI ID, name or Telegram is recorded here. If you see a change you did not make, change your admin password at once.</p>
    ${(r.items||[]).length?r.items.map(x=>`<div class="arow"><div class="grow"><b>${esc(x.upi)}</b> · ${esc(x.payee)}<div class="sm mut">Telegram: ${esc(x.telegram||'—')} · ${new Date(x.at).toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit'})}</div></div></div>`).join(''):'<p class="sm mut">No changes yet.</p>'}
    <div class="row stofoot"><button class="btn ghost" style="flex:1" onclick="closeModal()">Close</button></div>`);
+  stoSheet();
+}
+/* ---------- one tap: student + access code + series unlock + mark paid ---------- */
+async function stoApprove(code,btn){
+  const o=SS.orders.find(x=>x.code===code);if(!o)return;
+  const it=SS.items.find(x=>x.id===o.item_id),sid=it&&it.series_id,ser=sid&&CA.series.find(x=>x.id===sid);
+  if(!sid&&!confirm(`"${o.item_title}" is not linked to a series in the store settings, so no series can be unlocked.\n\nContinue and only create the student + access code?`))return;
+  if(o.utr&&SS.orders.some(x=>x.code!==o.code&&x.utr===o.utr)&&!confirm('⚠️ This UTR is also used in another order. Check the payment carefully.\n\nContinue anyway?'))return;
+  if(btn){btn.disabled=true;btn.textContent='Working…'}
+  const done=[],fail=m=>{if(btn){btn.disabled=false;btn.innerHTML='✅ Approve &amp; unlock'}toast(m)};
+  let r=await A('students');if(!r.ok)return fail('Could not load students');
+  let st=(r.students||[]).find(x=>x.mobile===o.mobile),acc=null;
+  if(st&&st.status==='blocked')return fail('This student is blocked. Unblock them in Students first.');
+  if(!st){
+    r=await A('student_add',{name:o.name,mobile:o.mobile});if(!r.ok)return fail('Could not create the student');
+    acc=r.code;done.push('New student created');
+    const l=await A('students');st=l.ok?(l.students||[]).find(x=>x.mobile===o.mobile):null;
+  }else if(st.status==='pending'){
+    r=await A('student_approve',{id:st.id});if(!r.ok)return fail('Could not approve the student');acc=r.code;done.push('Request approved');
+  }else if(confirm(`${st.name} already has an account and an access code.\n\nOK = make a NEW access code (old code and their devices stop working)\nCancel = keep their current code`)){
+    r=await A('student_code',{id:st.id});if(r.ok){acc=r.code;done.push('New access code made')}
+  }else done.push('Existing account (current code kept)');
+  if(sid&&st){
+    r=await A('grant',{student_id:st.id,series_id:sid,on:true});if(!r.ok)return fail('Could not unlock the series');
+    done.push(`Unlocked: ${ser?ser.title:o.item_title}`);
+  }
+  r=await ASTO('order_status',{code,status:'paid'});if(r.ok){o.status='paid';done.push('Order marked paid')}
+  {const l=await A('students');if(l.ok)ST=l.students}
+  navBadges();stoDraw();
+  const site=new URL('index.html',location.href).href,c=acc?acc.slice(0,4)+'-'+acc.slice(4):'';
+  const msg=`Hi ${o.name} 👋\nYour payment for "${o.item_title}" is verified ✅ (order ${o.code}).\n\n📱 Open: ${site}\n🔑 Login\nMobile: ${o.mobile}\n${acc?`Access code: ${c}`:'Access code: use your current code'}\n\nYour series is unlocked. All the best! 💪`;
+  window._stoMsg=msg;
+  modal(`<div class="stohd"><h2>✅ Done</h2><button class="iconbtn" onclick="closeModal()" aria-label="Close">✕</button></div>
+   <div class="sm mut">${esc(o.name)} · ${esc(o.mobile)} · ${esc(o.code)}</div>
+   <div style="margin:10px 0">${done.map(d=>`<div class="sm">✓ ${esc(d)}</div>`).join('')}</div>
+   ${acc?`<div class="big-code">${esc(c)}</div><p class="sm mut" style="margin:0 0 10px">Send this code now — for safety it cannot be shown again.</p>`:''}
+   <label class="l">Message for the student</label><div class="sm" style="white-space:pre-wrap;background:var(--surface2);border-radius:12px;padding:10px">${esc(msg)}</div>
+   <div class="row stofoot"><button class="btn" style="flex:1" onclick="copyText(window._stoMsg)">📋 Copy message</button><a class="btn soft" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/91${esc(o.mobile)}?text=${encodeURIComponent(msg)}">WhatsApp</a></div>`);
   stoSheet();
 }
 ;(window.__p=window.__p||{})['admin12']=1;
