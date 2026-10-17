@@ -223,7 +223,7 @@ async function stoUnlock(mobile){
 }
 function stoReply(code){
   const o=SS.orders.find(x=>x.code===code);if(!o)return;
-  const site=new URL('index.html',location.href).href;
+  const site=stuLink();
   copyText(`Hi ${o.name}, your payment for "${o.item_title}" is verified ✅ (order ${o.code}).\n\n1) Open: ${site}\n2) Tap "Request access" and register with ${o.mobile}\n3) Sign in with your access code: ______\n\nAll the best for your preparation! 💪`);
 }
 // Store in the bottom bar (phone), with the number of orders to check
@@ -309,7 +309,7 @@ async function stoApprove(code,btn){
   r=await ASTO('order_status',{code,status:'paid'});if(r.ok){o.status='paid';done.push('Order marked paid')}
   {const l=await A('students');if(l.ok)ST=l.students}
   navBadges();stoDraw();
-  const site=new URL('index.html',location.href).href,c=acc?acc.slice(0,4)+'-'+acc.slice(4):'';
+  const site=stuLink(),c=acc?acc.slice(0,4)+'-'+acc.slice(4):'';
   const msg=`Hi ${o.name} 👋\nYour payment for "${o.item_title}" is verified ✅ (order ${o.code}).\n\n📱 Open: ${site}\n🔑 Login\nMobile: ${o.mobile}\n${acc?`Access code: ${c}`:'Access code: use your current code'}\n\nYour series is unlocked. All the best! 💪`;
   window._stoMsg=msg;
   modal(`<div class="stohd"><h2>✅ Done</h2><button class="iconbtn" onclick="closeModal()" aria-label="Close">✕</button></div>

@@ -172,8 +172,10 @@ async function bulkAcc(on){
   }
   SEL.clear();toast((on?'Access given to ':'Access removed from ')+n+' students');renderStudents();
 }
+// website link for messages to students: the short link if set, else the full address
+const stuLink=()=>/^https:\/\//.test(CFG.SHORT_URL||'')?CFG.SHORT_URL:siteUrl();
 function codeMsg(name,mobile,code){
-  return `Hi ${name}, your access to ${CFG.SITE_NAME||'the test series'} is approved.\n\nWebsite: ${siteUrl()}\nMobile: ${mobile}\nAccess code: ${code}\n\nPlease keep this code private. It works on up to 2 devices.`;
+  return `Hi ${name}, your access to ${CFG.SITE_NAME||'the test series'} is approved.\n\nWebsite: ${stuLink()}\nMobile: ${mobile}\nAccess code: ${code}\n\nPlease keep this code private. It works on up to 2 devices.`;
 }
 function showCode(name,mobile,code,title){
   const msg=codeMsg(name,mobile,code);
