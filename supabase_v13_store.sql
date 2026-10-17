@@ -62,26 +62,40 @@ returns jsonb language sql security definer set search_path = public stable as $
 $$;
 grant execute on function public.cbt_store() to anon, authenticated;
 
+alter table public.cbt_store_orders add column if not exists ip text not null default '';
+create index if not exists cbt_store_orders_ip on public.cbt_store_orders (ip, created_at desc);
+
 -- Public: student taps "Buy" → order code. Price is taken from the database, never from the page.
+-- Anti-spam: same mobile + series within 24 h gets its old code back; limits per device (IP), per mobile and overall.
 create or replace function public.cbt_store_order(p_item uuid, p_name text, p_mobile text)
 returns jsonb language plpgsql security definer set search_path = public as $$
-declare it public.cbt_store_items; v_code text; v_m text := right(regexp_replace(coalesce(p_mobile, ''), '\D', '', 'g'), 10);
-        v_n text := left(btrim(regexp_replace(coalesce(p_name, ''), '[<>\r\n]', '', 'g')), 60); i int := 0;
+declare it public.cbt_store_items; o public.cbt_store_orders; v_code text; i int := 0;
+        v_m text := right(regexp_replace(coalesce(p_mobile, ''), '\D', '', 'g'), 10);
+        v_n text := left(btrim(regexp_replace(coalesce(p_name, ''), '[<>"`\r\n\t]', '', 'g')), 60);
+        h json := coalesce(nullif(current_setting('request.headers', true), '')::json, '{}'::json);
+        v_raw text := btrim(coalesce(h->>'cf-connecting-ip', h->>'x-real-ip', split_part(coalesce(h->>'x-forwarded-for', ''), ',', 1), ''));
+        v_ip text := case when v_raw = '' then '' else md5('cbt-store|' || v_raw) end;
 begin
   if length(v_n) < 2 then return jsonb_build_object('ok', false, 'error', 'name'); end if;
   if v_m !~ '^[6-9][0-9]{9}$' then return jsonb_build_object('ok', false, 'error', 'mobile'); end if;
   select * into it from public.cbt_store_items where id = p_item and active;
   if not found then return jsonb_build_object('ok', false, 'error', 'item'); end if;
-  -- anti-spam: max 5 orders per mobile per hour, and 300 per hour overall
-  if (select count(*) from public.cbt_store_orders where mobile = v_m and created_at > now() - interval '1 hour') >= 5
-     or (select count(*) from public.cbt_store_orders where created_at > now() - interval '1 hour') >= 300 then
+  select * into o from public.cbt_store_orders where mobile = v_m and item_id = it.id and status = 'pending' and created_at > now() - interval '24 hours'
+    order by created_at desc limit 1;
+  if found then
+    update public.cbt_store_orders set name = v_n, amount = it.price, item_title = it.title where code = o.code;
+    return jsonb_build_object('ok', true, 'code', o.code, 'amount', it.price, 'title', it.title);
+  end if;
+  if (v_ip <> '' and (select count(*) from public.cbt_store_orders where ip = v_ip and created_at > now() - interval '1 hour') >= 8)
+     or (select count(*) from public.cbt_store_orders where mobile = v_m and created_at > now() - interval '1 hour') >= 5
+     or (select count(*) from public.cbt_store_orders where created_at > now() - interval '1 hour') >= 1500 then
     return jsonb_build_object('ok', false, 'error', 'busy');
   end if;
   loop
     v_code := 'ASP-' || upper(substr(md5(random()::text || clock_timestamp()::text), 1, 5));
     exit when not exists (select 1 from public.cbt_store_orders where code = v_code) or i > 5; i := i + 1;
   end loop;
-  insert into public.cbt_store_orders (code, item_id, item_title, amount, name, mobile) values (v_code, it.id, it.title, it.price, v_n, v_m);
+  insert into public.cbt_store_orders (code, item_id, item_title, amount, name, mobile, ip) values (v_code, it.id, it.title, it.price, v_n, v_m, v_ip);
   return jsonb_build_object('ok', true, 'code', v_code, 'amount', it.price, 'title', it.title);
 end; $$;
 grant execute on function public.cbt_store_order(uuid, text, text) to anon, authenticated;
