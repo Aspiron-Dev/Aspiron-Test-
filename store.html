@@ -120,6 +120,9 @@ input:focus{box-shadow:0 0 0 2px var(--pri)}
 .vbtn{font-size:16px;padding:16px;animation:vpulse 2s ease-in-out infinite}
 @keyframes vpulse{0%,100%{box-shadow:0 6px 16px rgba(34,158,217,.35)}50%{box-shadow:0 6px 26px rgba(34,158,217,.6)}}
 @media (prefers-reduced-motion:reduce){.vbtn{animation:none}}
+.schb{flex-direction:column;gap:2px;padding:11px 14px}.schb small{font-weight:500;color:var(--mut);font-size:12px}
+.pdfbox{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--surface2);border-radius:16px;padding:22px 14px;margin-bottom:12px;text-align:center}
+.pdfbox span{font-size:40px}.pdfbox small{color:var(--mut)}
 </style>
 </head>
 <body>
@@ -158,6 +161,6 @@ input:focus{box-shadow:0 0 0 2px var(--pri)}
 <a class="fab" id="fab" href="#" target="_blank" rel="noopener" aria-label="Message support"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8.5 8.5 0 01-12.6 7.4L3 21l1.6-5.4A8.5 8.5 0 1121 12z"/><path d="M8 10.5h8M8 14h5"/></svg><em>Help</em></a>
 <script src="config.js"></script>
 <script src="qrcode.js"></script>
-<script src="store.js?v=5"></script>
+<script src="store.js?v=6"></script>
 </body>
 </html>

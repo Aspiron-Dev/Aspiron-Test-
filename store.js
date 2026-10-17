@@ -34,6 +34,7 @@ async function load(){
   if(!L.length){$('#list').innerHTML=`<div class="card empty"><b>New test series coming soon</b><p class="sm">Please check back in a little while.</p></div>`;return}
   $('#lcount').textContent=`${L.length} test series · pay with any UPI app`;
   $('#list').innerHTML=L.map(cardHtml).join('');
+  loadSch();
   const h=location.hash.match(/p=([0-9a-f-]{36})/);
   if(h){const c=document.getElementById('p_'+h[1]);if(c){c.classList.add('hl');setTimeout(()=>c.scrollIntoView({behavior:'smooth',block:'center'}),200)}}
 }
@@ -55,6 +56,7 @@ function cardHtml(x){
    <div>${priceHtml(x)}</div>
    ${show.length?`<ul class="f">${show.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:'<div style="flex:1"></div>'}
    ${F.length>4?`<button class="more" data-view="${esc(x.id)}">+ ${F.length-4} more · View details</button>`:''}
+   <div data-schslot="${esc(x.id)}">${schBtn(x.id)}</div>
    <div class="row"><button class="btn soft icon" data-share="${esc(x.id)}" aria-label="Share" title="Share">↗</button><button class="btn" style="flex:1" data-buy="${esc(x.id)}">Buy now</button></div></div></div>`;
 }
 function view(id){
@@ -64,7 +66,8 @@ function view(id){
    <div class="shd"><div class="grow"><b style="white-space:normal;font-size:19px">${esc(x.title)}</b>${x.subtitle?`<span class="sm mut">${esc(x.subtitle)}</span>`:''}</div><button class="x" data-close aria-label="Close">✕</button></div>
    ${priceHtml(x)}
    ${(x.features||[]).length?`<h4 style="margin:16px 0 10px">What you get</h4><ul class="f">${x.features.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:''}
-   <div class="row" style="margin-top:18px"><button class="btn soft icon" data-share="${esc(x.id)}" aria-label="Share">↗</button><button class="btn" style="flex:1" data-buy="${esc(x.id)}">Buy now · ${inr(x.price)}</button></div></div>`;
+   <div data-schslot="${esc(x.id)}" style="margin-top:14px">${schBtn(x.id)}</div>
+   <div class="row" style="margin-top:12px"><button class="btn soft icon" data-share="${esc(x.id)}" aria-label="Share">↗</button><button class="btn" style="flex:1" data-buy="${esc(x.id)}">Buy now · ${inr(x.price)}</button></div></div>`;
 }
 async function share(id){
   const x=ST.items.find(i=>i.id===id);if(!x)return;
@@ -148,6 +151,7 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('button,a,[data-view]');if(!t)return;
   if(t.dataset.buy){closeSheet();buy(t.dataset.buy)}
   else if(t.dataset.view)view(t.dataset.view);
+  else if(t.dataset.sch)schedule(t.dataset.sch);
   else if(t.dataset.share)share(t.dataset.share);
   else if('close' in t.dataset)closeSheet();
   else if('redo' in t.dataset){e.preventDefault();localStorage.removeItem('store_ord');buy(IT.id)}
@@ -159,4 +163,35 @@ document.addEventListener('click',e=>{
   else if(t.dataset.step==='4')doneStep();
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();if(e.key==='Enter'&&$('#go'))order()});
+/* ---------- schedule (PDF / photo) ---------- */
+let SCH={};
+const fsize=n=>n>1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
+function schBtn(id){const f=SCH[id];return f?`<button class="btn soft block schb" data-sch="${esc(id)}">📅 View / download schedule <small>${f.mime==='application/pdf'?'PDF':'Photo'} · ${fsize(f.size)}</small></button>`:''}
+async function loadSch(){
+  const r=await rpc('cbt_store_schedules');if(!r.ok)return;
+  SCH={};(r.items||[]).forEach(x=>SCH[x.id]=x);
+  document.querySelectorAll('[data-schslot]').forEach(e=>e.innerHTML=schBtn(e.dataset.schslot));
+}
+function dataToBlob(d){
+  const m=d.match(/^data:([^;]+);base64,(.*)$/);if(!m)return null;
+  const b=atob(m[2]),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);
+  return new Blob([u],{type:m[1]});
+}
+let SCHURL=null;
+async function schedule(id){
+  const x=ST.items.find(i=>i.id===id),f=SCH[id];if(!x||!f)return;IT=x;
+  let ov=$('.ov');if(!ov){ov=document.createElement('div');ov.className='ov';ov.addEventListener('click',e=>{if(e.target===ov)closeSheet()});document.body.appendChild(ov);document.body.style.overflow='hidden'}
+  const head=`<div class="shd"><div class="grow"><b style="white-space:normal">📅 ${esc(f.name)}</b><span class="sm mut">${esc(x.title)}</span></div><button class="x" data-close aria-label="Close">✕</button></div>`;
+  ov.innerHTML=`<div class="sheet" role="dialog" aria-modal="true">${head}<div class="sk" style="height:220px"></div></div>`;
+  const r=await rpc('cbt_store_schedule',{p_item:id});
+  const sh=$('.ov .sheet');if(!sh)return;
+  if(!r.ok||!r.data){sh.innerHTML=head+`<p class="sm mut">Could not open the schedule. Please try again.</p>`;return}
+  const blob=dataToBlob(r.data);if(SCHURL)URL.revokeObjectURL(SCHURL);SCHURL=blob?URL.createObjectURL(blob):r.data;
+  const pdf=r.mime==='application/pdf',fname=(f.name||'Schedule').replace(/[^\w\- ]+/g,'').trim()+(pdf?'.pdf':r.mime==='image/png'?'.png':'.jpg');
+  sh.innerHTML=head+(pdf?`<div class="pdfbox"><span>📄</span><b>${esc(f.name)}</b><small>PDF · ${fsize(f.size)}</small></div>
+     <a class="btn block" href="${SCHURL}" target="_blank" rel="noopener">👁 Open schedule</a>`
+    :`<img src="${esc(r.data)}" alt="${esc(f.name)}" style="width:100%;border-radius:14px;display:block;margin-bottom:12px">`)
+    +`<a class="btn soft block" style="margin-top:10px" href="${SCHURL}" download="${esc(fname)}">⬇ Download</a>
+     <button class="btn block" style="margin-top:10px" data-buy="${esc(id)}">Buy this series · ${inr(x.price)}</button>`;
+}
 load();
