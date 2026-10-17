@@ -123,6 +123,14 @@ input:focus{box-shadow:0 0 0 2px var(--pri)}
 .schb{flex-direction:column;gap:2px;padding:11px 14px}.schb small{font-weight:500;color:var(--mut);font-size:12px}
 .pdfbox{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--surface2);border-radius:16px;padding:22px 14px;margin-bottom:12px;text-align:center}
 .pdfbox span{font-size:40px}.pdfbox small{color:var(--mut)}
+.attach{display:flex;gap:14px;align-items:center;background:linear-gradient(135deg,#fff4d6,#ffe7a8);color:#5c3b00;border:2px dashed #f0a63a;border-radius:18px;padding:14px;margin:10px 0 12px;animation:attpulse 2.4s ease-in-out infinite}
+.attach b{font-size:16px;display:block}.attach p{font-size:13px;margin-top:2px}
+.attico{position:relative;flex:none;width:56px;height:56px;border-radius:16px;background:#fff;display:grid;place-items:center;font-size:28px;box-shadow:0 6px 14px rgba(240,166,58,.35)}
+.attico i{position:absolute;right:-8px;bottom:-8px;font-style:normal;font-size:20px;background:#fff;border-radius:50%;width:28px;height:28px;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+@keyframes attpulse{0%,100%{box-shadow:0 0 0 0 rgba(240,166,58,.0)}50%{box-shadow:0 0 0 6px rgba(240,166,58,.18)}}
+.howto{padding-left:20px;font-size:13.5px;display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.hint{margin-top:8px;font-size:13px;color:var(--mut)}.hint summary{cursor:pointer;color:var(--pri);font-weight:600}.hint p{margin-top:6px}
+@media (prefers-reduced-motion:reduce){.attach{animation:none}}
 </style>
 </head>
 <body>
@@ -161,6 +169,6 @@ input:focus{box-shadow:0 0 0 2px var(--pri)}
 <a class="fab" id="fab" href="#" target="_blank" rel="noopener" aria-label="Message support"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8.5 8.5 0 01-12.6 7.4L3 21l1.6-5.4A8.5 8.5 0 1121 12z"/><path d="M8 10.5h8M8 14h5"/></svg><em>Help</em></a>
 <script src="config.js"></script>
 <script src="qrcode.js"></script>
-<script src="store.js?v=7"></script>
+<script src="store.js?v=8"></script>
 </body>
 </html>
