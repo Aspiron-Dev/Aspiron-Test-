@@ -125,23 +125,22 @@ function payStep(){
    <p class="sm mut" style="text-align:center;margin-top:12px">For ${esc(ORD.name)} · ${esc(ORD.mobile)} · <a href="#" data-redo style="color:var(--pri)">change</a></p>`);
 }
 function tgText(){return `Payment done ✅\nOrder code: ${ORD.code}\nSeries: ${ORD.title}\nAmount: ${inr(ORD.amount)}\nName: ${ORD.name}\nMobile: ${ORD.mobile}\n(Screenshot attached)`}
+const tgLink=txt=>'https://t.me/'+encodeURIComponent(tgUser())+(txt?'?text='+encodeURIComponent(txt):'');
 function tgStep(){
-  const u=tgUser();
-  sheet(3,`<div class="bigok">📸</div><h3 style="text-align:center;margin-bottom:6px">Send your payment screenshot</h3>
-   <p class="sm mut" style="text-align:center">Send the <b>payment screenshot</b> and this message to us on Telegram <b>@${esc(u)}</b>. We check it and unlock your series.</p>
+  sheet(3,`<div class="bigok">📸</div><h3 style="text-align:center;margin-bottom:6px">Verify your payment</h3>
+   <p class="sm mut" style="text-align:center">Tap the button below. Our support chat opens with your payment details already written — just <b>attach your payment screenshot</b> and send.</p>
    <div class="msg">${esc(tgText())}</div>
-   <button class="btn soft block" data-copy-msg>Copy message</button>
-   <a class="btn tg block" style="margin-top:10px" target="_blank" rel="noopener" href="https://t.me/${encodeURIComponent(u)}?text=${encodeURIComponent(tgText())}">✈ Open Telegram @${esc(u)}</a>
-   <button class="btn block" style="margin-top:10px" data-step="4">I have sent it → Next</button>`);
+   <a class="btn tg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(tgLink(tgText()))}">✔ Click here to verify your payment</a>
+   <p class="sm mut" style="text-align:center;margin-top:8px">The message is also copied, so you can paste it if it doesn't appear.</p>
+   <button class="btn soft block" style="margin-top:10px" data-step="4">I have sent it → Next</button>`);
 }
 function doneStep(){
-  const u=tgUser();
   sheet(4,`<div class="bigok">✓</div><h3 style="text-align:center;margin-bottom:4px">Thank you!</h3>
    <p class="sm mut" style="text-align:center">Our team will check your payment and send you everything on Telegram.</p>
    <div class="st"><i>1</i><div><b>We verify your payment</b><div class="sm mut">Using your screenshot and order code <b class="code">${esc(ORD.code)}</b>.</div></div></div>
    <div class="st"><i>2</i><div><b>You get your login details on Telegram</b><div class="sm mut">The website link and your personal access code, for mobile ${esc(ORD.mobile)}.</div></div></div>
    <div class="st"><i>3</i><div><b>Start your tests</b><div class="sm mut">Sign in and your test series is ready.</div></div></div>
-   <a class="btn tg block" style="margin-top:6px" target="_blank" rel="noopener" href="https://t.me/${encodeURIComponent(u)}">✈ Open Telegram @${esc(u)}</a>
+   <a class="btn tg block" style="margin-top:6px" target="_blank" rel="noopener" href="${esc(tgLink(''))}">💬 Message support</a>
    <button class="btn soft block" style="margin-top:10px" data-close>Close</button>
    <p class="sm mut" style="text-align:center;margin-top:10px">Keep your order code <b class="code">${esc(ORD.code)}</b> for any help.</p>`);
 }
@@ -155,6 +154,7 @@ document.addEventListener('click',e=>{
   else if('order' in t.dataset)order();
   else if(t.dataset.copy)copy(t.dataset.copy,t.dataset.what);
   else if('copyMsg' in t.dataset)copy(tgText(),'Message copied');
+  else if('verify' in t.dataset){try{navigator.clipboard.writeText(tgText())}catch(_){}}
   else if(t.dataset.step==='3')tgStep();
   else if(t.dataset.step==='4')doneStep();
 });
