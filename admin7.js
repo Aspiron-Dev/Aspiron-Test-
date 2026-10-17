@@ -96,7 +96,7 @@ function inRow(p,lead,end,wa){
   return `<div class="inr" onclick="inStudent('${esc(p.mobile)}')">${lead}<div class="grow"><b>${esc(p.name)}</b><div class="sm mut">${esc(p.mobile)}</div></div><div class="inend">${end}</div>${wa?`<a class="btn soft sm" onclick="event.stopPropagation()" target="_blank" rel="noopener" href="${waTo(p.mobile,wa)}">${ai('wa',14)}</a>`:''}</div>`;
 }
 function inAttn(S){
-  const k=IN.att||'weak',site=siteUrl();
+  const k=IN.att||'weak',site=stuLink();
   if(k==='weak')return S.weak.length?S.weak.map(p=>inRow(p,`<span class="rk bad">${p.avg}%</span>`,`<span class="sm mut">${p.n} tests · best ${p.best}%</span>`,`Hi ${p.name.split(' ')[0]}, I saw your recent tests. Don't worry — revise your Mistake Notebook and attempt again. Message me if you need help 🙂 ${site}`)).join('')
     +inBulk(S.weak.map(p=>p.mobile)):'<div class="sm mut" style="padding:8px 2px">Nobody is below 35% average (2+ tests). 🎉</div>';
   const L=k==='inactive'?S.inactive:S.never;

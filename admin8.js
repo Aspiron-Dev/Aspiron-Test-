@@ -35,7 +35,7 @@ function drawList(){
   const all=ST.filter(s=>s.status!=='pending'),ps=paidSer();
   const sg=$('#sseg');if(sg)sg.innerHTML=SEGS.map(([k,t])=>{const n=all.filter(s=>segTest(k,s)).length;return k!=='all'&&!n&&SF.s!==k?'':`<button class="${SF.s===k?'on':''}" onclick="SF.s='${k}';drawList()">${t} <span class="mut">${n}</span></button>`}).join('');
   const st=$('#sstats');if(st)st.innerHTML=statsHtml();
-  const l=shownStudents(),site=siteUrl();
+  const l=shownStudents(),site=stuLink();
   const cnt=$('#scount');if(cnt)cnt.textContent=`${l.length} shown`;
   $('#slist').innerHTML=l.length?l.map(s=>{
     const pd=isPaid(s),n=ps.filter(x=>(s.access||[]).includes(x.id)).length,sc=seenCls(s),p=perfOf(s),nw=s.created&&sNow()-s.created<7*D1;
@@ -76,7 +76,7 @@ async function approveAll(){
 {const _mg=manage;manage=function(id){
   _mg(id);
   const s=ST.find(x=>x.id===id),box=document.querySelector('#layer .box');if(!s||!box)return;
-  const p=perfOf(s),sc=seenCls(s),site=siteUrl();
+  const p=perfOf(s),sc=seenCls(s),site=stuLink();
   box.querySelector('.sm.mut')?.insertAdjacentHTML('afterend',`<div class="mgp">
     <div class="sstats" style="margin:12px 0 4px">${[['Tests',p?p.n:s.attempts||0],['Average',p?p.avg+'%':'–'],['Best',p?p.best+'%':'–'],['Seen',sc==='live'?'now':sc==='never'?'never':ago(s.last_seen)]].map(x=>`<div class="sbox"><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div>
     ${p?`<div class="sm mut" style="margin-bottom:8px">Last test: <b style="color:var(--tx)">${esc(p.lt)}</b> · ${p.lp}% · ${ago(p.last)}</div>`:''}

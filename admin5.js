@@ -210,7 +210,7 @@ const waTo=(m,txt)=>`https://wa.me/91${String(m).replace(/\D/g,'').slice(-10)}?t
 function lvRows(){
   const d=LV.data,t=d.test,L=d[LV.seg];
   if(!L.length)return `<div class="sm mut" style="padding:14px 4px;text-align:center">${LV.seg==='writing'?'Nobody is writing this test right now.':LV.seg==='done'?'No submissions yet.':LV.seg==='waiting'?'Everyone has started 🎉':'None.'}</div>`;
-  const site=siteUrl();
+  const site=stuLink();
   if(LV.seg==='writing')return L.map(x=>{const tot=(x.ends-x.started)||1;return `<div class="lrow"><span class="av">${esc((x.name||'?')[0].toUpperCase())}</span><div class="grow"><b>${esc(x.name)}</b><div class="sm mut">${esc(x.mobile)} · started ${new Date(x.started).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})}</div>
       <div class="tleft"><i data-tb="${x.started}|${x.ends}" style="width:${Math.max(0,Math.min(100,(x.ends-lvNow())*100/tot))}%"></i></div></div><div class="lend"><b data-te="${x.ends}">–</b><span class="sm mut">left</span></div></div>`}).join('');
   if(LV.seg==='done')return L.map((x,i)=>{const p=x.max?Math.round(x.score*100/x.max):0;return `<div class="lrow"><span class="rk">${i+1}</span><div class="grow"><b>${esc(x.name)}</b> ${x.late?'<span class="chip warn">late</span>':''}<div class="sm mut">✓${x.correct} ✗${x.wrong} – ${x.skipped} · ${Math.round(x.used/60)} min · ${new Date(x.at).toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit'})}</div></div><div class="lend"><b>${+x.score}/${+x.max}</b><span class="sm ${p>=60?'okt':p>=35?'wt':'bt'}">${p}%</span></div></div>`}).join('');
