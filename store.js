@@ -22,7 +22,6 @@ async function copy(t,what){
   toast((what||'Copied')+' ✓');
 }
 const tgUser=()=>String(ST.settings.telegram||'').replace(/^@/,'');
-const siteUrl=()=>new URL('index.html',location.href).href;
 
 async function load(){
   if(CFG.SITE_NAME)$('#sname').textContent=CFG.SITE_NAME;
@@ -111,13 +110,15 @@ function tgStep(){
    <button class="btn block" style="margin-top:10px" data-step="4">I have sent it → Next</button>`);
 }
 function doneStep(){
-  sheet(4,`<div class="bigok">✓</div><h3 style="text-align:center;margin-bottom:4px">Almost done!</h3>
-   <p class="sm mut" style="text-align:center">After we check your payment, your series is unlocked on <b>${esc(ORD.mobile)}</b>.</p>
-   <div class="st"><i>1</i><div><b>Open the website</b><div class="sm mut">Tap the button below.</div></div></div>
-   <div class="st"><i>2</i><div><b>Tap “Request access”</b><div class="sm mut">Register with the same name and mobile (${esc(ORD.mobile)}). Already a student? Skip this step.</div></div></div>
-   <div class="st"><i>3</i><div><b>Sign in with your access code</b><div class="sm mut">You get your access code after approval. Then your series is ready.</div></div></div>
-   <a class="btn block" style="margin-top:6px" href="${esc(siteUrl())}">Open website →</a>
-   <p class="sm mut" style="text-align:center;margin-top:10px">Order code: <b class="code">${esc(ORD.code)}</b> · keep it for any help.</p>`);
+  const u=tgUser();
+  sheet(4,`<div class="bigok">✓</div><h3 style="text-align:center;margin-bottom:4px">Thank you!</h3>
+   <p class="sm mut" style="text-align:center">Our team will check your payment and send you everything on Telegram.</p>
+   <div class="st"><i>1</i><div><b>We verify your payment</b><div class="sm mut">Using your screenshot and order code <b class="code">${esc(ORD.code)}</b>.</div></div></div>
+   <div class="st"><i>2</i><div><b>You get your login details on Telegram</b><div class="sm mut">The website link and your personal access code, for mobile ${esc(ORD.mobile)}.</div></div></div>
+   <div class="st"><i>3</i><div><b>Start your tests</b><div class="sm mut">Sign in and your test series is ready.</div></div></div>
+   <a class="btn tg block" style="margin-top:6px" target="_blank" rel="noopener" href="https://t.me/${encodeURIComponent(u)}">✈ Open Telegram @${esc(u)}</a>
+   <button class="btn soft block" style="margin-top:10px" data-close>Close</button>
+   <p class="sm mut" style="text-align:center;margin-top:10px">Keep your order code <b class="code">${esc(ORD.code)}</b> for any help.</p>`);
 }
 document.addEventListener('click',e=>{
   const t=e.target.closest('button,a');if(!t)return;
