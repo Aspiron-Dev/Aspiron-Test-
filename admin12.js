@@ -50,7 +50,7 @@ function stoDraw(){
      <div><label class="l">Name shown in UPI apps</label><input type="text" id="s_payee" value="${esc(s.payee||'')}"></div>
      <div><label class="l">Telegram username (screenshots)</label><input type="text" id="s_tg" value="${esc(s.telegram||'')}" autocapitalize="off" spellcheck="false"></div>
      <div><label class="l">Small note (optional)</label><input type="text" id="s_note" value="${esc(s.note||'')}" placeholder="e.g. Unlocked within 2 hours (9 am – 9 pm)"></div></div>
-    <button class="btn" style="margin-top:12px" onclick="stoSaveSet(this)">Save payment details</button></div>`;
+    <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap"><button class="btn" onclick="stoSaveSet(this)">Save payment details</button><button class="btn ghost" onclick="stoAudit()">🕑 Change history</button></div></div>`;
 }
 function stoOrd(o){
   const t=new Date(o.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
@@ -67,6 +67,10 @@ async function stoSt(code,status){
 async function stoSaveSet(b){
   const d={upi:$('#s_upi').value.trim(),payee:$('#s_payee').value.trim(),telegram:$('#s_tg').value.trim(),note:$('#s_note').value.trim()};
   if(!/^[A-Za-z0-9._-]{2,}@[A-Za-z0-9.-]{2,}$/.test(d.upi))return toast('Enter a valid UPI ID, e.g. name@bank');
+  d.telegram=d.telegram.replace(/^(https?:\/\/)?(t\.me\/)?@?/,'');
+  if(!/^[A-Za-z0-9_]{0,40}$/.test(d.telegram))return toast('Telegram username: only letters, numbers and _');
+  if(/[<>"`]/.test(d.payee))return toast('Remove < > " ` from the name');
+  if(!confirm(`Change payment details?\n\nUPI: ${d.upi}\nName: ${d.payee}\nTelegram: ${d.telegram}\n\nStudents will pay to this UPI ID.`))return;
   b.disabled=true;const r=await ASTO('save_settings',d);b.disabled=false;
   if(!r.ok)return toast(r.error==='upi'?'Enter a valid UPI ID':'Could not save');
   SS.settings=Object.assign(SS.settings,d,{telegram:d.telegram.replace(/^(https?:\/\/)?(t\.me\/)?@?/,'')});toast('Saved ✓');stoDraw();
@@ -265,5 +269,14 @@ async function stoSchDel(id){
   if(!confirm('Remove the schedule from this series?'))return;
   const r=await stoSchSend(id,'','');if(!r.ok)return toast(r.msg);
   if(SS.sched)delete SS.sched[id];const box=$('#p_sch');if(box)box.innerHTML=stoSchHtml(id);toast('Schedule removed');stoDraw();
+}
+async function stoAudit(){
+  let r;try{const q=await fetch(API+'/rest/v1/rpc/cbt_admin_store_audit',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_pw:PW})});r=q.ok?await q.json():{ok:false,error:q.status===404?'missing':'server'}}catch(e){r={ok:false}}
+  if(!r.ok)return toast(r.error==='missing'?'Run supabase_v19_store_security.sql once in Supabase':'Could not load');
+  modal(`<div class="stohd"><h2>Payment details history</h2><button class="iconbtn" onclick="closeModal()" aria-label="Close">✕</button></div>
+   <p class="sm mut">Every change of UPI ID, name or Telegram is recorded here. If you see a change you did not make, change your admin password at once.</p>
+   ${(r.items||[]).length?r.items.map(x=>`<div class="arow"><div class="grow"><b>${esc(x.upi)}</b> · ${esc(x.payee)}<div class="sm mut">Telegram: ${esc(x.telegram||'—')} · ${new Date(x.at).toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit'})}</div></div></div>`).join(''):'<p class="sm mut">No changes yet.</p>'}
+   <div class="row stofoot"><button class="btn ghost" style="flex:1" onclick="closeModal()">Close</button></div>`);
+  stoSheet();
 }
 ;(window.__p=window.__p||{})['admin12']=1;

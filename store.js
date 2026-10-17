@@ -1,5 +1,7 @@
 /* Store page: lists the paid test series (managed in the admin panel → Store) and walks the student through
    UPI payment → Telegram screenshot → register. Prices, UPI ID and Telegram come only from the database. */
+// never run inside someone else's page (stops look-alike sites from framing the real store)
+if(window.top!==window.self){document.documentElement.style.display='none';try{window.top.location.replace(window.self.location.href)}catch(e){}}
 const CFG=window.CBT_CONFIG||{},API=(CFG.SUPABASE_URL||'').replace(/\/$/,'');
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -112,7 +114,9 @@ function upiLink(){
   return `upi://pay?pa=${s.upi}&pn=${e(s.payee||'')}&am=${ORD.amount}&cu=INR&tn=${e(ORD.code)}`;
 }
 function qrSvg(t){const q=qrcode(0,'M');q.addData(t);q.make();return q.createSvgTag({cellSize:4,margin:2,scalable:true})}
+const upiOk=()=>/^[A-Za-z0-9._-]{2,}@[A-Za-z0-9.-]{2,}$/.test(ST.settings.upi||'')&&!/[<>"`]/.test(ST.settings.payee||'');
 function payStep(){
+  if(!upiOk())return sheet(2,`<div class="bigok">⚠️</div><h3 style="text-align:center">Payment is paused</h3><p class="sm mut" style="text-align:center">Please message support. Do not pay anywhere else.</p><a class="btn tg block" style="margin-top:12px" target="_blank" rel="noopener" href="${esc(tgLink(''))}">💬 Message support</a>`);
   const s=ST.settings,mob=/android|iphone|ipad|ipod/i.test(navigator.userAgent);
   sheet(2,`<div class="amt"><span class="sm mut">Amount to pay</span><br><b>${inr(ORD.amount)}</b></div>
    <div class="qr">${qrSvg(upiLink())}</div>
