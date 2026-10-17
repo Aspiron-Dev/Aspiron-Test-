@@ -37,14 +37,14 @@ begin
       values (left(p_data->>'title', 80), left(coalesce(p_data->>'subtitle', ''), 200), (p_data->>'price')::int, nullif(p_data->>'mrp', '')::int,
               left(coalesce(p_data->>'badge', ''), 24), coalesce(p_data->'features', '[]'::jsonb), left(coalesce(p_data->>'color', 'blue'), 12),
               left(coalesce(p_data->>'series_id', ''), 60), coalesce((p_data->>'active')::boolean, true), coalesce((p_data->>'sort_order')::int, 0),
-              case when length(coalesce(p_data->>'image', '')) <= 600000 then coalesce(p_data->>'image', '') else '' end)
+              case when length(coalesce(p_data->>'image', '')) <= 1500000 then coalesce(p_data->>'image', '') else '' end)
       returning id into v_id;
     else
       update public.cbt_store_items set title = left(p_data->>'title', 80), subtitle = left(coalesce(p_data->>'subtitle', ''), 200), price = (p_data->>'price')::int,
         mrp = nullif(p_data->>'mrp', '')::int, badge = left(coalesce(p_data->>'badge', ''), 24), features = coalesce(p_data->'features', '[]'::jsonb),
         color = left(coalesce(p_data->>'color', 'blue'), 12), series_id = left(coalesce(p_data->>'series_id', ''), 60),
         active = coalesce((p_data->>'active')::boolean, true), sort_order = coalesce((p_data->>'sort_order')::int, 0),
-        image = case when length(coalesce(p_data->>'image', '')) <= 600000 then coalesce(p_data->>'image', '') else image end
+        image = case when length(coalesce(p_data->>'image', '')) <= 1500000 then coalesce(p_data->>'image', '') else image end
       where id = v_id;
     end if;
     return jsonb_build_object('ok', true, 'id', v_id);
