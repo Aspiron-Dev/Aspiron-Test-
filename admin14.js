@@ -23,15 +23,15 @@ MKNOWN.clear();MGROUPS.forEach(g=>g[1].forEach(x=>MKNOWN.add(x[0])));
 
 /* ---------- section tabs (pills) under the header ---------- */
 function hubBar(t){
-  const root=$('#root');if(!root)return;
+  const root=$('#root');if(!root||!document.body.classList.contains('admx')){const o=$('#hubbar');if(o)o.remove();return}
   let bar=$('#hubbar');
   if(!bar){bar=document.createElement('div');bar.id='hubbar';root.prepend(bar)}
   const h=HUBS[hubOf(t)];
   if(!h||h.tabs.length<2){bar.innerHTML='';bar.style.display='none';return}
   bar.style.display='';
   bar.innerHTML=`<div class="hbin" role="tablist">${h.tabs.map(([k,l])=>`<button role="tab" class="hbt ${k===t?'on':''}" aria-selected="${k===t}" onclick="tab('${k}')">${ai(k,15)}<span>${l}</span><em class="nb" data-hbb="${k}"></em></button>`).join('')}</div>`;
-  const on=bar.querySelector('.hbt.on');if(on)on.scrollIntoView({block:'nearest',inline:'center'});
   hubBadges();
+  const on=bar.querySelector('.hbt.on');if(on)on.scrollIntoView({block:'nearest',inline:'center'});
 }
 {const _na=navActive;navActive=function(t){
   _na(t);const h=hubOf(t);
@@ -43,14 +43,16 @@ function hubBar(t){
 /* ---------- badges ---------- */
 function hubCounts(){
   const a=apvCount();
-  const store=((typeof SS!=='undefined'&&SS.orders)||[]).filter(o=>o.status==='pending'&&(o.payer||o.utr)).length;
-  return{approvals:a.total,store,reports:badgeOf('reports')||0,live:badgeOf('live')||0};
+  return{students:a.req,approvals:a.total,store:badgeOf('store')||0,reports:badgeOf('reports')||0,live:badgeOf('live')||0};
 }
 function hubBadges(){
-  const c=hubCounts(),set=(el,n)=>{if(!el)return;el.textContent=n?(n>99?'99+':n):'';el.classList.toggle('on',!!n)};
-  set(document.getElementById('hb_students'),c.approvals);set(document.getElementById('hb_store'),c.store);set(document.getElementById('hb_reports'),c.reports);
-  document.querySelectorAll('[data-hbb]').forEach(e=>{const k=e.dataset.hbb;set(e,k==='approvals'?c.approvals:k==='live'?c.live:k==='reports'?c.reports:k==='store'?c.store:0)});
-  document.querySelectorAll('[data-appb]').forEach(e=>{const k=e.dataset.appb;set(e,k==='approvals'?c.approvals:k==='live'?c.live:k==='reports'?c.reports:k==='store'?c.store:0)});
+  const c=hubCounts(),set=(el,k)=>{if(!el)return;const n=c[k]||0;el.textContent=n?(n>99?'99+':n):'';el.classList.toggle('on',!!n);el.classList.toggle('live',k==='live')};
+  set(document.getElementById('hb_students'),'approvals');set(document.getElementById('hb_store'),'store');set(document.getElementById('hb_reports'),'reports');
+  document.querySelectorAll('[data-hbb]').forEach(e=>set(e,e.dataset.hbb));
+  document.querySelectorAll('[data-appb]').forEach(e=>set(e,e.dataset.appb));
+  // badge numbers can widen pills after drawing: bring a cut-off active pill back into view
+  const on=document.querySelector('#hubbar .hbt.on'),bx=on&&on.parentElement;
+  if(on){const l=on.offsetLeft-bx.offsetLeft;if(l<bx.scrollLeft||l+on.offsetWidth>bx.scrollLeft+bx.clientWidth)bx.scrollLeft=l-(bx.clientWidth-on.offsetWidth)/2}
 }
 {const _nb=navBadges;navBadges=function(){_nb();try{hubBadges()}catch(e){}}}
 
@@ -58,8 +60,8 @@ function hubBadges(){
 const CRE=[
   ['create','New test','Upload a paper and build the questions',"tab('create')"],
   ['content','Tests & series','Edit, schedule and organise tests',"tab('content')"],
-  ['banners','Home banner','Slides on the student home screen',"tab('banners')"],
-  ['notices','Announcement','A notice students see under the bell',"tab('notices')"],
+  ['banners','Home banner','Slides on the student home screen',"tab('banners').then(()=>{if(typeof bnModal==='function')bnModal()})"],
+  ['notices','Announcement','A notice students see under the bell',"tab('notices').then(()=>{if(typeof annModal==='function')annModal()})"],
   ['store','Store test series','Add a paid series to the store',"creStore()"],
   ['pyq','PYQ paper','Add a past paper to PYQ Analysis',"tab('pyq')"],
   ['plus','Student + access code','Create an account and get the code',"addModal()"],
@@ -69,7 +71,7 @@ function createSheet(){
    <div class="cregrid">${CRE.map(([k,t,d,f])=>`<button class="creit" onclick="closeModal();${f}"><span class="creic">${ai(k,22)}</span><span class="cretx"><b>${t}</b><small>${d}</small></span></button>`).join('')}</div>`);
   const b=document.querySelector('#layer .modal');if(b)b.classList.add('asheet');
 }
-async function creStore(){await tab('store');if(typeof stoEdit==='function')stoEdit(-1)}
+async function creStore(){await tab('store');if(!CA.series.length)await loadCatalog();if(CUR==='store'&&document.querySelector('#stobody .sstats')&&typeof stoEdit==='function')stoEdit(-1)}
 
 /* ---------- Home: every feature as an app icon, then the overview ---------- */
 const APPS=[
@@ -98,5 +100,5 @@ addEventListener('resize',hdrH);
 /* ---------- apply now (the shell may already be on screen) ---------- */
 {const d=document.getElementById('adock');if(d){d.innerHTML=dockHtml()}}
 {const s=document.querySelector('.snav');if(s){const t=document.createElement('div');t.innerHTML=navHtml();const n=t.querySelector('.snav');if(n)s.replaceWith(n)}}
-setTimeout(()=>{try{hdrH();navActive(CUR);hubBadges();if(CUR==='overview'&&$('#pn_overview')&&!$('#pn_overview .appsec')&&$('#pn_overview .ovhero'))$('#pn_overview .ovhero').insertAdjacentHTML('afterend',appsHtml())}catch(e){}},50);
+setTimeout(()=>{if(!document.body.classList.contains('admx'))return;try{hdrH();navActive(CUR);hubBadges();if(CUR==='overview'&&$('#pn_overview')&&!$('#pn_overview .appsec')&&$('#pn_overview .ovhero'))$('#pn_overview .ovhero').insertAdjacentHTML('afterend',appsHtml())}catch(e){}},50);
 ;(window.__p=window.__p||{})['admin14']=1;

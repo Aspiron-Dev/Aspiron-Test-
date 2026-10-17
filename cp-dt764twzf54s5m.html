@@ -693,16 +693,19 @@ body.feon{overflow:hidden}
 .mhead+.mgt{margin-top:6px}
 .asheet .box{max-height:calc(100dvh - 24px);overflow:auto}
 /* ---- layout v2: centre create button, section tabs, app-style home ---- */
-#adock .dfab{flex:1.1;color:var(--pri)}
+#adock .dfab{flex:1.1}
+#adock .dfab span{margin-top:-4px}
 #adock .dfab i{display:grid;place-items:center;width:52px;height:52px;margin-top:-26px;border-radius:18px;background:var(--grad);color:#fff;box-shadow:0 10px 22px color-mix(in srgb,var(--pri) 38%,transparent),0 0 0 5px var(--bg);transition:transform .15s}
 #adock .dfab i svg{stroke-width:2.6}
 #adock .dfab:active i{transform:scale(.94)}
-#adock .dfab.on{background:transparent}
+#adock .dfab.on{background:transparent;color:var(--pri)}
 #adock button span{text-transform:none;letter-spacing:.1px;font-size:10.5px}
 #hubbar{position:sticky;top:var(--hdrh,57px);z-index:15;margin:-6px -16px 14px;padding:8px 16px 10px;background:color-mix(in srgb,var(--bg) 86%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid var(--hair)}
 #hubbar .hbin{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 #hubbar .hbin::-webkit-scrollbar{display:none}
-.hbt{flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--hair);background:var(--surface);color:var(--mut);font:600 13px inherit;font-family:inherit;padding:8px 13px;border-radius:999px;cursor:pointer;white-space:nowrap;position:relative}
+#hubbar .hbin{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent)}
+.qed,#pqbrowse,#sum{scroll-margin-top:calc(var(--hdrh,58px) + 70px)}
+.hbt{flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--hair);background:var(--surface);color:var(--mut);font-weight:600;font-size:13px;font-family:inherit;padding:8px 13px;border-radius:999px;cursor:pointer;white-space:nowrap;position:relative}
 .hbt svg{width:15px;height:15px}
 .hbt.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
 .hbt .nb{position:static;margin:0 0 0 2px}
@@ -761,7 +764,7 @@ body.feon{overflow:hidden}
 <script src="admin11.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin11.js')"></script>
 <script src="admin12.js?v=11" onerror="(window.__miss=window.__miss||[]).push('admin12.js')"></script>
 <script src="admin13.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin13.js')"></script>
-<script src="admin14.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin14.js')"></script>
+<script src="admin14.js?v=2" onerror="(window.__miss=window.__miss||[]).push('admin14.js')"></script>
 
 </body>
 </html>
