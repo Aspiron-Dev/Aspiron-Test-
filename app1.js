@@ -42,14 +42,27 @@ const API=String(CFG.SUPABASE_URL||'').replace(/\/$/,'');
 const cloud=!!(API&&CFG.SUPABASE_KEY);
 
 /* ---------- device id ---------- */
+// The id must stay the same on one phone, or every lost storage counts as a "new device" and the
+// 2-device limit fills up. If storage was wiped (iPhone clears site data after 7 idle days, in-app
+// browsers and the home-screen app keep separate storage), rebuild the SAME id from stable phone traits.
+function devFp(){
+  const n=navigator,s=screen||{},ua=String(n.userAgent||'');
+  const os=/iphone/i.test(ua)?'iphone':/ipad/i.test(ua)||(n.platform==='MacIntel'&&n.maxTouchPoints>1)?'ipad':/android/i.test(ua)?'android':/windows/i.test(ua)?'windows':/mac/i.test(ua)?'mac':/linux/i.test(ua)?'linux':'other';
+  const model=(ua.match(/Android[^;)]*;\s*([^;)]+?)(?:\s+Build[^;)]*)?[;)]/i)||[])[1]||'';
+  let tz='';try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''}catch(e){}
+  const w=Math.min(s.width||0,s.height||0),h=Math.max(s.width||0,s.height||0);
+  const key=[os,model.trim().toLowerCase(),w,h,Math.round((window.devicePixelRatio||1)*100),n.hardwareConcurrency||0,n.deviceMemory||0,n.maxTouchPoints||0,tz].join('|');
+  // FNV-1a, two different seeds → 20 hex characters (same format as the old random ids)
+  const f=seed=>{let x=seed>>>0;for(let i=0;i<key.length;i++){x^=key.charCodeAt(i);x=Math.imul(x,16777619)>>>0}return x.toString(16).padStart(8,'0')};
+  return ('f'+f(2166136261)+f(0x9e3779b9)+f(0x85ebca6b)).slice(0,20);
+}
 function devId(){
   let d=LS.get('cbt_dev',null);
-  if(!d||String(d).length<8){
-    try{d=Array.from(crypto.getRandomValues(new Uint8Array(10))).map(b=>b.toString(16).padStart(2,'0')).join('')}catch(e){d=(Math.random().toString(16).slice(2)+Math.random().toString(16).slice(2)).slice(0,20)}
-    LS.set('cbt_dev',d);
-  }
+  if(!d||String(d).length<8){d=devFp();LS.set('cbt_dev',d)}
   return d;
 }
+// ask the browser not to clear our data (helps keep the login on Android / installed app)
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persisted().then(p=>{if(!p)navigator.storage.persist()})}catch(e){}
 const DEV=devId();
 
 /* ---------- state ---------- */
@@ -67,14 +80,15 @@ async function rpc(fn,args,noAuth){
     return await r.json();
   }catch(e){return{ok:false,error:'network'}}finally{clearTimeout(tmo)}
 }
-const AUTHERR=['invalid','blocked','pending','device_limit','locked','device'];
+const AUTHERR=['invalid','blocked','pending','device_limit','device'];
 function errText(r){
   switch(r&&r.error){
     case 'invalid':return 'Mobile number or access code is incorrect.';
     case 'pending':return 'Your request is waiting for approval. You will receive your access code once the admin approves it.';
     case 'blocked':return 'Your access has been blocked. Please contact the admin.';
     case 'locked':return `Too many wrong attempts. Please try again in ${r.wait||15} minutes.`;
-    case 'device_limit':return 'This code is already active on the maximum number of devices. Ask the admin to reset your devices.';
+    case 'device_limit':return 'This code is already in use on 2 devices. Sign in on one of those phones, or ask us to reset your devices.';
+    case 'device':return 'You were signed out because your devices were reset. Please sign in again.';
     case 'network':return 'No internet connection. Please check and try again.';
     default:return 'Something went wrong. Please try again.';
   }
@@ -157,7 +171,9 @@ async function doLogin(){
   if(c.length<4){$('#er').textContent='Please enter your access code.';return}
   const b=$('#lbtn');b.disabled=true;b.textContent='Checking…';$('#er').textContent='';
   const r=await rpc('cbt_login',{p_mobile:m,p_code:c,p_device:DEV},true);
-  if(!r.ok){$('#er').textContent=errText(r);b.disabled=false;b.innerHTML='Sign in '+ic('right');return}
+  if(!r.ok){$('#er').textContent=errText(r);b.disabled=false;b.innerHTML='Sign in '+ic('right');
+    if(r.error==='device_limit'&&!$('#devhelp'))$('#er').insertAdjacentHTML('afterend',`<a id="devhelp" class="btn soft block" style="margin-bottom:10px;text-decoration:none" target="_blank" rel="noopener" href="https://t.me/StudentsHelpCentreBot">📱 Ask for device reset</a>`);
+    return}
   AUTH={mobile:m,code:c,name:r.name};LS.set('cbt_auth',AUTH);updateHeader();CAT=null;
   await flushPending();
   location.hash='#/';route();
