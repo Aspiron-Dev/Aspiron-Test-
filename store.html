@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.supabase.co; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#f3f6f9">
 <title>Test Series Store</title>
@@ -33,6 +33,7 @@ h2{font-family:var(--fh);font-size:19px;margin:24px 0 12px}
 @media (min-width:640px){.grid{grid-template-columns:1fr 1fr}}
 .card{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
 .card.hl{outline:2.5px solid var(--pri);outline-offset:2px}
+.cimg{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--surface2)}
 .ctop{padding:18px 18px 14px;color:#fff;position:relative}
 .ctop h3{font-family:var(--fh);font-size:20px;line-height:1.2;padding-right:70px}
 .ctop p{font-size:13px;opacity:.92;margin-top:4px}
@@ -104,6 +105,6 @@ input:focus{box-shadow:0 0 0 2px var(--pri)}
 </div>
 <script src="config.js"></script>
 <script src="qrcode.js"></script>
-<script src="store.js?v=2"></script>
+<script src="store.js?v=3"></script>
 </body>
 </html>

@@ -36,7 +36,8 @@ async function load(){
 }
 function cardHtml(x){
   const off=x.mrp&&x.mrp>x.price?Math.round((1-x.price/x.mrp)*100):0,col=COLORS.includes(x.color)?x.color:'blue';
-  return `<div class="card" id="p_${esc(x.id)}"><div class="ctop c-${col}">${x.badge?`<span class="badge">${esc(x.badge)}</span>`:''}<h3>${esc(x.title)}</h3>${x.subtitle?`<p>${esc(x.subtitle)}</p>`:''}</div>
+  const img=/^(data:image\/|https:\/\/)/.test(x.image||'')?`<img class="cimg" src="${esc(x.image)}" alt="${esc(x.title)}" loading="lazy">`:'';
+  return `<div class="card" id="p_${esc(x.id)}">${img}<div class="ctop c-${col}">${x.badge?`<span class="badge">${esc(x.badge)}</span>`:''}<h3>${esc(x.title)}</h3>${x.subtitle?`<p>${esc(x.subtitle)}</p>`:''}</div>
    <div class="cbody"><div class="price"><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s><em>${off}% OFF</em>`:''}</div>
    ${(x.features||[]).length?`<ul class="f">${x.features.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:'<div style="flex:1"></div>'}
    <div class="row"><button class="btn soft" data-share="${esc(x.id)}" aria-label="Share">↗ Share</button><button class="btn" style="flex:1" data-buy="${esc(x.id)}">Buy now</button></div></div></div>`;

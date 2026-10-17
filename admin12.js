@@ -34,10 +34,10 @@ function stoDraw(){
      <input type="search" id="stoq" placeholder="Search code / mobile / name" style="flex:1;min-width:160px" oninput="stoFilter(this.value)"></div>
     <div id="stol">${OL.length?OL.map(stoOrd).join(''):'<p class="sm mut">No orders here.</p>'}</div></div>
    <div class="h2s">📦 Test series on the store <span class="n">${SS.items.length}</span></div>
-   ${SS.items.map((x,i)=>`<div class="card" style="display:flex;gap:12px;align-items:center;margin-bottom:10px"><div style="flex:1;min-width:0"><b>${esc(x.title)}</b> ${x.active?'':'<span class="chip">Hidden</span>'}
+   ${SS.items.map((x,i)=>`<div class="card" style="display:flex;gap:12px;align-items:center;margin-bottom:10px">${x.image?`<img src="${esc(x.image)}" alt="" style="width:64px;height:40px;object-fit:cover;border-radius:8px;flex:none">`:''}<div style="flex:1;min-width:0"><b>${esc(x.title)}</b> ${x.active?'':'<span class="chip">Hidden</span>'}
      <div class="sm mut">₹${x.price}${x.mrp?` <s>₹${x.mrp}</s>`:''} · ${(x.features||[]).length} features${x.series_id?' · unlocks: '+esc((CA.series.find(z=>z.id===x.series_id)||{}).title||'series'):''}</div></div>
      <button class="btn ghost sm" onclick="stoEdit(${i})">Edit</button></div>`).join('')}
-   <button class="btn" onclick="stoEdit(-1)">➕ Add test series</button>
+   <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="stoPick()">⚡ Add from your series</button><button class="btn ghost" onclick="stoEdit(-1)">➕ Add manually</button></div>
    <div class="h2s">💳 Payment details</div>
    <div class="card"><p class="sm mut" style="margin-top:0">Shown on the store page. Only this panel (admin password) can change them.</p>
     <div class="g2"><div><label class="l">UPI ID</label><input type="text" id="s_upi" value="${esc(s.upi||'')}" autocapitalize="off" spellcheck="false"></div>
@@ -67,22 +67,25 @@ async function stoSaveSet(b){
 }
 function stoEdit(i){
   const x=i>=0?SS.items[i]:{title:'',subtitle:'',price:'',mrp:'',badge:'',features:[],color:'blue',series_id:'',active:true,sort_order:SS.items.length};
+  STOIMG=x.image||'';
   modal(`<h2>${i>=0?'Edit':'Add'} test series</h2>
    <label class="l">Name</label><input type="text" id="p_t" maxlength="80" value="${esc(x.title)}" placeholder="e.g. NEET 2027 All India Test Series">
    <label class="l">Short line (optional)</label><input type="text" id="p_s" maxlength="200" value="${esc(x.subtitle)}" placeholder="e.g. 30 full tests · Oct to April">
    <div class="g2"><div><label class="l">Price ₹</label><input type="number" id="p_p" min="1" value="${esc(x.price)}"></div><div><label class="l">MRP ₹ (optional, shown struck)</label><input type="number" id="p_m" min="0" value="${esc(x.mrp==null?'':x.mrp)}"></div>
     <div><label class="l">Badge (optional)</label><input type="text" id="p_b" maxlength="24" value="${esc(x.badge)}" placeholder="e.g. Bestseller"></div>
     <div><label class="l">Card colour</label><select id="p_c">${SCOL.map(([k,l])=>`<option value="${k}" ${x.color===k?'selected':''}>${l}</option>`).join('')}</select></div>
-    <div><label class="l">Unlocks which series</label><select id="p_ser"><option value="">—</option>${CA.series.map(s=>`<option value="${esc(s.id)}" ${x.series_id===s.id?'selected':''}>${esc(s.title)}</option>`).join('')}</select></div>
+    <div><label class="l">Unlocks which series <a href="#" onclick="event.preventDefault();stoFill()" style="color:var(--pri);font-weight:700;text-transform:none;letter-spacing:0">· fill from series</a></label><select id="p_ser"><option value="">—</option>${CA.series.map(s=>`<option value="${esc(s.id)}" ${x.series_id===s.id?'selected':''}>${esc(s.title)}</option>`).join('')}</select></div>
     <div><label class="l">Order on page</label><input type="number" id="p_o" value="${esc(x.sort_order||0)}"></div></div>
-   <label class="l">Features (one per line)</label><textarea id="p_f" style="min-height:130px" placeholder="30 full-length NEET mock tests&#10;All-India rank after every test&#10;Detailed solutions">${esc((x.features||[]).join('\n'))}</textarea>
+   <label class="l">Photo on the store card</label><div class="row" style="gap:8px;align-items:center"><div id="p_img">${stoImgHtml()}</div>
+    <label class="btn soft sm" style="cursor:pointer">📷 Upload<input type="file" accept="image/*" style="display:none" onchange="stoImgUp(this)"></label><button class="btn ghost sm" onclick="stoImgSet('')">Remove</button></div>
+      <label class="l">Features (one per line)</label><textarea id="p_f" style="min-height:130px" placeholder="30 full-length NEET mock tests&#10;All-India rank after every test&#10;Detailed solutions">${esc((x.features||[]).join('\n'))}</textarea>
    <label class="chk"><input type="checkbox" id="p_a" ${x.active?'checked':''}><span>Show on the store page</span></label>
    <div class="row" style="margin-top:12px">${i>=0?`<button class="btn danger" onclick="stoDel(${i})">Delete</button>`:''}<button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn" style="flex:1" id="p_go" onclick="stoSave(${i})">Save</button></div>`);
 }
 async function stoSave(i){
   const d={id:i>=0?SS.items[i].id:'',title:$('#p_t').value.trim(),subtitle:$('#p_s').value.trim(),price:parseInt($('#p_p').value,10),mrp:$('#p_m').value?parseInt($('#p_m').value,10):'',
     badge:$('#p_b').value.trim(),color:$('#p_c').value,series_id:$('#p_ser').value,sort_order:parseInt($('#p_o').value,10)||0,active:$('#p_a').checked,
-    features:$('#p_f').value.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,20)};
+    features:$('#p_f').value.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,20),image:STOIMG};
   if(!d.title)return toast('Enter the name');if(!(d.price>0))return toast('Enter the price');
   const b=$('#p_go');b.disabled=true;const r=await ASTO('save_item',d);b.disabled=false;
   if(!r.ok)return toast('Could not save');closeModal();toast('Saved ✓');loadStore();
@@ -90,5 +93,51 @@ async function stoSave(i){
 async function stoDel(i){
   const x=SS.items[i];if(!confirm(`Delete "${x.title}" from the store? Old orders stay.`))return;
   const r=await ASTO('delete_item',{id:x.id});if(!r.ok)return toast('Could not delete');closeModal();toast('Deleted');loadStore();
+}
+
+/* ---------- fill store items from the series you already have ---------- */
+let STOIMG='';
+const stoImgHtml=()=>STOIMG?`<img src="${esc(STOIMG)}" alt="" style="width:96px;height:56px;object-fit:cover;border-radius:10px;display:block">`:'<span class="sm mut">No photo</span>';
+function stoImgSet(d){STOIMG=d||'';const e=$('#p_img');if(e)e.innerHTML=stoImgHtml()}
+async function stoImgUp(inp){
+  const f=inp.files[0];if(!f)return;
+  try{const d=await compressDataUrl(await fileToUrl(f),900,.78);if(!d)throw 0;stoImgSet(d)}catch(e){toast('Could not read the photo')}
+}
+async function stoCover(sid){const r=await ASTO('series_cover',{id:sid});return r.ok?r.cover:''}
+function stoAuto(s){
+  const n=CA.tests.filter(t=>t.series_id===s.id).length,lines=String(s.description||'').split(/\n|•|•/).map(x=>x.replace(/^[\s\-*–]+/,'').trim()).filter(x=>x&&x.length<=90);
+  const f=[];if(n)f.push(`${n} test${n>1?'s':''} in this series`);
+  for(const l of lines.slice(lines.length>1?1:0,5))if(!f.includes(l))f.push(l);
+  f.push('All-India rank after every test','Detailed solutions & analysis');
+  return{title:s.title,subtitle:lines.length>1?lines[0].slice(0,200):String(s.description||'').trim().slice(0,200),
+    price:parseInt(String(s.price_label||'').replace(/[^\d]/g,''),10)||'',features:f.slice(0,8),series_id:s.id};
+}
+async function stoFill(){
+  const sid=$('#p_ser').value,s=CA.series.find(x=>x.id===sid);if(!s)return toast('Choose the series first');
+  const a=stoAuto(s);$('#p_t').value=a.title;$('#p_s').value=a.subtitle;if(a.price)$('#p_p').value=a.price;$('#p_f').value=a.features.join('\n');
+  toast('Filled from series — getting the photo…');const c=await stoCover(sid);if(c){stoImgSet(c);toast('Filled ✓')}else toast('Filled ✓ (no cover photo on this series)');
+}
+function stoPick(){
+  if(!CA.series.length)return toast('No series yet. Create one in Tests first.');
+  const used=new Set(SS.items.map(x=>x.series_id).filter(Boolean));
+  const L=CA.series.filter(s=>!used.has(s.id));
+  if(!L.length)return toast('All your series are already on the store');
+  modal(`<h2>Add from your series</h2><p class="sm mut" style="margin:4px 0 12px">Name, description, number of tests and cover photo are taken from the series. Check the price, then add.</p>
+   ${L.map(s=>{const a=stoAuto(s),n=CA.tests.filter(t=>t.series_id===s.id).length;return `<div class="arow" style="align-items:center;gap:10px"><label class="chk" style="padding:0;flex:1;min-width:0"><input type="checkbox" class="spk" value="${esc(s.id)}" ${s.is_free?'':'checked'}><span><b>${esc(s.title)}</b><br><span class="sm mut">${n} tests${s.is_free?' · free series':''}${s.has_cover?' · has photo':''}</span></span></label>
+     <input type="number" min="1" class="spp" data-id="${esc(s.id)}" value="${esc(a.price)}" placeholder="₹ price" style="width:96px;flex:none"></div>`}).join('')}
+   <div class="row" style="margin-top:14px"><button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn" style="flex:1" id="spgo" onclick="stoPickGo()">Add selected</button></div>`);
+}
+async function stoPickGo(){
+  const ids=[...document.querySelectorAll('.spk:checked')].map(e=>e.value);if(!ids.length)return toast('Select at least one series');
+  const pr={};document.querySelectorAll('.spp').forEach(e=>pr[e.dataset.id]=parseInt(e.value,10));
+  const miss=ids.filter(id=>!(pr[id]>0));if(miss.length)return toast('Enter the price for every selected series');
+  const b=$('#spgo');b.disabled=true;let n=0,ord=SS.items.length;
+  for(const id of ids){
+    const s=CA.series.find(x=>x.id===id);b.textContent=`Adding ${++n}/${ids.length}…`;
+    const a=stoAuto(s),image=s.has_cover?await stoCover(id):'';
+    const r=await ASTO('save_item',{title:a.title,subtitle:a.subtitle,price:pr[id],mrp:'',badge:'',color:SCOL[(ord)%SCOL.length][0],series_id:id,sort_order:ord++,active:true,features:a.features,image});
+    if(!r.ok){b.disabled=false;b.textContent='Try again';return toast('Could not add '+s.title)}
+  }
+  closeModal();toast(`✓ ${ids.length} series added to the store`);loadStore();
 }
 ;(window.__p=window.__p||{})['admin12']=1;
