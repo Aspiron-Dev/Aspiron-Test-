@@ -27,6 +27,7 @@ function pqDraw(){
   const b=$('#pqbody');if(!b)return;const S=pqS(),have=new Set(PQA.papers.map(x=>x.paper));
   if(!CA.tests.length)loadCatalog().then(()=>{const s=$('#pqtest');if(s)s.innerHTML=pqTestOpts()});
   b.innerHTML=`<div class="sstats" style="grid-template-columns:repeat(3,1fr)"><div class="sbox"><b>${PQA.total}</b><span>Questions</span></div><div class="sbox"><b>${PQA.papers.length}</b><span>Papers added</span></div><div class="sbox"><b>${S.papers.length-S.papers.filter(p=>have.has(p)).length}</b><span>Papers left</span></div></div>
+   <div id="pqready"></div>
    <div class="h2s">➕ Add a paper from a test</div>
    <div class="card"><p class="sm mut" style="margin-top:0">1) Create the paper as a normal test first (Create test → upload the PDF), or pick one you already have. 2) Choose it here with its exam name. 3) Check the auto-tagged chapters and save.</p>
     <div class="g2"><div><label class="l">Test with the paper's questions</label><select id="pqtest">${pqTestOpts()}</select></div>
@@ -38,6 +39,30 @@ function pqDraw(){
      <td style="white-space:nowrap"><button class="btn ghost sm" onclick="pqBrowse(${JSON.stringify(x.paper).replace(/"/g,'&quot;')})">Check tags</button> <button class="btn danger sm" onclick="pqDelPaper(${JSON.stringify(x.paper).replace(/"/g,'&quot;')})">Delete</button></td></tr>`).join('')}</tbody></table></div>`
      :'<div class="card empty sm">No papers yet. Add the first one above.</div>'}
    <div id="pqbrowse"></div>`;
+  pqReady();
+}
+// Ready-made papers shipped with the site (pyq-data/*.json): questions, checked answers and our own explanations.
+async function pqReady(){
+  const box=$('#pqready');if(!box)return;let L;
+  try{L=await(await fetch('pyq-data/index.json',{cache:'no-cache'})).json()}catch(_){box.innerHTML='';return}
+  L=(L||[]).filter(x=>(x.exam||'NEET')===PQA.exam);if(!L.length){box.innerHTML='';return}
+  const have=new Set(PQA.papers.map(x=>x.paper)),left=L.filter(x=>!have.has(x.paper)).length;
+  box.innerHTML=`<div class="h2s">📦 Ready-made papers <span class="n">${L.length}</span></div><div class="card" style="padding:4px 14px">${L.map((x,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;${i?'border-top:1px solid var(--bd)':''}"><div style="flex:1;min-width:0"><b>${esc(x.paper)}</b><div class="sm mut">${x.n} questions · answers checked · own explanations</div></div>${have.has(x.paper)?'<span class="sm mut" style="white-space:nowrap">✓ In bank</span>':`<button class="btn sm" style="flex:none" onclick="pqImport('${esc(x.file)}',this)">Add</button>`}</div>`).join('')}</div>${left>1?`<button class="btn ghost sm" style="margin-top:8px" onclick="pqImportAll(this)">Add all ${left} papers</button>`:''}`;
+  PQA.ready=L;
+}
+async function pqImport(f,b,quiet){
+  if(!/^[a-z0-9-]+\.json$/.test(f))return false;if(b){b.disabled=true;b.textContent='Loading…'}
+  let d;try{d=await(await fetch('pyq-data/'+f,{cache:'no-cache'})).json()}catch(_){d=null}
+  if(!d||!Array.isArray(d.items)){if(b){b.disabled=false;b.textContent='Add to bank'}toast('Could not load '+f);return false}
+  if(PQA.papers.some(x=>x.paper===d.paper)){toast(d.paper+' is already in the bank');return true}
+  const items=d.items.map(x=>({...x,rkey:pyqKey(x.q)}));let n=0;
+  for(let i=0;i<items.length;i+=100){if(b)b.textContent=`Saving… ${Math.min(i+100,items.length)}/${items.length}`;const r=await APQ('bulk',{exam:d.exam||PQA.exam,items:items.slice(i,i+100)});if(!r.ok){if(b){b.disabled=false;b.textContent='Try again'}toast('Could not save — '+(r.error||'error'));return false}n+=r.added||0}
+  PQA.papers.push({paper:d.paper});if(!quiet){toast(`✓ ${n} questions added from ${d.paper}`);loadPyq()}return true;
+}
+async function pqImportAll(b){
+  const L=(PQA.ready||[]).filter(x=>!PQA.papers.some(p=>p.paper===x.paper));b.disabled=true;
+  for(let i=0;i<L.length;i++){b.textContent=`Adding ${L[i].paper} (${i+1}/${L.length})…`;if(!await pqImport(L[i].file,null,1)){b.disabled=false;b.textContent='Try again';return loadPyq()}}
+  toast(`✓ ${L.length} papers added`);loadPyq();
 }
 const pqTestOpts=()=>`<option value="">Select a test…</option>`+CA.tests.map(t=>`<option value="${t.id}">${esc(t.title)} (${t.questions||'?'} Q)</option>`).join('');
 async function pqLoadTest(){

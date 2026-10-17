@@ -32,7 +32,7 @@ const P=[
  ['semi',12,'Semiconductor Electronics',[['Diodes & rectifiers','diode|p-n|pn junction|rectifier|zener|led|depletion|forward bias|reverse bias'],['Transistors','transistor|amplifier|common emitter|current gain'],['Logic gates','logic gate|gate|nand|nor|and gate|or gate|truth table|boolean']]],
 ];
 const C=[
- ['mole',11,'Some Basic Concepts of Chemistry',[['Mole concept & stoichiometry','mole|molar mass|avogadro|stoichiometr|limiting reagent|empirical formula|molecular formula'],['Concentration terms','molarity|molality|normality|mole fraction|ppm']]],
+ ['mole',11,'Some Basic Concepts of Chemistry',[['Mole concept & stoichiometry','mole|molar mass|avogadro|stoichiometr|limiting reagent|empirical formula|molecular formula'],['Concentration terms','molarity|molality|normality|mole fraction|ppm'],['Significant figures & measurement','significant figure|significant number|precision|scientific notation']]],
  ['atom',11,'Structure of Atom',[['Quantum numbers & orbitals','quantum number|orbital|aufbau|hund|pauli|electronic configuration|nodes'],['Bohr model & spectra','bohr|hydrogen spectrum|balmer|lyman|rydberg'],['Dual nature & uncertainty','de broglie|uncertainty|heisenberg|photoelectric']]],
  ['periodic',11,'Classification of Elements and Periodicity',[['Periodic trends','ionisation|ionization|electron gain|electronegativity|atomic radius|ionic radius|periodic|metallic character']]],
  ['bonding',11,'Chemical Bonding and Molecular Structure',[['VSEPR & hybridisation','vsepr|hybridi|shape|geometry|bond angle|sp3|sp2|lone pair'],['MOT','molecular orbital|bond order|paramagnetic|diamagnetic'],['Bond parameters & polarity','dipole moment|bond length|bond energy|ionic|covalent|hydrogen bond|resonance|formal charge']]],
@@ -106,7 +106,7 @@ const B=[
 const mk=(id,name,L)=>({id,name,chapters:L.map(c=>({id:c[0],cls:c[1],name:c[2],old:!!c[4],topics:c[3].map(t=>({name:t[0],kw:t[1].split('|')}))}))});
 window.PYQ_SYL={
   NEET:{name:'NEET (UG)',subjects:[mk('phy','Physics',P),mk('chem','Chemistry',C),mk('bio','Biology',B)],
-    papers:['AIPMT 2010','AIPMT 2011','AIPMT 2012','NEET 2013','AIPMT 2014','AIPMT 2015','AIPMT 2015 Re-exam','NEET 2016 Phase I','NEET 2016 Phase II','NEET 2017','NEET 2018','NEET 2019','NEET 2020','NEET 2021','NEET 2022','NEET 2023','NEET 2023 Manipur','NEET 2024','NEET 2024 Re-exam','NEET 2025','NEET 2026']},
+    papers:['AIPMT 1998','AIPMT 1999','AIPMT 2000','AIPMT 2010','AIPMT 2011','AIPMT 2012','NEET 2013','AIPMT 2014','AIPMT 2015','AIPMT 2015 Re-exam','NEET 2016 Phase I','NEET 2016 Phase II','NEET 2017','NEET 2018','NEET 2019','NEET 2020','NEET 2021','NEET 2022','NEET 2023','NEET 2023 Manipur','NEET 2024','NEET 2024 Re-exam','NEET 2025','NEET 2026']},
   JEE:{name:'JEE Main',soon:1},JEEA:{name:'JEE Advanced',soon:1},CBSE12:{name:'CBSE Class 12',soon:1},CBSE10:{name:'CBSE Class 10',soon:1}
 };
 /* auto-tagger: best chapter + topic for a question's text (used by the admin import) */

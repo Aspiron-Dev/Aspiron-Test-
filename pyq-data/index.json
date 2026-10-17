@@ -1,0 +1,23 @@
+[
+ {
+  "file": "aipmt-1998.json",
+  "exam": "NEET",
+  "paper": "AIPMT 1998",
+  "year": 1998,
+  "n": 200
+ },
+ {
+  "file": "aipmt-1999.json",
+  "exam": "NEET",
+  "paper": "AIPMT 1999",
+  "year": 1999,
+  "n": 199
+ },
+ {
+  "file": "aipmt-2000.json",
+  "exam": "NEET",
+  "paper": "AIPMT 2000",
+  "year": 2000,
+  "n": 200
+ }
+]
