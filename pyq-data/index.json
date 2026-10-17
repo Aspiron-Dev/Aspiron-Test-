@@ -5,5 +5,12 @@
   "paper": "AIPMT 1998",
   "year": 1998,
   "n": 200
+ },
+ {
+  "file": "aipmt-2000.json",
+  "exam": "NEET",
+  "paper": "AIPMT 2000",
+  "year": 2000,
+  "n": 200
  }
 ]
