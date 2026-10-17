@@ -688,6 +688,10 @@ body.feon{overflow:hidden}
 .stoform .stohd{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 0 10px;background:var(--surface)}
 .stoform .stohd h2{margin:0}
 .stoform .stofoot{position:sticky;bottom:0;z-index:3;gap:8px;margin-top:14px;padding:12px 0 16px;background:var(--surface);box-shadow:0 -10px 14px -12px rgba(0,0,0,.35)}
+.sgrp{font-size:11px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);opacity:.75;padding:14px 12px 4px}
+.mgt{font-size:11.5px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);margin:16px 2px 8px}
+.mhead+.mgt{margin-top:6px}
+.asheet .box{max-height:calc(100dvh - 24px);overflow:auto}
 </style>
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['admin1', 'admin2', 'admin3', 'admin4'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
@@ -719,6 +723,7 @@ body.feon{overflow:hidden}
 <script src="admin10.js?v=2" onerror="(window.__miss=window.__miss||[]).push('admin10.js')"></script>
 <script src="admin11.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin11.js')"></script>
 <script src="admin12.js?v=11" onerror="(window.__miss=window.__miss||[]).push('admin12.js')"></script>
+<script src="admin13.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin13.js')"></script>
 
 </body>
 </html>
