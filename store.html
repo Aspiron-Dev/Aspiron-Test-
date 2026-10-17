@@ -6,7 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#f3f6f9">
-<title>Test Series Store</title>
+<title>Store · CBT Test Series</title>
 <meta name="description" content="NEET test series — see what's inside and buy with UPI.">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -17,49 +17,75 @@
 @media (prefers-color-scheme:dark){:root{--bg:#09111f;--surface:#101b2e;--surface2:#172640;--tx:#e6edf6;--mut:#93a4b8;--bd:#233654;--pri:#5aa2ff;--priSoft:#14284a;--ok:#34c38f;--okSoft:#10302a;--warn:#f0a63a;--warnSoft:#33270f;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35)}}
 *{box-sizing:border-box;margin:0}
 body{font:15px/1.5 Inter,system-ui,sans-serif;color:var(--tx);background:var(--bg);background-image:radial-gradient(900px 380px at 50% -120px,color-mix(in srgb,var(--pri) 14%,transparent),transparent);background-repeat:no-repeat;min-height:100vh;-webkit-tap-highlight-color:transparent}
-.wrap{max-width:760px;margin:0 auto;padding:16px 16px 60px}
-header{display:flex;align-items:center;gap:10px;padding:6px 0 18px}
-header img{width:40px;height:40px;border-radius:12px}
-header b{font-family:var(--fh);font-size:20px;letter-spacing:.3px}
-header .grow{flex:1}
-.hero{background:var(--grad);color:#fff;border-radius:22px;padding:22px 20px;position:relative;overflow:hidden;box-shadow:0 12px 30px color-mix(in srgb,var(--pri) 30%,transparent)}
-.hero h1{font-family:var(--fh);font-size:26px;line-height:1.15;margin-bottom:6px}
-.hero p{opacity:.9;font-size:14px}
-.hero:after{content:"";position:absolute;right:-50px;top:-50px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.12)}
-.trust{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
-.trust span{background:rgba(255,255,255,.18);border-radius:99px;padding:5px 11px;font-size:12px;font-weight:600}
-h2{font-family:var(--fh);font-size:19px;margin:24px 0 12px}
-.grid{display:grid;gap:14px}
+.wrap{max-width:1040px;margin:0 auto;padding:16px 16px 80px}
+.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid color-mix(in srgb,var(--bd) 60%,transparent)}
+.topin{max-width:1040px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:10px 16px}
+.topin img{width:36px;height:36px;border-radius:11px}
+.topin b{font-family:var(--fh);font-size:18px;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grow{flex:1}
+.storepill{flex:none;background:var(--grad);color:#fff;font-weight:700;font-size:13px;border-radius:99px;padding:7px 13px;box-shadow:0 6px 16px color-mix(in srgb,var(--pri) 25%,transparent)}
+.lhead{margin:8px 0 14px}.lhead h1{font-family:var(--fh);font-size:26px}
+h2{font-family:var(--fh);font-size:20px;margin:34px 0 14px}
+.grid{display:grid;gap:16px}
 @media (min-width:640px){.grid{grid-template-columns:1fr 1fr}}
-.card{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+@media (min-width:980px){.grid{grid-template-columns:1fr 1fr 1fr}}
+.card{background:var(--surface);border-radius:22px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s}
+@media (hover:hover){.card:hover{transform:translateY(-3px);box-shadow:var(--shadow),0 18px 40px color-mix(in srgb,var(--pri) 14%,transparent)}}
 .card.hl{outline:2.5px solid var(--pri);outline-offset:2px}
-.cimg{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--surface2)}
-.ctop{padding:18px 18px 14px;color:#fff;position:relative}
-.ctop h3{font-family:var(--fh);font-size:20px;line-height:1.2;padding-right:70px}
-.ctop p{font-size:13px;opacity:.92;margin-top:4px}
-.badge{position:absolute;top:14px;right:14px;background:#fff;color:#111;font-size:11px;font-weight:800;border-radius:99px;padding:4px 9px;letter-spacing:.3px}
+.media{position:relative;aspect-ratio:16/9;overflow:hidden;cursor:pointer}
+.media img{width:100%;height:100%;object-fit:cover;display:block}
+.ph{width:100%;height:100%;display:flex;flex-direction:column;justify-content:flex-end;padding:16px;color:#fff;position:relative}
+.ph:before,.ph:after{content:"";position:absolute;border-radius:50%;background:rgba(255,255,255,.12)}
+.ph:before{width:180px;height:180px;right:-50px;top:-60px}.ph:after{width:120px;height:120px;right:60px;bottom:-70px}
+.ph b{font-family:var(--fh);font-size:22px;line-height:1.15;position:relative;z-index:1}
+.ph small{opacity:.85;font-weight:600;position:relative;z-index:1;letter-spacing:.5px}
+.badge{position:absolute;top:12px;left:12px;background:#fff;color:#111;font-size:11px;font-weight:800;border-radius:99px;padding:5px 10px;letter-spacing:.3px;box-shadow:0 4px 12px rgba(0,0,0,.18);z-index:2}
+.off{position:absolute;top:12px;right:12px;background:#12945f;color:#fff;font-size:12px;font-weight:800;border-radius:10px;padding:5px 9px;z-index:2;box-shadow:0 4px 12px rgba(0,0,0,.2)}
 .c-blue{background:linear-gradient(135deg,#1d6fe8,#3b9bff)}.c-green{background:linear-gradient(135deg,#0f9d6b,#12a58a)}.c-purple{background:linear-gradient(135deg,#6d3fe0,#a855f7)}
 .c-orange{background:linear-gradient(135deg,#e8590c,#f59f00)}.c-red{background:linear-gradient(135deg,#d6336c,#f03e3e)}.c-dark{background:linear-gradient(135deg,#1e293b,#475569)}
-.cbody{padding:14px 18px 18px;display:flex;flex-direction:column;gap:12px;flex:1}
+.cbody{padding:16px 18px 18px;display:flex;flex-direction:column;gap:12px;flex:1}
+.cbody h3{font-size:18px;line-height:1.3;font-weight:800}
+.cbody .sub{color:var(--mut);font-size:13.5px;margin-top:-6px}
 .price{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .price b{font-family:var(--fh);font-size:28px}
 .price s{color:var(--mut);font-size:15px}
-.price em{font-style:normal;background:var(--okSoft);color:var(--ok);font-size:12px;font-weight:700;border-radius:99px;padding:2px 8px}
-ul.f{list-style:none;padding:0;display:flex;flex-direction:column;gap:7px;flex:1}
-ul.f li{display:flex;gap:8px;font-size:14px}
+.save{font-size:12.5px;font-weight:700;color:var(--ok)}
+ul.f{list-style:none;padding:0;display:flex;flex-direction:column;gap:8px;flex:1}
+ul.f li{display:flex;gap:9px;font-size:14px;line-height:1.4}
 ul.f li:before{content:"✓";flex:none;width:20px;height:20px;border-radius:50%;background:var(--okSoft);color:var(--ok);font-size:12px;font-weight:800;display:grid;place-items:center;margin-top:1px}
+.more{border:0;background:none;color:var(--pri);font:700 13.5px Inter,sans-serif;padding:0;cursor:pointer;text-align:left}
 .row{display:flex;gap:10px}
 .btn{appearance:none;border:0;font:600 15px Inter,sans-serif;border-radius:14px;padding:13px 16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;color:#fff;background:var(--grad);box-shadow:0 6px 16px color-mix(in srgb,var(--pri) 28%,transparent)}
 .btn.soft{background:var(--surface2);color:var(--tx);box-shadow:none}
+.btn.icon{width:50px;padding:0;flex:none;font-size:18px}
 .btn.tg{background:linear-gradient(135deg,#229ed9,#2aabee)}
 .btn.block{width:100%}
 .btn:disabled{opacity:.6}
 .btn:active{transform:scale(.98)}
 .empty{padding:30px 20px;text-align:center;color:var(--mut)}
-.how{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);padding:16px 18px}
-.how ol{padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px}
-footer{text-align:center;color:var(--mut);font-size:12px;margin-top:28px}
-footer a{color:var(--pri)}
+.why{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (min-width:760px){.why{grid-template-columns:repeat(4,1fr)}}
+.why>div{background:var(--surface);border-radius:18px;box-shadow:var(--shadow);padding:16px}
+.why span{font-size:24px;display:block;margin-bottom:6px}.why b{display:block;font-size:14.5px}.why p{color:var(--mut);font-size:13px;margin-top:3px}
+.tl{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);padding:6px 18px}
+.tl>div{display:flex;gap:14px;padding:12px 0;position:relative}
+.tl>div+div{border-top:1px dashed var(--bd)}
+.tl i{flex:none;width:32px;height:32px;border-radius:50%;background:var(--grad);color:#fff;font-style:normal;font-weight:800;display:grid;place-items:center}
+.tl b{font-size:14.5px}.tl p{color:var(--mut);font-size:13px}
+.safe{display:flex;gap:12px;align-items:flex-start;background:var(--okSoft);border-radius:18px;padding:14px 16px;margin-top:16px}
+.safe span{font-size:22px}.safe b{color:var(--ok)}.safe p{font-size:13px;color:var(--tx);opacity:.85;margin-top:2px}
+.faq{display:flex;flex-direction:column;gap:10px}
+.faq details{background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:14px 16px}
+.faq summary{font-weight:700;font-size:14.5px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:10px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary:after{content:"+";color:var(--pri);font-size:18px;line-height:1}
+.faq details[open] summary:after{content:"–"}
+.faq p{color:var(--mut);font-size:13.5px;margin-top:8px}
+footer{text-align:center;color:var(--mut);font-size:12.5px;margin-top:30px}
+footer a{color:var(--pri);font-weight:600}
+.fab{position:fixed;right:16px;bottom:max(16px,env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#229ed9,#2aabee);color:#fff;display:grid;place-items:center;font-size:22px;text-decoration:none;box-shadow:0 10px 24px rgba(34,158,217,.4);z-index:30}
+.dimg{width:calc(100% + 36px);margin:-16px -18px 14px;aspect-ratio:16/9;overflow:hidden}
+.dimg img,.dimg .ph{width:100%;height:100%;object-fit:cover;display:block}
 /* checkout sheet */
 .ov{position:fixed;inset:0;background:rgba(5,12,22,.55);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;z-index:50;animation:fi .2s}
 .sheet{background:var(--surface);width:100%;max-width:480px;max-height:94vh;overflow:auto;border-radius:24px 24px 0 0;padding:16px 18px max(20px,env(safe-area-inset-bottom));animation:su .25s ease-out}
@@ -93,18 +119,41 @@ input:focus{box-shadow:0 0 0 2px var(--pri)}
 </style>
 </head>
 <body>
+<div class="top"><div class="topin"><img src="icon-192.png" alt=""><b id="sname">CBT Test Series</b><span class="grow"></span><span class="storepill">🛍️ Store</span></div></div>
 <div class="wrap">
-  <header><img src="icon-192.png" alt=""><b class="grow" id="sname">Test Series</b></header>
-  <div class="hero"><h1>Crack NEET with real exam practice</h1><p>All-India test series on the real NEET pattern, with rank, detailed analysis and solutions.</p>
-    <div class="trust"><span>✓ Real NEET pattern</span><span>✓ All-India rank</span><span>✓ Detailed solutions</span></div></div>
-  <h2>Our test series</h2>
+  <div class="lhead"><div><h1>Test series</h1><p class="sm mut" id="lcount">Choose your series and start practising today</p></div></div>
   <div class="grid" id="list"><div class="sk"></div><div class="sk"></div></div>
+
+  <h2>Why students choose us</h2>
+  <div class="why">
+    <div><span>🎯</span><b>Real NEET pattern</b><p>Same pattern, marking and timing as the real exam.</p></div>
+    <div><span>🏆</span><b>All-India rank</b><p>See where you stand after every test.</p></div>
+    <div><span>📊</span><b>Detailed analysis</b><p>Subject-wise, chapter-wise and time analysis.</p></div>
+    <div><span>💡</span><b>Solutions</b><p>Clear explanation for every question.</p></div>
+  </div>
+
   <h2>How to buy</h2>
-  <div class="how"><ol><li>Tap <b>Buy now</b> and enter your name and mobile number.</li><li>Pay by scanning the QR or with the UPI ID.</li><li>Send the payment screenshot on Telegram.</li><li>We verify your payment and send your login details on Telegram.</li></ol></div>
-  <footer>Payments go only to the UPI ID shown on this page. Need help? <a id="ftg" href="#" rel="noopener" target="_blank">Message us on Telegram</a></footer>
+  <div class="tl">
+    <div><i>1</i><div><b>Tap “Buy now”</b><p>Enter your name and mobile number.</p></div></div>
+    <div><i>2</i><div><b>Pay with UPI</b><p>Scan the QR or copy the UPI ID — GPay, PhonePe, Paytm, any app.</p></div></div>
+    <div><i>3</i><div><b>Send the screenshot</b><p>Send the payment screenshot to us on Telegram.</p></div></div>
+    <div><i>4</i><div><b>Get your login</b><p>We verify the payment and send your login details on Telegram.</p></div></div>
+  </div>
+
+  <div class="safe"><span>🔒</span><div><b>Safe payment</b><p>Pay only to the UPI ID shown on this page. Check the name <b id="spayee">in your UPI app</b> before paying. Every order has its own code so your payment is matched correctly.</p></div></div>
+
+  <h2>Questions</h2>
+  <div class="faq">
+    <details><summary>When do I get my test series?</summary><p>After we check your payment screenshot on Telegram. We then send your login details there.</p></details>
+    <details><summary>Which apps can I pay with?</summary><p>Any UPI app — Google Pay, PhonePe, Paytm, BHIM or your bank's app.</p></details>
+    <details><summary>Can I use it on my phone?</summary><p>Yes. It works on any phone or computer with a browser, and you can add it to your home screen like an app.</p></details>
+    <details><summary>I paid but didn't get a reply</summary><p>Message us on Telegram with your order code and screenshot. We reply as soon as possible.</p></details>
+  </div>
+  <footer><span id="fname">CBT Test Series</span> · Need help? <a id="ftg" href="#" rel="noopener" target="_blank">Telegram</a></footer>
 </div>
+<a class="fab" id="fab" href="#" target="_blank" rel="noopener" aria-label="Help on Telegram">✈</a>
 <script src="config.js"></script>
 <script src="qrcode.js"></script>
-<script src="store.js?v=3"></script>
+<script src="store.js?v=4"></script>
 </body>
 </html>
