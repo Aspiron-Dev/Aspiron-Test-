@@ -21,12 +21,15 @@ async function loadStore(){
   if(!CA.series.length)loadCatalog();
   const r=await ASTO('get');
   if(!r.ok){$('#stobody').innerHTML=`<div class="card empty"><b>${r.error==='missing'?'One-time setup needed':'Could not load'}</b><p class="sm">${r.error==='missing'?'Open Supabase → SQL Editor, paste <b>supabase_v13_store.sql</b> and press Run once. Then refresh.':'Check your internet and try again.'}</p></div>`;return}
-  SS=Object.assign(SS,{settings:r.settings||{},items:r.items||[],orders:r.orders||[]});stoDraw();
+  SS=Object.assign(SS,{settings:r.settings||{},items:r.items||[],orders:r.orders||[]});stoDraw();navBadges();
 }
 function stoDraw(){
   const b=$('#stobody');if(!b)return;const s=SS.settings,O=SS.orders,pend=O.filter(o=>o.status==='pending').length;
   const OL=O.filter(o=>SS.of==='all'||o.status===SS.of);
-  b.innerHTML=`<div class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:0"><b>Store link</b><div class="sm mut" style="word-break:break-all">${esc(stoUrl())}</div></div>
+  const paid=O.filter(o=>o.status==='paid'),m0=new Date();m0.setDate(1);m0.setHours(0,0,0,0);
+  const mon=paid.filter(o=>new Date(o.created_at)>=m0).reduce((a,o)=>a+(o.amount||0),0);
+  b.innerHTML=`<div class="sstats" style="grid-template-columns:repeat(4,1fr);margin-bottom:12px"><div class="sbox"><b>${SS.items.filter(x=>x.active).length}</b><span>On store</span></div><div class="sbox"><b>${pend}</b><span>To check</span></div><div class="sbox"><b>${paid.length}</b><span>Paid</span></div><div class="sbox"><b>₹${mon.toLocaleString('en-IN')}</b><span>This month</span></div></div>
+   <div class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:0"><b>Store link</b><div class="sm mut" style="word-break:break-all">${esc(stoUrl())}</div></div>
      <button class="btn ghost sm" onclick="copyText(stoUrl())">Copy link</button><a class="btn sm" style="text-decoration:none" href="store.html" target="_blank" rel="noopener">Open</a></div>
    <div class="h2s">🧾 Orders to check <span class="n">${pend}</span></div>
    <div class="card"><p class="sm mut" style="margin-top:0">Match the <b>order code</b> in the student's Telegram message with the payment screenshot (amount and note), then unlock the series for that mobile in <b>Students</b> and mark it paid.</p>
@@ -51,12 +54,12 @@ function stoOrd(o){
   const st={pending:'<span class="chip warn">Pending</span>',paid:'<span class="chip ok">Paid</span>',rejected:'<span class="chip" style="background:var(--badSoft);color:var(--bad)">Rejected</span>'}[o.status]||'';
   return `<div class="stoo" data-k="${esc((o.code+' '+o.mobile+' '+o.name).toLowerCase())}" style="display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--bd);flex-wrap:wrap">
    <div style="flex:1;min-width:180px"><b style="font-family:monospace;letter-spacing:.5px">${esc(o.code)}</b> ${st}<div class="sm"><b>${esc(o.name)}</b> · ${esc(o.mobile)}</div><div class="sm mut">${esc(o.item_title)} · ₹${o.amount} · ${t}</div></div>
-   <div class="row" style="gap:6px">${o.status!=='paid'?`<button class="btn sm" onclick="stoSt('${esc(o.code)}','paid')">✓ Paid</button>`:''}${o.status==='pending'?`<button class="btn ghost sm" onclick="stoSt('${esc(o.code)}','rejected')">Reject</button>`:''}${o.status!=='pending'?`<button class="btn ghost sm" onclick="stoSt('${esc(o.code)}','pending')">Undo</button>`:''}</div></div>`;
+   <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn ghost sm" onclick="stoUnlock('${esc(o.mobile)}')" title="Open this student and give the series">🔓 Unlock</button><button class="btn ghost sm" onclick="stoReply('${esc(o.code)}')" title="Copy a reply with the website link">📋 Reply</button>${o.status!=='paid'?`<button class="btn sm" onclick="stoSt('${esc(o.code)}','paid')">✓ Paid</button>`:''}${o.status==='pending'?`<button class="btn ghost sm" onclick="stoSt('${esc(o.code)}','rejected')">Reject</button>`:''}${o.status!=='pending'?`<button class="btn ghost sm" onclick="stoSt('${esc(o.code)}','pending')">Undo</button>`:''}</div></div>`;
 }
 function stoFilter(q){q=q.trim().toLowerCase();document.querySelectorAll('#stol .stoo').forEach(e=>e.style.display=!q||e.dataset.k.includes(q)?'':'none')}
 async function stoSt(code,status){
   const r=await ASTO('order_status',{code,status});if(!r.ok)return toast('Could not save');
-  const o=SS.orders.find(x=>x.code===code);if(o)o.status=status;toast(status==='paid'?'Marked paid ✓ — unlock the series in Students':'Saved');stoDraw();
+  const o=SS.orders.find(x=>x.code===code);if(o)o.status=status;navBadges();toast(status==='paid'?'Marked paid ✓ — unlock the series in Students':'Saved');stoDraw();
 }
 async function stoSaveSet(b){
   const d={upi:$('#s_upi').value.trim(),payee:$('#s_payee').value.trim(),telegram:$('#s_tg').value.trim(),note:$('#s_note').value.trim()};
@@ -68,7 +71,7 @@ async function stoSaveSet(b){
 function stoEdit(i){
   const x=i>=0?SS.items[i]:{title:'',subtitle:'',price:'',mrp:'',badge:'',features:[],color:'blue',series_id:'',active:true,sort_order:SS.items.length};
   STOIMG=x.image||'';
-  modal(`<h2>${i>=0?'Edit':'Add'} test series</h2><p class="sm mut" style="margin:2px 0 10px">Preview — this is how students see it on the store:</p><div id="p_prev"></div>
+  modal(`<div class="stohd"><h2>${i>=0?'Edit':'Add'} test series</h2><button class="iconbtn" onclick="closeModal()" aria-label="Close">✕</button></div><p class="sm mut" style="margin:2px 0 10px">Preview — this is how students see it on the store:</p><div id="p_prev"></div>
    <label class="l">Name</label><input type="text" id="p_t" maxlength="80" value="${esc(x.title)}" placeholder="e.g. NEET 2027 All India Test Series">
    <label class="l">Short line (optional)</label><input type="text" id="p_s" maxlength="200" value="${esc(x.subtitle)}" placeholder="e.g. 30 full tests · Oct to April">
    <div class="g2"><div><label class="l">Price ₹</label><input type="number" id="p_p" min="1" value="${esc(x.price)}"></div><div><label class="l">MRP ₹ (optional, shown struck)</label><input type="number" id="p_m" min="0" value="${esc(x.mrp==null?'':x.mrp)}"></div>
@@ -80,7 +83,8 @@ function stoEdit(i){
     <label class="btn soft sm" style="cursor:pointer">📷 Upload<input type="file" accept="image/*" style="display:none" onchange="stoImgUp(this)"></label><button class="btn ghost sm" onclick="stoImgSet('')">Remove</button></div>
       <label class="l">Features (one per line)</label><textarea id="p_f" style="min-height:130px" placeholder="30 full-length NEET mock tests&#10;All-India rank after every test&#10;Detailed solutions">${esc((x.features||[]).join('\n'))}</textarea>
    <label class="chk"><input type="checkbox" id="p_a" ${x.active?'checked':''}><span>Show on the store page</span></label>
-   <div class="row" style="margin-top:12px">${i>=0?`<button class="btn danger" onclick="stoDel(${i})">Delete</button>`:''}<button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn" style="flex:1" id="p_go" onclick="stoSave(${i})">Save</button></div>`);
+   <div class="row stofoot">${i>=0?`<button class="btn danger" onclick="stoDel(${i})">Delete</button>`:''}<button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn" style="flex:1" id="p_go" onclick="stoSave(${i})">Save</button></div>`);
+  stoSheet();
   stoPrev();if(!window.__stoPB){window.__stoPB=1;document.addEventListener('input',e=>{if(e.target.closest('#layer'))stoPrev()})}
 }
 async function stoSave(i){
@@ -134,10 +138,11 @@ function stoPick(){
   const used=new Set(SS.items.map(x=>x.series_id).filter(Boolean));
   const L=CA.series.filter(s=>!used.has(s.id));
   if(!L.length)return toast('All your series are already on the store');
-  modal(`<h2>Add from your series</h2><p class="sm mut" style="margin:4px 0 12px">Name, description, number of tests and cover photo are taken from the series. Check the price, then add.</p>
+  modal(`<div class="stohd"><h2>Add from your series</h2><button class="iconbtn" onclick="closeModal()" aria-label="Close">✕</button></div><p class="sm mut" style="margin:4px 0 12px">Name, description, number of tests and cover photo are taken from the series. Check the price, then add.</p>
    ${L.map(s=>{const a=stoAuto(s),n=CA.tests.filter(t=>t.series_id===s.id).length;return `<div class="arow" style="align-items:center;gap:10px"><label class="chk" style="padding:0;flex:1;min-width:0"><input type="checkbox" class="spk" value="${esc(s.id)}" ${s.is_free?'':'checked'}><span><b>${esc(s.title)}</b><br><span class="sm mut">${n} tests${s.is_free?' · free series':''}${s.has_cover?' · has photo':''}</span>${a.subtitle?`<br><span class="sm">“${esc(a.subtitle)}”</span>`:''}<br><span class="sm mut">${esc(a.features.slice(0,3).join(' · '))}</span></span></label>
      <input type="number" min="1" class="spp" data-id="${esc(s.id)}" value="${esc(a.price)}" placeholder="₹ price" style="width:96px;flex:none"></div>`}).join('')}
-   <div class="row" style="margin-top:14px"><button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn" style="flex:1" id="spgo" onclick="stoPickGo()">Add selected</button></div>`);
+   <div class="row stofoot"><button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn" style="flex:1" id="spgo" onclick="stoPickGo()">Add selected</button></div>`);
+  stoSheet();
 }
 async function stoPickGo(){
   const ids=[...document.querySelectorAll('.spk:checked')].map(e=>e.value);if(!ids.length)return toast('Select at least one series');
@@ -191,4 +196,22 @@ uploadCover=async function(sid,inp){
   }catch(e){toast('Could not save the photo')}
 };
 {const _rc=removeCover;removeCover=async function(sid){await _rc(sid);stoCoverSync(sid,'')}}
+function stoSheet(){const b=document.querySelector('#layer .box');if(b)b.classList.add('stoform')}
+async function stoUnlock(mobile){
+  SF.q=mobile;await tab('students');
+  const st=(ST||[]).find(x=>x.mobile===mobile);
+  if(st)manage(st.id);else toast('No student with '+mobile+' yet — ask them to tap “Request access” on the website');
+}
+function stoReply(code){
+  const o=SS.orders.find(x=>x.code===code);if(!o)return;
+  const site=new URL('index.html',location.href).href;
+  copyText(`Hi ${o.name}, your payment for "${o.item_title}" is verified ✅ (order ${o.code}).\n\n1) Open: ${site}\n2) Tap "Request access" and register with ${o.mobile}\n3) Sign in with your access code: ______\n\nAll the best for your preparation! 💪`);
+}
+// Store in the bottom bar (phone), with the number of orders to check
+DOCKX.splice(DOCKX.indexOf('content')+1,0,'store');
+{const _dh=dockHtml;dockHtml=function(){return _dh().replace(/(data-k="store"[^>]*>[\s\S]*?<span>)[^<]*(<\/span>)/,'$1Store$2')}}
+{const _b=badgeOf;badgeOf=function(k){return k==='store'?(SS.orders||[]).filter(o=>o.status==='pending').length:_b(k)}}
+{const _nb=navBadges;navBadges=function(){_nb();const n=badgeOf('store');for(const id of ['nb_store','nd_store']){const e=document.getElementById(id);if(e){e.textContent=n?(n>99?'99+':n):'';e.classList.toggle('on',!!n)}}}}
+{const d=document.getElementById('adock');if(d)d.innerHTML=dockHtml()}
+setTimeout(async()=>{if(!PW||SS.orders.length)return;const r=await ASTO('get');if(r.ok){SS=Object.assign(SS,{settings:r.settings||{},items:r.items||[],orders:r.orders||[]});navBadges()}},4000);
 ;(window.__p=window.__p||{})['admin12']=1;
