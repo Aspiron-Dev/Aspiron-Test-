@@ -37,7 +37,7 @@ function stoDraw(){
    ${SS.items.map((x,i)=>`<div class="card" style="display:flex;gap:12px;align-items:center;margin-bottom:10px">${x.image?`<img src="${esc(x.image)}" alt="" style="width:64px;height:40px;object-fit:cover;border-radius:8px;flex:none">`:''}<div style="flex:1;min-width:0"><b>${esc(x.title)}</b> ${x.active?'':'<span class="chip">Hidden</span>'}
      <div class="sm mut">₹${x.price}${x.mrp?` <s>₹${x.mrp}</s>`:''} · ${(x.features||[]).length} features${x.series_id?' · unlocks: '+esc((CA.series.find(z=>z.id===x.series_id)||{}).title||'series'):''}</div></div>
      <button class="btn ghost sm" onclick="stoEdit(${i})">Edit</button></div>`).join('')}
-   <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="stoPick()">⚡ Add from your series</button><button class="btn ghost" onclick="stoEdit(-1)">➕ Add manually</button></div>
+   <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" onclick="stoPick()">⚡ Add from your series</button><button class="btn ghost" onclick="stoEdit(-1)">➕ Add manually</button>${SS.items.some(x=>x.series_id)?'<button class="btn ghost" id="stors" onclick="stoResync(this)">🔄 Update all from series</button>':''}</div>
    <div class="h2s">💳 Payment details</div>
    <div class="card"><p class="sm mut" style="margin-top:0">Shown on the store page. Only this panel (admin password) can change them.</p>
     <div class="g2"><div><label class="l">UPI ID</label><input type="text" id="s_upi" value="${esc(s.upi||'')}" autocapitalize="off" spellcheck="false"></div>
@@ -103,14 +103,24 @@ async function stoImgUp(inp){
   const f=inp.files[0];if(!f)return;
   try{const d=await compressDataUrl(await fileToUrl(f),900,.78);if(!d)throw 0;stoImgSet(d)}catch(e){toast('Could not read the photo')}
 }
-async function stoCover(sid){const r=await ASTO('series_cover',{id:sid});return r.ok?r.cover:''}
+async function stoCover(sid){
+  try{
+    const r=await fetch(API+'/rest/v1/rpc/cbt_admin_series_cover',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_pw:PW,p_series:sid})});
+    if(r.ok){const j=await r.json();if(j.ok&&j.cover)return j.cover}
+  }catch(e){}
+  const r=await ASTO('series_cover',{id:sid});return r.ok?r.cover:'';
+}
 function stoAuto(s){
-  const n=CA.tests.filter(t=>t.series_id===s.id).length,lines=String(s.description||'').split(/\n|•|•/).map(x=>x.replace(/^[\s\-*–]+/,'').trim()).filter(x=>x&&x.length<=90);
-  const f=[];if(n)f.push(`${n} test${n>1?'s':''} in this series`);
-  for(const l of lines.slice(lines.length>1?1:0,5))if(!f.includes(l))f.push(l);
-  f.push('All-India rank after every test','Detailed solutions & analysis');
-  return{title:s.title,subtitle:lines.length>1?lines[0].slice(0,200):String(s.description||'').trim().slice(0,200),
-    price:parseInt(String(s.price_label||'').replace(/[^\d]/g,''),10)||'',features:f.slice(0,8),series_id:s.id};
+  const n=CA.tests.filter(t=>t.series_id===s.id).length,d=String(s.description||'').replace(/\r/g,'').trim();
+  // split the description into short points: lines, bullets, | ; and sentences
+  let parts=d.replace(/([.!?])\s+(?=[A-Z0-9₹])/g,'$1\n').split(/\n+|[•\u2022|;]/).map(x=>x.replace(/^[\s\-*–>✓✔]+/,'').replace(/\s+/g,' ').replace(/\.$/,'').trim()).filter(x=>x.length>1);
+  parts=parts.map(x=>x.length>110?x.slice(0,107).replace(/\s\S*$/,'')+'…':x);
+  const isList=/^[\s•\u2022\-*✓✔]/.test(d),sub=!isList&&parts.length?parts.shift():'',f=[];
+  if(n)f.push(`${n} test${n>1?'s':''} in this series`);
+  for(const l of parts)if(f.length<6&&!f.some(x=>x.toLowerCase()===l.toLowerCase()))f.push(l);
+  for(const l of ['All-India rank after every test','Detailed solutions & analysis'])if(f.length<8)f.push(l);
+  const pm=String(s.price_label||'').replace(/,/g,'').match(/\d+/);
+  return{title:s.title,subtitle:sub.slice(0,200),price:pm?parseInt(pm[0],10):'',features:f,series_id:s.id};
 }
 async function stoFill(){
   const sid=$('#p_ser').value,s=CA.series.find(x=>x.id===sid);if(!s)return toast('Choose the series first');
@@ -134,10 +144,22 @@ async function stoPickGo(){
   const b=$('#spgo');b.disabled=true;let n=0,ord=SS.items.length;
   for(const id of ids){
     const s=CA.series.find(x=>x.id===id);b.textContent=`Adding ${++n}/${ids.length}…`;
-    const a=stoAuto(s),image=s.has_cover?await stoCover(id):'';
+    const a=stoAuto(s),image=await stoCover(id);
     const r=await ASTO('save_item',{title:a.title,subtitle:a.subtitle,price:pr[id],mrp:'',badge:'',color:SCOL[(ord)%SCOL.length][0],series_id:id,sort_order:ord++,active:true,features:a.features,image});
     if(!r.ok){b.disabled=false;b.textContent='Try again';return toast('Could not add '+s.title)}
   }
   closeModal();toast(`✓ ${ids.length} series added to the store`);loadStore();
+}
+// re-fill name, description, features and photo of every store item linked to a series (price, MRP, badge, colour stay)
+async function stoResync(b){
+  if(!CA.series.length)await loadCatalog();
+  const L=SS.items.filter(x=>x.series_id&&CA.series.some(s=>s.id===x.series_id));if(!L.length)return toast('No store item is linked to a series');
+  b.disabled=true;let n=0,img=0;
+  for(const x of L){
+    b.textContent=`Updating ${++n}/${L.length}…`;const s=CA.series.find(z=>z.id===x.series_id),a=stoAuto(s),c=await stoCover(s.id);if(c)img++;
+    const r=await ASTO('save_item',{id:x.id,title:a.title,subtitle:a.subtitle,price:x.price,mrp:x.mrp==null?'':x.mrp,badge:x.badge||'',color:x.color||'blue',series_id:x.series_id,sort_order:x.sort_order||0,active:x.active!==false,features:a.features,image:c||x.image||''});
+    if(!r.ok){b.disabled=false;b.textContent='Try again';return toast('Could not update '+x.title)}
+  }
+  toast(`✓ ${L.length} updated · photos found for ${img}`+(img<L.length?' — upload the rest in Edit':''));loadStore();
 }
 ;(window.__p=window.__p||{})['admin12']=1;

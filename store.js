@@ -24,23 +24,47 @@ async function copy(t,what){
 const tgUser=()=>String(ST.settings.telegram||'').replace(/^@/,'');
 
 async function load(){
-  if(CFG.SITE_NAME)$('#sname').textContent=CFG.SITE_NAME;
+  const nm=CFG.SITE_NAME||'CBT Test Series';$('#sname').textContent=nm;$('#fname').textContent=nm;
   const r=await rpc('cbt_store');
   if(!r.ok){$('#list').innerHTML=`<div class="card empty"><b>${r.error==='network'?'No internet':'Store is opening soon'}</b><p class="sm">${r.error==='network'?'Check your connection and refresh.':'Please check back in a little while.'}</p></div>`;return}
-  ST=r;const tg=tgUser();if(tg)$('#ftg').href='https://t.me/'+encodeURIComponent(tg);
+  ST=r;const tg=tgUser();
+  if(tg){const u='https://t.me/'+encodeURIComponent(tg);$('#ftg').href=u;$('#fab').href=u}else $('#fab').remove();
+  if(ST.settings.payee)$('#spayee').textContent=ST.settings.payee;
   const L=ST.items||[];
   if(!L.length){$('#list').innerHTML=`<div class="card empty"><b>New test series coming soon</b><p class="sm">Please check back in a little while.</p></div>`;return}
+  $('#lcount').textContent=`${L.length} test series · pay with any UPI app`;
   $('#list').innerHTML=L.map(cardHtml).join('');
   const h=location.hash.match(/p=([0-9a-f-]{36})/);
   if(h){const c=document.getElementById('p_'+h[1]);if(c){c.classList.add('hl');setTimeout(()=>c.scrollIntoView({behavior:'smooth',block:'center'}),200)}}
 }
+const okImg=u=>/^(data:image\/|https:\/\/)/.test(u||'');
+const offPct=x=>x.mrp&&x.mrp>x.price?Math.round((1-x.price/x.mrp)*100):0;
+function mediaHtml(x,tag){
+  const col=COLORS.includes(x.color)?x.color:'blue';
+  return okImg(x.image)?`<img src="${esc(x.image)}" alt="${esc(x.title)}" loading="lazy">`
+    :`<div class="ph c-${col}"><small>${esc((CFG.SITE_NAME||'TEST SERIES').toUpperCase())}</small><b>${esc(x.title)}</b></div>`;
+}
+function priceHtml(x){
+  const off=offPct(x);
+  return `<div class="price"><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s>`:''}</div>${off?`<div class="save">You save ${inr(x.mrp-x.price)} (${off}% off)</div>`:''}`;
+}
 function cardHtml(x){
-  const off=x.mrp&&x.mrp>x.price?Math.round((1-x.price/x.mrp)*100):0,col=COLORS.includes(x.color)?x.color:'blue';
-  const img=/^(data:image\/|https:\/\/)/.test(x.image||'')?`<img class="cimg" src="${esc(x.image)}" alt="${esc(x.title)}" loading="lazy">`:'';
-  return `<div class="card" id="p_${esc(x.id)}">${img}<div class="ctop c-${col}">${x.badge?`<span class="badge">${esc(x.badge)}</span>`:''}<h3>${esc(x.title)}</h3>${x.subtitle?`<p>${esc(x.subtitle)}</p>`:''}</div>
-   <div class="cbody"><div class="price"><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s><em>${off}% OFF</em>`:''}</div>
-   ${(x.features||[]).length?`<ul class="f">${x.features.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:'<div style="flex:1"></div>'}
-   <div class="row"><button class="btn soft" data-share="${esc(x.id)}" aria-label="Share">↗ Share</button><button class="btn" style="flex:1" data-buy="${esc(x.id)}">Buy now</button></div></div></div>`;
+  const F=x.features||[],off=offPct(x),show=F.slice(0,4);
+  return `<div class="card" id="p_${esc(x.id)}"><div class="media" data-view="${esc(x.id)}">${x.badge?`<span class="badge">${esc(x.badge)}</span>`:''}${off?`<span class="off">${off}% OFF</span>`:''}${mediaHtml(x)}</div>
+   <div class="cbody"><h3>${esc(x.title)}</h3>${x.subtitle?`<div class="sub">${esc(x.subtitle)}</div>`:''}
+   <div>${priceHtml(x)}</div>
+   ${show.length?`<ul class="f">${show.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:'<div style="flex:1"></div>'}
+   ${F.length>4?`<button class="more" data-view="${esc(x.id)}">+ ${F.length-4} more · View details</button>`:''}
+   <div class="row"><button class="btn soft icon" data-share="${esc(x.id)}" aria-label="Share" title="Share">↗</button><button class="btn" style="flex:1" data-buy="${esc(x.id)}">Buy now</button></div></div></div>`;
+}
+function view(id){
+  IT=ST.items.find(i=>i.id===id);if(!IT)return;const x=IT;
+  let ov=$('.ov');if(!ov){ov=document.createElement('div');ov.className='ov';ov.addEventListener('click',e=>{if(e.target===ov)closeSheet()});document.body.appendChild(ov);document.body.style.overflow='hidden'}
+  ov.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="dimg">${mediaHtml(x)}</div>
+   <div class="shd"><div class="grow"><b style="white-space:normal;font-size:19px">${esc(x.title)}</b>${x.subtitle?`<span class="sm mut">${esc(x.subtitle)}</span>`:''}</div><button class="x" data-close aria-label="Close">✕</button></div>
+   ${priceHtml(x)}
+   ${(x.features||[]).length?`<h4 style="margin:16px 0 10px">What you get</h4><ul class="f">${x.features.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:''}
+   <div class="row" style="margin-top:18px"><button class="btn soft icon" data-share="${esc(x.id)}" aria-label="Share">↗</button><button class="btn" style="flex:1" data-buy="${esc(x.id)}">Buy now · ${inr(x.price)}</button></div></div>`;
 }
 async function share(id){
   const x=ST.items.find(i=>i.id===id);if(!x)return;
@@ -122,8 +146,9 @@ function doneStep(){
    <p class="sm mut" style="text-align:center;margin-top:10px">Keep your order code <b class="code">${esc(ORD.code)}</b> for any help.</p>`);
 }
 document.addEventListener('click',e=>{
-  const t=e.target.closest('button,a');if(!t)return;
-  if(t.dataset.buy)buy(t.dataset.buy);
+  const t=e.target.closest('button,a,[data-view]');if(!t)return;
+  if(t.dataset.buy){closeSheet();buy(t.dataset.buy)}
+  else if(t.dataset.view)view(t.dataset.view);
   else if(t.dataset.share)share(t.dataset.share);
   else if('close' in t.dataset)closeSheet();
   else if('redo' in t.dataset){e.preventDefault();localStorage.removeItem('store_ord');buy(IT.id)}
