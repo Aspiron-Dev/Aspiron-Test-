@@ -22,6 +22,7 @@ async function loadStore(){
   const r=await ASTO('get');
   if(!r.ok){$('#stobody').innerHTML=`<div class="card empty"><b>${r.error==='missing'?'One-time setup needed':'Could not load'}</b><p class="sm">${r.error==='missing'?'Open Supabase → SQL Editor, paste <b>supabase_v13_store.sql</b> and press Run once. Then refresh.':'Check your internet and try again.'}</p></div>`;return}
   SS=Object.assign(SS,{settings:r.settings||{},items:r.items||[],orders:r.orders||[]});stoDraw();navBadges();
+  if(SS.items.length&&!('image' in SS.items[0]))stoNeedFix('Photos are switched off in the database.');
 }
 function stoDraw(){
   const b=$('#stobody');if(!b)return;const s=SS.settings,O=SS.orders,pend=O.filter(o=>o.status==='pending').length;
@@ -92,8 +93,14 @@ async function stoSave(i){
     badge:$('#p_b').value.trim(),color:$('#p_c').value,series_id:$('#p_ser').value,sort_order:parseInt($('#p_o').value,10)||0,active:$('#p_a').checked,
     features:$('#p_f').value.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,20),image:STOIMG};
   if(!d.title)return toast('Enter the name');if(!(d.price>0))return toast('Enter the price');
-  const b=$('#p_go');b.disabled=true;const r=await ASTO('save_item',d);b.disabled=false;
-  if(!r.ok)return toast('Could not save');closeModal();toast('Saved ✓');loadStore();
+  const b=$('#p_go');b.disabled=true;b.textContent='Saving…';
+  if(d.image&&d.image.length>700000){try{d.image=await compressDataUrl(d.image,800,.7)||d.image}catch(e){}}
+  const r=await ASTO('save_item',d);b.disabled=false;b.textContent='Save';
+  if(!r.ok)return toast('Could not save');
+  closeModal();await loadStore();
+  // make sure the photo really reached the database
+  const it=SS.items.find(x=>x.id===(r.id||d.id));
+  if(d.image&&it&&!it.image)stoNeedFix('The photo was not saved.');else toast('Saved ✓');
 }
 async function stoDel(i){
   const x=SS.items[i];if(!confirm(`Delete "${x.title}" from the store? Old orders stay.`))return;
@@ -214,4 +221,10 @@ DOCKX.splice(DOCKX.indexOf('content')+1,0,'store');
 {const _nb=navBadges;navBadges=function(){_nb();const n=badgeOf('store');for(const id of ['nb_store','nd_store']){const e=document.getElementById(id);if(e){e.textContent=n?(n>99?'99+':n):'';e.classList.toggle('on',!!n)}}}}
 {const d=document.getElementById('adock');if(d)d.innerHTML=dockHtml()}
 setTimeout(async()=>{if(!PW||SS.orders.length)return;const r=await ASTO('get');if(r.ok){SS=Object.assign(SS,{settings:r.settings||{},items:r.items||[],orders:r.orders||[]});navBadges()}},4000);
+function stoNeedFix(why){
+  const b=$('#stobody');if(!b||$('#stofix'))return;
+  b.insertAdjacentHTML('afterbegin',`<div class="card" id="stofix" style="border:2px solid var(--warn);background:var(--warnSoft)"><b>⚠️ ${esc(why)} One-time fix needed</b>
+   <p class="sm" style="margin:6px 0 0">Open Supabase → SQL Editor → New query, paste the file <b>supabase_v17_store_fix.sql</b> and press Run. Then refresh this page and save the photo again.</p></div>`);
+  b.scrollIntoView({behavior:'smooth',block:'start'});
+}
 ;(window.__p=window.__p||{})['admin12']=1;

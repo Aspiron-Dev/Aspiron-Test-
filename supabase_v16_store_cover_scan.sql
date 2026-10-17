@@ -25,7 +25,7 @@ begin
   if p_set is not null then
     if p_set = '' then
       delete from public.cbt_store_covers where series_id = p_series;
-    elsif p_set ~ '^data:image/' and length(p_set) <= 600000 then
+    elsif p_set ~ '^data:image/' and length(p_set) <= 1500000 then
       insert into public.cbt_store_covers (series_id, image) values (p_series, p_set)
         on conflict (series_id) do update set image = excluded.image, updated_at = now();
       update public.cbt_store_items set image = p_set where series_id = p_series;
