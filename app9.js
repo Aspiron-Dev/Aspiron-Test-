@@ -59,7 +59,7 @@ function viewSeries(id){
   if(hl){const st=tStat(hl,liveIds());
     o+=`<div class="card svhl ${st}"><div class="grow"><div class="svhlk">${st==='live'?'<span class="liveb"><i></i>LIVE NOW</span>':st==='prog'?'<span class="chip warn">In progress</span>':`<span class="chip pri">${ic('calendar',12)} Next test</span>`}</div>
      <b>${esc(hl.title)}</b><div class="sm mut">${hl.questions} questions · ${hl.duration} min${st==='wait'?' · '+esc(fmtWhen(hl.opens_at)):''}</div></div>
-     ${st==='wait'?alBtn(hl.id):`<button class="btn sm" onclick="openTest('${hl.id}')">${st==='prog'?'Resume':'Start'} ${ic('right',14)}</button>`}</div>`;}
+     ${st==='wait'?(typeof alBtn==='function'?alBtn(hl.id):''):`<button class="btn sm" onclick="openTest('${hl.id}')">${st==='prog'?'Resume':'Start'} ${ic('right',14)}</button>`}</div>`;}
   o+=filesBlock(s);
   if(folders.length){
     o+=`<div class="h2s">${ic('folder',20)} Folders <span class="n">${folders.length}</span></div><div class="fgrid">${folders.map(f=>{
