@@ -207,7 +207,7 @@ function lbHtml(r){
   return `${r.my_rank?`<div class="card rankc"><div class="rk"><span class="sm">Your rank</span><b data-cu="${r.my_rank}">${r.my_rank}</b><span class="sm">of ${r.total}</span></div>
     <div class="rkr">${solo?'':`<div><b data-cu="${r.percentile}">${r.percentile}</b><span>Percentile</span></div>`}<div><b>${r.my_score}</b><span>Your best</span></div><div><b>${r.avg}</b><span>Class avg</span></div><div><b>${r.top_score}</b><span>Topper</span></div></div>${solo?`<div class="rkn">You are the first to attempt this test. Rank will update as others attempt it.</div>`:''}</div>`:''}
    <div class="card" style="margin-top:12px"><div class="row" style="justify-content:space-between;margin-bottom:6px"><b>${ic('trophy')} Top ${Math.min(10,r.top.length)}</b><span class="sm mut">Best score per student</span></div>
-   ${r.top.map(x=>`<div class="lb ${x.me?'me':''}"><span class="n ${x.rank<=3?'m'+x.rank:''}">${x.rank}</span><span style="flex:1">${esc(x.name)}${x.me?' (you)':''}</span><b>${x.score}</b></div>`).join('')}
+   ${r.top.map(x=>`<div class="lb ${x.me?'me':''}"><span class="n ${x.rank<=3?'m'+x.rank:''}">${x.rank}</span><span style="flex:1">${esc(x.name)}${x.me?' (you)':''}${x.cheat?'<span class="chtag">🚩 Cheating</span>':''}</span><b>${x.score}</b></div>`).join('')}
    ${r.my_rank&&r.my_rank>10?`<div class="lb me"><span class="n">${r.my_rank}</span><span style="flex:1">You</span><b>${r.my_score}</b></div>`:''}</div>
    ${solo?'':`<div class="card" style="margin-top:12px"><b>Score distribution</b>${hist}</div>`}`;
 }
