@@ -174,9 +174,25 @@ async function bulkAcc(on){
 }
 // website link for messages to students: the short link if set, else the full address
 const stuLink=()=>/^https:\/\//.test(CFG.SHORT_URL||'')?CFG.SHORT_URL:siteUrl();
-function codeMsg(name,mobile,code){
-  return `Hi ${name}, your access to ${CFG.SITE_NAME||'the test series'} is approved.\n\nWebsite: ${stuLink()}\nMobile: ${mobile}\nAccess code: ${code}\n\nPlease keep this code private. It works on up to 2 devices.`;
+/* message sent to a student with their login (WhatsApp shows *text* in bold, _text_ in italics) */
+const MSGLINE='━━━━━━━━━━━━━━━━';
+function stuMsg({name,title,order,mobile,code,keep}){
+  const tg=/^https:\/\/t\.me\//.test(CFG.TG_CHANNEL||'')?CFG.TG_CHANNEL:'';
+  const c=code?code.slice(0,4)+'-'+code.slice(4):'';
+  return [`Hi *${name}* 👋`,'',
+    title?`Your payment for *"${title}"* is verified ✅`:`Your access to *${CFG.SITE_NAME||'the test series'}* is approved ✅`,
+    ...(order?[`🧾 Order: *${order}*`]:[]),
+    MSGLINE,
+    ...(tg?['📢 *Join our Telegram channel*',tg,MSGLINE]:[]),
+    '📱 *Open website*',stuLink(),'',
+    '🔑 *Login with*',`Mobile: *${mobile}*`,code?`Access code: *${c}*`:keep?'Access code: *your current code*':'Access code: ______',
+    MSGLINE,
+    title?'🔓 Your series is unlocked. All the best! 💪':'All the best for your preparation! 💪',
+    '_Keep your code private. It works on up to 2 phones._'].join('\n');
 }
+// preview of a WhatsApp message in the admin panel (bold / italics like on the phone)
+const msgHtml=m=>esc(m).replace(/\*([^*\n]+)\*/g,'<b>$1</b>').replace(/(^|\s)_([^_\n]+)_(?=\s|$)/g,'$1<i>$2</i>');
+function codeMsg(name,mobile,code){return stuMsg({name,mobile,code})}
 function showCode(name,mobile,code,title){
   const msg=codeMsg(name,mobile,code);
   window._cm=msg;
