@@ -223,8 +223,7 @@ async function stoUnlock(mobile){
 }
 function stoReply(code){
   const o=SS.orders.find(x=>x.code===code);if(!o)return;
-  const site=stuLink();
-  copyText(`Hi ${o.name}, your payment for "${o.item_title}" is verified ✅ (order ${o.code}).\n\n1) Open: ${site}\n2) Tap "Request access" and register with ${o.mobile}\n3) Sign in with your access code: ______\n\nAll the best for your preparation! 💪`);
+  copyText(stuMsg({name:o.name,title:o.item_title,order:o.code,mobile:o.mobile}));
 }
 // Store in the bottom bar (phone), with the number of orders to check
 DOCKX.splice(DOCKX.indexOf('content')+1,0,'store');
@@ -311,14 +310,14 @@ async function stoApprove(code,btn){
   r=await ASTO('order_status',{code,status:'paid'});if(r.ok){o.status='paid';done.push('Order marked paid')}
   {const l=await A('students');if(l.ok)ST=l.students}
   navBadges();stoDraw();
-  const site=stuLink(),c=acc?acc.slice(0,4)+'-'+acc.slice(4):'';
-  const msg=`Hi ${o.name} 👋\nYour payment for "${o.item_title}" is verified ✅ (order ${o.code}).\n\n📱 Open: ${site}\n🔑 Login\nMobile: ${o.mobile}\n${acc?`Access code: ${c}`:'Access code: use your current code'}\n\nYour series is unlocked. All the best! 💪`;
+  const c=acc?acc.slice(0,4)+'-'+acc.slice(4):'';
+  const msg=stuMsg({name:o.name,title:o.item_title,order:o.code,mobile:o.mobile,code:acc,keep:!acc});
   window._stoMsg=msg;
   modal(`<div class="stohd"><h2>✅ Done</h2><button class="iconbtn" onclick="closeModal()" aria-label="Close">✕</button></div>
    <div class="sm mut">${esc(o.name)} · ${esc(o.mobile)} · ${esc(o.code)}</div>
    <div style="margin:10px 0">${done.map(d=>`<div class="sm">✓ ${esc(d)}</div>`).join('')}</div>
    ${acc?`<div class="big-code">${esc(c)}</div><p class="sm mut" style="margin:0 0 10px">Send this code now — for safety it cannot be shown again.</p>`:''}
-   <label class="l">Message for the student</label><div class="sm" style="white-space:pre-wrap;background:var(--surface2);border-radius:12px;padding:10px">${esc(msg)}</div>
+   <label class="l">Message for the student</label><div class="sm" style="white-space:pre-wrap;background:var(--surface2);border-radius:12px;padding:10px">${msgHtml(msg)}</div>
    <div class="row stofoot"><button class="btn" style="flex:1" onclick="copyText(window._stoMsg)">📋 Copy message</button><a class="btn soft" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/91${esc(o.mobile)}?text=${encodeURIComponent(msg)}">WhatsApp</a></div>`);
   stoSheet();
 }
