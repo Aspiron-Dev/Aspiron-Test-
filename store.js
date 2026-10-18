@@ -54,7 +54,7 @@ function priceHtml(x){
 }
 function cardHtml(x){
   const F=x.features||[],off=offPct(x),show=F.slice(0,4);
-  return `<div class="card" id="p_${esc(x.id)}"><div class="media" data-view="${esc(x.id)}">${x.badge?`<span class="badge">${esc(x.badge)}</span>`:''}${off?`<span class="off">${off}% OFF</span>`:''}${mediaHtml(x)}</div>
+  return `<div class="card" id="p_${esc(x.id)}"><div class="media" data-view="${esc(x.id)}">${x.badge?`<span class="badge">${esc(x.badge)}</span>`:''}${off?`<span class="off">${off}% OFF</span>`:''}${mediaHtml(x)}<span data-rvb="${esc(x.id)}">${rvBadge(x.id)}</span></div>
    <div class="cbody"><h3>${esc(x.title)}</h3>${x.subtitle?`<div class="sub">${esc(x.subtitle)}</div>`:''}<div data-rvslot="${esc(x.id)}">${rvLine(x.id)}</div>
    <div>${priceHtml(x)}</div>
    ${show.length?`<ul class="f">${show.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:'<div style="flex:1"></div>'}
@@ -188,6 +188,9 @@ document.addEventListener('click',e=>{
   else if(t.dataset.view)view(t.dataset.view);
   else if(t.dataset.sch)schedule(t.dataset.sch);
   else if(t.dataset.rv)reviews(t.dataset.rv);
+  else if('rvf' in t.dataset){RVF=t.dataset.rvf;RVN=6;rvAllDraw()}
+  else if('rvmore' in t.dataset){RVN+=10;rvAllDraw()}
+  else if('rvjump' in t.dataset){const r=$('#reviews');if(r)r.scrollIntoView({behavior:'smooth',block:'start'})}
   else if(t.dataset.share)share(t.dataset.share);
   else if('close' in t.dataset)closeSheet();
   else if('redo' in t.dataset){e.preventDefault();localStorage.removeItem('store_ord');buy(IT.id)}
@@ -236,23 +239,33 @@ async function schedule(id){
 let RV={};
 const stars=(n,cls)=>`<span class="stars ${cls||''}" aria-label="${n} out of 5 stars">${[1,2,3,4,5].map(i=>`<i class="${i<=Math.round(n)?'on':''}">★</i>`).join('')}</span>`;
 const rvWhen=ms=>new Date(ms).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+// on each card: a highlighted rating strip with a line from a review, so students notice it
+const clip=(t,n)=>{t=String(t||'').replace(/\s+/g,' ').trim();return t.length>n?t.slice(0,n-1).trim()+'…':t};
 function rvLine(id){
   const r=RV[id];if(!r||!r.count)return '';
-  return `<button class="rvline" data-rv="${esc(id)}">${stars(r.avg)}<b>${Number(r.avg).toFixed(1)}</b><span>· ${r.count} review${r.count>1?'s':''}</span></button>`;
+  const q=(r.list||[]).find(x=>x.body&&x.rating>=4)||(r.list||[]).find(x=>x.body);
+  return `<button class="rvstrip" data-rv="${esc(id)}"><div class="rvs1">${stars(r.avg,'big')}<b>${Number(r.avg).toFixed(1)}</b><span>${r.count} student review${r.count>1?'s':''}</span><em>Read ›</em></div>
+   ${q?`<div class="rvq">“${esc(clip(q.body,110))}” <span>— ${esc(q.name||'Student')}</span></div>`:''}</button>`;
 }
-function rvItem(x){
+// on the card photo
+function rvBadge(id){const r=RV[id];return r&&r.count?`<span class="rvbadge"><i>★</i> ${Number(r.avg).toFixed(1)} <small>(${r.count})</small></span>`:''}
+function rvItem(x,withTitle){
   const ini=esc((String(x.name||'S').trim()[0]||'S').toUpperCase());
   return `<div class="rv"><div class="rvt"><span class="rva">${/^data:image\//.test(x.photo||'')?`<img src="${esc(x.photo)}" alt="">`:ini}</span>
     <div class="grow"><b>${esc(x.name||'Student')}</b><div class="rvm">${stars(x.rating)}<span>${rvWhen(x.at)}</span></div></div><span class="vb" title="Series unlocked for this student">✔ Verified student</span></div>
+    ${withTitle&&x.title?`<div class="rvon">on <b>${esc(x.title)}</b></div>`:''}
     ${x.body?`<p>${esc(x.body)}</p>`:''}${x.reply?`<div class="rvr"><b>Reply from ${esc(CFG.SITE_NAME||'the team')}</b><p>${esc(x.reply)}</p></div>`:''}</div>`;
+}
+function rvSum(avg,count,S){
+  return `<div class="rvsum"><div class="rvbig"><b>${Number(avg).toFixed(1)}</b>${stars(avg)}<span>${count} review${count>1?'s':''}</span></div>
+    <div class="rvbars">${[5,4,3,2,1].map((n,i)=>`<div><span>${n}★</span><i><em style="width:${count?Math.round((S[i]||0)*100/count):0}%"></em></i><span>${S[i]||0}</span></div>`).join('')}</div></div>`;
 }
 function rvSection(id,max){
   const r=RV[id];if(!r||!r.count)return '';
   const L=r.list||[],S=r.stars||[];
   return `<h4 style="margin:18px 0 10px">Ratings &amp; reviews</h4>
-   <div class="rvsum"><div class="rvbig"><b>${Number(r.avg).toFixed(1)}</b>${stars(r.avg)}<span>${r.count} review${r.count>1?'s':''}</span></div>
-    <div class="rvbars">${[5,4,3,2,1].map((n,i)=>`<div><span>${n}★</span><i><em style="width:${r.count?Math.round((S[i]||0)*100/r.count):0}%"></em></i><span>${S[i]||0}</span></div>`).join('')}</div></div>
-   ${L.slice(0,max||L.length).map(rvItem).join('')}
+   ${rvSum(r.avg,r.count,S)}
+   ${L.slice(0,max||L.length).map(x=>rvItem(x)).join('')}
    ${max&&L.length>max?`<button class="btn soft block" style="margin-top:6px" data-rv="${esc(id)}">See all ${r.count} reviews</button>`:''}`;
 }
 async function loadRv(){
@@ -260,6 +273,31 @@ async function loadRv(){
   RV={};(r.items||[]).forEach(x=>RV[x.id]=x);
   document.querySelectorAll('[data-rvslot]').forEach(e=>e.innerHTML=rvLine(e.dataset.rvslot));
   document.querySelectorAll('[data-rvsec]').forEach(e=>e.innerHTML=rvSection(e.dataset.rvsec,3));
+  document.querySelectorAll('[data-rvb]').forEach(e=>e.innerHTML=rvBadge(e.dataset.rvb));
+  rvAllDraw();
+}
+/* ---------- bottom of the page: every review, all series ---------- */
+let RVF='',RVN=6;
+function rvAll(){
+  const L=[];for(const x of ST.items){const r=RV[x.id];if(r&&r.list)r.list.forEach(v=>L.push(Object.assign({item:x.id,title:x.title},v)))}
+  return L.sort((a,b)=>(b.pinned-a.pinned)||(b.at-a.at));
+}
+function rvAllDraw(){
+  const sec=$('#reviews'),j=$('#rvjump');if(!sec)return;
+  const its=ST.items.filter(x=>RV[x.id]&&RV[x.id].count),total=its.reduce((a,x)=>a+RV[x.id].count,0);
+  if(!total){sec.hidden=true;if(j)j.hidden=true;return}
+  const avg=its.reduce((a,x)=>a+RV[x.id].avg*RV[x.id].count,0)/total;
+  const S=[0,1,2,3,4].map(i=>its.reduce((a,x)=>a+((RV[x.id].stars||[])[i]||0),0));
+  if(j){j.hidden=false;j.innerHTML=`${stars(avg)}<b>${avg.toFixed(1)}</b><span>· ${total} student review${total>1?'s':''}</span><u>Read ↓</u>`}
+  if(RVF&&!its.some(x=>x.id===RVF))RVF='';
+  const L=rvAll().filter(v=>!RVF||v.item===RVF),show=L.slice(0,RVN);
+  sec.hidden=false;
+  sec.innerHTML=`<h2>⭐ What our students say</h2>
+   <p class="sm mut" style="margin:-6px 0 12px">Real reviews from students whose test series is unlocked.</p>
+   ${rvSum(avg,total,S)}
+   ${its.length>1?`<div class="rvchips">${[['','All'],...its.map(x=>[x.id,x.title])].map(([k,l])=>`<button class="${RVF===k?'on':''}" data-rvf="${esc(k)}">${esc(l)}${k?` · ${RV[k].count}`:''}</button>`).join('')}</div>`:''}
+   <div class="rvall">${show.map(v=>rvItem(v,!RVF&&its.length>1)).join('')}</div>
+   ${L.length>show.length?`<button class="btn soft block" data-rvmore>Show more reviews (${L.length-show.length})</button>`:''}`;
 }
 function reviews(id){
   const x=ST.items.find(i=>i.id===id);if(!x||!RV[id])return;IT=x;
