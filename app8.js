@@ -98,7 +98,7 @@ function dashLb(b){
   return `<div class="card dlb"><div class="dlbh"><div class="dlbr"><span>Your rank</span><b>#${b.my_rank}</b><span>of ${tot}</span></div>
    <div class="grow"><div class="dlbbeat">You are ahead of <b>${beat}%</b> students</div><div class="bar"><i style="width:${beat}%"></i></div>
    <div class="dlbk"><div><b>${b.my_pct}%</b><span>Your avg</span></div><div><b>${top[0]?top[0].pct:'–'}%</b><span>Topper avg</span></div><div><b>${top[0]&&b.my_pct!=null?Math.max(0,top[0].pct-b.my_pct):'–'}%</b><span>Gap to #1</span></div></div></div></div>
-   ${top.length?`<div class="dlbl">${top.map((x,i)=>{const r=x.rank||i+1,me=x.me||r===b.my_rank;return `<div class="lb ${me?'me':''}"><span class="n ${r<=3?'m'+r:''}">${r}</span><span class="grow">${nm(x)}${me?' (you)':''}</span><b>${x.pct!=null?x.pct+'%':''}</b></div>`}).join('')}
+   ${top.length?`<div class="dlbl">${top.map((x,i)=>{const r=x.rank||i+1,me=x.me||r===b.my_rank;return `<div class="lb ${me?'me':''}"><span class="n ${r<=3?'m'+r:''}">${r}</span><span class="grow">${nm(x)}${me?' (you)':''}${x.cheat?'<span class="chtag">🚩 Cheating</span>':''}</span><b>${x.pct!=null?x.pct+'%':''}</b></div>`}).join('')}
    ${b.my_rank>top.length?`<div class="lb me"><span class="n">${b.my_rank}</span><span class="grow">You</span><b>${b.my_pct}%</b></div>`:''}</div>`:''}</div>`;
 }
 async function loadDash(){

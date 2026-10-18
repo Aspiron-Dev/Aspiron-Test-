@@ -10,11 +10,11 @@ function lbTests(){
 function lbPodium(top,me){
   const p=[top[1],top[0],top[2]];
   return `<div class="lbpod">${p.map((x,i)=>{if(!x)return '<div class="pd empty"></div>';const r=x.rank||(i===1?1:i===0?2:3);
-    return `<div class="pd p${r} ${x.me||r===me?'me':''}"><div class="pav">${lbFirst(x)[0]||'?'}${r===1?'<i>👑</i>':''}</div><b>${lbFirst(x)}${x.me||r===me?' (you)':''}</b><span>${x.pct!=null?x.pct+'%':x.score}</span><div class="pst">${r}</div></div>`}).join('')}</div>`;
+    return `<div class="pd p${r} ${x.me||r===me?'me':''}"><div class="pav">${lbFirst(x)[0]||'?'}${r===1?'<i>👑</i>':''}</div><b>${lbFirst(x)}${x.me||r===me?' (you)':''}${x.cheat?'<span class="chtag">🚩 Cheating</span>':''}</b><span>${x.pct!=null?x.pct+'%':x.score}</span><div class="pst">${r}</div></div>`}).join('')}</div>`;
 }
 function lbRows(top,me,myLine){
   const rest=top.slice(3);
-  return `${rest.length?`<div class="lbr">${rest.map((x,i)=>{const r=x.rank||i+4,m=x.me||r===me;return `<div class="lb ${m?'me':''}"><span class="n">${r}</span><span class="grow">${lbName(x)}${m?' (you)':''}</span><b>${x.pct!=null?x.pct+'%':x.score}</b></div>`}).join('')}</div>`:''}
+  return `${rest.length?`<div class="lbr">${rest.map((x,i)=>{const r=x.rank||i+4,m=x.me||r===me;return `<div class="lb ${m?'me':''}"><span class="n">${r}</span><span class="grow">${lbName(x)}${m?' (you)':''}${x.cheat?'<span class="chtag">🚩 Cheating</span>':''}</span><b>${x.pct!=null?x.pct+'%':x.score}</b></div>`}).join('')}</div>`:''}
    ${me&&me>top.length?`<div class="lbr"><div class="lb me lbmine"><span class="n">${me}</span><span class="grow">You</span><b>${myLine}</b></div></div>`:''}`;
 }
 function lbOverall(b){
