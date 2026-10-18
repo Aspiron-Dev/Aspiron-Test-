@@ -36,7 +36,7 @@ async function load(){
   if(!L.length){$('#list').innerHTML=`<div class="card empty"><b>New test series coming soon</b><p class="sm">Please check back in a little while.</p></div>`;return}
   $('#lcount').textContent=`${L.length} test series · pay with any UPI app`;
   $('#list').innerHTML=L.map(cardHtml).join('');
-  loadSch();
+  loadSch();loadRv();
   const h=location.hash.match(/p=([0-9a-f-]{36})/);
   if(h){const c=document.getElementById('p_'+h[1]);if(c){c.classList.add('hl');setTimeout(()=>c.scrollIntoView({behavior:'smooth',block:'center'}),200)}}
 }
@@ -54,7 +54,7 @@ function priceHtml(x){
 function cardHtml(x){
   const F=x.features||[],off=offPct(x),show=F.slice(0,4);
   return `<div class="card" id="p_${esc(x.id)}"><div class="media" data-view="${esc(x.id)}">${x.badge?`<span class="badge">${esc(x.badge)}</span>`:''}${off?`<span class="off">${off}% OFF</span>`:''}${mediaHtml(x)}</div>
-   <div class="cbody"><h3>${esc(x.title)}</h3>${x.subtitle?`<div class="sub">${esc(x.subtitle)}</div>`:''}
+   <div class="cbody"><h3>${esc(x.title)}</h3>${x.subtitle?`<div class="sub">${esc(x.subtitle)}</div>`:''}<div data-rvslot="${esc(x.id)}">${rvLine(x.id)}</div>
    <div>${priceHtml(x)}</div>
    ${show.length?`<ul class="f">${show.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:'<div style="flex:1"></div>'}
    ${F.length>4?`<button class="more" data-view="${esc(x.id)}">+ ${F.length-4} more · View details</button>`:''}
@@ -69,6 +69,7 @@ function view(id){
    ${priceHtml(x)}
    ${(x.features||[]).length?`<h4 style="margin:16px 0 10px">What you get</h4><ul class="f">${x.features.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:''}
    <div data-schslot="${esc(x.id)}" style="margin-top:14px">${schBtn(x.id)}</div>
+   <div data-rvsec="${esc(x.id)}">${rvSection(x.id,3)}</div>
    <div class="row" style="margin-top:12px"><button class="btn soft icon" data-share="${esc(x.id)}" aria-label="Share">↗</button><button class="btn" style="flex:1" data-buy="${esc(x.id)}">Buy now · ${inr(x.price)}</button></div></div>`;
 }
 async function share(id){
@@ -185,6 +186,7 @@ document.addEventListener('click',e=>{
   if(t.dataset.buy){closeSheet();buy(t.dataset.buy)}
   else if(t.dataset.view)view(t.dataset.view);
   else if(t.dataset.sch)schedule(t.dataset.sch);
+  else if(t.dataset.rv)reviews(t.dataset.rv);
   else if(t.dataset.share)share(t.dataset.share);
   else if('close' in t.dataset)closeSheet();
   else if('redo' in t.dataset){e.preventDefault();localStorage.removeItem('store_ord');buy(IT.id)}
@@ -228,5 +230,41 @@ async function schedule(id){
     :`<img src="${esc(r.data)}" alt="${esc(f.name)}" style="width:100%;border-radius:14px;display:block;margin-bottom:12px">`)
     +`<a class="btn soft block" style="margin-top:10px" href="${SCHURL}" download="${esc(fname)}">⬇ Download</a>
      <button class="btn block" style="margin-top:10px" data-buy="${esc(id)}">Buy this series · ${inr(x.price)}</button>`;
+}
+/* ---------- ratings & reviews (from students whose series is unlocked; managed in the admin panel) ---------- */
+let RV={};
+const stars=(n,cls)=>`<span class="stars ${cls||''}" aria-label="${n} out of 5 stars">${[1,2,3,4,5].map(i=>`<i class="${i<=Math.round(n)?'on':''}">★</i>`).join('')}</span>`;
+const rvWhen=ms=>new Date(ms).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+function rvLine(id){
+  const r=RV[id];if(!r||!r.count)return '';
+  return `<button class="rvline" data-rv="${esc(id)}">${stars(r.avg)}<b>${Number(r.avg).toFixed(1)}</b><span>· ${r.count} review${r.count>1?'s':''}</span></button>`;
+}
+function rvItem(x){
+  const ini=esc((String(x.name||'S').trim()[0]||'S').toUpperCase());
+  return `<div class="rv"><div class="rvt"><span class="rva">${/^data:image\//.test(x.photo||'')?`<img src="${esc(x.photo)}" alt="">`:ini}</span>
+    <div class="grow"><b>${esc(x.name||'Student')}</b><div class="rvm">${stars(x.rating)}<span>${rvWhen(x.at)}</span></div></div><span class="vb" title="Series unlocked for this student">✔ Verified student</span></div>
+    ${x.body?`<p>${esc(x.body)}</p>`:''}${x.reply?`<div class="rvr"><b>Reply from ${esc(CFG.SITE_NAME||'the team')}</b><p>${esc(x.reply)}</p></div>`:''}</div>`;
+}
+function rvSection(id,max){
+  const r=RV[id];if(!r||!r.count)return '';
+  const L=r.list||[],S=r.stars||[];
+  return `<h4 style="margin:18px 0 10px">Ratings &amp; reviews</h4>
+   <div class="rvsum"><div class="rvbig"><b>${Number(r.avg).toFixed(1)}</b>${stars(r.avg)}<span>${r.count} review${r.count>1?'s':''}</span></div>
+    <div class="rvbars">${[5,4,3,2,1].map((n,i)=>`<div><span>${n}★</span><i><em style="width:${r.count?Math.round((S[i]||0)*100/r.count):0}%"></em></i><span>${S[i]||0}</span></div>`).join('')}</div></div>
+   ${L.slice(0,max||L.length).map(rvItem).join('')}
+   ${max&&L.length>max?`<button class="btn soft block" style="margin-top:6px" data-rv="${esc(id)}">See all ${r.count} reviews</button>`:''}`;
+}
+async function loadRv(){
+  const r=await rpc('cbt_store_reviews');if(!r.ok)return;
+  RV={};(r.items||[]).forEach(x=>RV[x.id]=x);
+  document.querySelectorAll('[data-rvslot]').forEach(e=>e.innerHTML=rvLine(e.dataset.rvslot));
+  document.querySelectorAll('[data-rvsec]').forEach(e=>e.innerHTML=rvSection(e.dataset.rvsec,3));
+}
+function reviews(id){
+  const x=ST.items.find(i=>i.id===id);if(!x||!RV[id])return;IT=x;
+  let ov=$('.ov');if(!ov){ov=document.createElement('div');ov.className='ov';ov.addEventListener('click',e=>{if(e.target===ov)closeSheet()});document.body.appendChild(ov);document.body.style.overflow='hidden'}
+  ov.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="shd"><div class="grow"><b style="white-space:normal">Reviews</b><span class="sm mut">${esc(x.title)}</span></div><button class="x" data-close aria-label="Close">✕</button></div>
+   ${rvSection(id).replace(/^\s*<h4[^>]*>.*?<\/h4>/,'')}
+   <button class="btn block" style="margin-top:12px" data-buy="${esc(id)}">Buy this series · ${inr(x.price)}</button></div>`;
 }
 load();

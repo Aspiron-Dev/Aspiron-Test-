@@ -481,7 +481,9 @@ function installApp(){
    <ol class="isteps">${st.map((s,i)=>`<li><b class="n">${i+1}</b><span>${s[0]}</span></li>`).join('')}</ol>
    <button class="btn block" onclick="closeModal()">Got it</button>`,'inst');
 }
-init();
+// start only after every app*.js has run: starting here (mid-page) let a fast network draw the page with
+// the older screens from app1–6 before app7+ replaced them — the "old design on one refresh" bug
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 ;(window.__p=window.__p||{})['app6']=1;
 
 /* ===== v17: Settings / About / Terms sheets, bell-only notices, phone notifications ===== */
