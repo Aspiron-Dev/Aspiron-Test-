@@ -38,9 +38,13 @@ declare s public.cbt_suspensions;
 begin
   select * into s from public.cbt_suspensions where student_id = p_id and active for update;
   if not found then return; end if;
+  -- written as plain words so it works whatever type the status column has (text or enum);
   -- a student who was already blocked before the suspension stays blocked
-  update cbt_private.students set status = case when s.prev_status in ('active', 'pending', 'blocked') then s.prev_status else 'active' end
-   where id = p_id and status = 'blocked';
+  if s.prev_status = 'pending' then
+    update cbt_private.students set status = 'pending' where id = p_id and status = 'blocked';
+  elsif s.prev_status <> 'blocked' then
+    update cbt_private.students set status = 'active' where id = p_id and status = 'blocked';
+  end if;
   update public.cbt_suspensions set active = false, lifted_at = now() where student_id = p_id;
 end; $$;
 revoke all on function cbt_private.cheat_lift(uuid) from public, anon, authenticated;
