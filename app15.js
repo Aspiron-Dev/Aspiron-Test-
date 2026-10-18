@@ -41,6 +41,16 @@ async function suspCheck(b){
   if(s.ok){const d=document.getElementById('susp');if(d)d.remove();SUSP=null;CAT=null;toast('Your account is active again ✓');location.hash='#/';route();return}
   toast(errText(s));
 }
+// while the notice is on screen, check by itself every 20 s and when the app comes back to the front,
+// so a lifted suspension disappears without the student having to do anything
+let SUSPT=null;
+async function suspAuto(){
+  if(!SUSP||!AUTH||!document.getElementById('susp'))return;
+  const s=await rpc('cbt_suspension',{p_mobile:AUTH.mobile,p_code:AUTH.code},true);
+  if(s.ok&&!s.suspended){const d=document.getElementById('susp');if(d)d.remove();SUSP=null;CAT=null;toast('Your account is active again ✓');location.hash='#/';route()}
+}
+setInterval(()=>{if(SUSP&&!document.hidden)suspAuto()},20000);
+document.addEventListener('visibilitychange',()=>{if(SUSP&&!document.hidden)suspAuto()});
 function suspOut(){const d=document.getElementById('susp');if(d)d.remove();SUSP=null;AUTH=null;LS.del('cbt_auth');CAT=null;login()}
 
 /* ---------- 🚩 tag on results the admin marked as cheating ---------- */

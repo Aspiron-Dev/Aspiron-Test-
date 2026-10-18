@@ -80,14 +80,20 @@ function chSusFields(title){
 async function chSave(m,tid,rid,b){
   b.disabled=true;
   const r=await ACH('flag',{mobile:m,test_id:tid,result_id:rid,note:$('#chnote').value.trim()});
-  if(!r.ok){b.disabled=false;toast(r.error==='student'?'Student not found':'Could not save');return}
+  if(!r.ok){b.disabled=false;toast(chErr(r));return}
   const sus=$('#chsus');
   if(sus&&sus.checked&&!sus.disabled){const s=await ACH('suspend',{mobile:m,hours:$('#chdur').value,reason:$('#chmsg').value.trim()});if(!s.ok)toast('Marked, but could not suspend')}
   closeModal();await chFetch();toast('Marked as cheating');if($('#rtb'))drawRes();chDraw();
 }
-async function chUnflag(m,tid,fromRes){
-  if(!confirm('Remove the cheating tag from this result?'))return;
-  const r=await ACH('unflag',{mobile:m,test_id:tid});if(!r.ok){toast('Could not save');return}
+// in-page "are you sure?" (the browser's confirm() is switched off inside some apps, then the button seemed dead)
+function chAsk(title,text,yes,fn){
+  modal(`<h2>${title}</h2><p class="sm mut">${text}</p><div class="row" style="margin-top:14px;gap:8px"><button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn" style="flex:1" id="chyes">${yes}</button></div>`);
+  $('#chyes').onclick=async()=>{const b=$('#chyes');b.disabled=true;b.textContent='Please wait…';await fn()};
+}
+const chErr=r=>r.error==='missing'?'Run supabase_v24_cheating.sql in Supabase first':r.error==='network'?'No internet. Try again.':r.error==='student'?'Student not found':'Could not save ('+(r.error||'error')+')';
+function chUnflag(m,tid){chAsk('Remove the cheating tag?','The 🚩 tag goes away and the student gets their real rank back on this test.','Remove tag',()=>chUnflagGo(m,tid))}
+async function chUnflagGo(m,tid){
+  const r=await ACH('unflag',{mobile:m,test_id:tid});if(!r.ok){closeModal();toast(chErr(r));return}
   closeModal();await chFetch();toast('Tag removed');if($('#rtb'))drawRes();chDraw();
 }
 
@@ -100,12 +106,12 @@ function chSuspendForm(m,tid){
 }
 async function chSuspend(m,b){
   b.disabled=true;const r=await ACH('suspend',{mobile:m,hours:$('#chdur').value,reason:$('#chmsg').value.trim()});
-  if(!r.ok){b.disabled=false;toast(r.error==='missing'?'Run supabase_v24_cheating.sql first':'Could not suspend');return}
+  if(!r.ok){b.disabled=false;toast(chErr(r));return}
   closeModal();await chFetch();toast('Suspended');chDraw();if(typeof loadStudents==='function'&&CUR==='students')loadStudents();
 }
-async function chLift(m){
-  if(!confirm('Lift the suspension? The student can use the app again at once.'))return;
-  const r=await ACH('lift',{mobile:m});if(!r.ok){toast('Could not save');return}
+function chLift(m){const s=chSusp(m)||{};chAsk('✅ Lift suspension?',`<b style="color:var(--tx)">${esc(s.name||m)}</b> can use the app and website again at once. The suspension notice goes away on their phone.`,'Yes, lift it',()=>chLiftGo(m))}
+async function chLiftGo(m){
+  const r=await ACH('lift',{mobile:m});if(!r.ok){closeModal();toast(chErr(r));return}
   closeModal();await chFetch();toast('Suspension lifted');chDraw();if(typeof loadStudents==='function'&&CUR==='students')loadStudents();
 }
 {const _mg=manage;manage=function(id){
