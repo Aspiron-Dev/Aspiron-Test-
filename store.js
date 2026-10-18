@@ -1,11 +1,12 @@
 /* Store page: lists the paid test series (managed in the admin panel → Store) and walks the student through
-   UPI payment → Telegram screenshot → register. Prices, UPI ID and Telegram come only from the database. */
+   details → UPI payment → payment details → verify on Telegram. Prices, UPI ID and Telegram come only from the database. */
 // never run inside someone else's page (stops look-alike sites from framing the real store)
 if(window.top!==window.self){document.documentElement.style.display='none';try{window.top.location.replace(window.self.location.href)}catch(e){}}
 const CFG=window.CBT_CONFIG||{},API=(CFG.SUPABASE_URL||'').replace(/\/$/,'');
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const COLORS=['blue','green','purple','orange','red','dark'];
+const SHARE='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v13"/></svg>';
 const inr=n=>'₹'+Number(n||0).toLocaleString('en-IN');
 let ST={settings:{},items:[]},ORD=null,IT=null;
 const LSg=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(_){return d}};
@@ -49,29 +50,27 @@ function mediaHtml(x,tag){
     :`<div class="ph c-${col}"><small>${esc((CFG.SITE_NAME||'TEST SERIES').toUpperCase())}</small><b>${esc(x.title)}</b></div>`;
 }
 function priceHtml(x){
-  const off=offPct(x);
-  return `<div class="price"><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s>`:''}</div>${off?`<div class="save">You save ${inr(x.mrp-x.price)} (${off}% off)</div>`:''}`;
+  const off=offPct(x);return `<div class="price"><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s><span class="save">Save ${inr(x.mrp-x.price)} · ${off}% off</span>`:''}</div>`;
 }
 function cardHtml(x){
-  const F=x.features||[],off=offPct(x),show=F.slice(0,4);
-  return `<div class="card" id="p_${esc(x.id)}"><div class="media" data-view="${esc(x.id)}">${x.badge?`<span class="badge">${esc(x.badge)}</span>`:''}${off?`<span class="off">${off}% OFF</span>`:''}${mediaHtml(x)}<span data-rvb="${esc(x.id)}">${rvBadge(x.id)}</span></div>
-   <div class="cbody"><h3>${esc(x.title)}</h3>${x.subtitle?`<div class="sub">${esc(x.subtitle)}</div>`:''}<div data-rvslot="${esc(x.id)}">${rvLine(x.id)}</div>
+  const F=x.features||[],off=offPct(x),show=F.slice(0,4),ph=!okImg(x.image);
+  return `<div class="card" id="p_${esc(x.id)}"><div class="media${ph?' isph':''}" data-view="${esc(x.id)}">${x.badge?`<span class="badge">${esc(x.badge)}</span>`:''}${off?`<span class="off">${off}% OFF</span>`:''}${mediaHtml(x)}<span data-rvb="${esc(x.id)}">${rvBadge(x.id)}</span></div>
+   <div class="cbody"><h3${ph?' class="sr"':''}>${esc(x.title)}</h3>${x.subtitle?`<div class="sub">${esc(x.subtitle)}</div>`:''}<div data-rvslot="${esc(x.id)}">${rvLine(x.id)}</div>
    <div>${priceHtml(x)}</div>
    ${show.length?`<ul class="f">${show.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:'<div style="flex:1"></div>'}
-   ${F.length>4?`<button class="more" data-view="${esc(x.id)}">+ ${F.length-4} more · View details</button>`:''}
-   <div data-schslot="${esc(x.id)}">${schBtn(x.id)}</div>
-   <div class="row"><button class="btn soft icon" data-share="${esc(x.id)}" aria-label="Share" title="Share">↗</button><button class="btn" style="flex:1" data-buy="${esc(x.id)}">Buy now</button></div></div></div>`;
+   <div class="lnks"><button class="lnk" data-view="${esc(x.id)}">${F.length>4?`+${F.length-4} more · `:''}<u>Full details ›</u></button><span data-schslot="${esc(x.id)}">${schBtn(x.id)}</span></div>
+   <div class="row"><button class="btn soft icon" data-share="${esc(x.id)}" aria-label="Share" title="Share">${SHARE}</button><button class="btn" style="flex:1" data-buy="${esc(x.id)}">Buy now · ${inr(x.price)}</button></div></div></div>`;
 }
 function view(id){
   IT=ST.items.find(i=>i.id===id);if(!IT)return;const x=IT;
   let ov=$('.ov');if(!ov){ov=document.createElement('div');ov.className='ov';ov.addEventListener('click',e=>{if(e.target===ov)closeSheet()});document.body.appendChild(ov);document.body.style.overflow='hidden'}
-  ov.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="dimg">${mediaHtml(x)}</div>
-   <div class="shd"><div class="grow"><b style="white-space:normal;font-size:19px">${esc(x.title)}</b>${x.subtitle?`<span class="sm mut">${esc(x.subtitle)}</span>`:''}</div><button class="x" data-close aria-label="Close">✕</button></div>
+  ov.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="dimg${okImg(x.image)?'':' isph'}">${mediaHtml(x)}</div>
+   <div class="shd"><div class="grow"><b style="white-space:normal;font-size:19px">${esc(x.title)}</b>${x.subtitle?`<span class="sm mut">${esc(x.subtitle)}</span>`:''}<div data-rvmini="${esc(x.id)}">${rvMini(x.id)}</div></div><button class="x" data-close aria-label="Close">✕</button></div>
    ${priceHtml(x)}
    ${(x.features||[]).length?`<h4 style="margin:16px 0 10px">What you get</h4><ul class="f">${x.features.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:''}
    <div data-schslot="${esc(x.id)}" style="margin-top:14px">${schBtn(x.id)}</div>
    <div data-rvsec="${esc(x.id)}">${rvSection(x.id,3)}</div>
-   <div class="row" style="margin-top:12px"><button class="btn soft icon" data-share="${esc(x.id)}" aria-label="Share">↗</button><button class="btn" style="flex:1" data-buy="${esc(x.id)}">Buy now · ${inr(x.price)}</button></div></div>`;
+   <div class="row sbuy"><button class="btn soft icon" data-share="${esc(x.id)}" aria-label="Share">${SHARE}</button><button class="btn" style="flex:1" data-buy="${esc(x.id)}">Buy now · ${inr(x.price)}</button></div></div>`;
 }
 async function share(id){
   const x=ST.items.find(i=>i.id===id);if(!x)return;
@@ -80,12 +79,12 @@ async function share(id){
   copy(text+' '+url,'Link copied');
 }
 
-/* ---------- checkout: details → pay → telegram → register ---------- */
+/* ---------- checkout: details → pay → payment details → verify on Telegram (4 steps, last) ---------- */
 function sheet(step,body){
   let ov=$('.ov');
   if(!ov){ov=document.createElement('div');ov.className='ov';ov.addEventListener('click',e=>{if(e.target===ov)closeSheet()});document.body.appendChild(ov);document.body.style.overflow='hidden'}
-  ov.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="shd"><div class="grow"><b>${esc(IT.title)}</b><span class="sm mut">Step ${step} of 5</span></div><button class="x" data-close aria-label="Close">✕</button></div>
-   <div class="steps">${[1,2,3,4,5].map(i=>`<i class="${i<=step?'on':''}"></i>`).join('')}</div>${body}</div>`;
+  ov.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="shd"><div class="grow"><b>${esc(IT.title)}</b><span class="sm mut">Step ${step} of 4</span></div><button class="x" data-close aria-label="Close">✕</button></div>
+   <div class="steps">${[1,2,3,4].map(i=>`<i class="${i<=step?'on':''}"></i>`).join('')}</div>${body}</div>`;
 }
 function closeSheet(){const o=$('.ov');if(o)o.remove();document.body.style.overflow=''}
 function buy(id){
@@ -170,17 +169,8 @@ function tgStep(){
    <div class="msg">${esc(tgText())}</div>
    <a class="btn tg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(tgLink(tgText()))}">✔ Click here to verify your payment</a>
    <p class="sm mut" style="text-align:center;margin-top:8px">The message is also copied, so you can paste it if it doesn't appear.</p>
-   <button class="btn soft block" style="margin-top:10px" data-step="5">I have sent the screenshot → Next</button>`);
-}
-function doneStep(){
-  sheet(5,`<div class="bigok">✓</div><h3 style="text-align:center;margin-bottom:4px">Thank you!</h3>
-   <p class="sm mut" style="text-align:center">Our team will check your payment and send you everything on Telegram.</p>
-   <div class="st"><i>1</i><div><b>We verify your payment</b><div class="sm mut">Using your screenshot and order code <b class="code">${esc(ORD.code)}</b>.</div></div></div>
-   <div class="st"><i>2</i><div><b>You get your login details on Telegram</b><div class="sm mut">The website link and your personal access code, for mobile ${esc(ORD.mobile)}.</div></div></div>
-   <div class="st"><i>3</i><div><b>Start your tests</b><div class="sm mut">Sign in and your test series is ready.</div></div></div>
-   <a class="btn tg block" style="margin-top:6px" target="_blank" rel="noopener" href="${esc(tgLink(''))}">💬 Message support</a>
-   <button class="btn soft block" style="margin-top:10px" data-close>Close</button>
-   <p class="sm mut" style="text-align:center;margin-top:10px">Keep your order code <b class="code">${esc(ORD.code)}</b> for any help.</p>`);
+   <p class="sm mut" style="text-align:center;margin-top:14px">Keep your order code <b class="code">${esc(ORD.code)}</b> for any help.</p>
+   <button class="btn soft block" style="margin-top:10px" data-close>Done</button>`);
 }
 document.addEventListener('click',e=>{
   const t=e.target.closest('button,a,[data-view]');if(!t)return;
@@ -188,9 +178,10 @@ document.addEventListener('click',e=>{
   else if(t.dataset.view)view(t.dataset.view);
   else if(t.dataset.sch)schedule(t.dataset.sch);
   else if(t.dataset.rv)reviews(t.dataset.rv);
-  else if('rvf' in t.dataset){RVF=t.dataset.rvf;RVN=6;rvAllDraw()}
-  else if('rvmore' in t.dataset){RVN+=10;rvAllDraw()}
+  else if('rvf' in t.dataset){RVF=t.dataset.rvf;RVN=8;rvAllDraw()}
+  else if('rvmore' in t.dataset){const r=$('.rvrail'),x=r?r.scrollLeft:0;RVN+=8;rvAllDraw();const r2=$('.rvrail');if(r2)r2.scrollLeft=x}
   else if('rvjump' in t.dataset){const r=$('#reviews');if(r)r.scrollIntoView({behavior:'smooth',block:'start'})}
+  else if('rvx' in t.dataset){const c=t.closest('.rv');if(c){const o=c.classList.toggle('open');t.textContent=o?'Show less':'Read more';t.setAttribute('aria-expanded',o)}}
   else if(t.dataset.share)share(t.dataset.share);
   else if('close' in t.dataset)closeSheet();
   else if('redo' in t.dataset){e.preventDefault();localStorage.removeItem('store_ord');buy(IT.id)}
@@ -201,13 +192,12 @@ document.addEventListener('click',e=>{
   else if(t.dataset.step==='paid')paidStep();
   else if(t.dataset.step==='back2')payStep();
   else if('paidgo' in t.dataset)paidGo();
-  else if(t.dataset.step==='5')doneStep();
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();if(e.key==='Enter'&&$('#go'))order();else if(e.key==='Enter'&&$('#pgo'))paidGo()});
 /* ---------- schedule (PDF / photo) ---------- */
 let SCH={};
 const fsize=n=>n>1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
-function schBtn(id){const f=SCH[id];return f?`<button class="btn soft block schb" data-sch="${esc(id)}">📅 View / download schedule <small>${f.mime==='application/pdf'?'PDF':'Photo'} · ${fsize(f.size)}</small></button>`:''}
+function schBtn(id){const f=SCH[id];return f?`<button class="lnk" data-sch="${esc(id)}">📅 Schedule <small>${f.mime==='application/pdf'?'PDF':'Photo'} · ${fsize(f.size)}</small></button>`:''}
 async function loadSch(){
   const r=await rpc('cbt_store_schedules');if(!r.ok)return;
   SCH={};(r.items||[]).forEach(x=>SCH[x.id]=x);
@@ -237,36 +227,42 @@ async function schedule(id){
 }
 /* ---------- ratings & reviews (from students whose series is unlocked; managed in the admin panel) ---------- */
 let RV={};
-const stars=(n,cls)=>`<span class="stars ${cls||''}" aria-label="${n} out of 5 stars">${[1,2,3,4,5].map(i=>`<i class="${i<=Math.round(n)?'on':''}">★</i>`).join('')}</span>`;
-const rvWhen=ms=>new Date(ms).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+// stars filled to the exact rating (4.5 → four and a half stars)
+const stars=(n,cls)=>{const v=Math.max(0,Math.min(5,Number(n)||0));return `<span class="stars ${cls||''}" role="img" aria-label="${v.toFixed(1)} out of 5 stars"><i class="s0">★★★★★</i><i class="s1" style="width:${(v*20).toFixed(1)}%">★★★★★</i></span>`};
+const rvDate=ms=>new Date(ms).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+const rvWhen=ms=>{const d=Math.floor((Date.now()-ms)/864e5);return d<1?'Today':d<2?'Yesterday':d<7?d+' days ago':d<28?Math.floor(d/7)+(d<14?' week ago':' weeks ago'):rvDate(ms)};
+const plural=(n,w)=>`${n} ${w}${n>1?'s':''}`;
+// pinned first, then written reviews, then newest (nothing is hidden)
+const rvSort=(a,b)=>(b.pinned-a.pinned)||(!!b.body-!!a.body)||(b.at-a.at);
+function rvAva(x){const n=String(x.name||'S').trim()||'S',h=[...n].reduce((a,c)=>a+c.charCodeAt(0),0);return `<span class="rva c-${COLORS[h%5]}">${/^data:image\//.test(x.photo||'')?`<img src="${esc(x.photo)}" alt="">`:esc(n[0].toUpperCase())}</span>`}
+const RVNOTE=`<p class="rvnote">✔ <b>Verified</b> = written from the student's own account after their series was unlocked. One review per student.</p>`;
 // on each card: a highlighted rating strip with a line from a review, so students notice it
 const clip=(t,n)=>{t=String(t||'').replace(/\s+/g,' ').trim();return t.length>n?t.slice(0,n-1).trim()+'…':t};
 function rvLine(id){
   const r=RV[id];if(!r||!r.count)return '';
   const q=(r.list||[]).find(x=>x.body&&x.rating>=4)||(r.list||[]).find(x=>x.body);
-  return `<button class="rvstrip" data-rv="${esc(id)}"><div class="rvs1">${stars(r.avg,'big')}<b>${Number(r.avg).toFixed(1)}</b><span>${r.count} student review${r.count>1?'s':''}</span><em>Read ›</em></div>
-   ${q?`<div class="rvq">“${esc(clip(q.body,110))}” <span>— ${esc(q.name||'Student')}</span></div>`:''}</button>`;
+  return `<button class="rvstrip" data-rv="${esc(id)}"><div class="rvs1">${stars(r.avg,'big')}<b>${Number(r.avg).toFixed(1)}</b><span>· ${plural(r.count,'review')}</span><em>Read all ›</em></div>${q?`<div class="rvq">${rvAva(q)}<div><span class="rvqt">“${esc(clip(q.body,120))}”</span><small>${esc(q.name||'Student')} · <span class="vt">✔ Verified student</span></small></div></div>`:''}</button>`;
 }
 // on the card photo
 function rvBadge(id){const r=RV[id];return r&&r.count?`<span class="rvbadge"><i>★</i> ${Number(r.avg).toFixed(1)} <small>(${r.count})</small></span>`:''}
+// in the details sheet, under the title
+function rvMini(id){const r=RV[id];return r&&r.count?`<button class="rvmini" data-rv="${esc(id)}">${stars(r.avg)}<b>${Number(r.avg).toFixed(1)}</b><span>· ${plural(r.count,'review')}</span><u>Read ›</u></button>`:''}
 function rvItem(x,withTitle){
-  const ini=esc((String(x.name||'S').trim()[0]||'S').toUpperCase());
-  return `<div class="rv"><div class="rvt"><span class="rva">${/^data:image\//.test(x.photo||'')?`<img src="${esc(x.photo)}" alt="">`:ini}</span>
-    <div class="grow"><b>${esc(x.name||'Student')}</b><div class="rvm">${stars(x.rating)}<span>${rvWhen(x.at)}</span></div></div><span class="vb" title="Series unlocked for this student">✔ Verified student</span></div>
-    ${withTitle&&x.title?`<div class="rvon">on <b>${esc(x.title)}</b></div>`:''}
-    ${x.body?`<p>${esc(x.body)}</p>`:''}${x.reply?`<div class="rvr"><b>Reply from ${esc(CFG.SITE_NAME||'the team')}</b><p>${esc(x.reply)}</p></div>`:''}</div>`;
+  const long=(x.body||'').length>170;
+  return `<div class="rv${long?' clip':''}"><div class="rvt">${rvAva(x)}<div class="grow"><div class="rvn"><b>${esc(x.name||'Student')}</b><span class="vb" title="This student's series is unlocked">✔ Verified</span></div><div class="rvm">${stars(x.rating)}<span title="${esc(rvDate(x.at))}">${rvWhen(x.at)}</span>${x.pinned?'<span class="pin">📌 Pinned</span>':''}</div></div></div>
+    ${x.body?`<p class="rvb">${esc(x.body)}</p>${long?'<button class="rvx" data-rvx aria-expanded="false">Read more</button>':''}`:`<p class="rvb rvno">Gave ${Number(x.rating)||0} star${x.rating>1?'s':''} · no written review</p>`}${x.reply?`<div class="rvr"><b><img src="icon-192.png" alt="">Reply from ${esc(CFG.SITE_NAME||'the team')}</b><p>${esc(x.reply)}</p></div>`:''}${withTitle&&x.title?`<button class="rvon" data-view="${esc(x.item)}">on <b>${esc(x.title)}</b> ›</button>`:''}</div>`;
 }
 function rvSum(avg,count,S){
-  return `<div class="rvsum"><div class="rvbig"><b>${Number(avg).toFixed(1)}</b>${stars(avg)}<span>${count} review${count>1?'s':''}</span></div>
+  return `<div class="rvsum"><div class="rvbig"><b>${Number(avg).toFixed(1)}</b>${stars(avg)}<span>${plural(count,'review')}</span></div>
     <div class="rvbars">${[5,4,3,2,1].map((n,i)=>`<div><span>${n}★</span><i><em style="width:${count?Math.round((S[i]||0)*100/count):0}%"></em></i><span>${S[i]||0}</span></div>`).join('')}</div></div>`;
 }
 function rvSection(id,max){
   const r=RV[id];if(!r||!r.count)return '';
-  const L=r.list||[],S=r.stars||[];
+  const L=(r.list||[]).slice().sort(rvSort),S=r.stars||[];
   return `<h4 style="margin:18px 0 10px">Ratings &amp; reviews</h4>
    ${rvSum(r.avg,r.count,S)}
-   ${L.slice(0,max||L.length).map(x=>rvItem(x)).join('')}
-   ${max&&L.length>max?`<button class="btn soft block" style="margin-top:6px" data-rv="${esc(id)}">See all ${r.count} reviews</button>`:''}`;
+   <div class="rvlist">${L.slice(0,max||L.length).map(x=>rvItem(x)).join('')}</div>
+   ${max&&r.count>max?`<button class="btn soft block" style="margin-top:6px" data-rv="${esc(id)}">See all ${r.count} reviews</button>`:''}`;
 }
 async function loadRv(){
   const r=await rpc('cbt_store_reviews');if(!r.ok)return;
@@ -274,36 +270,43 @@ async function loadRv(){
   document.querySelectorAll('[data-rvslot]').forEach(e=>e.innerHTML=rvLine(e.dataset.rvslot));
   document.querySelectorAll('[data-rvsec]').forEach(e=>e.innerHTML=rvSection(e.dataset.rvsec,3));
   document.querySelectorAll('[data-rvb]').forEach(e=>e.innerHTML=rvBadge(e.dataset.rvb));
+  document.querySelectorAll('[data-rvmini]').forEach(e=>e.innerHTML=rvMini(e.dataset.rvmini));
   rvAllDraw();
 }
-/* ---------- bottom of the page: every review, all series ---------- */
-let RVF='',RVN=6;
+/* ---------- under the cards: every review, all series ---------- */
+let RVF='',RVN=8;
 function rvAll(){
   const L=[];for(const x of ST.items){const r=RV[x.id];if(r&&r.list)r.list.forEach(v=>L.push(Object.assign({item:x.id,title:x.title},v)))}
-  return L.sort((a,b)=>(b.pinned-a.pinned)||(b.at-a.at));
+  return L.sort(rvSort);
 }
 function rvAllDraw(){
   const sec=$('#reviews'),j=$('#rvjump');if(!sec)return;
   const its=ST.items.filter(x=>RV[x.id]&&RV[x.id].count),total=its.reduce((a,x)=>a+RV[x.id].count,0);
   if(!total){sec.hidden=true;if(j)j.hidden=true;return}
-  const avg=its.reduce((a,x)=>a+RV[x.id].avg*RV[x.id].count,0)/total;
   const S=[0,1,2,3,4].map(i=>its.reduce((a,x)=>a+((RV[x.id].stars||[])[i]||0),0));
-  if(j){j.hidden=false;j.innerHTML=`${stars(avg)}<b>${avg.toFixed(1)}</b><span>· ${total} student review${total>1?'s':''}</span><u>Read ↓</u>`}
+  // exact average from the star counts (each series' avg from the server is already rounded)
+  const avg=S.reduce((a,b)=>a+b,0)===total?(5*S[0]+4*S[1]+3*S[2]+2*S[3]+S[4])/total:its.reduce((a,x)=>a+RV[x.id].avg*RV[x.id].count,0)/total;
+  const all=rvAll();
+  if(j){j.hidden=false;j.innerHTML=`<span class="ava3">${all.slice(0,3).map(v=>rvAva(v)).join('')}</span><span class="grow"><span class="tb1">${stars(avg)}<b>${avg.toFixed(1)}</b><span>out of 5</span></span><span class="tb2">${plural(total,'review')} from verified students</span></span><u>Read ›</u>`}
   if(RVF&&!its.some(x=>x.id===RVF))RVF='';
-  const L=rvAll().filter(v=>!RVF||v.item===RVF),show=L.slice(0,RVN);
+  const R=RVF?RV[RVF]:{avg,count:total,stars:S};
+  const L=all.filter(v=>!RVF||v.item===RVF),show=L.slice(0,RVN),more=L.length-show.length;
   sec.hidden=false;
-  sec.innerHTML=`<h2>⭐ What our students say</h2>
-   <p class="sm mut" style="margin:-6px 0 12px">Real reviews from students whose test series is unlocked.</p>
-   ${rvSum(avg,total,S)}
-   ${its.length>1?`<div class="rvchips">${[['','All'],...its.map(x=>[x.id,x.title])].map(([k,l])=>`<button class="${RVF===k?'on':''}" data-rvf="${esc(k)}">${esc(l)}${k?` · ${RV[k].count}`:''}</button>`).join('')}</div>`:''}
-   <div class="rvall">${show.map(v=>rvItem(v,!RVF&&its.length>1)).join('')}</div>
-   ${L.length>show.length?`<button class="btn soft block" data-rvmore>Show more reviews (${L.length-show.length})</button>`:''}`;
+  sec.innerHTML=`<div class="sh rvhead"><div><small>Student reviews</small><h2>What our students say</h2></div></div>
+   <p class="sm mut rvsub">Real reviews from students whose test series is unlocked.</p>
+   ${rvSum(R.avg,R.count,R.stars||[])}
+   ${its.length>1?`<div class="rvchips">${[['','All',total],...its.map(x=>[x.id,x.title,RV[x.id].count])].map(([k,l,c])=>`<button class="${RVF===k?'on':''}" data-rvf="${esc(k)}">${esc(l)} · ${Number(c)||0}</button>`).join('')}</div>`:''}
+   <div class="rvrail">${show.map(v=>rvItem(v,!RVF&&its.length>1)).join('')}${more>0?`<button class="rvmoret" data-rvmore>See ${plural(more,'more review')} →</button>`:''}</div>
+   ${RVNOTE}`;
 }
 function reviews(id){
-  const x=ST.items.find(i=>i.id===id);if(!x||!RV[id])return;IT=x;
+  const x=ST.items.find(i=>i.id===id),r=RV[id];if(!x||!r)return;IT=x;
   let ov=$('.ov');if(!ov){ov=document.createElement('div');ov.className='ov';ov.addEventListener('click',e=>{if(e.target===ov)closeSheet()});document.body.appendChild(ov);document.body.style.overflow='hidden'}
+  const L=(r.list||[]).slice().sort(rvSort);
   ov.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="shd"><div class="grow"><b style="white-space:normal">Reviews</b><span class="sm mut">${esc(x.title)}</span></div><button class="x" data-close aria-label="Close">✕</button></div>
-   ${rvSection(id).replace(/^\s*<h4[^>]*>.*?<\/h4>/,'')}
-   <button class="btn block" style="margin-top:12px" data-buy="${esc(id)}">Buy this series · ${inr(x.price)}</button></div>`;
+   ${rvSum(r.avg,r.count,r.stars||[])}${RVNOTE}<div class="rvlist">${L.map(v=>rvItem(v)).join('')}</div>
+   ${r.count>L.length?`<p class="sm mut" style="text-align:center;margin:10px 0">Showing ${L.length} of ${r.count} reviews.</p>`:''}
+   <div class="sbuy"><button class="btn block" data-buy="${esc(id)}">Buy this series · ${inr(x.price)}</button></div></div>`;
 }
+addEventListener('scroll',()=>{const f=$('#fab');if(f)f.classList.toggle('mini',scrollY>160)},{passive:true});
 load();
