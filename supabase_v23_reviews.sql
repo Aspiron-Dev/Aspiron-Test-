@@ -1,5 +1,5 @@
 -- =====================================================================
---  v22: Ratings & reviews — a student whose paid series is UNLOCKED can give it stars and a review.
+--  v23: Ratings & reviews — a student whose paid series is UNLOCKED can give it stars and a review.
 --  Reviews show on the store page with the student's name (first name + initial) and, if they choose,
 --  their profile photo. Mobile number and other personal details are never sent to the store page.
 --  The admin panel (admin password) can hide / show, pin, reply to and delete any review.

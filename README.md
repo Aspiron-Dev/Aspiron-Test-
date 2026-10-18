@@ -1,2 +1,25 @@
-# Aspiron-Test-
-CBT
+# Aspiron CBT Test Series
+
+Static website on GitHub Pages + Supabase (database functions). No build step: upload the files and they are live.
+
+## Pages
+| Page | What it is | Scripts |
+|---|---|---|
+| `index.html` | Student app (tests, results, mistakes, tracker, PYQ, reviews) | `config.js`, `app1.js` … `app14.js`, `pyq-syllabus.js` |
+| `cp-dt764twzf54s5m.html` | Admin panel (needs the private access key + admin password) | `config.js`, `parser.js`, `admin1.js` … `admin15.js`, `pyq-syllabus.js` |
+| `store.html` | Public store: paid series, UPI payment, ratings & reviews | `config.js`, `qrcode.js`, `store.js` |
+| `admin.html` | Decoy "404" page (the real admin page has a hidden name) | – |
+
+Scripts load in number order; a later file adds to or replaces functions of earlier ones.
+After changing a script, raise its `?v=` number in the page that loads it so phones get the new copy.
+
+Other files: `sw.js` (installable app, always loads the newest pages), `manifest.webmanifest` /
+`cp-dt764twzf54s5m.webmanifest` (app icons and names), `pyq-data/` (past papers for the admin PYQ import),
+`supabase/functions/send-push` (phone notifications and 🔔 test-live alerts).
+
+## Supabase SQL (run once each, in this order, in SQL Editor — on top of the original base setup)
+`supabase_v9_banners` → `v10_push` → `v11_pyq` → `v12_test_alerts` → `v13_store` → `v17_store_fix` →
+`v18_store_schedule` → `v19_store_security` → `v20_store_payer` → `v21_devices` → `v22_alerts_via_send_push` →
+`v23_reviews`. Every file is safe to run again. `supabase_check_alerts.sql` only reads (for checking alerts).
+
+Never put the admin password or a secret / service_role key in `config.js` or anywhere in this repository.

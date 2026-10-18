@@ -1,5 +1,5 @@
 /* ===== Admin: Reviews — every student review of the store's series: show / hide, pin, reply, delete =====
-   Server: supabase_v22_reviews.sql (cbt_admin_reviews). Only students whose series is unlocked can write a review. */
+   Server: supabase_v23_reviews.sql (cbt_admin_reviews). Only students whose series is unlocked can write a review. */
 async function ARV(action,data){
   try{
     const r=await fetch(API+'/rest/v1/rpc/cbt_admin_reviews',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_pw:PW,p_action:action,p_data:data||{}})});
@@ -20,7 +20,7 @@ async function loadReviews(){
   p.innerHTML=`<div class="phead"><div><h1>Reviews</h1><p class="sm mut">Ratings from students whose series is unlocked. Shown on the store with first name + initial and their photo (if they chose). Mobile numbers are only visible here.</p></div></div><div id="rvbody">${askel()}</div>`;
   if(!CA.series.length)loadCatalog();
   const r=await ARV('get');
-  if(!r.ok){$('#rvbody').innerHTML=`<div class="card empty"><b>${r.error==='missing'?'One-time setup needed':'Could not load'}</b><p class="sm">${r.error==='missing'?'Open Supabase → SQL Editor, paste <b>supabase_v22_reviews.sql</b> and press Run once. Then refresh.':'Check your internet and try again.'}</p></div>`;return}
+  if(!r.ok){$('#rvbody').innerHTML=`<div class="card empty"><b>${r.error==='missing'?'One-time setup needed':'Could not load'}</b><p class="sm">${r.error==='missing'?'Open Supabase → SQL Editor, paste <b>supabase_v23_reviews.sql</b> and press Run once. Then refresh.':'Check your internet and try again.'}</p></div>`;return}
   RVA.items=r.items||[];RVA.moderate=!!r.moderate;rvDraw();
 }
 function rvDraw(){

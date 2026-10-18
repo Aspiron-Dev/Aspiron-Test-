@@ -1,5 +1,5 @@
 /* ===== Ratings & reviews: a student rates an unlocked paid series; it shows on the store page =====
-   Server: supabase_v22_reviews.sql (cbt_review_mine, cbt_review_save, cbt_review_delete).
+   Server: supabase_v23_reviews.sql (cbt_review_mine, cbt_review_save, cbt_review_delete).
    The store shows only the name (e.g. "Rahul S.") and, if chosen, the profile photo — never the mobile number. */
 let RVW={};            // series id → my review (null = none yet, undefined = not loaded)
 const rvStars=(n,sz)=>`<span class="rvst" aria-label="${n} out of 5 stars">${[1,2,3,4,5].map(i=>`<i class="${i<=n?'on':''}"${sz?` style="font-size:${sz}px"`:''}>★</i>`).join('')}</span>`;
