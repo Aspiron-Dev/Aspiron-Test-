@@ -23,7 +23,7 @@ create table if not exists public.cbt_suspensions (
   student_id  uuid primary key,
   reason      text not null default '',
   until       timestamptz,                       -- null = until the admin lifts it
-  prev_status text not null default 'active',    -- given back when the suspension ends
+  prev_status text not null default '',          -- the student's status before, given back when it ends
   active      boolean not null default true,
   created_at  timestamptz not null default now(),
   lifted_at   timestamptz
@@ -31,19 +31,34 @@ create table if not exists public.cbt_suspensions (
 alter table public.cbt_suspensions enable row level security;
 revoke all on public.cbt_suspensions from anon, authenticated;
 
+-- set a blocked student's status to one word; false if the database does not accept that word
+-- (the status column's allowed words differ between setups, e.g. 'approved' instead of 'active')
+create or replace function cbt_private.cheat_status(p_id uuid, p_to text)
+returns boolean language plpgsql security definer set search_path = cbt_private, public, pg_temp as $$
+begin
+  execute format('update cbt_private.students set status = %L where id = $1 and status::text = %L', p_to, 'blocked') using p_id;
+  return true;
+exception when others then
+  return false;
+end; $$;
+revoke all on function cbt_private.cheat_status(uuid, text) from public, anon, authenticated;
+
 -- end a suspension: give the student their previous status back (only if it is still our block)
 create or replace function cbt_private.cheat_lift(p_id uuid)
 returns void language plpgsql security definer set search_path = cbt_private, public, pg_temp as $$
-declare s public.cbt_suspensions;
+declare s public.cbt_suspensions; v text;
 begin
   select * into s from public.cbt_suspensions where student_id = p_id and active for update;
   if not found then return; end if;
-  -- written as plain words so it works whatever type the status column has (text or enum);
   -- a student who was already blocked before the suspension stays blocked
-  if s.prev_status = 'pending' then
-    update cbt_private.students set status = 'pending' where id = p_id and status = 'blocked';
-  elsif s.prev_status <> 'blocked' then
-    update cbt_private.students set status = 'active' where id = p_id and status = 'blocked';
+  if s.prev_status <> 'blocked' and not cbt_private.cheat_status(p_id, s.prev_status) then
+    -- older suspensions saved 'active': use the status most signed-in students have (e.g. 'approved')
+    select status::text into v from cbt_private.students where status::text not in ('pending', 'blocked')
+      group by 1 order by count(*) desc limit 1;
+    if not ((v is not null and cbt_private.cheat_status(p_id, v))
+            or cbt_private.cheat_status(p_id, 'approved') or cbt_private.cheat_status(p_id, 'active')) then
+      raise exception 'cheat_lift: the database did not accept any status to unblock this student';
+    end if;
   end if;
   update public.cbt_suspensions set active = false, lifted_at = now() where student_id = p_id;
 end; $$;
@@ -127,7 +142,7 @@ begin
     if v_h is not null and (v_h <= 0 or v_h > 8760) then return jsonb_build_object('ok', false, 'error', 'hours'); end if;
     insert into public.cbt_suspensions (student_id, reason, until, prev_status, active, created_at, lifted_at)
     values (st.id, left(coalesce(p_data->>'reason', ''), 500), case when v_h is null then null else now() + v_h * interval '1 hour' end,
-            case when st.status in ('active', 'pending', 'blocked') then st.status else 'active' end, true, now(), null)
+            st.status::text, true, now(), null)
     on conflict (student_id) do update set reason = excluded.reason, until = excluded.until, created_at = now(), lifted_at = null,
       -- already suspended: keep the status from before the first suspension
       prev_status = case when public.cbt_suspensions.active then public.cbt_suspensions.prev_status else excluded.prev_status end,

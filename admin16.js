@@ -5,7 +5,8 @@
 async function ACH(action,data){
   try{
     const r=await fetch(API+'/rest/v1/rpc/cbt_admin_cheat',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_pw:PW,p_action:action,p_data:data||{}})});
-    if(!r.ok)return{ok:false,error:r.status===404?'missing':'server'};
+    // keep the database's own message, so a failure says what went wrong
+    if(!r.ok){let m='';try{m=(await r.json()).message||''}catch(e){}return{ok:false,error:r.status===404?'missing':'server',msg:m}}
     const j=await r.json();if(!j.ok&&['invalid','locked','not_set'].includes(j.error))gate(j.error);return j;
   }catch(e){return{ok:false,error:'network'}}
 }
@@ -90,7 +91,7 @@ function chAsk(title,text,yes,fn){
   modal(`<h2>${title}</h2><p class="sm mut">${text}</p><div class="row" style="margin-top:14px;gap:8px"><button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn" style="flex:1" id="chyes">${yes}</button></div>`);
   $('#chyes').onclick=async()=>{const b=$('#chyes');b.disabled=true;b.textContent='Please wait…';await fn()};
 }
-const chErr=r=>r.error==='missing'?'Run supabase_v24_cheating.sql in Supabase first':r.error==='network'?'No internet. Try again.':r.error==='student'?'Student not found':'Could not save ('+(r.error||'error')+')';
+const chErr=r=>r.error==='missing'?'Run supabase_v24_cheating.sql in Supabase first':r.error==='network'?'No internet. Try again.':r.error==='student'?'Student not found':'Could not save ('+(r.msg||r.error||'error')+')';
 function chUnflag(m,tid){chAsk('Remove the cheating tag?','The 🚩 tag goes away and the student gets their real rank back on this test.','Remove tag',()=>chUnflagGo(m,tid))}
 async function chUnflagGo(m,tid){
   const r=await ACH('unflag',{mobile:m,test_id:tid});if(!r.ok){closeModal();toast(chErr(r));return}
