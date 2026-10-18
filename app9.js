@@ -3,7 +3,7 @@ const liveIds=()=>{try{return new Set(liveTests().map(t=>t.id))}catch(e){return 
 function serInfo(s){
   const ts=CAT.tests.filter(t=>t.series_id===s.id),done=ts.filter(t=>t.attempts>0);
   const sc=done.filter(t=>t.best_max).map(t=>pct(t.best,t.best_max));
-  const L=liveIds(),live=ts.filter(t=>L.has(t.id));
+  const L=liveIds(),live=ts.filter(t=>L.has(t.id)&&!t.attempts);
   const nxt=ts.filter(t=>isWait(t)).sort((a,b)=>a.opens_at-b.opens_at)[0];
   return{ts,n:ts.length,done:done.length,p:ts.length?Math.round(done.length*100/ts.length):0,avg:sc.length?Math.round(sc.reduce((a,b)=>a+b,0)/sc.length):null,best:sc.length?Math.max(...sc):null,
     live,nxt,prog:ts.filter(t=>t.in_progress).length,folders:CAT.folders.filter(f=>f.series_id===s.id).length};
@@ -43,7 +43,7 @@ function seriesCard(s){
 
 /* ---------- series page ---------- */
 let SVF='all',SVID=null;
-const tStat=(t,L)=>t.in_progress?'prog':t.locked?'lock':isWait(t)?'wait':L.has(t.id)?'live':t.attempts?'done':'new';
+const tStat=(t,L)=>t.in_progress?'prog':t.locked?'lock':isWait(t)?'wait':t.attempts?'done':L.has(t.id)?'live':'new';
 function viewSeries(id){
   const s=CAT.series.find(x=>x.id===id);if(!s){location.hash='#/';return}
   if(SVID!==id){SVID=id;SVF='all'}
