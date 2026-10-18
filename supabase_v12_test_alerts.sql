@@ -1,7 +1,7 @@
 -- =====================================================================
 --  v12: Test alerts — student taps 🔔 on a scheduled test, and gets a phone
 --  notification automatically the moment that test goes LIVE (even if the app is closed).
---  Needs v10 (push) to be run first, and the "test-alerts" Edge Function deployed.
+--  Needs v10 (push) to be run first, and the send-push Edge Function deployed (it also sends these alerts).
 --  Run ONCE in Supabase → SQL Editor → New query → paste → Run.  Safe to run again.
 -- =====================================================================
 
@@ -55,7 +55,7 @@ begin
 end; $$;
 grant execute on function public.cbt_alert_list(text, text, text) to anon, authenticated;
 
--- Every minute: ask the "test-alerts" Edge Function to send the alerts that are due.
+-- Every minute: ask the send-push Edge Function to send the alerts that are due.
 -- (Calling it is harmless: it only sends alerts whose test has already started, once.)
 create extension if not exists pg_cron;
 create extension if not exists pg_net with schema extensions;
@@ -64,9 +64,9 @@ do $$ begin
 end $$;
 select cron.schedule('cbt-test-alerts', '* * * * *', $job$
   select net.http_post(
-    url     := 'https://klvvhbqkhbdzysgpykpr.supabase.co/functions/v1/test-alerts',
-    headers := '{"Content-Type":"application/json"}'::jsonb,
-    body    := '{}'::jsonb);
+    url     := 'https://klvvhbqkhbdzysgpykpr.supabase.co/functions/v1/send-push',
+    headers := '{"Content-Type":"application/json","apikey":"sb_publishable_pt-b8kuOOsxyyAz277qsNA_q6e8D2G3"}'::jsonb,
+    body    := '{"mode":"due"}'::jsonb);
 $job$);
 
 -- old alerts are cleaned up after a week
