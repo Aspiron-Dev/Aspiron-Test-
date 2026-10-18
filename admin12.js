@@ -48,7 +48,7 @@ function stoDraw(){
    <div class="card"><p class="sm mut" style="margin-top:0">Shown on the store page. Only this panel (admin password) can change them.</p>
     <div class="g2"><div><label class="l">UPI ID</label><input type="text" id="s_upi" value="${esc(s.upi||'')}" autocapitalize="off" spellcheck="false"></div>
      <div><label class="l">Name shown in UPI apps</label><input type="text" id="s_payee" value="${esc(s.payee||'')}"></div>
-     <div><label class="l">Telegram username (screenshots)</label><input type="text" id="s_tg" value="${esc(s.telegram||'')}" autocapitalize="off" spellcheck="false"></div>
+     <div><label class="l">Telegram username (not used: the store uses SUPPORT_URL in config.js)</label><input type="text" id="s_tg" value="${esc(s.telegram||'')}" autocapitalize="off" spellcheck="false"></div>
      <div><label class="l">Small note (optional)</label><input type="text" id="s_note" value="${esc(s.note||'')}" placeholder="e.g. Unlocked within 2 hours (9 am – 9 pm)"></div></div>
     <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap"><button class="btn" onclick="stoSaveSet(this)">Save payment details</button><button class="btn ghost" onclick="stoAudit()">🕑 Change history</button></div></div>`;
 }

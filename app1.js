@@ -173,7 +173,7 @@ async function doLogin(){
   const r=await rpc('cbt_login',{p_mobile:m,p_code:c,p_device:DEV},true);
   if(!r.ok){$('#er').textContent=errText(r);b.disabled=false;b.innerHTML='Sign in '+ic('right');
     if(r.error==='device_limit'&&typeof devPick==='function'&&await devPick(m,c,true))return;
-    if(r.error==='device_limit'&&!$('#devhelp'))$('#er').insertAdjacentHTML('afterend',`<a id="devhelp" class="btn soft block" style="margin-bottom:10px;text-decoration:none" target="_blank" rel="noopener" href="https://t.me/StudentsHelpCentreBot">📱 Ask for device reset</a>`);
+    if(r.error==='device_limit'&&!$('#devhelp'))$('#er').insertAdjacentHTML('afterend',`<a id="devhelp" class="btn soft block" style="margin-bottom:10px;text-decoration:none" target="_blank" rel="noopener" href="${esc(HELP_URL)}">📱 Ask for device reset</a>`);
     return}
   AUTH={mobile:m,code:c,name:r.name};LS.set('cbt_auth',AUTH);LS.del('cbt_dping');updateHeader();CAT=null;
   await flushPending();

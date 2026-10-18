@@ -23,7 +23,8 @@ async function copy(t,what){
   try{await navigator.clipboard.writeText(t)}catch(_){const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(e){}a.remove()}
   toast((what||'Copied')+' ✓');
 }
-const tgUser=()=>String(ST.settings.telegram||'').replace(/^@/,'');
+// the one support account from config.js (falls back to the store's Telegram setting)
+const tgUser=()=>String((CFG.SUPPORT_URL||'').replace(/^.*t\.me\//,'').replace(/[/?#].*$/,'')||ST.settings.telegram||'').replace(/^@/,'');
 
 async function load(){
   const nm=CFG.SITE_NAME||'CBT Test Series';$('#sname').textContent=nm;$('#fname').textContent=nm;
