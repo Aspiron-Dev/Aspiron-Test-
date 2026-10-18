@@ -346,7 +346,7 @@ function mnuUpdate(){
 }
 IC.bmark='<path d="M6 3h12v18l-6-4-6 4z"/>';
 IC.pulse='<path d="M3 12h4l3-8 4 16 3-8h4"/>';
-const HELP_URL='https://t.me/StudentsHelpCentreBot';
+const HELP_URL=(window.CBT_CONFIG||{}).SUPPORT_URL||'https://t.me/Students_support_teams';
 IC.gear='<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 01-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 010-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 014 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 010 4h-.1a1.7 1.7 0 00-1.5 1z"/>';
 IC.mail='<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>';
 function openMenu(){
@@ -523,7 +523,7 @@ function openTerms(){
    <h4>8. Availability</h4><p>We try to keep the platform running at all times, but it may sometimes be unavailable due to maintenance or network issues. Answers given while offline are saved on your phone and sent when you are back online.</p>
    <h4>9. Independence</h4><p>${n} is an independent educational platform and is not linked to NTA, NCERT, CBSE or any exam authority. Exam names are used only to describe the syllabus.</p>
    <h4>10. Changes</h4><p>We may update these terms, features or tests from time to time. Continuing to use the platform means you accept the updated terms.</p>
-   <h4>11. Contact</h4><p>For any question or complaint, message us on Telegram: <a href="${HELP_URL}" target="_blank" rel="noopener">@StudentsHelpCentreBot</a>.</p></div>`,'terms');
+   <h4>11. Contact</h4><p>For any question or complaint, message us on Telegram: <a href="${HELP_URL}" target="_blank" rel="noopener">@${esc(HELP_URL.replace(/^.*\//,""))}</a>.</p></div>`,'terms');
 }
 
 /* notices: no pop-up card on screen, only the count on the bell */
