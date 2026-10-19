@@ -163,15 +163,16 @@ async function buy(id){
   payStep();
 }
 const upiLink=()=>{const s=ST.settings,e=encodeURIComponent;return `upi://pay?pa=${s.upi}&pn=${e(s.payee||'')}&am=${ORD.amount}&cu=INR&tn=${e(ORD.code)}`};
-function qrSvg(t){const q=qrcode(0,'M');q.addData(t);q.make();return q.createSvgTag({cellSize:4,margin:2,scalable:true})}
+const qrMake=t=>{const q=qrcode(0,'M');q.addData(t);q.make();return q};
 const upiOk=()=>/^[A-Za-z0-9._-]{2,}@[A-Za-z0-9.-]{2,}$/.test(ST.settings.upi||'')&&!/[<>"`]/.test(ST.settings.payee||'');
-const isMob=()=>/android|iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const isMob=()=>/android/i.test(navigator.userAgent)||isIOS();
 /* step 1: QR, UPI ID and order code; at the bottom "Pay with UPI" (opens the phone's UPI app) and "I have already paid" */
 function payStep(){
   if(!upiOk())return sheet(1,`<div class="bigok">⚠️</div><h3 style="text-align:center">Payment is paused</h3><p class="sm mut" style="text-align:center">Please message support. Do not pay anywhere else.</p><a class="btn tg block" style="margin-top:12px" target="_blank" rel="noopener" href="${esc(tgLink(''))}">💬 Message support</a>`);
   const s=ST.settings,mob=isMob();
   sheet(1,`<div class="amt"><span class="sm mut">Amount to pay</span><br><b>${inr(ORD.amount)}</b></div>
-   <div class="qr">${qrSvg(upiLink())}</div>
+   <div class="qr"><img src="${qrMake(upiLink()).createDataURL(8,2)}" alt="UPI QR code"></div>
    <p class="sm mut" style="text-align:center;margin-top:8px">Scan with GPay, PhonePe, Paytm or any UPI app</p>
    <div class="verify"><span>⚠️</span><span>Before paying, check that the name shown in your UPI app is <b>${esc(s.payee)}</b>. Pay only to the UPI ID below.</span></div>
    <div class="kv"><div><span>UPI ID</span><b>${esc(s.upi)}</b><button class="cp" data-copy="${esc(s.upi)}" data-what="UPI ID copied">Copy</button></div>
@@ -180,8 +181,30 @@ function payStep(){
    <p class="sm mut">If you pay with the UPI ID, write the order code <b class="code">${esc(ORD.code)}</b> in the payment note.</p>
    ${s.note?`<p class="sm mut" style="margin-top:10px">${esc(s.note)}</p>`:''}
    <p class="sm mut" style="text-align:center;margin-top:12px">For ${esc(ORD.name)} · ${esc(ORD.mobile)} · <a href="#" data-redo style="color:var(--pri)">change</a></p>
-   <div class="sbuy paybar">${mob?`<a class="btn block big two" data-payupi href="${esc(upiLink())}"><span class="bl"><b>⚡ Pay with UPI</b><small>Opens GPay, PhonePe, Paytm or any UPI app</small></span></a>`:''}
+   <div class="sbuy paybar">${mob?`<button class="btn block big two" data-saveqr><span class="bl"><b>⬇ Save QR to pay</b><small>Then: UPI app → Scan → Gallery → this QR</small></span></button>`:''}
     <button class="btn block${mob?' line':''}" data-step="paid">✔ I have already paid →</button></div>`);
+}
+/* "Save QR to pay": the QR as a picture in the gallery. UPI apps pay a QR chosen from the gallery like a scanned one,
+   while a pay link from a website to a personal UPI ID is often blocked (Google Pay: "exceeded the bank limit"). */
+async function saveQr(){
+  const q=qrMake(upiLink()),n=q.getModuleCount(),W=720,cell=Math.floor(560/(n+8)),qs=cell*(n+8),x0=(W-qs)/2,y0=96,c=document.createElement('canvas');
+  c.width=W;c.height=y0+qs+170;
+  const g=c.getContext('2d'),F='Inter,system-ui,sans-serif';
+  g.fillStyle='#fff';g.fillRect(0,0,W,c.height);g.textAlign='center';g.fillStyle='#0b1726';
+  g.font='800 40px '+F;g.fillText('Scan & pay '+inr(ORD.amount),W/2,64);
+  for(let r=0;r<n;r++)for(let k=0;k<n;k++)if(q.isDark(r,k))g.fillRect(x0+(k+4)*cell,y0+(r+4)*cell,cell,cell);
+  g.font='700 30px '+F;g.fillText(ST.settings.payee||'',W/2,y0+qs+40);
+  g.font='500 26px '+F;g.fillStyle='#475569';g.fillText('UPI ID: '+ST.settings.upi,W/2,y0+qs+86);g.fillText('Order code: '+ORD.code,W/2,y0+qs+128);
+  const blob=await new Promise(ok=>c.toBlob(ok,'image/png'));if(!blob)return toast('Could not save. Long-press the QR and save it.');
+  const name='Pay-'+ORD.code+'.png',file=new File([blob],name,{type:'image/png'});
+  let saved=false;
+  // iPhone: the share sheet has "Save Image" (to Photos); a download would go to Files instead
+  if(isIOS()&&navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file]});saved=true}catch(e){if(e&&e.name==='AbortError')return}
+  }
+  if(!saved){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}
+  toast('QR saved ✓ Open your UPI app → Scan → Gallery');
+  setTimeout(()=>{const b=$('[data-step=paid]');if(b)b.classList.add('nudge')},800);
 }
 // message for the support chat (Telegram / WhatsApp); the student sends the payment screenshot with it
 function tgText(){return `Payment done ✅\nOrder code: ${ORD.code}\nSeries: ${ORD.title}\nAmount: ${inr(ORD.amount)}\nStudent name: ${ORD.name}\nMobile: ${ORD.mobile}\nPaid from account of: ${ORD.payer||'-'}\nUTR / Transaction ID: ${ORD.utr||'-'}\n📎 Payment screenshot attached`}
@@ -292,8 +315,7 @@ document.addEventListener('click',e=>{
   else if('close' in t.dataset)closeSheet();
   else if('redo' in t.dataset){e.preventDefault();const id=IT.id;meSheet(()=>{LSd('store_ord');closeSheet();buy(id)})}
   else if(t.dataset.copy)copy(t.dataset.copy,t.dataset.what);
-  // the UPI app opens; when the student comes back, the next step is "I have already paid"
-  else if('payupi' in t.dataset)setTimeout(()=>{const b=$('[data-step=paid]');if(b)b.classList.add('nudge')},1000);
+  else if('saveqr' in t.dataset)saveQr();
   else if('verify' in t.dataset){try{navigator.clipboard.writeText(tgText())}catch(_){}}
   else if('edit' in t.dataset)editBox();
   else if('editx' in t.dataset)closeEdit();

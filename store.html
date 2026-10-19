@@ -167,7 +167,7 @@ input:focus{border-color:var(--pri);background:var(--surface);box-shadow:0 0 0 4
 .err{color:var(--bad);font-size:13px;min-height:20px;margin-top:8px}
 .amt{text-align:center;margin:2px 0 12px;padding:14px;border-radius:18px;background:linear-gradient(135deg,color-mix(in srgb,var(--pri) 10%,transparent),color-mix(in srgb,var(--ok) 10%,transparent));border:1px solid var(--line)}.amt b{font-family:var(--fh);font-size:36px;line-height:1.1}
 .qr{background:#fff;border-radius:18px;padding:14px;width:min(240px,70vw);margin:10px auto 0;display:block;box-shadow:var(--shadow)}
-.qr svg{display:block;width:100%;height:auto}
+.qr svg,.qr img{display:block;width:100%;height:auto;image-rendering:pixelated}
 .verify{display:flex;gap:10px;align-items:flex-start;background:var(--warnSoft);color:var(--warn);border-radius:14px;padding:10px 12px;font-size:13px;margin:12px 0}
 .kv{background:var(--surface2);border-radius:16px;padding:4px 12px;margin:10px 0}
 .kv div{display:flex;align-items:center;gap:10px;padding:10px 0}.kv div+div{border-top:1px solid var(--bd)}
@@ -176,8 +176,8 @@ input:focus{border-color:var(--pri);background:var(--surface);box-shadow:0 0 0 4
 .code{font-family:ui-monospace,Menlo,monospace;letter-spacing:1px;white-space:nowrap}
 .bigok{width:64px;height:64px;border-radius:50%;background:var(--okSoft);color:var(--ok);display:grid;place-items:center;font-size:30px;margin:4px auto 10px}
 .msg{background:var(--surface2);border-radius:14px;padding:12px;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;margin:10px 0}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--tx);color:var(--bg);border-radius:12px;padding:10px 16px;font-size:14px;font-weight:600;z-index:99;max-width:90vw;box-shadow:var(--shadow2);animation:tin .3s var(--ease)}
-@keyframes tin{from{opacity:0;transform:translate(-50%,10px)}}
+.toast{position:fixed;left:50%;top:max(16px,env(safe-area-inset-top));transform:translateX(-50%);text-align:center;background:var(--tx);color:var(--bg);border-radius:12px;padding:10px 16px;font-size:14px;font-weight:600;z-index:99;max-width:90vw;box-shadow:var(--shadow2);animation:tin .3s var(--ease)}
+@keyframes tin{from{opacity:0;transform:translate(-50%,-10px)}}
 .sk{background:linear-gradient(90deg,var(--surface2),var(--surface),var(--surface2));background-size:200% 100%;animation:sk 1.2s infinite;border-radius:24px;height:300px}
 @keyframes sk{to{background-position:-200% 0}}
 .ld{display:flex;flex-direction:column;align-items:center;gap:12px;padding:30px 0;color:var(--mut)}
@@ -321,6 +321,6 @@ button.rvon{display:inline-flex;align-items:center;gap:4px;margin-top:10px;borde
 <a class="fab" id="fab" href="#" data-help aria-label="Chat with support"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8.5 8.5 0 01-12.6 7.4L3 21l1.6-5.4A8.5 8.5 0 1121 12z"/><path d="M8 10.5h8M8 14h5"/></svg><em>Help</em></a>
 <script src="config.js?v=5"></script>
 <script src="qrcode.js"></script>
-<script src="store.js?v=18"></script>
+<script src="store.js?v=19"></script>
 </body>
 </html>
