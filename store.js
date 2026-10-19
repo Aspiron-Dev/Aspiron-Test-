@@ -162,12 +162,16 @@ async function paidGo(){
   ORD.payer=py;ORD.utr=pu;LSs('store_ord',ORD);tgStep();
 }
 const tgLink=txt=>'https://t.me/'+encodeURIComponent(tgUser())+(txt?'?text='+encodeURIComponent(txt):'');
+// optional second way to verify: the support WhatsApp number from config.js
+const waNum=()=>String(CFG.SUPPORT_WHATSAPP||'').replace(/\D/g,'');
+const waLink=txt=>'https://wa.me/'+waNum()+(txt?'?text='+encodeURIComponent(txt):'');
 function tgStep(){
   sheet(4,`<h3 style="text-align:center;margin:4px 0 6px">Verify your payment</h3>
    <div class="attach"><div class="attico">📎<i>🖼️</i></div><div><b>Attach your payment screenshot</b><p>Without the screenshot we cannot verify your payment.</p></div></div>
-   <ol class="howto"><li>Tap the blue button below — our support chat opens with your details already written.</li><li>Tap <b>📎</b> (attach) in the chat and choose your <b>payment screenshot</b>.</li><li>Tap <b>Send</b>.</li></ol>
+   <ol class="howto"><li>Tap ${waNum().length>=10?'<b>Telegram</b> or <b>WhatsApp</b> below':'the blue button below'} — our support chat opens with your details already written.</li><li>Tap <b>📎</b> (attach) in the chat and choose your <b>payment screenshot</b>.</li><li>Tap <b>Send</b>.</li></ol>
    <div class="msg">${esc(tgText())}</div>
-   <a class="btn tg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(tgLink(tgText()))}">✔ Click here to verify your payment</a>
+   <a class="btn tg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(tgLink(tgText()))}">✔ ${waNum().length>=10?'Verify on Telegram':'Click here to verify your payment'}</a>
+   ${waNum().length>=10?`<a class="btn wa block vbtn" style="margin-top:10px" data-verify target="_blank" rel="noopener" href="${esc(waLink(tgText()))}">✔ Verify on WhatsApp</a>`:''}
    <p class="sm mut" style="text-align:center;margin-top:8px">The message is also copied, so you can paste it if it doesn't appear.</p>
    <p class="sm mut" style="text-align:center;margin-top:14px">Keep your order code <b class="code">${esc(ORD.code)}</b> for any help.</p>
    <button class="btn soft block" style="margin-top:10px" data-close>Done</button>`);

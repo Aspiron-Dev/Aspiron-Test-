@@ -200,7 +200,9 @@ function showCode(name,mobile,code,title){
   modal(`<h2>${esc(title||'Access code ready')}</h2><div class="sm mut">${esc(name)} · ${esc(mobile)}</div>
    <div class="big-code">${esc(code.slice(0,4)+'-'+code.slice(4))}</div>
    <p class="sm mut" style="margin:0 0 12px">Save or send this code now. For safety it is stored only in scrambled form, so it cannot be shown again. If it is lost, create a new code.</p>
-   <div class="row"><a class="btn" style="flex:1;text-decoration:none" href="${wa}" target="_blank" rel="noopener">Send on WhatsApp</a><button class="btn soft" style="flex:1" onclick="copyText(window._cm)">Copy message</button></div>
+   <div class="row"><a class="btn" style="flex:1;text-decoration:none" href="${wa}" target="_blank" rel="noopener">Send on WhatsApp</a><a class="btn tgsend" style="flex:1;text-decoration:none" href="https://t.me/+${(mobile.length===10?'91':'')+mobile}" target="_blank" rel="noopener" onclick="copyText(window._cm)">Send on Telegram</a></div>
+   <button class="btn soft block" style="margin-top:10px" onclick="copyText(window._cm)">📋 Copy message</button>
+   <p class="sm mut" style="margin:8px 0 0">Telegram: the message is copied first — paste it in the chat that opens.</p>
    <button class="btn ghost block" style="margin-top:10px" onclick="closeModal()">Done</button>`);
 }
 async function approve(id){

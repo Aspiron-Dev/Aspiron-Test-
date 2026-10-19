@@ -26,7 +26,9 @@ creStore=async function(){await tab('stoedit');if(!CA.series.length)await loadCa
 
 /* ---------- data ---------- */
 const oSeg=o=>o.status==='paid'?'done':o.status==='rejected'?'rej':(o.payer||o.utr)?'verify':'unpaid';
-const ordN=s=>(SS.orders||[]).filter(o=>oSeg(o)===s).length;
+const reqL=()=>(ST||[]).filter(s=>s.status==='pending');
+const ordN=s=>s==='req'?reqL().length:(SS.orders||[]).filter(o=>oSeg(o)===s).length;
+const todoN=()=>ordN('verify')+ordN('req');
 const oTime=o=>new Date(o.created_at).getTime();
 const oAgo=t=>{const m=Math.round((Date.now()-new Date(t).getTime())/6e4);return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'};
 const inr=n=>'₹'+Math.round(Number(n)||0).toLocaleString('en-IN');
@@ -47,7 +49,8 @@ loadStore=async function(){
   const p=pane('store');
   p.innerHTML=`<div class="phead"><div><h1>Store dashboard</h1><p class="sm mut">Sales, payments to verify and students to follow up — at a glance.</p></div><a class="btn ghost sm" style="text-decoration:none" href="store.html" target="_blank" rel="noopener">${ai('site',15)} Open store</a></div><div id="stobody">${askel()}</div>`;
   if(!CA.series.length)loadCatalog();
-  const r=await stoData(true);if(!r.ok){$('#stobody').innerHTML=stoSetupMsg(r);return}
+  const [r,s]=await Promise.all([stoData(true),(ST||[]).length?null:A('students')]);if(s&&s.ok)ST=s.students;
+  if(!r.ok){$('#stobody').innerHTML=stoSetupMsg(r);return}
   stoDraw();
   if(SS.items.length&&!('image' in SS.items[0]))stoNeedFix('Photos are switched off in the database.');
 };
@@ -58,8 +61,9 @@ stoNeedFix=function(why){
 };
 
 /* ---------- badges: Store = payments to verify; Students = access requests only ---------- */
-{const _b=badgeOf;badgeOf=function(k){return k==='store'||k==='orders'?ordN('verify'):k==='approvals'?(ST||[]).filter(s=>s.status==='pending').length:_b(k)}}
-{const _hc=hubCounts;hubCounts=function(){const c=_hc();c.approvals=(ST||[]).filter(s=>s.status==='pending').length;c.store=c.orders=ordN('verify');return c}}
+// access requests moved here too, so Students has no approvals badge any more
+{const _b=badgeOf;badgeOf=function(k){return k==='store'||k==='orders'?todoN():k==='approvals'?0:_b(k)}}
+{const _hc=hubCounts;hubCounts=function(){const c=_hc();c.approvals=c.students=0;c.store=c.orders=todoN();return c}}
 
 /* ---------- Dashboard ---------- */
 SS.dp=SS.dp||'30';
@@ -79,7 +83,8 @@ function dashDraw(){
   // by series (in the chosen period)
   const byS={};for(const o of O){const k=o.item_title||'—',s=byS[k]=byS[k]||{t:k,n:0,p:0,v:0};s.n++;if(oSeg(o)==='done'){s.p++;s.v+=o.amount||0}}
   const SER=Object.values(byS).sort((a,c)=>c.v-a.v||c.n-a.n);
-  b.innerHTML=`<div class="sdchips">${DP.map(([k,l])=>`<button class="${SS.dp===k?'on':''}" onclick="SS.dp='${k}';dashDraw()">${l}</button>`).join('')}</div>
+  const rq=reqL().length;
+  b.innerHTML=`${rq?`<button class="card sdreq" onclick="ORDF.seg='req';tab('orders')">🙋 <b>${rq} new access request${rq>1?'s':''}</b><span class="sm mut">Approve &amp; give the access code ›</span></button>`:''}<div class="sdchips">${DP.map(([k,l])=>`<button class="${SS.dp===k?'on':''}" onclick="SS.dp='${k}';dashDraw()">${l}</button>`).join('')}</div>
    <div class="sdkpi">
     <div class="sdk sdk-rev"><span>Revenue</span><b>${inr(rev)}</b><small>${done.length} approved order${done.length===1?'':'s'}</small></div>
     <button class="sdk sdk-ver" onclick="ORDF.seg='verify';tab('orders')"><span>To verify</span><b>${ver.length}</b><small>${ver.length?'Payment done · tap to check':'All checked ✓'}</small></button>
@@ -104,7 +109,7 @@ function sdRead(el){const r=$('#sdread');if(r)r.textContent=el.dataset.l;documen
 
 /* ---------- Orders ---------- */
 const ORDF={seg:'verify',q:'',d:'all'};
-const OSEG=[['verify','Payment done','Verify the UTR, then Approve & unlock'],['unpaid','Not paid yet','Tapped Buy now, did not finish — follow up'],['done','Approved','Paid and unlocked'],['rej','Rejected','Payment could not be matched'],['all','All','Every order']];
+const OSEG=[['verify','Payment done','Verify the UTR, then Approve & unlock'],['unpaid','Not paid yet','Tapped Buy now, did not finish — follow up'],['req','Access requests','Asked for access on the website — approve to give an access code'],['done','Approved','Paid and unlocked'],['rej','Rejected','Payment could not be matched'],['all','All','Every order']];
 const OCOL=['#2563eb','#0d9488','#7c3aed','#db2777','#ea580c','#0891b2','#65a30d','#4f46e5'];
 const oIni=o=>(String(o.name||'?').trim()[0]||'?').toUpperCase();
 const oCol=o=>{let h=0;for(const c of String(o.mobile||o.code))h=(h*31+c.charCodeAt(0))>>>0;return OCOL[h%OCOL.length]};
@@ -112,8 +117,9 @@ async function loadOrders(){
   const p=pane('orders');
   p.innerHTML=`<div class="phead"><div><h1>Orders</h1><p class="sm mut">Everyone who tapped Buy now on the store. Verify payments, and call or message students who did not pay.</p></div><button class="btn ghost sm" onclick="loadOrders()">↻ Refresh</button></div><div id="ordbody">${askel()}</div>`;
   if(!CA.series.length)loadCatalog();
-  const r=await stoData(true);if(!r.ok){$('#ordbody').innerHTML=stoSetupMsg(r);return}
-  ordDraw();
+  const [r,s]=await Promise.all([stoData(true),A('students')]);if(s&&s.ok)ST=s.students;
+  if(!r.ok){$('#ordbody').innerHTML=stoSetupMsg(r);return}
+  ordDraw();navBadges();
 }
 function ordList(){
   const q=ORDF.q.trim().toLowerCase(),from=ORDF.d==='all'?0:Date.now()-(+ORDF.d)*864e5;
@@ -124,14 +130,17 @@ function ordDraw(){
   const b=$('#ordbody');if(!b||!SS.orders)return;
   const cur=OSEG.find(x=>x[0]===ORDF.seg)||OSEG[0];
   b.innerHTML=`<div class="oseg" role="tablist">${OSEG.map(([k,l])=>`<button role="tab" aria-selected="${ORDF.seg===k}" class="${ORDF.seg===k?'on':''} os-${k}" onclick="ORDF.seg='${k}';ordDraw()">${l}<em>${k==='all'?SS.orders.length:ordN(k)}</em></button>`).join('')}</div>
-   <div class="ohint">${ORDF.seg==='verify'?'✅ Match the <b>amount</b>, <b>paid-from name</b> and <b>UTR</b> with your bank / UPI app and the screenshot on Telegram, then tap <b>Approve &amp; unlock</b> — it creates the student, makes the access code, unlocks the series and marks the order paid.':ORDF.seg==='unpaid'?'📞 These students chose a series but did not pay. Call or message them to help — the message is written for you, and every contact is counted.':esc(cur[2])}</div>
+   <div class="ohint">${ORDF.seg==='verify'?'✅ Match the <b>amount</b>, <b>paid-from name</b> and <b>UTR</b> with your bank / UPI app and the screenshot on Telegram, then tap <b>Approve &amp; unlock</b> — it creates the student, makes the access code, unlocks the series and marks the order paid.':ORDF.seg==='unpaid'?'📞 These students chose a series but did not pay. Call or message them to help — the message is written for you, and every contact is counted.':ORDF.seg==='req'?'🙋 New students who tapped “Request access” on the website. <b>Approve &amp; get code</b> makes their access code; give the paid series from Store orders or the student’s page.':esc(cur[2])}</div>
    <div class="otools"><input type="search" id="ordq" placeholder="Search name, mobile, code, UTR…" value="${esc(ORDF.q)}" oninput="ORDF.q=this.value;ordListDraw()">
     <select onchange="ORDF.d=this.value;ordListDraw()" aria-label="Period">${[['all','All time'],['1','Last 24 h'],['7','Last 7 days'],['30','Last 30 days']].map(([k,l])=>`<option value="${k}" ${ORDF.d===k?'selected':''}>${l}</option>`).join('')}</select></div>
    <div id="ordl"></div>`;
   ordListDraw();
 }
 function ordListDraw(){
-  const e=$('#ordl');if(!e)return;const L=ordList();
+  const e=$('#ordl');if(!e)return;
+  if(ORDF.seg==='req'){const q=ORDF.q.trim().toLowerCase(),R=reqL().filter(s=>!q||(s.name+' '+s.mobile).toLowerCase().includes(q)).sort((a,c)=>new Date(c.created||0)-new Date(a.created||0));
+    e.innerHTML=R.length?R.map(reqCard).join(''):`<div class="card empty"><p class="sm mut">No new access requests.</p></div>`;return}
+  const L=ordList();
   e.innerHTML=L.length?L.map(ordCard).join(''):`<div class="card empty"><p class="sm mut">${ORDF.q?'No order matches your search.':ORDF.seg==='verify'?'No payments waiting. 🎉':ORDF.seg==='unpaid'?'Nobody is waiting — everyone who ordered has paid.':'No orders here.'}</p></div>`;
 }
 function ordCard(o){
@@ -170,6 +179,20 @@ function ordContacts(o){
    ${ordWa(o)}
    <a class="ocb tg" href="https://t.me/+91${m}" target="_blank" rel="noopener" onclick="ordTg('${esc(o.code)}')" aria-label="Telegram">${ai('tg',17)}<span>Telegram</span></a>`;
 }
+// access request (a student, not an order): same contact buttons, no counting
+const reqMsg=s=>`Hi ${String(s.name||'').trim().split(/\s+/)[0]||'there'} 👋\nWe received your request to join ${SITE()}. Which test series would you like? Reply here and we will help you get started.`;
+function reqCard(s){
+  const m=ordM(s),t=encodeURIComponent(reqMsg(s)),ord=(SS.orders||[]).find(o=>o.mobile===s.mobile&&o.status!=='rejected');
+  return `<div class="ocard os-req"><div class="otop"><span class="oav" style="--c:${oCol(s)}">${esc(oIni(s))}</span>
+    <div class="grow"><b>${esc(s.name)}</b><div class="sm mut">${esc(s.mobile)}${s.created?' · asked '+oAgo(s.created):''}</div></div><span class="ochip os-req">Access request</span></div>
+   ${ord?`<div class="sm" style="margin-top:8px">🛒 Also has a store order: <b>${esc(ord.item_title)}</b> · ${inr(ord.amount)} · ${{verify:'payment done',unpaid:'not paid',done:'approved'}[oSeg(ord)]||''}</div>`:''}
+   <div class="ocon" style="grid-template-columns:repeat(4,1fr)"><a class="ocb" href="tel:+91${m}" aria-label="Call">${ai('phone',17)}<span>Call</span></a><a class="ocb" href="sms:+91${m}?&body=${t}" aria-label="Text message">${ai('sms',17)}<span>SMS</span></a>
+    <a class="ocb wa" href="https://wa.me/91${m}?text=${t}" target="_blank" rel="noopener" aria-label="WhatsApp">${ai('wa',17)}<span>WhatsApp</span></a><a class="ocb tg" href="https://t.me/+91${m}" target="_blank" rel="noopener" onclick="reqTg('${esc(s.id)}')" aria-label="Telegram">${ai('tg',17)}<span>Telegram</span></a></div>
+   <div class="oact"><button class="btn sm" onclick="approve('${esc(s.id)}')">✓ Approve &amp; get code</button><button class="btn ghost sm" onclick="reject('${esc(s.id)}')">Reject</button></div></div>`;
+}
+function reqTg(id){const s=(ST||[]).find(x=>x.id===id);if(s){try{navigator.clipboard.writeText(reqMsg(s));toast('Message copied — paste it in Telegram')}catch(e){}}}
+{const _ap=approve;approve=async function(id){await _ap(id);ordDraw();navBadges()}}
+{const _rj=reject;reject=async function(id){await _rj(id);setTimeout(()=>{ordDraw();navBadges()},700)}}
 // Telegram cannot fill in the text from a phone link, so the message is copied first
 function ordTg(code){const o=SS.orders.find(x=>x.code===code);if(o){try{navigator.clipboard.writeText(ordMsg(o));toast('Message copied — paste it in Telegram')}catch(e){}}ordContact(code)}
 async function ASTO2(code,action,data){
