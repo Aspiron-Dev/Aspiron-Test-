@@ -233,11 +233,17 @@ async function changePw(){
 }
 function signOutAdmin(){PW='';try{sessionStorage.removeItem('adm_pw')}catch(e){}closeModal();gate()}
 
-/* ---------- boot ---------- */
-(async function(){
-  if(!cloud)return gate();
-  if(!PW)return gate();
-  const r=await A('ping');
-  if(r.ok)shell();else if(!['invalid','locked','not_set'].includes(r.error))gate();
+/* ---------- boot ----------
+   The password check starts at once, but the panel is drawn only after every admin*.js has loaded:
+   drawing it from here (mid-page) sometimes showed the old layout before admin5+ replaced it. */
+(function(){
+  const ping=cloud&&PW?A('ping'):null;
+  const go=async function(){
+    if(!cloud)return gate();
+    if(!ping)return gate();
+    const r=await ping;
+    if(r.ok)shell();else if(!['invalid','locked','not_set'].includes(r.error))gate();
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go,{once:true});else go();
 })();
 ;(window.__p=window.__p||{})['admin3']=1;
