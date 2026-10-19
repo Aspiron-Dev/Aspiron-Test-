@@ -28,8 +28,6 @@ async function copy(t,what){
 }
 // the one support account from config.js (falls back to the store's Telegram setting)
 const tgUser=()=>String((CFG.SUPPORT_URL||'').replace(/^.*t\.me\//,'').replace(/[/?#].*$/,'')||ST.settings.telegram||'').replace(/^@/,'');
-// support WhatsApp number from config.js (10 digits → India code added)
-const waNum=()=>{const n=String(CFG.CONTACT_WHATSAPP||'').replace(/\D/g,'');return n.length===10?'91'+n:n};
 
 /* ---------- light / dark theme (first choice comes from the phone; store-theme.js applies a saved one early) ---------- */
 function themeMeta(){
@@ -81,7 +79,8 @@ async function load(){
   const r=await rpc('cbt_store');
   if(!r.ok){$('#list').innerHTML=`<div class="card empty"><b>${r.error==='network'?'No internet':'Store is opening soon'}</b><p class="sm">${r.error==='network'?'Check your connection and refresh.':'Please check back in a little while.'}</p></div>`;return}
   ST=r;const tg=tgUser();
-  if(tg){const u='https://t.me/'+encodeURIComponent(tg);$('#ftg').href=u;$('#fab').href=u}else $('#fab').remove();
+  // Help button + footer link open the WhatsApp / Telegram chooser
+  if(!tg&&!waUrl(''))$('#fab').remove();
   if(ST.settings.payee)$('#spayee').textContent=ST.settings.payee;
   const L=ST.items||[];
   if(!L.length){$('#list').innerHTML=`<div class="card empty"><b>New test series coming soon</b><p class="sm">Please check back in a little while.</p></div>`;return}
@@ -215,10 +214,22 @@ async function paidGo(){
   ORD.payer=py;ORD.utr=pu;LSs('store_ord',ORD);vStep();
 }
 const tgLink=txt=>'https://t.me/'+encodeURIComponent(tgUser())+(txt?'?text='+encodeURIComponent(txt):'');
-const waLink=txt=>'https://wa.me/'+waNum()+(txt?'?text='+encodeURIComponent(txt):'');
+// WhatsApp support from config.js. With the number (SUPPORT_WA_NUMBER) the message is already written in the chat,
+// like Telegram; a wa.me/message link can't take a message, so then it is only copied.
+const waNum=(()=>{let n=String(CFG.SUPPORT_WA_NUMBER||'').replace(/\D/g,'');if(n.length===10)n='91'+n;return n.length>=11&&n.length<=15?n:''})();
+const waUrl=txt=>{const v=String(CFG.SUPPORT_WA||'').trim(),n=waNum||(/^https:\/\//.test(v)?'':v.replace(/\D/g,''));
+  return n.length>=10?'https://wa.me/'+n+(txt?'?text='+encodeURIComponent(txt):''):/^https:\/\//.test(v)?v:''};
+/* ---------- Help: choose WhatsApp or Telegram (chat only) ---------- */
+function helpSheet(){
+  const wa=waUrl(''),tg=tgUser()?tgLink(''):'';
+  ovEl().innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="shd"><div class="grow"><b>Chat with support</b><span class="sm mut">Questions about a series, payment or login</span></div><button class="x" data-close aria-label="Close">✕</button></div>
+   <div class="supgrid">${wa?`<a class="supb wa" href="${esc(wa)}" target="_blank" rel="noopener"><span class="supi">💬</span><span><b>WhatsApp</b><small>Chat with support</small></span></a>`:''}
+    ${tg?`<a class="supb tg" href="${esc(tg)}" target="_blank" rel="noopener"><span class="supi">✈️</span><span><b>Telegram</b><small>Chat with support</small></span></a>`:''}</div>
+   <p class="sm mut" style="text-align:center;margin-top:12px">Chat only — calls are not available.${ORD&&ORD.code?` Your order code: <b class="code">${esc(ORD.code)}</b>`:''}</p></div>`;
+}
 /* step 3 (last): our chat opens with the details written; the student attaches the payment screenshot and sends both */
 function vStep(){
-  const tg=tgUser(),wa=waNum(),msg=tgText();
+  const tg=tgUser(),wa=waUrl(''),msg=tgText();
   sheet(3,`<div class="bigok">📸</div><h3 style="text-align:center;margin-bottom:4px">Verify your payment</h3>
    <p class="sm mut" style="text-align:center">Last step — send us the message with your payment screenshot.</p>
    <div class="must"><div class="mustico">📎<i>🖼️</i></div><div><b>Please attach your payment screenshot with this message</b>
@@ -227,7 +238,7 @@ function vStep(){
    <ol class="vsteps"><li><i>1</i><span>Tap a button below — our chat opens with your message already written.</span></li>
     <li><i>2</i><span>Tap <b>📎 Attach</b> in the chat and choose your <b>payment screenshot</b>.</span></li>
     <li><i>3</i><span>Tap <b>Send</b> — the message <b>and</b> the screenshot.</span></li></ol>
-   <div class="vgo">${tg?`<a class="btn tg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(tgLink(msg))}">✈️ Verify on Telegram</a>`:''}${wa?`<a class="btn wa block vbtn" data-verify target="_blank" rel="noopener" href="${esc(waLink(msg))}">💬 Verify on WhatsApp</a>`:''}</div>
+   <div class="vgo">${tg?`<a class="btn tg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(tgLink(msg))}">✈️ Verify on Telegram</a>`:''}${wa?`<a class="btn wa block vbtn" data-verify target="_blank" rel="noopener" href="${esc(waUrl(msg))}">💬 Verify on WhatsApp</a>`:''}</div>
    <p class="sm mut" style="text-align:center;margin-top:8px">The message is also copied, so you can paste it if it doesn't appear.</p>
    <details class="hint"><summary>See the message</summary><div class="msg">${esc(msg)}</div></details>
    <p class="sm mut" style="text-align:center;margin-top:14px">Keep your order code <b class="code">${esc(ORD.code)}</b> for any help.</p>
@@ -235,6 +246,7 @@ function vStep(){
 }
 document.addEventListener('click',e=>{
   const t=e.target.closest('button,a,[data-view]');if(!t)return;
+  if('help' in t.dataset){e.preventDefault();helpSheet();return}
   if('themeToggle' in t.dataset)themeToggle();
   else if('gate' in t.dataset)gateGo();
   else if('me' in t.dataset)meSheet();

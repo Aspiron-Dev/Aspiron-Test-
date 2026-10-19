@@ -31,7 +31,7 @@ function devSheet(r){
    ${L.map(d=>`<div class="devrow ${d.this?'this':''}"><span class="devic">${ic('devices',20)}</span><div class="grow"><b>${esc(d.label)}</b><div class="sm mut">${d.this?'This phone':devAgo(d.last)}</div></div>
      ${d.this?'<span class="chip ok">This phone</span>':`<button class="btn ${login?'':'ghost'} sm" ${left?'':'disabled'} onclick="devAsk('${esc(d.key)}','${esc(d.label).replace(/'/g,'&#39;')}')">${login?'Sign out & use here':'Sign out'}</button>`}</div>`).join('')||'<p class="sm mut">No phones signed in.</p>'}
    <p class="sm ${left?'mut':''}" style="margin-top:12px;${left?'':'color:var(--bad)'}">${left?`You can change phones ${left} more time${left==1?'':'s'} today.`:'You have changed phones 2 times today. Try again tomorrow, or ask us for help.'}</p>
-   ${left?'':'<a class="btn soft block" style="margin-top:8px;text-decoration:none" target="_blank" rel="noopener" href="'+esc(HELP_URL)+'">Ask for help</a>'}</div>`,'dev');
+   ${left?'':'<button class="btn soft block" style="margin-top:8px" onclick="closeModal();supportSheet()">Ask for help</button>'}</div>`,'dev');
 }
 function devAsk(key,label){
   const login=DEVC&&DEVC.login;

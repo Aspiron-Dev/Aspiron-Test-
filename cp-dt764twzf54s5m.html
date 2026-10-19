@@ -732,10 +732,69 @@ body.feon{overflow:hidden}
 .creit:active{transform:scale(.99)}
 .creic{flex:none;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--grad);color:#fff}
 .cretx b{display:block;font-size:14.5px}.cretx small{display:block;color:var(--mut);font-size:12.5px;margin-top:1px}
+/* ===== Store hub v2 (admin17.js) ===== */
+.sdchips{display:flex;gap:6px;overflow-x:auto;margin:0 0 12px;scrollbar-width:none}.sdchips::-webkit-scrollbar{display:none}
+.sdchips button{flex:none;border:1px solid var(--hair,var(--bd));background:var(--surface);color:var(--tx);border-radius:999px;padding:7px 14px;font:600 13px Inter,sans-serif;cursor:pointer}.sdchips button.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+.sdkpi{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}@media(min-width:760px){.sdkpi{grid-template-columns:repeat(4,1fr)}}
+.sdk{display:flex;flex-direction:column;gap:2px;text-align:left;background:var(--surface);border:1px solid var(--hair,var(--bd));border-radius:18px;padding:14px;box-shadow:var(--shadow);color:var(--tx);font:inherit}
+button.sdk{cursor:pointer}.sdk span{font-size:12px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}.sdk b{font-size:26px;line-height:1.15;font-weight:800;letter-spacing:-.02em}.sdk small{font-size:12px;color:var(--mut)}
+.sdk-rev{background:var(--grad);color:#fff;border:0}.sdk-rev span,.sdk-rev small{color:rgba(255,255,255,.85)}
+.sdk-ver{border-left:4px solid var(--ok)}.sdk-un{border-left:4px solid var(--warn)}
+.sdh{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.sdh b{font-size:15px}
+.lnk{border:0;background:none;color:var(--pri);font:700 13px Inter,sans-serif;cursor:pointer;padding:0}
+.sdfun .sdfr{display:grid;grid-template-columns:minmax(0,130px) 1fr 34px 36px;align-items:center;gap:8px;margin:8px 0;font-size:13px}.sdfl{color:var(--mut)}.sdfr b{text-align:right}.sdfr small{color:var(--mut);text-align:right}
+.sdfb{height:10px;border-radius:99px;background:color-mix(in srgb,var(--mut) 16%,transparent);overflow:hidden}.sdfb i{display:block;height:100%;border-radius:99px;background:var(--pri)}
+.sdbars{display:grid;grid-template-columns:repeat(14,1fr);gap:2px;align-items:end;height:120px;border-bottom:1px solid var(--hair,var(--bd))}
+.sdbar{height:100%;display:flex;align-items:flex-end;border:0;background:none;padding:0 2px;cursor:pointer}.sdbar i{display:block;width:100%;height:var(--h);min-height:0;background:var(--pri);border-radius:4px 4px 0 0;opacity:.85}
+.sdbar:hover i,.sdbar:focus i,.sdbar.on i{opacity:1;background:color-mix(in srgb,var(--pri) 80%,var(--tx))}
+.sdaxis{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-top:4px}
+.sdcols{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}.sdcols>*{min-width:0}@media(min-width:900px){.sdcols{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.sdrow{display:flex;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--hair,var(--bd))}.sdrow:first-of-type{border-top:0}.sdrow .grow{flex:1;min-width:0}.sdrow .sm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sdtbl{font-size:13px}.sdtr{display:grid;grid-template-columns:minmax(0,1fr) 54px 64px 80px;gap:8px;padding:8px 0;border-top:1px solid var(--hair,var(--bd));align-items:center}.sdtr>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sdtr>*:not(:first-child){text-align:right}.sdtr small{color:var(--mut)}
+.sdth{border-top:0;font-size:11px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+.sdlink{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#hubbar [data-hbb="store"]{display:none!important}
+.btn.tgsend{background:linear-gradient(135deg,#229ed9,#2aabee);color:#fff}
+.ocard.os-req{border-left-color:#8b5cf6}.ochip.os-req{background:color-mix(in srgb,#8b5cf6 15%,transparent);color:color-mix(in srgb,#8b5cf6 75%,var(--tx))}.oseg .os-req em{background:color-mix(in srgb,#8b5cf6 15%,transparent);color:color-mix(in srgb,#8b5cf6 75%,var(--tx))}
+.sdreq{display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%;text-align:left;border:1px solid color-mix(in srgb,#8b5cf6 35%,transparent);background:color-mix(in srgb,#8b5cf6 8%,var(--surface));color:var(--tx);font:inherit;cursor:pointer;margin-bottom:12px}
+#pn_store,#pn_orders,#pn_stoedit{min-width:0;max-width:100%}.sdlink .grow{min-width:180px}
+.oav{flex:none;width:40px;height:40px;border-radius:50%;background:var(--c);color:#fff;display:grid;place-items:center;font-weight:800;font-size:16px}
+.oseg{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;scrollbar-width:none}.oseg::-webkit-scrollbar{display:none}
+.oseg button{flex:none;display:flex;align-items:center;gap:7px;border:1px solid var(--hair,var(--bd));background:var(--surface);color:var(--tx);border-radius:999px;padding:8px 14px;font:700 13px Inter,sans-serif;cursor:pointer}
+.oseg button em{font-style:normal;font-size:11.5px;min-width:22px;padding:1px 7px;border-radius:99px;background:color-mix(in srgb,var(--mut) 16%,transparent)}
+.oseg button.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}.oseg button.on em{background:rgba(127,127,127,.35)}
+.oseg .os-verify em{background:var(--okSoft);color:var(--ok)}.oseg .os-unpaid em{background:var(--warnSoft);color:var(--warn)}
+.ohint{font-size:13px;line-height:1.5;color:var(--mut);background:var(--surface);border:1px solid var(--hair,var(--bd));border-radius:14px;padding:10px 12px;margin-bottom:10px}
+.otools{display:flex;gap:8px;margin-bottom:12px}.otools input{flex:1;min-width:0}.otools select{flex:none;width:auto}
+.ocard{background:var(--surface);border:1px solid var(--hair,var(--bd));border-left:4px solid var(--hair,var(--bd));border-radius:18px;box-shadow:var(--shadow);padding:14px;margin-bottom:12px}
+.ocard.os-verify{border-left-color:var(--ok)}.ocard.os-unpaid{border-left-color:var(--warn)}.ocard.os-done{border-left-color:var(--pri)}.ocard.os-rej{border-left-color:var(--bad)}
+.otop{display:flex;gap:10px;align-items:center}.otop .grow{min-width:0}.otop b{font-size:15px}
+.ochip{flex:none;font-size:11.5px;font-weight:700;border-radius:99px;padding:4px 9px;white-space:nowrap}
+.ochip.os-verify{background:var(--okSoft);color:var(--ok)}.ochip.os-unpaid{background:var(--warnSoft);color:var(--warn)}.ochip.os-done{background:var(--priSoft);color:var(--pri)}.ochip.os-rej{background:var(--badSoft);color:var(--bad)}
+.oitem{display:flex;justify-content:space-between;gap:10px;margin:10px 0 2px;font-size:14px}.oitem span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.oitem b{flex:none}
+.mono{font-family:ui-monospace,Menlo,monospace;letter-spacing:.5px}
+.opay{margin-top:10px;background:color-mix(in srgb,var(--ok) 8%,var(--surface));border:1px solid color-mix(in srgb,var(--ok) 30%,transparent);border-radius:12px;padding:9px 12px;display:grid;gap:4px;font-size:13px}
+.opay>div{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.opay span{color:var(--mut);min-width:68px}.owarn{color:var(--bad);font-weight:700}
+.ofol{margin-top:8px;font-size:12.5px;color:var(--mut)}.onote{margin-top:4px;color:var(--tx);background:var(--warnSoft);border-radius:10px;padding:6px 10px;white-space:pre-wrap;word-break:break-word}
+.ocon{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:12px}
+.ocb{display:flex;flex-direction:column;align-items:center;gap:3px;border:1px solid var(--hair,var(--bd));background:var(--surface);color:var(--tx);border-radius:12px;padding:8px 2px;font:600 11.5px Inter,sans-serif;text-decoration:none;cursor:pointer}
+.ocb .i{width:17px;height:17px}.ocb.wa{color:color-mix(in srgb,#1faa59 75%,var(--tx))}.ocb.tg{color:color-mix(in srgb,#229ed9 80%,var(--tx))}.ocb.sm1{flex:none;width:40px;height:40px;padding:0;justify-content:center;border-radius:50%}
+.oact{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.seit{display:flex;gap:12px;align-items:center;margin-bottom:10px}.seit.off{opacity:.7}.seit img,.seph{flex:none;width:72px;height:44px;border-radius:10px;object-fit:cover}.seit .grow{min-width:0}
+.seph{display:grid;place-items:center;color:#fff;font-weight:800;font-size:18px;background:var(--grad)}
+.seph.c-green{background:linear-gradient(135deg,#0f9d6b,#12a58a)}.seph.c-purple{background:linear-gradient(135deg,#6d3fe0,#a855f7)}.seph.c-orange{background:linear-gradient(135deg,#e8590c,#f59f00)}.seph.c-red{background:linear-gradient(135deg,#d6336c,#f03e3e)}.seph.c-dark{background:linear-gradient(135deg,#1e293b,#475569)}
+/* ===== Students v2: payments (admin18.js) ===== */
+.payrow{display:flex;gap:10px;align-items:center;padding:11px 0;border-top:1px solid var(--hair,var(--bd))}.payrow:first-child{border-top:0}.payrow .grow{flex:1;min-width:0}
+.payrow.sm1{padding:8px 0}.pamt{flex:none;font-size:15px}
+.pchip{display:inline-block;font-size:11px;font-weight:700;border-radius:99px;padding:1px 8px;margin-right:2px}
+.pchip.store{background:var(--priSoft);color:var(--pri)}.pchip.man{background:var(--okSoft);color:var(--ok)}.pchip.free{background:color-mix(in srgb,var(--mut) 16%,transparent);color:var(--mut)}
+.tg.pay{background:var(--okSoft);color:var(--ok)}.tg.nopay{background:var(--warnSoft);color:var(--warn)}
+.ocard.payst{border-left-color:var(--warn)}
+.stuhead{margin-bottom:12px}
 </style>
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['admin1', 'admin2', 'admin3', 'admin4'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
-<script src="config.js?v=5"></script>
+<script src="config.js?v=8"></script>
 </head>
 <body>
 <header class="hdr"><div class="hdr-in">
@@ -750,9 +809,9 @@ body.feon{overflow:hidden}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="parser.js?v=2"></script>
-<script src="admin1.js?v=14" onerror="(window.__miss=window.__miss||[]).push('admin1.js')"></script>
+<script src="admin1.js?v=15" onerror="(window.__miss=window.__miss||[]).push('admin1.js')"></script>
 <script src="admin2.js?v=12" onerror="(window.__miss=window.__miss||[]).push('admin2.js')"></script>
-<script src="admin3.js?v=12" onerror="(window.__miss=window.__miss||[]).push('admin3.js')"></script>
+<script src="admin3.js?v=13" onerror="(window.__miss=window.__miss||[]).push('admin3.js')"></script>
 <script src="admin4.js?v=13" onerror="(window.__miss=window.__miss||[]).push('admin4.js')"></script>
 <script src="admin5.js?v=2" onerror="(window.__miss=window.__miss||[]).push('admin5.js')"></script>
 <script src="admin6.js?v=3" onerror="(window.__miss=window.__miss||[]).push('admin6.js')"></script>
@@ -762,11 +821,13 @@ body.feon{overflow:hidden}
 <script src="pyq-syllabus.js?v=2"></script>
 <script src="admin10.js?v=2" onerror="(window.__miss=window.__miss||[]).push('admin10.js')"></script>
 <script src="admin11.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin11.js')"></script>
-<script src="admin12.js?v=13" onerror="(window.__miss=window.__miss||[]).push('admin12.js')"></script>
+<script src="admin12.js?v=14" onerror="(window.__miss=window.__miss||[]).push('admin12.js')"></script>
 <script src="admin13.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin13.js')"></script>
 <script src="admin14.js?v=2" onerror="(window.__miss=window.__miss||[]).push('admin14.js')"></script>
 <script src="admin15.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin15.js')"></script>
 <script src="admin16.js?v=3" onerror="(window.__miss=window.__miss||[]).push('admin16.js')"></script>
+<script src="admin17.js?v=3" onerror="(window.__miss=window.__miss||[]).push('admin17.js')"></script>
+<script src="admin18.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin18.js')"></script>
 
 </body>
 </html>
