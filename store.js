@@ -1,5 +1,6 @@
-/* Store page: lists the paid test series (managed in the admin panel → Store) and walks the student through
-   details → UPI payment → payment details → verify on Telegram. Prices, UPI ID and Telegram come only from the database. */
+/* Store page: lists the paid test series (managed in the admin panel → Store). The student gives name + mobile once
+   on the welcome screen, then: Buy now → pay with UPI → payment details → upload screenshot & verify on Telegram / WhatsApp.
+   Prices, UPI ID and Telegram come only from the database. */
 // never run inside someone else's page (stops look-alike sites from framing the real store)
 if(window.top!==window.self){document.documentElement.style.display='none';try{window.top.location.replace(window.self.location.href)}catch(e){}}
 const CFG=window.CBT_CONFIG||{},API=(CFG.SUPABASE_URL||'').replace(/\/$/,'');
@@ -11,6 +12,7 @@ const inr=n=>'₹'+Number(n||0).toLocaleString('en-IN');
 let ST={settings:{},items:[]},ORD=null,IT=null;
 const LSg=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(_){return d}};
 const LSs=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(_){}};
+const LSd=k=>{try{localStorage.removeItem(k)}catch(_){}};
 
 async function rpc(fn,args){
   try{
@@ -26,6 +28,53 @@ async function copy(t,what){
 }
 // the one support account from config.js (falls back to the store's Telegram setting)
 const tgUser=()=>String((CFG.SUPPORT_URL||'').replace(/^.*t\.me\//,'').replace(/[/?#].*$/,'')||ST.settings.telegram||'').replace(/^@/,'');
+// support WhatsApp number from config.js (10 digits → India code added)
+const waNum=()=>{const n=String(CFG.CONTACT_WHATSAPP||'').replace(/\D/g,'');return n.length===10?'91'+n:n};
+
+/* ---------- light / dark theme (first choice comes from the phone; store-theme.js applies a saved one early) ---------- */
+function themeMeta(){
+  const t=document.documentElement.dataset.theme;if(!t)return;
+  document.querySelectorAll('meta[name=theme-color]').forEach(m=>{m.removeAttribute('media');m.content=t==='dark'?'#060c18':'#f4f7fb'});
+}
+function themeToggle(){
+  const d=document.documentElement,dark=d.dataset.theme?d.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches,t=dark?'light':'dark';
+  d.dataset.theme=t;try{localStorage.setItem('store_theme',t)}catch(_){}
+  themeMeta();
+}
+
+/* ---------- the student: name + mobile, asked once on the welcome screen, used for every order ---------- */
+let MEM=null;   // if the phone does not allow saving, keep the details for this visit
+const meOk=m=>!!m&&String(m.name||'').trim().length>=2&&/^[6-9]\d{9}$/.test(m.mobile||'');
+const ME=()=>{const m=LSg('store_me',null);return meOk(m)?m:meOk(MEM)?MEM:null};
+const meCheck=(n,m)=>n.length<2?'Please enter your name.':!/^[6-9]\d{9}$/.test(m)?'Please enter a valid 10-digit mobile number.':'';
+const meRead=(ni,mi)=>[$(ni).value.trim().replace(/\s+/g,' ').slice(0,60),$(mi).value.replace(/\D/g,'').slice(-10)];
+function meSave(n,m){
+  const old=ME();if(!old||old.mobile!==m)LSd('store_ord');   // a new number never continues the old number's order
+  MEM={name:n,mobile:m};LSs('store_me',MEM);
+  document.documentElement.classList.add('has-me');meChip();
+}
+function meChip(){const m=ME();if(!m)return;$('#mename').textContent=m.name.split(' ')[0];$('#meini').textContent=m.name[0].toUpperCase()}
+function gateGo(){
+  const [n,m]=meRead('#gn','#gm'),bad=meCheck(n,m);
+  if(bad)return $('#ger').textContent=bad;
+  $('#ger').textContent='';const g=$('#gate');g.classList.add('out');
+  setTimeout(()=>{meSave(n,m);g.classList.remove('out');jump()},300);
+}
+let AFTER=null;
+// edit name / mobile later (header chip, or "change" on the payment step)
+function meSheet(then){
+  const m=ME()||{};AFTER=then||null;
+  ovEl().innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="shd"><div class="grow"><b>Your details</b><span class="sm mut">Your series is unlocked on this mobile number.</span></div><button class="x" data-close aria-label="Close">✕</button></div>
+   <label for="sn">Full name</label><div class="fld"><span>👤</span><input id="sn" autocomplete="name" maxlength="60" value="${esc(m.name||'')}" placeholder="e.g. Rahul Sharma"></div>
+   <label for="sm">Mobile number</label><div class="fld"><span>📱</span><input id="sm" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel" value="${esc(m.mobile||'')}" placeholder="10-digit mobile number"></div>
+   <div class="err" id="er"></div><button class="btn block" id="go" data-mesave>${then?'Save &amp; continue →':'Save'}</button></div>`;
+}
+function meSaveGo(){
+  const [n,m]=meRead('#sn','#sm'),bad=meCheck(n,m);
+  if(bad)return $('#er').textContent=bad;
+  meSave(n,m);const a=AFTER;AFTER=null;
+  if(a)a();else{closeSheet();toast('Details saved')}
+}
 
 async function load(){
   const nm=CFG.SITE_NAME||'CBT Test Series';$('#sname').textContent=nm;$('#fname').textContent=nm;
@@ -39,6 +88,10 @@ async function load(){
   $('#lcount').textContent=`${L.length} test series · pay with any UPI app`;
   $('#list').innerHTML=L.map(cardHtml).join('');
   loadSch();loadRv();
+  if(ME())jump();
+}
+// a shared link (#p=…) scrolls to that series
+function jump(){
   const h=location.hash.match(/p=([0-9a-f-]{36})/);
   if(h){const c=document.getElementById('p_'+h[1]);if(c){c.classList.add('hl');setTimeout(()=>c.scrollIntoView({behavior:'smooth',block:'center'}),200)}}
 }
@@ -52,19 +105,24 @@ function mediaHtml(x,tag){
 function priceHtml(x){
   const off=offPct(x);return `<div class="price"><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s><span class="save">Save ${inr(x.mrp-x.price)} · ${off}% off</span>`:''}</div>`;
 }
-function cardHtml(x){
+function cardHtml(x,i){
   const F=x.features||[],off=offPct(x),show=F.slice(0,4),ph=!okImg(x.image);
-  return `<div class="card" id="p_${esc(x.id)}"><div class="media${ph?' isph':''}" data-view="${esc(x.id)}">${x.badge?`<span class="badge">${esc(x.badge)}</span>`:''}${off?`<span class="off">${off}% OFF</span>`:''}${mediaHtml(x)}<span data-rvb="${esc(x.id)}">${rvBadge(x.id)}</span></div>
+  return `<div class="card" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,6)}"><div class="media${ph?' isph':''}" data-view="${esc(x.id)}">${x.badge?`<span class="badge">${esc(x.badge)}</span>`:''}${off?`<span class="off">${off}% OFF</span>`:''}${mediaHtml(x)}<span data-rvb="${esc(x.id)}">${rvBadge(x.id)}</span></div>
    <div class="cbody"><h3${ph?' class="sr"':''}>${esc(x.title)}</h3>${x.subtitle?`<div class="sub">${esc(x.subtitle)}</div>`:''}<div data-rvslot="${esc(x.id)}">${rvLine(x.id)}</div>
    <div>${priceHtml(x)}</div>
    ${show.length?`<ul class="f">${show.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:'<div style="flex:1"></div>'}
    <div class="lnks"><button class="lnk" data-view="${esc(x.id)}">${F.length>4?`+${F.length-4} more · `:''}<u>Full details ›</u></button><span data-schslot="${esc(x.id)}">${schBtn(x.id)}</span></div>
    <div class="row"><button class="btn soft icon" data-share="${esc(x.id)}" aria-label="Share" title="Share">${SHARE}</button><button class="btn" style="flex:1" data-buy="${esc(x.id)}">Buy now · ${inr(x.price)}</button></div></div></div>`;
 }
+// the one overlay that holds every sheet (details, checkout, reviews, schedule)
+function ovEl(){
+  let ov=$('.ov');
+  if(!ov){ov=document.createElement('div');ov.className='ov';ov.addEventListener('click',e=>{if(e.target===ov)closeSheet()});document.body.appendChild(ov);document.body.style.overflow='hidden'}
+  return ov;
+}
 function view(id){
   IT=ST.items.find(i=>i.id===id);if(!IT)return;const x=IT;
-  let ov=$('.ov');if(!ov){ov=document.createElement('div');ov.className='ov';ov.addEventListener('click',e=>{if(e.target===ov)closeSheet()});document.body.appendChild(ov);document.body.style.overflow='hidden'}
-  ov.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="dimg${okImg(x.image)?'':' isph'}">${mediaHtml(x)}</div>
+  ovEl().innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="dimg${okImg(x.image)?'':' isph'}">${mediaHtml(x)}</div>
    <div class="shd"><div class="grow"><b style="white-space:normal;font-size:19px">${esc(x.title)}</b>${x.subtitle?`<span class="sm mut">${esc(x.subtitle)}</span>`:''}<div data-rvmini="${esc(x.id)}">${rvMini(x.id)}</div></div><button class="x" data-close aria-label="Close">✕</button></div>
    ${priceHtml(x)}
    ${(x.features||[]).length?`<h4 style="margin:16px 0 10px">What you get</h4><ul class="f">${x.features.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:''}
@@ -79,63 +137,79 @@ async function share(id){
   copy(text+' '+url,'Link copied');
 }
 
-/* ---------- checkout: details → pay → payment details → verify on Telegram (4 steps, last) ---------- */
+/* ---------- checkout: pay → payment details → upload screenshot & verify (3 steps; name + mobile are already known) ---------- */
+const STEPS=['Pay','Payment details','Verify'];
 function sheet(step,body){
-  let ov=$('.ov');
-  if(!ov){ov=document.createElement('div');ov.className='ov';ov.addEventListener('click',e=>{if(e.target===ov)closeSheet()});document.body.appendChild(ov);document.body.style.overflow='hidden'}
-  ov.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="shd"><div class="grow"><b>${esc(IT.title)}</b><span class="sm mut">Step ${step} of 4</span></div><button class="x" data-close aria-label="Close">✕</button></div>
-   <div class="steps">${[1,2,3,4].map(i=>`<i class="${i<=step?'on':''}"></i>`).join('')}</div>${body}</div>`;
+  ovEl().innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="shd"><div class="grow"><b>${esc(IT.title)}</b><span class="sm mut">Step ${step} of 3 · ${STEPS[step-1]}</span></div><button class="x" data-close aria-label="Close">✕</button></div>
+   <div class="steps">${[1,2,3].map(i=>`<i class="${i<step?'on':i===step?'on now':''}"></i>`).join('')}</div>${body}</div>`;
 }
-function closeSheet(){const o=$('.ov');if(o)o.remove();document.body.style.overflow=''}
-function buy(id){
+function closeSheet(){closePop();const o=$('.ov');if(o)o.remove();document.body.style.overflow=''}
+let BUYN=0;
+async function buy(id){
   IT=ST.items.find(i=>i.id===id);if(!IT)return;
-  const me=LSg('store_me',{}),last=LSg('store_ord',null);
-  // same series ordered in the last 24 h → continue that order instead of making a new code
-  if(last&&last.item===id&&Date.now()-last.at<864e5){ORD=last;return payStep()}
-  sheet(1,`<p class="sm mut">Enter the name and mobile number you will register with. Your series is unlocked on this number.</p>
-   <label for="sn">Full name</label><input id="sn" autocomplete="name" maxlength="60" value="${esc(me.name||'')}" placeholder="e.g. Rahul Sharma">
-   <label for="sm">Mobile number</label><input id="sm" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel" value="${esc(me.mobile||'')}" placeholder="10-digit mobile number">
-   <div class="err" id="er"></div><button class="btn block" id="go" data-order>Continue to payment →</button>`);
-}
-async function order(){
-  const n=$('#sn').value.trim(),m=$('#sm').value.replace(/\D/g,'').slice(-10),er=$('#er');
-  if(n.length<2)return er.textContent='Please enter your name.';
-  if(!/^[6-9]\d{9}$/.test(m))return er.textContent='Please enter a valid 10-digit mobile number.';
-  const b=$('#go');b.disabled=true;b.textContent='Please wait…';er.textContent='';
-  const r=await rpc('cbt_store_order',{p_item:IT.id,p_name:n,p_mobile:m});
-  if(!r.ok){b.disabled=false;b.textContent='Continue to payment →';
-    return er.textContent=r.error==='busy'?'Too many tries. Please wait a while and try again.':r.error==='network'?'No internet. Please try again.':r.error==='item'?'This series is not available right now.':'Something went wrong. Please try again.'}
-  LSs('store_me',{name:n,mobile:m});
-  ORD={item:IT.id,code:r.code,amount:r.amount,title:r.title,name:n,mobile:m,at:Date.now()};LSs('store_ord',ORD);
+  const me=ME();if(!me)return meSheet(()=>buy(id));
+  const last=LSg('store_ord',null);
+  // same series + same number ordered in the last 24 h → continue that order instead of making a new code
+  if(last&&last.item===id&&last.mobile===me.mobile&&Date.now()-last.at<864e5){ORD=last;return payStep()}
+  const n=++BUYN;
+  sheet(1,`<div class="ld"><span class="spin"></span><span>Getting your payment details…</span></div>`);
+  const r=await rpc('cbt_store_order',{p_item:IT.id,p_name:me.name,p_mobile:me.mobile});
+  if(n!==BUYN||!$('.ov'))return;   // closed or another series tapped meanwhile
+  if(!r.ok){
+    const t=r.error==='busy'?'Too many tries. Please wait a while and try again.':r.error==='network'?'No internet. Please try again.':r.error==='item'?'This series is not available right now.':r.error==='mobile'||r.error==='name'?'Please check your name and mobile number.':'Something went wrong. Please try again.';
+    return sheet(1,`<div class="bigok">⚠️</div><p style="text-align:center">${t}</p><button class="btn block" style="margin-top:14px" data-buy="${esc(id)}">Try again</button>
+     <p class="sm mut" style="text-align:center;margin-top:12px">For ${esc(me.name)} · ${esc(me.mobile)} · <a href="#" data-redo style="color:var(--pri)">change</a></p>`);
+  }
+  ORD={item:IT.id,code:r.code,amount:r.amount,title:r.title,name:me.name,mobile:me.mobile,at:Date.now()};LSs('store_ord',ORD);
   payStep();
 }
-function upiLink(){
-  const s=ST.settings;
-  const e=encodeURIComponent;
-  return `upi://pay?pa=${s.upi}&pn=${e(s.payee||'')}&am=${ORD.amount}&cu=INR&tn=${e(ORD.code)}`;
-}
+const upiQuery=()=>{const s=ST.settings,e=encodeURIComponent;return `pa=${s.upi}&pn=${e(s.payee||'')}&am=${ORD.amount}&cu=INR&tn=${e(ORD.code)}`};
+const upiLink=()=>'upi://pay?'+upiQuery();
 function qrSvg(t){const q=qrcode(0,'M');q.addData(t);q.make();return q.createSvgTag({cellSize:4,margin:2,scalable:true})}
 const upiOk=()=>/^[A-Za-z0-9._-]{2,}@[A-Za-z0-9.-]{2,}$/.test(ST.settings.upi||'')&&!/[<>"`]/.test(ST.settings.payee||'');
+const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const isMob=()=>/android/i.test(navigator.userAgent)||isIOS();
 function payStep(){
-  if(!upiOk())return sheet(2,`<div class="bigok">⚠️</div><h3 style="text-align:center">Payment is paused</h3><p class="sm mut" style="text-align:center">Please message support. Do not pay anywhere else.</p><a class="btn tg block" style="margin-top:12px" target="_blank" rel="noopener" href="${esc(tgLink(''))}">💬 Message support</a>`);
-  const s=ST.settings,mob=/android|iphone|ipad|ipod/i.test(navigator.userAgent);
-  sheet(2,`<div class="amt"><span class="sm mut">Amount to pay</span><br><b>${inr(ORD.amount)}</b></div>
-   <div class="qr">${qrSvg(upiLink())}</div>
-   <p class="sm mut" style="text-align:center;margin-top:8px">Scan with GPay, PhonePe, Paytm or any UPI app</p>
-   <div class="verify"><span>⚠️</span><span>Before paying, check that the name shown in your UPI app is <b>${esc(s.payee)}</b>. Pay only to the UPI ID below.</span></div>
+  if(!upiOk())return sheet(1,`<div class="bigok">⚠️</div><h3 style="text-align:center">Payment is paused</h3><p class="sm mut" style="text-align:center">Please message support. Do not pay anywhere else.</p><a class="btn tg block" style="margin-top:12px" target="_blank" rel="noopener" href="${esc(tgLink(''))}">💬 Message support</a>`);
+  const s=ST.settings,mob=isMob();
+  sheet(1,`<div class="amt"><span class="sm mut">Amount to pay</span><br><b>${inr(ORD.amount)}</b></div>
    <div class="kv"><div><span>UPI ID</span><b>${esc(s.upi)}</b><button class="cp" data-copy="${esc(s.upi)}" data-what="UPI ID copied">Copy</button></div>
     <div><span>Amount</span><b>${inr(ORD.amount)}</b><button class="cp" data-copy="${ORD.amount}" data-what="Amount copied">Copy</button></div>
     <div><span>Order code</span><b class="code">${esc(ORD.code)}</b><button class="cp" data-copy="${esc(ORD.code)}" data-what="Code copied">Copy</button></div></div>
-   <p class="sm mut">If you pay with the UPI ID, write the order code <b class="code">${esc(ORD.code)}</b> in the payment note.</p>
-   ${mob?`<a class="btn soft block" style="margin-top:12px" href="${esc(upiLink())}">Open UPI app</a>`:''}
-   <button class="btn block" style="margin-top:10px" data-step="paid">I have paid → Next</button>
+   <div class="verify"><span>⚠️</span><span>Before paying, check that the name shown in your UPI app is <b>${esc(s.payee)}</b>. Pay only to the UPI ID above.</span></div>
+   <button class="btn block big" data-upi>⚡ PAY with UPI</button>
+   <button class="btn line block" style="margin-top:10px" data-step="paid">✔ I have already paid</button>
+   <p class="sm mut" style="margin-top:12px">If you pay with the UPI ID, write the order code <b class="code">${esc(ORD.code)}</b> in the payment note.</p>
+   <details class="qrbox"${mob?'':' open'}><summary>Scan QR code instead</summary><div class="qr">${qrSvg(upiLink())}</div><p class="sm mut" style="text-align:center;margin-top:8px">Scan with GPay, PhonePe, Paytm or any UPI app</p></details>
    ${s.note?`<p class="sm mut" style="margin-top:10px">${esc(s.note)}</p>`:''}
    <p class="sm mut" style="text-align:center;margin-top:12px">For ${esc(ORD.name)} · ${esc(ORD.mobile)} · <a href="#" data-redo style="color:var(--pri)">change</a></p>`);
 }
-function tgText(){return `Payment done ✅\nOrder code: ${ORD.code}\nSeries: ${ORD.title}\nAmount: ${inr(ORD.amount)}\nStudent name: ${ORD.name}\nMobile: ${ORD.mobile}\nPaid from account of: ${ORD.payer||'-'}\nUTR / Transaction ID: ${ORD.utr||'-'}\n📎 Payment screenshot attached`}
-/* step 3: who paid (account holder name) + UTR, saved with the order */
+/* "PAY with UPI": the popular apps open straight away (Android: by package; iPhone: by the app's own link);
+   "Other UPI app" lets the phone list every UPI app it has (bank apps like HDFC, ICICI, SBI…) */
+const UPIAPPS=[['PhonePe','pe','com.phonepe.app','phonepe://pay','पे'],['Google Pay','gp','com.google.android.apps.nbu.paisa.user','gpay://upi/pay','G'],
+  ['Paytm','pt','net.one97.paytm','paytmmp://pay','P'],['BHIM','bh','in.org.npci.upiapp','','B']];
+const appLink=a=>isIOS()?(a[3]?a[3]+'?'+upiQuery():upiLink()):`intent://pay?${upiQuery()}#Intent;scheme=upi;package=${a[2]};end`;
+function upiPop(){
+  closePop();
+  const p=document.createElement('div');p.className='pop';p.addEventListener('click',e=>{if(e.target===p)closePop()});
+  p.innerHTML=`<div class="popin" role="dialog" aria-modal="true">`+(isMob()
+   ?`<div class="shd"><div class="grow"><h3>Pay ${inr(ORD.amount)} with</h3><p>Choose a UPI app on your phone</p></div><button class="x" data-popx aria-label="Close">✕</button></div>
+    <div class="apps">${UPIAPPS.map(a=>`<a class="app" data-upigo href="${esc(appLink(a))}"><i class="a-${a[1]}">${a[4]}</i>${a[0]}</a>`).join('')}</div>
+    <a class="anyapp" data-upigo href="${esc(upiLink())}"><i>🏦</i><span><b>Other UPI app</b><small>HDFC, ICICI, SBI or any bank app — your phone shows the UPI apps you have</small></span></a>
+    <p class="sm mut" style="margin-top:12px">After paying, come back here and tap <b>I have already paid</b>. If an app shows an error, pay to the UPI ID or scan the QR code instead.</p>`
+   :`<div class="shd"><div class="grow"><h3>Pay ${inr(ORD.amount)} from your phone</h3><p>Open any UPI app on your phone and scan this QR code.</p></div><button class="x" data-popx aria-label="Close">✕</button></div>
+    <div class="qr">${qrSvg(upiLink())}</div>
+    <p class="sm mut" style="text-align:center;margin-top:10px">UPI ID <b>${esc(ST.settings.upi)}</b> · note <b class="code">${esc(ORD.code)}</b></p>
+    <button class="btn block" style="margin-top:14px" data-popx>Done</button>`)+`</div>`;
+  document.body.appendChild(p);
+}
+function closePop(){const p=$('.pop');if(p)p.remove()}
+// message for the support chat (Telegram / WhatsApp)
+function tgText(){return `Payment done ✅\nOrder code: ${ORD.code}\nSeries: ${ORD.title}\nAmount: ${inr(ORD.amount)}\nStudent name: ${ORD.name}\nMobile: ${ORD.mobile}\nPaid from account of: ${ORD.payer||'-'}\nUTR / Transaction ID: ${ORD.utr||'-'}\n`+(ORD.shot?`📎 Payment screenshot: ${ORD.shot}`:'📎 Payment screenshot attached')}
+/* step 2: who paid (account holder name) + UTR, saved with the order */
 function paidStep(){
-  sheet(3,`<div class="bigok">🧾</div><h3 style="text-align:center;margin-bottom:6px">Payment details</h3>
+  closePop();
+  sheet(2,`<div class="bigok">🧾</div><h3 style="text-align:center;margin-bottom:6px">Payment details</h3>
    <p class="sm mut" style="text-align:center">This helps us find your payment quickly.</p>
    <label for="py">Name on the account you paid from <span style="color:var(--bad)">*</span></label>
    <input id="py" maxlength="60" autocomplete="off" value="${esc(ORD.payer||'')}" placeholder="As shown in your UPI app, e.g. Ramesh Kumar">
@@ -144,8 +218,8 @@ function paidStep(){
    <input id="pu" maxlength="30" inputmode="text" autocomplete="off" value="${esc(ORD.utr||'')}" placeholder="12-digit number in your UPI app" style="font-family:ui-monospace,Menlo,monospace;letter-spacing:1px">
    <details class="hint"><summary>Where do I find the UTR?</summary><p>Open your UPI app → payment history → tap this payment. Look for <b>UTR</b>, <b>UPI Ref No.</b> or <b>Transaction ID</b> (usually 12 digits).</p></details>
    <div class="err" id="er"></div>
-   <button class="btn block" id="pgo" data-paidgo>Save & continue →</button>
-   <button class="btn soft block" style="margin-top:10px" data-step="back2">← Back to payment</button>`);
+   <button class="btn block" id="pgo" data-paidgo>Save &amp; continue →</button>
+   <button class="btn soft block" style="margin-top:10px" data-step="back1">← Back to payment</button>`);
 }
 async function paidGo(){
   const py=$('#py').value.trim(),pu=$('#pu').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase(),er=$('#er');
@@ -154,27 +228,89 @@ async function paidGo(){
   const b=$('#pgo');b.disabled=true;b.textContent='Saving…';er.textContent='';
   const r=await rpc('cbt_store_paid',{p_code:ORD.code,p_mobile:ORD.mobile,p_payer:py,p_utr:pu});
   b.disabled=false;b.textContent='Save & continue →';
-  // if the server is not updated yet, the details still go in the Telegram message
+  // if the server is not updated yet, the details still go in the chat message
   if(!r.ok&&r.error!=='missing'&&r.error!=='server'){
     if(r.error==='network')return er.textContent='No internet. Please try again.';
-    if(r.error==='order'){localStorage.removeItem('store_ord');return er.textContent='This order was not found. Please close and tap Buy again.'}
+    if(r.error==='order'){LSd('store_ord');return er.textContent='This order was not found. Please close and tap Buy again.'}
   }
-  ORD.payer=py;ORD.utr=pu;LSs('store_ord',ORD);tgStep();
+  ORD.payer=py;ORD.utr=pu;LSs('store_ord',ORD);vStep();
 }
 const tgLink=txt=>'https://t.me/'+encodeURIComponent(tgUser())+(txt?'?text='+encodeURIComponent(txt):'');
-function tgStep(){
-  sheet(4,`<h3 style="text-align:center;margin:4px 0 6px">Verify your payment</h3>
-   <div class="attach"><div class="attico">📎<i>🖼️</i></div><div><b>Attach your payment screenshot</b><p>Without the screenshot we cannot verify your payment.</p></div></div>
-   <ol class="howto"><li>Tap the blue button below — our support chat opens with your details already written.</li><li>Tap <b>📎</b> (attach) in the chat and choose your <b>payment screenshot</b>.</li><li>Tap <b>Send</b>.</li></ol>
-   <div class="msg">${esc(tgText())}</div>
-   <a class="btn tg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(tgLink(tgText()))}">✔ Click here to verify your payment</a>
-   <p class="sm mut" style="text-align:center;margin-top:8px">The message is also copied, so you can paste it if it doesn't appear.</p>
+const waLink=txt=>'https://wa.me/'+waNum()+(txt?'?text='+encodeURIComponent(txt):'');
+/* step 3: upload the payment screenshot, then send message + screenshot to support on Telegram or WhatsApp.
+   The screenshot is saved (supabase_v28_store_shots.sql) and its link goes in the message; if saving is not
+   possible the student attaches it in the chat instead. */
+let SHOT=null,SHOTN=0;   // {code, st:'up'|'ok'|'fail', prev}
+function vStep(){
+  if(SHOT&&SHOT.code!==ORD.code)SHOT=null;
+  const tg=tgUser(),wa=waNum();
+  sheet(3,`<h3 style="text-align:center;margin:4px 0 2px">Verify your payment</h3>
+   <p class="sm mut" style="text-align:center">Upload your payment screenshot, then send it to us.</p>
+   <label class="up" id="up" for="shot"></label><input type="file" id="shot" class="sr" accept="image/*">
+   <div class="vgo">${tg?`<a class="btn tg block vbtn" data-verify target="_blank" rel="noopener" data-to="tg">✈️ Verify on Telegram</a>`:''}${wa?`<a class="btn wa block vbtn" data-verify target="_blank" rel="noopener" data-to="wa">💬 Verify on WhatsApp</a>`:''}</div>
+   <p class="sm mut" id="vhint" style="text-align:center;margin-top:10px"></p>
+   <details class="hint"><summary>See the message we send</summary><div class="msg" id="vmsg"></div></details>
    <p class="sm mut" style="text-align:center;margin-top:14px">Keep your order code <b class="code">${esc(ORD.code)}</b> for any help.</p>
+   <button class="btn soft block" style="margin-top:10px" data-step="paid">← Back</button>
    <button class="btn soft block" style="margin-top:10px" data-close>Done</button>`);
+  vSync();
 }
+const vState=()=>ORD.shot?'ok':SHOT?SHOT.st:'';
+function vSync(){
+  const up=$('#up');if(!up)return;
+  const st=vState(),img=SHOT&&SHOT.prev||ORD.shot||'';
+  up.className='up'+(st==='ok'?' done':st==='fail'?' warn':'');
+  up.innerHTML=!st?`<i>📎</i><div><b>Upload payment screenshot</b><p>Tap to choose it from your gallery. We need it to verify your payment.</p></div>`
+    :(okImg(img)?`<img src="${esc(img)}" alt="">`:'<i>🖼️</i>')+(st==='up'?`<div><b><span class="spin s"></span> Uploading…</b><p>Please wait a moment.</p></div>`
+    :st==='ok'?`<div><b>✓ Screenshot added</b><p>It goes to us with your message. Tap to change.</p></div>`
+    :`<div><b>Screenshot ready</b><p>When the chat opens, also attach it with 📎 before you tap Send. Tap to change.</p></div>`);
+  const ready=st==='ok'||st==='fail',msg=tgText();
+  document.querySelectorAll('[data-verify]').forEach(a=>{a.classList.toggle('dim',!ready);a.setAttribute('aria-disabled',!ready);a.href=a.dataset.to==='wa'?waLink(msg):tgLink(msg)});
+  $('#vhint').textContent=!st?'First upload your payment screenshot.':st==='up'?'Uploading your screenshot…':st==='ok'?'The chat opens with your details and screenshot already written — just tap Send.':'The chat opens with your details already written — attach the screenshot and tap Send.';
+  $('#vmsg').textContent=msg;
+}
+// shrink the photo (screenshots are often 2–5 MB) so it uploads fast on mobile data
+async function shrink(f){
+  const src=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(f)});
+  const im=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=src});
+  const k=Math.min(1,1600/Math.max(im.naturalWidth,im.naturalHeight)),c=document.createElement('canvas');
+  c.width=Math.max(1,Math.round(im.naturalWidth*k));c.height=Math.max(1,Math.round(im.naturalHeight*k));
+  const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);
+  let q=.85,blob=null;
+  do{blob=await new Promise(ok=>c.toBlob(ok,'image/jpeg',q));q-=.15}while(blob&&blob.size>14e5&&q>.3);
+  return {blob,prev:c.toDataURL('image/jpeg',.5)};
+}
+async function upload(blob,code){
+  if(!blob||blob.size>15e5||!/^[A-Z0-9-]{4,20}$/.test(code))return '';
+  const rnd=Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join(''),path='pay-shots/'+code+'/'+rnd+'.jpg';
+  try{
+    const r=await fetch(API+'/storage/v1/object/'+path,{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'image/jpeg','x-upsert':'false'},body:blob});
+    return r.ok?API+'/storage/v1/object/public/'+path:'';
+  }catch(_){return ''}
+}
+async function shotPick(f){
+  if(!f||!ORD)return;
+  if(f.type&&!/^image\//.test(f.type))return toast('Please choose a photo or screenshot');
+  const code=ORD.code,n=++SHOTN;
+  SHOT={code,st:'up',prev:''};ORD.shot='';LSs('store_ord',ORD);vSync();
+  let j=null;try{j=await shrink(f)}catch(_){}
+  if(n!==SHOTN)return;
+  if(!j||!j.blob){SHOT=null;vSync();return toast('Could not open this photo. Please choose another.')}
+  SHOT.prev=j.prev;vSync();
+  const url=await upload(j.blob,code);
+  if(n!==SHOTN||!ORD||ORD.code!==code)return;
+  SHOT.st=url?'ok':'fail';
+  if(url){ORD.shot=url;LSs('store_ord',ORD)}
+  vSync();
+}
+document.addEventListener('change',e=>{if(e.target.id==='shot'){shotPick(e.target.files&&e.target.files[0]);e.target.value=''}});
 document.addEventListener('click',e=>{
   const t=e.target.closest('button,a,[data-view]');if(!t)return;
-  if(t.dataset.buy){closeSheet();buy(t.dataset.buy)}
+  if('themeToggle' in t.dataset)themeToggle();
+  else if('gate' in t.dataset)gateGo();
+  else if('me' in t.dataset)meSheet();
+  else if('mesave' in t.dataset)meSaveGo();
+  else if(t.dataset.buy){closeSheet();buy(t.dataset.buy)}
   else if(t.dataset.view)view(t.dataset.view);
   else if(t.dataset.sch)schedule(t.dataset.sch);
   else if(t.dataset.rv)reviews(t.dataset.rv);
@@ -184,16 +320,29 @@ document.addEventListener('click',e=>{
   else if('rvx' in t.dataset){const c=t.closest('.rv');if(c){const o=c.classList.toggle('open');t.textContent=o?'Show less':'Read more';t.setAttribute('aria-expanded',o)}}
   else if(t.dataset.share)share(t.dataset.share);
   else if('close' in t.dataset)closeSheet();
-  else if('redo' in t.dataset){e.preventDefault();localStorage.removeItem('store_ord');buy(IT.id)}
-  else if('order' in t.dataset)order();
+  else if('redo' in t.dataset){e.preventDefault();const id=IT.id;meSheet(()=>{LSd('store_ord');closeSheet();buy(id)})}
   else if(t.dataset.copy)copy(t.dataset.copy,t.dataset.what);
-  else if('copyMsg' in t.dataset)copy(tgText(),'Message copied');
-  else if('verify' in t.dataset){try{navigator.clipboard.writeText(tgText())}catch(_){}}
+  else if('upi' in t.dataset)upiPop();
+  else if('popx' in t.dataset)closePop();
+  // an app opens; when the student comes back, the next step is "I have already paid"
+  else if('upigo' in t.dataset)setTimeout(()=>{closePop();const b=$('[data-step=paid]');if(b)b.classList.add('nudge')},800);
+  else if('verify' in t.dataset){
+    if(t.classList.contains('dim')){e.preventDefault();toast(vState()==='up'?'Please wait — uploading your screenshot':'Please upload your payment screenshot first');const u=$('#up');if(u){u.classList.remove('shake');void u.offsetWidth;u.classList.add('shake')}return}
+    try{navigator.clipboard.writeText(tgText())}catch(_){}
+  }
   else if(t.dataset.step==='paid')paidStep();
-  else if(t.dataset.step==='back2')payStep();
+  else if(t.dataset.step==='back1')payStep();
   else if('paidgo' in t.dataset)paidGo();
 });
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();if(e.key==='Enter'&&$('#go'))order();else if(e.key==='Enter'&&$('#pgo'))paidGo()});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){if($('.pop'))closePop();else closeSheet()}
+  if(e.key!=='Enter')return;
+  if(!document.documentElement.classList.contains('has-me')&&$('#gate'))gateGo();
+  else if($('#go'))meSaveGo();
+  else if($('#pgo'))paidGo();
+});
+themeMeta();meChip();
+if(!ME()&&matchMedia('(hover:hover)').matches)setTimeout(()=>{const n=$('#gn');if(n)n.focus()},300);
 /* ---------- schedule (PDF / photo) ---------- */
 let SCH={};
 const fsize=n=>n>1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
