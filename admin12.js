@@ -318,7 +318,8 @@ async function stoApprove(code,btn){
    <div style="margin:10px 0">${done.map(d=>`<div class="sm">✓ ${esc(d)}</div>`).join('')}</div>
    ${acc?`<div class="big-code">${esc(c)}</div><p class="sm mut" style="margin:0 0 10px">Send this code now — for safety it cannot be shown again.</p>`:''}
    <label class="l">Message for the student</label><div class="sm" style="white-space:pre-wrap;background:var(--surface2);border-radius:12px;padding:10px">${msgHtml(msg)}</div>
-   <div class="row stofoot"><button class="btn" style="flex:1" onclick="copyText(window._stoMsg)">📋 Copy message</button><a class="btn soft" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/91${esc(o.mobile)}?text=${encodeURIComponent(msg)}">WhatsApp</a></div>`);
+   <div class="row stofoot"><button class="btn" style="flex:1" onclick="copyText(window._stoMsg)">📋 Copy message</button><a class="btn soft" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="https://wa.me/91${esc(o.mobile)}?text=${encodeURIComponent(msg)}">WhatsApp</a><a class="btn tgsend" style="flex:1;text-decoration:none" target="_blank" rel="noopener" href="https://t.me/+91${esc(o.mobile)}" onclick="copyText(window._stoMsg)">Telegram</a></div>
+   <p class="sm mut" style="margin:8px 0 0">Telegram: the message is copied first — paste it in the chat that opens.</p>`);
   stoSheet();
 }
 ;(window.__p=window.__p||{})['admin12']=1;
