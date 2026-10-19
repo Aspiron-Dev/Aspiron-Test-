@@ -29,7 +29,8 @@ function suspShow(s){
    <p class="spw">You were found <b>cheating in a test</b>. Your ID has been suspended. Talk to the support team within <b>24 hours</b> to solve this matter — until then you cannot use the app or the website.</p>
    ${s.reason?`<div class="spr"><b>Message from the admin</b><p>${esc(s.reason)}</p></div>`:''}
    <div class="spt">${until?`Suspended until <b>${esc(until)}</b>`:'Suspended until the admin removes it'}</div>
-   <a class="btn block" href="${esc(HELP_URL)}" target="_blank" rel="noopener" onclick="try{navigator.clipboard.writeText(${esc(JSON.stringify(wa))})}catch(e){}">💬 Contact support team</a>
+   <div class="supgrid sp2">${(SUPMSG=wa,supBtns())}</div>
+   <p class="sm mut" style="margin:6px 0 0">Your message is copied — paste it in the chat. Chat only, no calls.</p>
    <button class="btn ghost block" style="margin-top:10px" onclick="suspCheck(this)">↻ Check again</button>
    <button class="spout" onclick="suspOut()">Sign out</button></div>`;
 }

@@ -9,7 +9,7 @@ function promoDefault(){
   return [
     {id:'d1',title:'All India Test Series 2027',text:'Real NEET pattern · All-India rank · Detailed analysis',link:'#/series',label:'Explore tests',c:'a'},
     {id:'d2',title:s,text:'Practise daily, revise your mistakes and track your progress',link:'#/series',label:'Start practising',c:'b'},
-    {id:'d3',title:'Need help?',text:'Message our support team on Telegram any time',link:HELP_URL,label:'Contact us',c:'c'}];
+    {id:'d3',title:'Need help?',text:'Chat with our support team on WhatsApp or Telegram',link:'#/help',label:'Chat with us',c:'c'}];
 }
 async function promoLoad(){
   if(!PROMO)PROMO=LS.get('cbt_promo',null);
