@@ -163,9 +163,11 @@ async function paidGo(){
   ORD.payer=py;ORD.utr=pu;LSs('store_ord',ORD);tgStep();
 }
 const tgLink=txt=>'https://t.me/'+encodeURIComponent(tgUser())+(txt?'?text='+encodeURIComponent(txt):'');
-// WhatsApp support from config.js: a wa.me link (its text can't be filled in — the message is copied instead) or a number
-const waUrl=txt=>{const v=String(CFG.SUPPORT_WA||'').trim(),n=v.replace(/\D/g,'');
-  return /^https:\/\//.test(v)?v:n.length>=10?'https://wa.me/'+n+(txt?'?text='+encodeURIComponent(txt):''):''};
+// WhatsApp support from config.js. With the number (SUPPORT_WA_NUMBER) the message is already written in the chat,
+// like Telegram; a wa.me/message link can't take a message, so then it is only copied.
+const waNum=(()=>{let n=String(CFG.SUPPORT_WA_NUMBER||'').replace(/\D/g,'');if(n.length===10)n='91'+n;return n.length>=11&&n.length<=15?n:''})();
+const waUrl=txt=>{const v=String(CFG.SUPPORT_WA||'').trim(),n=waNum||(/^https:\/\//.test(v)?'':v.replace(/\D/g,''));
+  return n.length>=10?'https://wa.me/'+n+(txt?'?text='+encodeURIComponent(txt):''):/^https:\/\//.test(v)?v:''};
 /* ---------- Help: choose WhatsApp or Telegram (chat only) ---------- */
 function helpSheet(){
   let ov=$('.ov');if(!ov){ov=document.createElement('div');ov.className='ov';ov.addEventListener('click',e=>{if(e.target===ov)closeSheet()});document.body.appendChild(ov);document.body.style.overflow='hidden'}
@@ -178,7 +180,7 @@ function helpSheet(){
 function tgStep(){
   sheet(4,`<h3 style="text-align:center;margin:4px 0 6px">Verify your payment</h3>
    <div class="attach"><div class="attico">📎<i>🖼️</i></div><div><b>Attach your payment screenshot</b><p>Without the screenshot we cannot verify your payment.</p></div></div>
-   <ol class="howto"><li>Tap ${waUrl('')?'<b>Telegram</b> or <b>WhatsApp</b> below':'the blue button below'} — our support chat opens${waUrl('')?'':' with your details already written'}. Your details are also copied: if the box is empty, paste them.</li><li>Tap <b>📎</b> (attach) in the chat and choose your <b>payment screenshot</b>.</li><li>Tap <b>Send</b>.</li></ol>
+   <ol class="howto"><li>Tap ${waUrl('')?'<b>Telegram</b> or <b>WhatsApp</b> below':'the blue button below'} — our support chat opens${!waUrl('')||waUrl('x')!==waUrl('')?' with your details already written':''}. Your details are also copied: if the box is empty, paste them.</li><li>Tap <b>📎</b> (attach) in the chat and choose your <b>payment screenshot</b>.</li><li>Tap <b>Send</b>.</li></ol>
    <div class="msg">${esc(tgText())}</div>
    <a class="btn tg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(tgLink(tgText()))}">✔ ${waUrl('')?'Verify on Telegram':'Click here to verify your payment'}</a>
    ${waUrl('')?`<a class="btn wa block vbtn" style="margin-top:10px" data-verify target="_blank" rel="noopener" href="${esc(waUrl(tgText()))}">✔ Verify on WhatsApp</a>`:''}

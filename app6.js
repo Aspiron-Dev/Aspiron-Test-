@@ -348,18 +348,25 @@ IC.bmark='<path d="M6 3h12v18l-6-4-6 4z"/>';
 IC.pulse='<path d="M3 12h4l3-8 4 16 3-8h4"/>';
 const HELP_URL=(window.CBT_CONFIG||{}).SUPPORT_URL||'https://t.me/Students_support_teams';
 // WhatsApp support: a wa.me link or a number. Only chat — the team does not take calls.
-const SUP_WA=(()=>{const v=String((window.CBT_CONFIG||{}).SUPPORT_WA||'').trim();return /^https:\/\//.test(v)?v:v.replace(/\D/g,'').length>=10?'https://wa.me/'+v.replace(/\D/g,''):''})();
+// With the number (SUPPORT_WA_NUMBER) the message is already written in the chat; a wa.me/message link can't take one.
+const SUP_WAN=(()=>{let n=String((window.CBT_CONFIG||{}).SUPPORT_WA_NUMBER||'').replace(/\D/g,'');if(n.length===10)n='91'+n;return n.length>=11&&n.length<=15?n:''})();
+const SUP_WA=SUP_WAN?'https://wa.me/'+SUP_WAN:(()=>{const v=String((window.CBT_CONFIG||{}).SUPPORT_WA||'').trim();return /^https:\/\//.test(v)?v:v.replace(/\D/g,'').length>=10?'https://wa.me/'+v.replace(/\D/g,''):''})();
+const supWa=m=>m&&/^https:\/\/wa\.me\/\d+$/.test(SUP_WA)?SUP_WA+'?text='+encodeURIComponent(m):SUP_WA;
+const supTg=m=>m&&/^https:\/\/t\.me\/[A-Za-z0-9_]{4,}$/.test(HELP_URL)?HELP_URL+'?text='+encodeURIComponent(m):HELP_URL;
 IC.tg='<path d="M21.5 4.5L2.5 11.8l6.2 2.1 2.3 6.6 3.4-4.1 5 3.7z"/><path d="M8.7 13.9l9.3-6.7"/>';
 IC.wa='<path d="M3.5 20.5l1.3-4.3A8.4 8.4 0 1 1 8 19.3z"/><path d="M9.2 8.6c.2 2.3 2 4.3 4.3 4.9l1-1 1.8.8c-.2.9-1 1.5-1.9 1.4A6.3 6.3 0 0 1 8.2 8.4c.1-.9.8-1.6 1.7-1.7l.7 1.8z"/>';
 let SUPMSG='';
-// two big buttons: WhatsApp and Telegram. SUPMSG (optional) is copied, ready to paste in the chat.
-function supBtns(){return `${SUP_WA?`<a class="supb wa" href="${esc(SUP_WA)}" target="_blank" rel="noopener" onclick="supCopy()">${ic('wa',22)}<span><b>WhatsApp</b><small>Chat with support</small></span></a>`:''}
-  <a class="supb tg" href="${esc(HELP_URL)}" target="_blank" rel="noopener" onclick="supCopy()">${ic('tg',22)}<span><b>Telegram</b><small>Chat with support</small></span></a>`}
-function supCopy(){if(SUPMSG){try{navigator.clipboard.writeText(SUPMSG);toast('Message copied — paste it in the chat')}catch(e){}}}
+// two big buttons: WhatsApp and Telegram. SUPMSG (optional) is written in the chat where the link allows it,
+// and always copied too, ready to paste.
+function supBtns(){const w=supWa(SUPMSG),t=supTg(SUPMSG);return `${SUP_WA?`<a class="supb wa" href="${esc(w)}" target="_blank" rel="noopener" onclick="supCopy(${w!==SUP_WA})">${ic('wa',22)}<span><b>WhatsApp</b><small>Chat with support</small></span></a>`:''}
+  <a class="supb tg" href="${esc(t)}" target="_blank" rel="noopener" onclick="supCopy(${t!==HELP_URL})">${ic('tg',22)}<span><b>Telegram</b><small>Chat with support</small></span></a>`}
+function supCopy(f){if(SUPMSG){try{navigator.clipboard.writeText(SUPMSG);toast(f?'Your message is written in the chat — just tap Send':'Message copied — paste it in the chat')}catch(e){}}}
+// what happens to the message on both buttons
+const supNote=m=>!m?'':(!SUP_WA||supWa(m)!==SUP_WA)&&supTg(m)!==HELP_URL?'your message is already written in the chat, just tap Send':'your message is copied, just paste it in the chat';
 function supportSheet(msg){
   SUPMSG=msg||'';
   sheet(`<h2 class="sht">Chat with support</h2><div class="shl"></div>
-   <p class="sm mut" style="margin:0 0 12px">Our student support team replies on chat. Choose where you want to talk${msg?' — your message is copied, just paste it':''}.</p>
+   <p class="sm mut" style="margin:0 0 12px">Our student support team replies on chat. Choose where you want to talk${msg?' — '+supNote(msg):''}.</p>
    <div class="supgrid">${supBtns()}</div>
    <p class="sm mut" style="text-align:center;margin:12px 0 0">💬 Chat only — calls are not available.</p>`,'support');
 }
@@ -524,7 +531,7 @@ function openAbout(){
    <h4>What you get</h4>
    <ul><li>Chapter-wise and full-length tests in a real CBT (computer based test) format</li><li>Instant results with score, accuracy, rank and time analysis</li><li>Test history to track your progress attempt by attempt</li><li>Mistake notebook and saved questions for quick revision</li><li>Study tracker and exam countdown to stay on schedule</li><li>Notices and updates directly from your teacher</li></ul>
    <h4>Need help?</h4><p>Message us on WhatsApp or Telegram any time and our team will get back to you.</p>
-   <div class="supgrid">${supBtns()}</div><p class="sm mut" style="text-align:center;margin:8px 0 0">Chat only — calls are not available.</p></div>`,'about');
+   <div class="supgrid">${(SUPMSG='',supBtns())}</div><p class="sm mut" style="text-align:center;margin:8px 0 0">Chat only — calls are not available.</p></div>`,'about');
 }
 function openTerms(){
   const n=SN();

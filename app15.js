@@ -30,7 +30,7 @@ function suspShow(s){
    ${s.reason?`<div class="spr"><b>Message from the admin</b><p>${esc(s.reason)}</p></div>`:''}
    <div class="spt">${until?`Suspended until <b>${esc(until)}</b>`:'Suspended until the admin removes it'}</div>
    <div class="supgrid sp2">${(SUPMSG=wa,supBtns())}</div>
-   <p class="sm mut" style="margin:6px 0 0">Your message is copied — paste it in the chat. Chat only, no calls.</p>
+   <p class="sm mut" style="margin:6px 0 0">${wa?(s=>s[0].toUpperCase()+s.slice(1))(supNote(wa))+'. ':''}Chat only, no calls.</p>
    <button class="btn ghost block" style="margin-top:10px" onclick="suspCheck(this)">↻ Check again</button>
    <button class="spout" onclick="suspOut()">Sign out</button></div>`;
 }
