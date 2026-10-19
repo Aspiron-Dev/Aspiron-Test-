@@ -239,7 +239,7 @@ function vStep(){
    <dl><div><dt>Student name</dt><dd>${esc(ORD.name)}</dd></div><div><dt>Mobile no.</dt><dd>${esc(ORD.mobile)}</dd></div></dl>
    <dl><div><dt>Order code</dt><dd class="code">${esc(ORD.code)}</dd></div><div><dt>Paid from account of</dt><dd>${v(ORD.payer)}</dd></div><div><dt>UTR / Transaction ID</dt><dd class="code">${v(ORD.utr)}</dd></div></dl>
    <p class="sumok">Payment done ✅</p>
-   <p class="sumnote"><b>Note:</b> इस मैसेज के साथ <b>पेमेंट का स्क्रीनशॉट</b> ज़रूर भेजें — verification के लिए।</p></div>
+   <p class="sumnote"><b>Note:</b> Is message ke saath apna <b>payment screenshot</b> zaroor bhejein — verification ke liye.</p></div>
    <div class="vgo">${tg?`<a class="btn tg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(tgLink(msg))}">${TGI} Verify on Telegram</a>`:''}${wa?`<a class="btn wa block vbtn" data-verify target="_blank" rel="noopener" href="${esc(waUrl(msg))}">${WAI} Verify on WhatsApp</a>`:''}</div>`);
 }
 /* Edit (small box over the summary): name, mobile, account holder, UTR. Series and order code stay as they are.
