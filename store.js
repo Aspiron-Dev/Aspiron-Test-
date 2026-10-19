@@ -142,7 +142,7 @@ function sheet(step,body){
   ovEl().innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="shd"><div class="grow"><b>${esc(IT.title)}</b><span class="sm mut">Step ${step} of 3 · ${STEPS[step-1]}</span></div><button class="x" data-close aria-label="Close">✕</button></div>
    <div class="steps">${[1,2,3].map(i=>`<i class="${i<step?'on':i===step?'on now':''}"></i>`).join('')}</div>${body}</div>`;
 }
-function closeSheet(){const o=$('.ov');if(o)o.remove();document.body.style.overflow=''}
+function closeSheet(){closeEdit();const o=$('.ov');if(o)o.remove();document.body.style.overflow=''}
 let BUYN=0;
 async function buy(id){
   IT=ST.items.find(i=>i.id===id);if(!IT)return;
@@ -227,22 +227,51 @@ function helpSheet(){
     ${tg?`<a class="supb tg" href="${esc(tg)}" target="_blank" rel="noopener"><span class="supi">✈️</span><span><b>Telegram</b><small>Chat with support</small></span></a>`:''}</div>
    <p class="sm mut" style="text-align:center;margin-top:12px">Chat only — calls are not available.${ORD&&ORD.code?` Your order code: <b class="code">${esc(ORD.code)}</b>`:''}</p></div>`;
 }
-/* step 3 (last): our chat opens with the details written; the student attaches the payment screenshot and sends both */
+/* step 3 (last): summary of what goes in the chat message (editable), then verify on Telegram / WhatsApp */
+const TGI='<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>';
+const WAI='<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>';
+const PEN='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>';
 function vStep(){
-  const tg=tgUser(),wa=waUrl(''),msg=tgText();
-  sheet(3,`<div class="bigok">📸</div><h3 style="text-align:center;margin-bottom:4px">Verify your payment</h3>
-   <p class="sm mut" style="text-align:center">Last step — send us the message with your payment screenshot.</p>
-   <div class="must"><div class="mustico">📎<i>🖼️</i></div><div><b>Please attach your payment screenshot with this message</b>
-    <p>When our chat opens, send your <b>payment screenshot</b> together with the message. The admin verifies your payment only from the screenshot.</p>
-    <p class="hi">कृपया इस मैसेज के साथ अपना पेमेंट स्क्रीनशॉट ज़रूर भेजें।</p></div></div>
-   <ol class="vsteps"><li><i>1</i><span>Tap a button below — our chat opens with your message already written.</span></li>
-    <li><i>2</i><span>Tap <b>📎 Attach</b> in the chat and choose your <b>payment screenshot</b>.</span></li>
-    <li><i>3</i><span>Tap <b>Send</b> — the message <b>and</b> the screenshot.</span></li></ol>
-   <div class="vgo">${tg?`<a class="btn tg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(tgLink(msg))}">✈️ Verify on Telegram</a>`:''}${wa?`<a class="btn wa block vbtn" data-verify target="_blank" rel="noopener" href="${esc(waUrl(msg))}">💬 Verify on WhatsApp</a>`:''}</div>
-   <p class="sm mut" style="text-align:center;margin-top:8px">The message is also copied, so you can paste it if it doesn't appear.</p>
-   <details class="hint"><summary>See the message</summary><div class="msg">${esc(msg)}</div></details>
-   <p class="sm mut" style="text-align:center;margin-top:14px">Keep your order code <b class="code">${esc(ORD.code)}</b> for any help.</p>
-   <div class="row" style="margin-top:12px"><button class="btn soft" style="flex:1" data-step="paid">← Back</button><button class="btn soft" style="flex:1" data-close>Done</button></div>`);
+  const tg=tgUser(),wa=waUrl(''),msg=tgText(),v=x=>x?esc(x):'<i class="nil">—</i>';
+  sheet(3,`<div class="sum">
+   <div class="sumh"><div><b>Summary</b><span>Please check your details once</span></div><button class="sumed" data-edit>${PEN} Edit</button></div>
+   <dl><div><dt>Series name</dt><dd>${esc(ORD.title)}</dd></div><div><dt>Amount</dt><dd>${inr(ORD.amount)}</dd></div></dl>
+   <dl><div><dt>Student name</dt><dd>${esc(ORD.name)}</dd></div><div><dt>Mobile no.</dt><dd>${esc(ORD.mobile)}</dd></div></dl>
+   <dl><div><dt>Order code</dt><dd class="code">${esc(ORD.code)}</dd></div><div><dt>Paid from account of</dt><dd>${v(ORD.payer)}</dd></div><div><dt>UTR / Transaction ID</dt><dd class="code">${v(ORD.utr)}</dd></div></dl>
+   <p class="sumok">Payment done ✅</p>
+   <p class="sumnote"><b>Note:</b> इस मैसेज के साथ <b>पेमेंट का स्क्रीनशॉट</b> ज़रूर भेजें — verification के लिए।</p></div>
+   <div class="vgo">${tg?`<a class="btn tg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(tgLink(msg))}">${TGI} Verify on Telegram</a>`:''}${wa?`<a class="btn wa block vbtn" data-verify target="_blank" rel="noopener" href="${esc(waUrl(msg))}">${WAI} Verify on WhatsApp</a>`:''}</div>`);
+}
+/* Edit (small box over the summary): name, mobile, account holder, UTR. Series and order code stay as they are.
+   A new name / mobile updates the order on the server (a new mobile gets its own order code, like Buy now). */
+function editBox(){
+  closeEdit();
+  const d=document.createElement('div');d.className='mini';d.addEventListener('click',e=>{if(e.target===d)closeEdit()});
+  d.innerHTML=`<div class="miniin" role="dialog" aria-modal="true" aria-label="Edit details"><div class="shd"><div class="grow"><b>Edit details</b></div><button class="x" data-editx aria-label="Close">✕</button></div>
+   <label for="en">Student name</label><input id="en" maxlength="60" autocomplete="name" value="${esc(ORD.name)}">
+   <label for="em">Mobile no.</label><input id="em" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel" value="${esc(ORD.mobile)}">
+   <label for="ep">Paid from account of</label><input id="ep" maxlength="60" autocomplete="off" value="${esc(ORD.payer||'')}">
+   <label for="eu">UTR / Transaction ID</label><input id="eu" maxlength="30" autocomplete="off" value="${esc(ORD.utr||'')}" style="font-family:ui-monospace,Menlo,monospace;letter-spacing:1px">
+   <div class="err" id="eer"></div><button class="btn block" id="esave" data-esave>Save</button></div>`;
+  document.body.appendChild(d);
+}
+function closeEdit(){const d=$('.mini');if(d)d.remove()}
+async function editSave(){
+  const [n,m]=meRead('#en','#em'),py=$('#ep').value.trim(),pu=$('#eu').value.replace(/[^A-Za-z0-9]/g,'').toUpperCase(),er=$('#eer');
+  const bad=meCheck(n,m)||(py.length<2?'Please write the name on the account you paid from.':pu&&pu.length<6?'This UTR looks too short. Check it, or leave it empty.':'');
+  if(bad)return er.textContent=bad;
+  const b=$('#esave');b.disabled=true;b.textContent='Saving…';er.textContent='';
+  const fail=t=>{if($('#esave')){b.disabled=false;b.textContent='Save';er.textContent=t}};
+  if(n!==ORD.name||m!==ORD.mobile){
+    const r=await rpc('cbt_store_order',{p_item:ORD.item,p_name:n,p_mobile:m});
+    if(!r.ok)return fail(r.error==='busy'?'Too many tries. Please wait a while and try again.':r.error==='network'?'No internet. Please try again.':'Could not save. Please try again.');
+    meSave(n,m);
+    Object.assign(ORD,{code:r.code,amount:r.amount,title:r.title,name:n,mobile:m,at:Date.now()});
+  }
+  const r=await rpc('cbt_store_paid',{p_code:ORD.code,p_mobile:ORD.mobile,p_payer:py,p_utr:pu});
+  if(!r.ok&&r.error==='network'){LSs('store_ord',ORD);return fail('No internet. Please try again.')}
+  ORD.payer=py;ORD.utr=pu;LSs('store_ord',ORD);
+  closeEdit();if($('.ov'))vStep();
 }
 document.addEventListener('click',e=>{
   const t=e.target.closest('button,a,[data-view]');if(!t)return;
@@ -266,14 +295,18 @@ document.addEventListener('click',e=>{
   // the UPI app opens; when the student comes back, the next step is "I have already paid"
   else if('payupi' in t.dataset)setTimeout(()=>{const b=$('[data-step=paid]');if(b)b.classList.add('nudge')},1000);
   else if('verify' in t.dataset){try{navigator.clipboard.writeText(tgText())}catch(_){}}
+  else if('edit' in t.dataset)editBox();
+  else if('editx' in t.dataset)closeEdit();
+  else if('esave' in t.dataset)editSave();
   else if(t.dataset.step==='paid')paidStep();
   else if(t.dataset.step==='back1')payStep();
   else if('paidgo' in t.dataset)paidGo();
 });
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape')closeSheet();
+  if(e.key==='Escape'){if($('.mini'))closeEdit();else closeSheet()}
   if(e.key!=='Enter')return;
-  if(!document.documentElement.classList.contains('has-me')&&$('#gate'))gateGo();
+  if($('#esave'))editSave();
+  else if(!document.documentElement.classList.contains('has-me')&&$('#gate'))gateGo();
   else if($('#go'))meSaveGo();
   else if($('#pgo'))paidGo();
 });
