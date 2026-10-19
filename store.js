@@ -32,7 +32,8 @@ async function load(){
   const r=await rpc('cbt_store');
   if(!r.ok){$('#list').innerHTML=`<div class="card empty"><b>${r.error==='network'?'No internet':'Store is opening soon'}</b><p class="sm">${r.error==='network'?'Check your connection and refresh.':'Please check back in a little while.'}</p></div>`;return}
   ST=r;const tg=tgUser();
-  if(tg){const u='https://t.me/'+encodeURIComponent(tg);$('#ftg').href=u;$('#fab').href=u}else $('#fab').remove();
+  // Help button + footer link open the WhatsApp / Telegram chooser
+  if(!tg&&!waUrl(''))$('#fab').remove();
   if(ST.settings.payee)$('#spayee').textContent=ST.settings.payee;
   const L=ST.items||[];
   if(!L.length){$('#list').innerHTML=`<div class="card empty"><b>New test series coming soon</b><p class="sm">Please check back in a little while.</p></div>`;return}
@@ -162,22 +163,32 @@ async function paidGo(){
   ORD.payer=py;ORD.utr=pu;LSs('store_ord',ORD);tgStep();
 }
 const tgLink=txt=>'https://t.me/'+encodeURIComponent(tgUser())+(txt?'?text='+encodeURIComponent(txt):'');
-// optional second way to verify: the support WhatsApp number from config.js
-const waNum=()=>String(CFG.SUPPORT_WHATSAPP||'').replace(/\D/g,'');
-const waLink=txt=>'https://wa.me/'+waNum()+(txt?'?text='+encodeURIComponent(txt):'');
+// WhatsApp support from config.js: a wa.me link (its text can't be filled in — the message is copied instead) or a number
+const waUrl=txt=>{const v=String(CFG.SUPPORT_WA||'').trim(),n=v.replace(/\D/g,'');
+  return /^https:\/\//.test(v)?v:n.length>=10?'https://wa.me/'+n+(txt?'?text='+encodeURIComponent(txt):''):''};
+/* ---------- Help: choose WhatsApp or Telegram (chat only) ---------- */
+function helpSheet(){
+  let ov=$('.ov');if(!ov){ov=document.createElement('div');ov.className='ov';ov.addEventListener('click',e=>{if(e.target===ov)closeSheet()});document.body.appendChild(ov);document.body.style.overflow='hidden'}
+  const wa=waUrl(''),tg=tgUser()?tgLink(''):'';
+  ov.innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="shd"><div class="grow"><b>Chat with support</b><span class="sm mut">Questions about a series, payment or login</span></div><button class="x" data-close aria-label="Close">✕</button></div>
+   <div class="supgrid">${wa?`<a class="supb wa" href="${esc(wa)}" target="_blank" rel="noopener"><span class="supi">💬</span><span><b>WhatsApp</b><small>Chat with support</small></span></a>`:''}
+    ${tg?`<a class="supb tg" href="${esc(tg)}" target="_blank" rel="noopener"><span class="supi">✈️</span><span><b>Telegram</b><small>Chat with support</small></span></a>`:''}</div>
+   <p class="sm mut" style="text-align:center;margin-top:12px">Chat only — calls are not available.${ORD&&ORD.code?` Your order code: <b class="code">${esc(ORD.code)}</b>`:''}</p></div>`;
+}
 function tgStep(){
   sheet(4,`<h3 style="text-align:center;margin:4px 0 6px">Verify your payment</h3>
    <div class="attach"><div class="attico">📎<i>🖼️</i></div><div><b>Attach your payment screenshot</b><p>Without the screenshot we cannot verify your payment.</p></div></div>
-   <ol class="howto"><li>Tap ${waNum().length>=10?'<b>Telegram</b> or <b>WhatsApp</b> below':'the blue button below'} — our support chat opens with your details already written.</li><li>Tap <b>📎</b> (attach) in the chat and choose your <b>payment screenshot</b>.</li><li>Tap <b>Send</b>.</li></ol>
+   <ol class="howto"><li>Tap ${waUrl('')?'<b>Telegram</b> or <b>WhatsApp</b> below':'the blue button below'} — our support chat opens${waUrl('')?'':' with your details already written'}. Your details are also copied: if the box is empty, paste them.</li><li>Tap <b>📎</b> (attach) in the chat and choose your <b>payment screenshot</b>.</li><li>Tap <b>Send</b>.</li></ol>
    <div class="msg">${esc(tgText())}</div>
-   <a class="btn tg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(tgLink(tgText()))}">✔ ${waNum().length>=10?'Verify on Telegram':'Click here to verify your payment'}</a>
-   ${waNum().length>=10?`<a class="btn wa block vbtn" style="margin-top:10px" data-verify target="_blank" rel="noopener" href="${esc(waLink(tgText()))}">✔ Verify on WhatsApp</a>`:''}
+   <a class="btn tg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(tgLink(tgText()))}">✔ ${waUrl('')?'Verify on Telegram':'Click here to verify your payment'}</a>
+   ${waUrl('')?`<a class="btn wa block vbtn" style="margin-top:10px" data-verify target="_blank" rel="noopener" href="${esc(waUrl(tgText()))}">✔ Verify on WhatsApp</a>`:''}
    <p class="sm mut" style="text-align:center;margin-top:8px">The message is also copied, so you can paste it if it doesn't appear.</p>
    <p class="sm mut" style="text-align:center;margin-top:14px">Keep your order code <b class="code">${esc(ORD.code)}</b> for any help.</p>
    <button class="btn soft block" style="margin-top:10px" data-close>Done</button>`);
 }
 document.addEventListener('click',e=>{
   const t=e.target.closest('button,a,[data-view]');if(!t)return;
+  if('help' in t.dataset){e.preventDefault();helpSheet();return}
   if(t.dataset.buy){closeSheet();buy(t.dataset.buy)}
   else if(t.dataset.view)view(t.dataset.view);
   else if(t.dataset.sch)schedule(t.dataset.sch);
