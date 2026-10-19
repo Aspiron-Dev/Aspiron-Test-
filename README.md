@@ -6,7 +6,7 @@ Static website on GitHub Pages + Supabase (database functions). No build step: u
 | Page | What it is | Scripts |
 |---|---|---|
 | `index.html` | Student app (tests, results, mistakes, tracker, PYQ, reviews) | `config.js`, `app1.js` … `app15.js`, `pyq-syllabus.js` |
-| `cp-dt764twzf54s5m.html` | Admin panel (needs the private access key + admin password) | `config.js`, `parser.js`, `admin1.js` … `admin16.js`, `pyq-syllabus.js` |
+| `cp-dt764twzf54s5m.html` | Admin panel (needs the private access key + admin password) | `config.js`, `parser.js`, `admin1.js` … `admin17.js`, `pyq-syllabus.js` |
 | `store.html` | Public store: paid series, UPI payment, ratings & reviews | `config.js`, `qrcode.js`, `store.js` |
 | `admin.html` | Decoy "404" page (the real admin page has a hidden name) | – |
 
@@ -20,6 +20,6 @@ Other files: `sw.js` (installable app, always loads the newest pages), `manifest
 ## Supabase SQL (run once each, in this order, in SQL Editor — on top of the original base setup)
 `supabase_v9_banners` → `v10_push` → `v11_pyq` → `v12_test_alerts` → `v13_store` → `v17_store_fix` →
 `v18_store_schedule` → `v19_store_security` → `v20_store_payer` → `v21_devices` → `v22_alerts_via_send_push` →
-`v23_reviews` → `v24_cheating` → `v25_cheat_leaderboard` → `v26_lift_fix` → `v27_lift_fix2`. Every file is safe to run again. `supabase_check_alerts.sql` only reads (for checking alerts).
+`v23_reviews` → `v24_cheating` → `v25_cheat_leaderboard` → `v26_lift_fix` → `v27_lift_fix2` → `v28_store_followup`. Every file is safe to run again. `supabase_check_alerts.sql` only reads (for checking alerts).
 
 Never put the admin password or a secret / service_role key in `config.js` or anywhere in this repository.
