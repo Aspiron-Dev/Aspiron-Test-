@@ -7,7 +7,7 @@ Static website on GitHub Pages + Supabase (database functions). No build step: u
 |---|---|---|
 | `index.html` | Student app (tests, results, mistakes, tracker, PYQ, reviews) | `config.js`, `app1.js` … `app15.js`, `pyq-syllabus.js` |
 | `cp-dt764twzf54s5m.html` | Admin panel (needs the private access key + admin password) | `config.js`, `parser.js`, `admin1.js` … `admin18.js`, `pyq-syllabus.js` |
-| `store.html` | Public store: paid series, UPI payment, ratings & reviews | `config.js`, `qrcode.js`, `store.js` |
+| `store.html` | Public store: name + mobile once, paid series, UPI payment, verify on Telegram / WhatsApp (message + payment screenshot), ratings & reviews, light / dark theme | `store-theme.js`, `config.js`, `qrcode.js`, `store.js` |
 | `admin.html` | Decoy "404" page (the real admin page has a hidden name) | – |
 
 Scripts load in number order; a later file adds to or replaces functions of earlier ones.
