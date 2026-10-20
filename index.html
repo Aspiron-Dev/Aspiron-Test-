@@ -1181,6 +1181,8 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 .drw.out .drp{animation:drwOut var(--m2) var(--ease) forwards}
 .modal.out .box *,.drw.out .drp *{animation:none!important}
 @keyframes shOut{to{opacity:0}}@keyframes boxOut{to{opacity:0;transform:translate3d(0,12px,0) scale(.97)}}@keyframes shDown{to{transform:translate3d(0,100%,0)}}@keyframes drwOut{to{transform:translate3d(-100%,0,0)}}
+/* a page with no tab of its own (PYQ): the bottom-nav pill steps aside instead of sitting on Home */
+.bnav.nopill:before{opacity:0}
 /* one toast at a time; it fades down when done */
 .toast.out{opacity:0;transform:translateX(-50%) translateY(10px);transition:opacity var(--m2) var(--ease),transform var(--m2) var(--ease)}
 /* page refreshed in place (softRoute: back to the app, a test opens, 9 PM): a short settle, no slide, no replays */
@@ -1257,7 +1259,7 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 #rbody.again>*{animation:rsFade var(--m2) var(--eo) backwards}#rbody.again>*:nth-child(n+6),#rbody.again .tiles>div,#rbody.again #lb>*,#rbody.again .hb i,#rbody.again .tb i,#rbody.again .stk{animation:none}
 @keyframes rsFade{from{opacity:0}}@keyframes rsGrowY{from{transform:scaleY(0)}}@keyframes rsGrowX{from{transform:scaleX(0)}}
 /* 180 solution cards: off-screen cards are not laid out / painted; jumpQ lands below the sticky tabs */
-#rbody>.rv{content-visibility:auto;contain-intrinsic-size:auto 520px;scroll-margin-top:132px}
+#rbody>.rv{content-visibility:auto;contain-intrinsic-size:auto 520px;scroll-margin-top:132px}#rbody>.rv.flash{animation:fl 1.6s}
 /* long formulas / URLs wrap inside the card instead of widening the page */
 .qx .qt,.qx .ro,.qx .exp,.rsbody .qt,.rsbody .ro,.rsbody .exp,.fb,.qnote{overflow-wrap:anywhere}
 /* mistake / saved cards: slide out, then the gap closes smoothly */

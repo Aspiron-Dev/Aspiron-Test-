@@ -19,6 +19,7 @@ function instr(t,s){
 }
 
 async function startTest(id){
+  {const p0=getProg(id);if(p0&&p0.ends&&p0.cid&&p0.ends<=Date.now()+(p0.off||0)){P=p0;T=null;tmark=0;return finish(true)}}// time ran out after the student left the test: submit those answers, never start over them
   loading('Starting your test…');
   const r=await rpc('cbt_start',{p_test:id});
   if(!r.ok&&(r.error==='network'||r.error==='server')){
@@ -105,16 +106,16 @@ function draw(){
 function pal(v){palOpen=v;const s=document.querySelector('.sheet');if(!s)return;s.classList.remove('shut');if(v){s.classList.add('open');palCur(s)}else if(s.classList.contains('open')&&!RMOT()){s.classList.add('shut');setTimeout(()=>{if(!palOpen)s.classList.remove('open','shut')},190)}else s.classList.remove('open')}
 const palCur=r=>{const p=r&&r.querySelector('.pal'),c=p&&p.querySelector('.cur');if(c)p.scrollTop+=c.getBoundingClientRect().top-p.getBoundingClientRect().top-(p.clientHeight-c.offsetHeight)/2};
 function palSync(){document.querySelectorAll('.palw').forEach(e=>e.outerHTML=palHtml());palCur($('.side'))}
-function go(i){if(i<0||i>=T.questions.length)return;flushT();QDX=i>P.cur?1:i<P.cur?-1:0;P.cur=i;palOpen=false;saveProg();window.scrollTo({top:0,behavior:'instant'});draw()}
+function go(i){if(i<0||i>=T.questions.length)return;flushT();QDX=i>P.cur?1:i<P.cur?-1:0;P.cur=i;palOpen=false;saveProg();draw();window.scrollTo({top:0,behavior:'instant'})}
 function goSec(name){const idx=secIdx(name);if(!idx.length)return;go(idx.includes(P.cur)?P.cur:idx[0])}
 function sel(i){if(T.practice&&P.ans[P.cur]!=null)return;flushT();P.ans[P.cur]=i;if(navigator.vibrate)navigator.vibrate(8);saveProg();if(T.practice)return draw();document.querySelectorAll('.qcard .opt').forEach(b=>b.classList.toggle('sel',+b.dataset.i===i));palSync()}
 function clr(){if(T.practice)return;flushT();delete P.ans[P.cur];saveProg();document.querySelectorAll('.qcard .opt.sel').forEach(b=>b.classList.remove('sel'));palSync()}
 function saveNext(){delete P.mark[P.cur];nxt()}
 function markNext(){P.mark[P.cur]=1;nxt()}
-function nxt(){flushT();if(P.cur<T.questions.length-1){P.cur++;QDX=1}saveProg();window.scrollTo({top:0,behavior:'instant'});draw()}
+function nxt(){flushT();if(P.cur<T.questions.length-1){P.cur++;QDX=1}saveProg();draw();window.scrollTo({top:0,behavior:'instant'})}
 /* back button / edge swipe during the test: close what is open, else ask before leaving (the test keeps running and can be resumed) */
 window.addEventListener('popstate',()=>{if(!INTEST||!P)return;history.pushState({cbt:P.sid},'');const lb=document.querySelector('.lightbox');if(lb)lb.remove();else if(palOpen)pal(false);else if($('#layer').innerHTML)closeModal();else askYes({icon:'⏱️',title:'Leave the test?',msg:'Your answers are saved on this phone. The timer keeps running, so resume the test before it ends.',no:'Stay in test',ok:'Leave',yes:leaveTest})});
-function leaveTest(){if(!P||!INTEST)return;clearInterval(timer);window.onbeforeunload=null;flushT();saveProg();const hb=history.state&&history.state.cbt===P.sid;INTEST=false;P=null;T=null;palOpen=false;document.body.classList.remove('intest');netPill();CAT=null;const to=RET||'#/',g=()=>{if(location.hash!==to)location.hash=to;else route()};if(hb){window.addEventListener('popstate',g,{once:true});history.back()}else g()}
+function leaveTest(){if(!P||!INTEST)return;clearInterval(timer);window.onbeforeunload=null;flushT();tmark=0;saveProg();const hb=history.state&&history.state.cbt===P.sid;INTEST=false;P=null;T=null;palOpen=false;document.body.classList.remove('intest');netPill();CAT=null;const to=RET||'#/',g=()=>{if(location.hash!==to)location.hash=to;else route()};if(hb){window.addEventListener('popstate',g,{once:true});history.back()}else g()}
 
 /* ---------- submitting (answers are marked on the server) ---------- */
 

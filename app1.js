@@ -126,7 +126,7 @@ function setNav(tab){
   const bn=$('#bnav');
   if(!bn.children.length)bn.innerHTML=NAVIT.map(x=>`<button data-k="${x[0]}" onclick="location.hash='${x[1]}'">${ic(x[3],22)}${x[2]}</button>`).join('');
   bn.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.k===tab));
-  bn.style.setProperty('--i',Math.max(0,NAVIT.findIndex(x=>x[0]===tab)));
+  const i=NAVIT.findIndex(x=>x[0]===tab);if(i>=0)bn.style.setProperty('--i',i);bn.classList.toggle('nopill',i<0);   // no tab of its own (PYQ): no pill
   document.body.classList.add('hasnav');
 }
 let ROUTING=0,PGDX=0;
@@ -135,9 +135,9 @@ let SOFT=0,SOFTR=0;
 // was on that page; RSTY = where the page route() is drawing starts (used by its first real draw); RTBK = page an instructions/result screen covered
 let SCRY={},RSTY=null,RTBK='';
 function scrSave(){const ap=$('#app');if(ap.dataset.rt&&!ap.querySelector(':scope>.skpage'))SCRY[ap.dataset.rt]=scrollY}
-function setApp(h){const sf=SOFT||SOFTR;if(!ROUTING&&!sf||INTEST||!AUTH)document.body.classList.remove('hasnav');clearInterval(opTimer);opTimer=null;const ap=$('#app'),sk=!!ap.querySelector(':scope>.skpage'),rt=ap.dataset.rt;scrSave();ap.innerHTML=h;ap.dataset.rt=(ROUTING||sf)&&AUTH&&!INTEST?location.hash||'#/':'';if(rt&&!ap.dataset.rt)RTBK=rt;
+function setApp(h){scrSave();const sf=SOFT||SOFTR;if(!ROUTING&&!sf||INTEST||!AUTH)document.body.classList.remove('hasnav');clearInterval(opTimer);opTimer=null;const ap=$('#app'),sk=!!ap.querySelector(':scope>.skpage'),rt=ap.dataset.rt;ap.innerHTML=h;ap.dataset.rt=(ROUTING||sf)&&AUTH&&!INTEST?location.hash||'#/':'';if(rt&&!ap.dataset.rt)RTBK=rt;
   if(!sf){const y=ROUTING?(RSTY!=null?RSTY:scrollY):0;if(!ap.querySelector(':scope>.skpage'))RSTY=null;window.scrollTo(0,y)}
-  if(SOFTR){ap.classList.remove('pg','pgf','srf');void ap.offsetWidth;ap.classList.add('srf')}else if(sf||sk){PGDX=0;ap.classList.remove('pg','pgf');void ap.offsetWidth;ap.classList.add('pgf')}else pgAnim(ap);
+  if(SOFTR){ap.classList.remove('pg','pgf','srf');void ap.offsetWidth;ap.classList.add('srf');try{ap.getAnimations({subtree:true}).forEach(a=>{if(a.animationName!=='srF'&&a.effect.getComputedTiming().iterations!==Infinity)a.finish()})}catch(e){}}else if(sf||sk){PGDX=0;ap.classList.remove('pg','pgf');void ap.offsetWidth;ap.classList.add('pgf')}else pgAnim(ap);
   startOp();loadCovers();if(!SOFTR)countUp($('#app'));hideSplash()}
 function loading(m){setApp(`<div class="loading"><div><div class="spin"></div>${esc(m||'Loading…')}</div></div>`)}
 const GR=[['#1d6fe8','#12a58a'],['#0e7490','#2563eb'],['#15803d','#0ea5a4'],['#334155','#1d6fe8'],['#0f766e','#16a34a'],['#475569','#0d9488']];

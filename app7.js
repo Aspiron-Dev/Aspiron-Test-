@@ -143,17 +143,17 @@ function rsDraw(){
   if(RS.i>=n)return rsEnd();
   const q=RS.l[RS.i],p=RS.pick[RS.i],done=p!=null,ok=Object.keys(RS.pick).filter(i=>RS.pick[i]===RS.l[i].answer).length;
   // redraw in place: no overlay fade, keep the scroll after an answer, slide in a new question, progress bar grows
-  const o=document.querySelector('#layer .rsx'),ob=o&&o.querySelector('.rsbar i'),nq=RS.d!==RS.i,sy=o&&!nq?o.querySelector('.rsbody').scrollTop:0;RS.d=RS.i;
-  $('#layer').innerHTML=`<div class="rsx${o?' re':''}"><div class="rstop"><button class="iconbtn" onclick="rsClose()" aria-label="Close">${ic('x',20)}</button>
+  const px=document.querySelector('#layer .rsx'),ob=px&&px.querySelector('.rsbar i'),nq=RS.d!==RS.i,sy=px&&!nq?px.querySelector('.rsbody').scrollTop:0;RS.d=RS.i;
+  $('#layer').innerHTML=`<div class="rsx${px?' re':''}"><div class="rstop"><button class="iconbtn" onclick="rsClose()" aria-label="Close">${ic('x',20)}</button>
    <div class="grow"><b>${esc(RS.title)}</b><div class="sm mut">Question ${RS.i+1} of ${n} · ✓ ${ok}</div></div></div>
    <div class="rsbar"><i style="width:${ob?ob.style.width:'0%'}"></i></div>
-   <div class="rsbody${o&&nq?' nq':''}"><div class="qsrc">${ic('file',13)} ${esc(q.title||'')} · Q${q.qidx+1}</div>
+   <div class="rsbody${px&&nq?' nq':''}"><div class="qsrc">${ic('file',13)} ${esc(q.title||'')} · Q${q.qidx+1}</div>
     <div class="qt">${esc(q.q)}</div>${imgTag(q.img)}
     ${q.options.map((o,j)=>{if(!o&&!(q.oimg&&q.oimg[j]))return '';const cls=done?(j===q.answer?'c':(j===p?'w':'')):'';return `<div class="ro pick ${cls}" ${done?'':`onclick="rsPick(${j})"`}><span class="k">${L[j]}</span><span style="flex:1">${esc(o)}${imgTag(q.oimg&&q.oimg[j],'oi')}</span></div>`}).join('')}
     ${done?`<div class="fb ${p===q.answer?'g':'b'}">${p===q.answer?'Correct! 🎉':'Wrong — correct answer is '+L[q.answer]}</div>${q.explanation||q.eimg?`<div class="exp"><b>Explanation:</b> ${esc(q.explanation||'')}${imgTag(q.eimg)}</div>`:''}<div data-nk="${qKey(q)}">${noteHtml(qKey(q)).replace(/ onclick="[^"]*"/,'')}</div>`:''}</div>
    <div class="rsfoot">${done?`<button class="btn block" onclick="RS.i++;rsDraw()">${RS.i+1<n?'Next question →':'See result'}</button>`:`<button class="btn ghost block" onclick="RS.i++;rsDraw()">Skip</button>`}</div></div>`;
   const b=document.querySelector('.rsbody'),bi=document.querySelector('.rsbar i');b.scrollTop=sy;void bi.offsetWidth;bi.style.width=Math.round(RS.i*100/n)+'%';
-  const f=o&&!nq&&b.querySelector('.fb');if(f)f.scrollIntoView({block:'nearest',behavior:RMOT()?'instant':'smooth'});
+  const f=px&&!nq&&b.querySelector('.fb');if(f)f.scrollIntoView({block:'nearest',behavior:RMOT()?'instant':'smooth'});
 }
 function rsPick(j){RS.pick[RS.i]=j;rvToday(1);if(navigator.vibrate)navigator.vibrate(j===RS.l[RS.i].answer?10:[20,40,20]);rsDraw()}
 function rsEnd(){
