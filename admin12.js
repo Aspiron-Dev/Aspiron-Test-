@@ -80,10 +80,10 @@ async function stoSaveSet(b){
 }
 function stoEdit(i){
   const x=i>=0?SS.items[i]:{title:'',subtitle:'',price:'',mrp:'',badge:'',features:[],color:'blue',series_id:'',active:true,sort_order:SS.items.length};
-  STOIMG=x.image||'';STOFILE=null;
+  STOIMG=x.image||'';STOFILE=null;if(SS.demos==='err')SS.demos=undefined;stoXpInit(x);
   modal(`<div class="stohd"><h2>${i>=0?'Edit':'Add'} test series</h2><button class="iconbtn" onclick="closeModal()" aria-label="Close">✕</button></div><p class="sm mut" style="margin:2px 0 10px">Preview — this is how students see it on the store:</p><div id="p_prev"></div>
    <label class="l">Name</label><input type="text" id="p_t" maxlength="80" value="${esc(x.title)}" placeholder="e.g. NEET 2027 All India Test Series">
-   <label class="l">Short line (optional)</label><input type="text" id="p_s" maxlength="200" value="${esc(x.subtitle)}" placeholder="e.g. 30 full tests · Oct to April">
+   <label class="l">Short description on the card (optional)</label><input type="text" id="p_s" maxlength="200" value="${esc(x.subtitle)}" placeholder="e.g. NEET 2026 · 20 chapter tests + 5 full tests">
    <div class="g2"><div><label class="l">Price ₹</label><input type="number" id="p_p" min="1" value="${esc(x.price)}"></div><div><label class="l">MRP ₹ (optional, shown struck)</label><input type="number" id="p_m" min="0" value="${esc(x.mrp==null?'':x.mrp)}"></div>
     <div><label class="l">Badge (optional)</label><input type="text" id="p_b" maxlength="24" value="${esc(x.badge)}" placeholder="e.g. Bestseller"></div>
     <div><label class="l">Card colour</label><select id="p_c">${SCOL.map(([k,l])=>`<option value="${k}" ${x.color===k?'selected':''}>${l}</option>`).join('')}</select></div>
@@ -93,10 +93,12 @@ function stoEdit(i){
     <label class="btn soft sm" style="cursor:pointer">📷 Upload<input type="file" accept="image/*" style="display:none" onchange="stoImgUp(this)"></label><button class="btn ghost sm" onclick="stoImgSet('')">Remove</button></div>
       <label class="l">Schedule for students (PDF or photo, up to 5 MB)</label><div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><div id="p_sch" class="sm" style="flex:1;min-width:140px">${stoSchHtml(x.id)}</div>
     <label class="btn soft sm" style="cursor:pointer">📅 Upload<input type="file" accept="application/pdf,image/*" style="display:none" onchange="stoSchUp(this,'${x.id||''}')"></label>${SS.sched&&SS.sched[x.id]?`<button class="btn ghost sm" onclick="stoSchDel('${x.id}')">Remove</button>`:''}</div>
-   <label class="l">Features (one per line)</label><textarea id="p_f" style="min-height:130px" placeholder="30 full-length NEET mock tests&#10;All-India rank after every test&#10;Detailed solutions">${esc((x.features||[]).join('\n'))}</textarea>
+   <label class="l">Demo tests on the Explore page (PDF or photo, up to 5 MB each)</label><div id="p_demo">${stoDemoHtml()}</div>
+   <label class="l">What you get — on the Explore page (one per line)</label><textarea id="p_f" style="min-height:130px" placeholder="30 full-length NEET mock tests&#10;All-India rank after every test&#10;Detailed solutions">${esc((x.features||[]).join('\n'))}</textarea>
+   <label class="l">Full description on the Explore page <a href="#" onclick="event.preventDefault();stoDescFill()" style="color:var(--pri);font-weight:700;text-transform:none;letter-spacing:0">· fill from series</a></label><div id="p_desc">${stoDescHtml(x)}</div>
    <label class="chk"><input type="checkbox" id="p_a" ${x.active?'checked':''}><span>Show on the store page</span></label>
    <div class="row stofoot">${i>=0?`<button class="btn danger" onclick="stoDel(${i})">Delete</button>`:''}<button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn" style="flex:1" id="p_go" onclick="stoSave(${i})">Save</button></div>`);
-  stoSheet();
+  stoSheet();if(SS.demos===undefined)stoXpLoad().then(()=>{stoXpInit(x);stoXpDraw(x)});
   stoPrev();if(!window.__stoPB){window.__stoPB=1;document.addEventListener('input',e=>{if(e.target.closest('#layer'))stoPrev()})}
 }
 async function stoSave(i){
@@ -109,10 +111,13 @@ async function stoSave(i){
   const r=await ASTO('save_item',d);b.disabled=false;b.textContent='Save';
   if(!r.ok)return toast('Could not save');
   if(STOFILE&&(r.id||d.id)){const q=await stoSchSend(r.id||d.id,STOFILE.data,STOFILE.name);if(!q.ok)toast(q.msg)}
+  // the item is saved already, so a failure here only shows a message (Save again would add a new item twice)
+  let xmsg='';
+  if(SS.demos&&(r.id||d.id)){b.disabled=true;b.textContent='Saving demo tests…';const q=await stoXpSave(r.id||d.id,i>=0?SS.items[i]:{});if(!q.ok)xmsg=q.msg+' — open Edit and try again';await stoXpLoad(true)}
   closeModal();await loadStore();
   // make sure the photo really reached the database
   const it=SS.items.find(x=>x.id===(r.id||d.id));
-  if(d.image&&it&&!it.image)stoNeedFix('The photo was not saved.');else toast('Saved ✓');
+  if(d.image&&it&&!it.image)stoNeedFix('The photo was not saved.');else toast(xmsg||'Saved ✓');
 }
 async function stoDel(i){
   const x=SS.items[i];if(!confirm(`Delete "${x.title}" from the store? Old orders stay.`))return;
@@ -145,11 +150,12 @@ function stoAuto(s){
   for(const l of parts)if(f.length<6&&!f.some(x=>x.toLowerCase()===l.toLowerCase()))f.push(l);
   for(const l of ['All-India rank after every test','Detailed solutions & analysis'])if(f.length<8)f.push(l);
   const pm=String(s.price_label||'').replace(/,/g,'').match(/\d+/);
-  return{title:s.title,subtitle:sub.slice(0,200),price:pm?parseInt(pm[0],10):'',features:f,series_id:s.id};
+  return{title:s.title,subtitle:sub.slice(0,200),price:pm?parseInt(pm[0],10):'',features:f,series_id:s.id,description:d.slice(0,6000)};
 }
 async function stoFill(){
   const sid=$('#p_ser').value,s=CA.series.find(x=>x.id===sid);if(!s)return toast('Choose the series first');
   const a=stoAuto(s);$('#p_t').value=a.title;$('#p_s').value=a.subtitle;if(a.price)$('#p_p').value=a.price;$('#p_f').value=a.features.join('\n');
+  if(a.description&&$('#p_d'))$('#p_d').value=a.description;
   const c=await stoCover(sid);if(c){stoImgSet(c);toast('Filled ✓')}else toast('Filled ✓ (no cover photo on this series)');
 }
 function stoPick(){
@@ -173,6 +179,7 @@ async function stoPickGo(){
     const a=stoAuto(s),image=await stoCover(id);
     const r=await ASTO('save_item',{title:a.title,subtitle:a.subtitle,price:pr[id],mrp:'',badge:'',color:SCOL[(ord)%SCOL.length][0],series_id:id,sort_order:ord++,active:true,features:a.features,image});
     if(!r.ok){b.disabled=false;b.textContent='Try again';return toast('Could not add '+s.title)}
+    if(a.description&&r.id)await AXP('desc',{item:r.id,description:a.description});
   }
   closeModal();toast(`✓ ${ids.length} series added to the store`);loadStore();
 }
@@ -185,6 +192,7 @@ async function stoResync(b){
     b.textContent=`Updating ${++n}/${L.length}…`;const s=CA.series.find(z=>z.id===x.series_id),a=stoAuto(s),c=await stoCover(s.id);if(c)img++;
     const r=await ASTO('save_item',{id:x.id,title:a.title,subtitle:a.subtitle,price:x.price,mrp:x.mrp==null?'':x.mrp,badge:x.badge||'',color:x.color||'blue',series_id:x.series_id,sort_order:x.sort_order||0,active:x.active!==false,features:a.features,image:c||x.image||''});
     if(!r.ok){b.disabled=false;b.textContent='Try again';return toast('Could not update '+x.title)}
+    if(a.description)await AXP('desc',{item:x.id,description:a.description});
   }
   toast(`✓ ${L.length} updated · photos found for ${img}`+(img<L.length?' — upload the rest in Edit':''));loadStore();
 }
@@ -192,7 +200,7 @@ async function stoResync(b){
 function stoPrev(){
   const box=$('#p_prev');if(!box)return;const v=id=>{const e=$(id);return e?e.value:''};
   const price=parseInt(v('#p_p'),10)||0,mrp=parseInt(v('#p_m'),10)||0,off=mrp>price&&price?Math.round((1-price/mrp)*100):0;
-  const F=v('#p_f').split('\n').map(x=>x.trim()).filter(Boolean),col={blue:'#1d6fe8,#3b9bff',green:'#0f9d6b,#12a58a',purple:'#6d3fe0,#a855f7',orange:'#e8590c,#f59f00',red:'#d6336c,#f03e3e',dark:'#1e293b,#475569'}[v('#p_c')]||'#1d6fe8,#3b9bff';
+  const col={blue:'#1d6fe8,#3b9bff',green:'#0f9d6b,#12a58a',purple:'#6d3fe0,#a855f7',orange:'#e8590c,#f59f00',red:'#d6336c,#f03e3e',dark:'#1e293b,#475569'}[v('#p_c')]||'#1d6fe8,#3b9bff';
   box.innerHTML=`<div style="border-radius:16px;overflow:hidden;box-shadow:var(--shadow);background:var(--surface);max-width:340px;margin-bottom:6px">
    <div style="position:relative;aspect-ratio:16/9;background:linear-gradient(135deg,${col});color:#fff;display:flex;align-items:flex-end;padding:12px">
     ${STOIMG?`<img src="${esc(STOIMG)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<b style="font-size:17px">${esc(v('#p_t')||'Series name')}</b>`}
@@ -200,7 +208,7 @@ function stoPrev(){
     ${off?`<span style="position:absolute;top:8px;right:8px;background:#12945f;color:#fff;font-size:11px;font-weight:800;border-radius:8px;padding:3px 7px">${off}% OFF</span>`:''}</div>
    <div style="padding:10px 12px 12px"><b style="font-size:15px">${esc(v('#p_t')||'Series name')}</b>${v('#p_s')?`<div class="sm mut">${esc(v('#p_s'))}</div>`:''}
     <div style="margin:6px 0"><b style="font-size:20px">₹${price||'—'}</b> ${off?`<s class="sm mut">₹${mrp}</s>`:''}</div>
-    ${F.slice(0,4).map(f=>`<div class="sm">✓ ${esc(f)}</div>`).join('')}${F.length>4?`<div class="sm" style="color:var(--pri)">+ ${F.length-4} more</div>`:''}</div></div>`;
+    <div style="display:grid;gap:6px;margin-top:8px"><span style="text-align:center;border-radius:10px;padding:7px;font-size:12.5px;font-weight:700;background:var(--priSoft);color:var(--pri)">🔍 Explore test series</span><span style="text-align:center;border-radius:10px;padding:7px;font-size:12.5px;font-weight:700;color:#fff;background:linear-gradient(135deg,#1d6fe8,#12a58a)">Buy now · ₹${price||'—'}</span></div></div></div>`;
 }
 // whenever a series cover is uploaded or removed, keep the store's copy (and the store cards of that series) in sync
 async function stoCoverSync(sid,img){
@@ -271,6 +279,81 @@ async function stoSchDel(id){
   if(!confirm('Remove the schedule from this series?'))return;
   const r=await stoSchSend(id,'','');if(!r.ok)return toast(r.msg);
   if(SS.sched)delete SS.sched[id];const box=$('#p_sch');if(box)box.innerHTML=stoSchHtml(id);toast('Schedule removed');stoDraw();
+}
+/* ---------- Explore page: full description + demo test 1 / 2 (supabase_v30_store_explore.sql) ---------- */
+async function AXP(action,data){
+  try{
+    const r=await fetch(API+'/rest/v1/rpc/cbt_admin_store_explore',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_pw:PW,p_action:action,p_data:data||{}})});
+    if(!r.ok)return{ok:false,error:r.status===404?'missing':'server'};
+    return await r.json();
+  }catch(e){return{ok:false,error:'network'}}
+}
+// SS.demos: {item id: {1: demo, 2: demo}} · null = SQL not run yet · undefined = not loaded
+async function stoXpLoad(force){
+  if(SS.demos!==undefined&&SS.demos!=='err'&&!force)return;
+  const r=await AXP('get');
+  if(!r.ok){SS.demos=r.error==='missing'?null:'err';return}
+  const m={};(r.demos||[]).forEach(d=>{(m[d.item_id]=m[d.item_id]||{})[d.slot]=d});SS.demos=m;
+}
+let STODEMO={},STOX={};
+function stoXpInit(x){
+  STOX=x;const o=(SS.demos&&typeof SS.demos==='object'&&SS.demos[x.id])||{};
+  STODEMO={};for(const n of [1,2])STODEMO[n]={title:(o[n]&&o[n].title)||'',file:null,del:false};
+}
+const stoXpMsg=()=>SS.demos===null?'<p class="sm" style="margin:0;color:var(--warn)">Run <b>supabase_v30_store_explore.sql</b> once in Supabase to turn this on.</p>'
+  :SS.demos==='err'?'<p class="sm mut" style="margin:0">Could not load. Close and open Edit again.</p>':SS.demos===undefined?'<p class="sm mut" style="margin:0">Loading…</p>':'';
+function stoXpDraw(x){const a=$('#p_demo'),b=$('#p_desc');if(a)a.innerHTML=stoDemoHtml();if(b)b.innerHTML=stoDescHtml(x)}
+function stoDescHtml(x){
+  return stoXpMsg()||`<textarea id="p_d" maxlength="6000" style="min-height:150px" placeholder="Everything about this series: what is inside, test pattern, dates, who it is for…">${esc(x.description||'')}</textarea>`;
+}
+function stoDemoHtml(){
+  const msg=stoXpMsg();if(msg)return msg;
+  const o=(SS.demos[STOX.id])||{};
+  return [1,2].map(n=>{const s=STODEMO[n],e=o[n],has=e&&e.size>0;
+    const line=s.del?'<span style="color:var(--bad)">Will be removed when you press Save</span>'
+      :s.file?`📎 <b>${esc(s.file.name)}</b> · ${kb(s.file.size)} <span class="mut">(saved when you press Save)</span>`
+      :has&&!s.wipe?`📎 <b>${esc(e.name||e.title||'File')}</b> · ${kb(e.size)}`:'<span class="mut">No file — students see “Coming soon”</span>';
+    return `<div style="border:1px solid var(--bd);border-radius:12px;padding:10px 12px;margin-bottom:8px"><b class="sm">Demo test ${n}</b>
+     <input type="text" maxlength="120" value="${esc(s.title)}" placeholder="${n===1?'e.g. Breathing and Exchange of Gases':'Name (optional)'}" oninput="STODEMO[${n}].title=this.value;STODEMO[${n}].del=false" style="margin-top:6px">
+     <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px"><div class="sm" style="flex:1;min-width:140px">${line}</div>
+      <label class="btn soft sm" style="cursor:pointer">⬆ Upload<input type="file" accept="application/pdf,image/*" style="display:none" onchange="stoDemoUp(this,${n})"></label>
+      ${has||s.file||s.title?`<button class="btn ghost sm" onclick="stoDemoDel(${n})">Remove</button>`:''}</div></div>`}).join('');
+}
+async function stoDemoUp(inp,n){
+  const f=inp.files[0];if(!f)return;
+  if(f.size>5*1048576)return toast('File is too big (max 5 MB)');
+  const isPdf=f.type==='application/pdf'||/\.pdf$/i.test(f.name);if(!isPdf&&!/^image\//.test(f.type))return toast('Use a PDF or a photo');
+  let data=await fileToUrl(f);
+  if(isPdf)data=data.replace(/^data:[^;]*;/,'data:application/pdf;');
+  else{try{data=await compressDataUrl(data,1600,.82)||data}catch(e){}}
+  const name=f.name.replace(/\.[a-z0-9]+$/i,'').slice(0,80)||'Demo test '+n,s=STODEMO[n];
+  s.file={data,name,size:Math.round(data.length*3/4)};s.del=false;if(!s.title.trim())s.title=name;
+  const a=$('#p_demo');if(a)a.innerHTML=stoDemoHtml();
+}
+// Remove: the saved demo test is deleted on Save (a new name or file typed after it starts a fresh one)
+function stoDemoDel(n){
+  const e=((SS.demos&&SS.demos[STOX.id])||{})[n];
+  STODEMO[n]={title:'',file:null,del:!!e,wipe:!!e};const a=$('#p_demo');if(a)a.innerHTML=stoDemoHtml();
+}
+function stoDescFill(){
+  const e=$('#p_d');if(!e)return toast(SS.demos===null?'Run supabase_v30_store_explore.sql once in Supabase first':'Wait a moment and try again');
+  const sid=$('#p_ser').value,s=CA.series.find(x=>x.id===sid);if(!s)return toast('Choose the series first (Unlocks which series)');
+  const d=String(s.description||'').replace(/\r/g,'').trim();if(!d)return toast('This series has no description');
+  e.value=d.slice(0,6000);toast('Filled ✓');
+}
+// after the item is saved: description, then each demo test that changed
+async function stoXpSave(id,orig){
+  const bad=[],e=$('#p_d');
+  if(e&&e.value.trim()!==String(orig.description||'').trim()){const r=await AXP('desc',{item:id,description:e.value.trim()});if(!r.ok)bad.push('description')}
+  const old=(SS.demos&&SS.demos[orig.id||''])||{};
+  for(const n of [1,2]){
+    const s=STODEMO[n],o=old[n],title=s.title.trim();
+    if(s.del||s.wipe){if(o){const r=await AXP('demo_delete',{item:id,slot:n});if(!r.ok){bad.push('demo test '+n);continue}}if(s.del||(!s.file&&!title))continue}
+    else if(!s.file&&title===((o&&o.title)||''))continue;
+    const r=await AXP('demo_save',{item:id,slot:n,title,name:s.file?s.file.name:'',data:s.file?s.file.data:''});
+    if(!r.ok)bad.push('demo test '+n+(r.error==='size'?' (max 5 MB)':r.error==='type'?' (use a PDF or a photo)':''));
+  }
+  return bad.length?{ok:false,msg:'Could not save '+bad.join(', ')}:{ok:true};
 }
 async function stoAudit(){
   let r;try{const q=await fetch(API+'/rest/v1/rpc/cbt_admin_store_audit',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_pw:PW})});r=q.ok?await q.json():{ok:false,error:q.status===404?'missing':'server'}}catch(e){r={ok:false}}
