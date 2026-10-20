@@ -39,10 +39,12 @@ function rAlign(){const s=$('.rtabs'),b=$('#rbody');if(!s||!b)return;const d=b.g
 function rTab(t){if(!RV)return;RV.tab=t;rRefresh();rAlign()}
 function setFilter(f){if(!RV)return;RV.filter=f;rRefresh();rAlign()}
 function setSecF(s){if(!RV)return;RV.sec=s;rRefresh();rAlign()}
-function doneResult(){RV=null;const h=RET&&RET!=='#/'?RET:'#/r';history.replaceState(null,'',h);if(NAVRK(h)===LASTRK)PGDX=-1;route()}
+function doneResult(){const b=RV&&RV.back;RV=null;const h=b||(RET&&RET!=='#/'?RET:'#/r');history.replaceState(null,'',h);if(NAVRK(h)===LASTRK)PGDX=-1;route()}
 function showResult(){
   document.body.classList.remove('intest');
   RV.tab=RV.tab||'ov';RV.seen={[RV.tab]:1};
+  // Back: a review (result the catalog already has) returns to the page it was opened from; a fresh submit keeps RET (Home → Results)
+  RV.back=RV.back??(CAT&&(CAT.results||[]).some(x=>x.id===RV.result.id)?location.hash||'#/':'');
   const A=rAnalyse(),rec=A.rec,p=pct(rec.score,rec.max),col=ringCol(p);
   const tb=(k,t)=>`<button data-t="${k}" class="${RV.tab===k?'on':''}" onclick="rTab('${k}')">${t}</button>`;
   setApp(`<div class="wrap"><div class="row" style="margin-bottom:12px"><button class="btn ghost sm" onclick="doneResult()">${ic('back')} Back</button><span class="mut sm" style="flex:1;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(rec.title)}</span></div>

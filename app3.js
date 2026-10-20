@@ -115,7 +115,7 @@ function markNext(){P.mark[P.cur]=1;nxt()}
 function nxt(){flushT();if(P.cur<T.questions.length-1){P.cur++;QDX=1}saveProg();draw();window.scrollTo({top:0,behavior:'instant'})}
 /* back button / edge swipe during the test: close what is open, else ask before leaving (the test keeps running and can be resumed) */
 window.addEventListener('popstate',()=>{if(!INTEST||!P)return;history.pushState({cbt:P.sid},'');const lb=document.querySelector('.lightbox');if(lb)lb.remove();else if(palOpen)pal(false);else if($('#layer').innerHTML)closeModal();else askYes({icon:'⏱️',title:'Leave the test?',msg:'Your answers are saved on this phone. The timer keeps running, so resume the test before it ends.',no:'Stay in test',ok:'Leave',yes:leaveTest})});
-function leaveTest(){if(!P||!INTEST)return;clearInterval(timer);window.onbeforeunload=null;flushT();tmark=0;saveProg();const hb=history.state&&history.state.cbt===P.sid;INTEST=false;P=null;T=null;palOpen=false;document.body.classList.remove('intest');netPill();CAT=null;const to=RET||'#/',g=()=>{if(location.hash!==to)location.hash=to;else route()};if(hb){window.addEventListener('popstate',g,{once:true});history.back()}else g()}
+function leaveTest(){if(!P||!INTEST)return;flushT();saveProg();const sv=getProg(P.tid);if(!sv||JSON.stringify(sv.ans)!==JSON.stringify(P.ans))return toast('Could not save your answers on this phone. Please stay and submit the test.');clearInterval(timer);window.onbeforeunload=null;tmark=0;const hb=history.state&&history.state.cbt===P.sid;INTEST=false;P=null;T=null;palOpen=false;document.body.classList.remove('intest');netPill();CAT=null;const to=RET||'#/',g=()=>{if(location.hash!==to)location.hash=to;else route()};if(hb){window.addEventListener('popstate',g,{once:true});history.back()}else g()}
 
 /* ---------- submitting (answers are marked on the server) ---------- */
 
@@ -139,10 +139,10 @@ async function finish(auto){
   if(hb)history.back();
   await sendPending(it);
 }
-let CURPEND=null;
+let CURPEND=null;const SENTC=new Set();
 const subAns=it=>Object.assign({},it.ans,{_t:it.times||{}});
 async function sendPending(it){
-  if(!getPend().some(x=>x.cid===it.cid)){CURPEND=null;CAT=null;return route()}// already sent by flushPending
+  if(SENTC.has(it.cid)){CURPEND=null;CAT=null;return route()}// already sent by flushPending
   CURPEND=it;clearTimeout(retryT);retryT=null;loading('Submitting your answers…');
   const r=await rpc('cbt_submit',{p_test:it.tid,p_answers:subAns(it),p_client_id:it.cid});
   if(r.ok){
@@ -178,7 +178,7 @@ async function flushPending(){
   }catch(e){}
   for(const it of getPend()){
     const r=await rpc('cbt_submit',{p_test:it.tid,p_answers:subAns(it),p_client_id:it.cid});
-    if(r.ok||['no_session','not_found'].includes(r.error))delPend(it.cid);
+    if(r.ok||['no_session','not_found'].includes(r.error)){delPend(it.cid);SENTC.add(it.cid)}
     if(r.ok)toast('Your earlier test was submitted.');
   }
 }
