@@ -17,7 +17,7 @@ function cdCalc(c){
 }
 function cdInner(c){
   const r=cdCalc(c),R=2*Math.PI*26;
-  const body=r.diff<=0?`<div class="cdday">🎉 Exam day!</div>`:`<div class="cdu">${r.parts.map(p=>`<div><b>${String(p[0]).padStart(2,'0')}</b><span>${p[1]}</span></div>`).join('<i>:</i>')}</div>`;
+  const body=r.diff<=0?`<div class="cdday">🎉 Exam day!</div>`:`<div class="cdu${r.parts.length>3?' many':''}">${r.parts.map(p=>`<div><b>${String(p[0]).padStart(2,'0')}</b><span>${p[1]}</span></div>`).join('<i>:</i>')}</div>`;
   return `<div class="cdtop"><div class="grow"><div class="lbl">EXAM COUNTDOWN</div><h3>${esc(c.name)}</h3></div>
    <div class="cdring"><svg viewBox="0 0 64 64"><defs><linearGradient id="cdg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--pri)"/><stop offset="1" style="stop-color:var(--pri2)"/></linearGradient></defs><circle cx="32" cy="32" r="26" fill="none" style="stroke:var(--surface2)" stroke-width="5"/><circle cx="32" cy="32" r="26" fill="none" stroke="url(#cdg)" stroke-width="5" stroke-linecap="round" stroke-dasharray="${R.toFixed(1)}" stroke-dashoffset="${(R*(1-r.pc/100)).toFixed(1)}" transform="rotate(-90 32 32)"/></svg><span>${r.pc}%</span></div>
    <button class="btn ghost sm" onclick="cdEdit()">Edit</button></div>${body}`;
@@ -30,7 +30,11 @@ function cdCard(){
 function cdTick(){
   clearInterval(cdIv);cdIv=null;
   const c=cdGet();if(!c||!document.getElementById('cdbox'))return;
-  const run=()=>{const b=document.getElementById('cdbox'),k=cdGet();if(!b||!k){clearInterval(cdIv);cdIv=null;return}b.innerHTML=cdInner(k)};
+  // patch the digits in place (rebuilding the card every tick ate taps on Edit); a changed digit gets a small tick animation
+  const run=()=>{const b=document.getElementById('cdbox'),k=cdGet();if(!b||!k){clearInterval(cdIv);cdIv=null;return}
+    const r=cdCalc(k),v=b.querySelectorAll('.cdu b');if(r.diff<=0||v.length!==r.parts.length){if(!b.querySelector('.cdday'))b.innerHTML=cdInner(k);return}
+    r.parts.forEach((p,i)=>{const s=String(p[0]).padStart(2,'0');if(v[i].textContent!==s){v[i].textContent=s;v[i].classList.remove('tk');void v[i].offsetWidth;v[i].classList.add('tk')}});
+    const g=b.querySelector('.cdring circle+circle'),s=b.querySelector('.cdring span');if(g)g.setAttribute('stroke-dashoffset',(2*Math.PI*26*(1-r.pc/100)).toFixed(1));if(s&&s.textContent!==r.pc+'%')s.textContent=r.pc+'%'};
   cdIv=setInterval(run,c.units.includes('seconds')?1000:15000);
 }
 function cdChips(){return CDU.map(u=>{const on=CDE.units.includes(u[0]);return `<button class="look cdchip ${on?'on':''}" onclick="cdU('${u[0]}')">${u[1]}</button>`}).join('')}
@@ -87,9 +91,17 @@ function viewTracker(){
   trkLoad();TKS=-1;TKF='all';
   setApp('<div class="wrap" id="trk"></div>');setNav('tr');trkRender();
 }
+// bars and ring move from their old value to the new one (innerHTML replaces the nodes, so the CSS transitions need the old value first)
+const tkK=e=>{const s=e.closest('.tksub'),p=e.parentNode;return s?'s'+s.dataset.k:e.tagName==='circle'?'r':p.classList.contains('pbar')?'p':'d'+[...p.parentNode.children].indexOf(p)};
+const tkP=e=>e.tagName==='circle'?'stroke-dashoffset':e.closest('.tkdw')?'height':'width';
+const tkG=e=>e.tagName==='circle'?e.getAttribute(tkP(e)):e.style[tkP(e)],tkSet=(e,v)=>e.tagName==='circle'?e.setAttribute(tkP(e),v):e.style[tkP(e)]=v;
 function trkRender(){
   const el=document.getElementById('trk');if(!el)return;
-  const y=window.scrollY;el.innerHTML=trkHtml();window.scrollTo(0,y);
+  const Q=()=>el.querySelectorAll('.pbar i,.tkbar i,.tkring circle+circle,.tkdw i'),old=new Map([...Q()].map(e=>[tkK(e),tkG(e)])),dn=new Set([...el.querySelectorAll('.tktask.dn .tkck')].map(b=>b.getAttribute('onclick'))),nk=el.querySelectorAll('.tkck').length;
+  const y=window.scrollY;el.innerHTML=trkHtml();
+  const ch=[...Q()].filter(e=>old.has(tkK(e))&&old.get(tkK(e))!==tkG(e)).map(e=>[e,tkG(e)]);ch.forEach(([e])=>tkSet(e,old.get(tkK(e))));
+  window.scrollTo(0,y);if(ch.length){void el.offsetWidth;ch.forEach(([e,v])=>tkSet(e,v))}
+  const pop=nk===el.querySelectorAll('.tkck').length?[...el.querySelectorAll('.tktask.dn .tkck')].filter(b=>!dn.has(b.getAttribute('onclick'))):[];if(pop.length===1)pop[0].classList.add('pop');
   const a=el.querySelector('.tkweeks .on');if(a&&a.scrollIntoView)try{a.parentNode.scrollLeft=a.offsetLeft-a.parentNode.clientWidth/2+a.clientWidth/2}catch(e){}
 }
 function trkSuggest(w){
@@ -129,7 +141,7 @@ function trkHtml(){
     if(TKS!==-1&&TKS!==si)return;
     const d=s.tasks.filter(x=>x.done).length,t=s.tasks.length,p=t?Math.round(d*100/t):0,goal=T.goals[s.id];
     const rows=s.tasks.map((x,ti)=>({x,ti})).filter(r=>TKF==='all'||(TKF==='done'?r.x.done:!r.x.done));
-    o+=`<div class="card tksub" style="--sc:${s.color}"><div class="tksh"><span class="tkem">${esc(s.emoji)}</span><div class="grow"><b>${esc(s.name)}</b><div class="sm mut">${d}/${t} done${goal?` · goal ${d}/${goal}`:''}</div></div><b class="tkp">${p}%</b><button class="tkx" onclick="trkDelSubj(${si})" aria-label="Remove subject">🗑</button></div>
+    o+=`<div class="card tksub" data-k="${esc(String(s.id))}" style="--sc:${s.color}"><div class="tksh"><span class="tkem">${esc(s.emoji)}</span><div class="grow"><b>${esc(s.name)}</b><div class="sm mut">${d}/${t} done${goal?` · goal ${d}/${goal}`:''}</div></div><b class="tkp">${p}%</b><button class="tkx" onclick="trkDelSubj(${si})" aria-label="Remove subject">🗑</button></div>
      <div class="tkbar"><i style="width:${p}%"></i></div>
      ${rows.length?rows.map(r=>trkTaskHtml(si,r.ti,r.x)).join(''):`<div class="sm mut" style="padding:10px 2px">${t?'Nothing here for this filter.':'No tasks yet. Add your first one below.'}</div>`}
      <div class="tkaddrow"><input type="text" id="tn-${si}" maxlength="120" placeholder="Add a task…" onkeydown="if(event.key==='Enter')trkAddTask(${si})"><button class="btn sm" onclick="trkAddTask(${si})">Add</button></div></div>`;

@@ -68,7 +68,7 @@ addEventListener('resize',()=>{const t=$('#lbtrack');if(t)t.scrollLeft=LBI*t.cli
 /* ---------- Home: compact rank card → full leaderboard lives in Results ---------- */
 function dashLb(b){
   const go=`HV='lb';location.hash='#/r'`;
-  if(!b||!b.my_rank)return `<div class="card lbteaser" onclick="${go}"><div class="lbti">🏆</div><div class="grow"><b>Leaderboard</b><div class="sm mut">Attempt a test to get your rank in every test.</div></div>${ic('right',18)}</div>`;
+  if(!b||!b.my_rank)return `<div class="card lbteaser" onclick="${go}"><div class="lbti">🏆</div><div class="grow"><b>Leaderboard</b><div class="sm mut">${!b&&CAT&&(CAT.results||[]).length?'Tap to see your rank in every test.':'Attempt a test to get your rank in every test.'}</div></div>${ic('right',18)}</div>`;
   const tot=b.total||1,beat=tot>1?Math.round((tot-b.my_rank)*100/(tot-1)):100,t3=(b.top||[]).slice(0,3);
   return `<div class="card lbteaser" onclick="${go}"><div class="lbmr"><span>Rank</span><b>#${b.my_rank}</b></div>
    <div class="grow"><b>Ahead of ${beat}% students</b><div class="sm mut">of ${tot} · tap to see test-wise ranks</div>

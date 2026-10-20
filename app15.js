@@ -39,7 +39,7 @@ async function suspCheck(b){
   const s=await rpc('cbt_suspension',{p_mobile:AUTH.mobile,p_code:AUTH.code},true);
   b.disabled=false;b.textContent='↻ Check again';
   if(s.ok&&s.suspended){suspShow(s);toast('Still suspended');return}
-  if(s.ok){const d=document.getElementById('susp');if(d)d.remove();SUSP=null;CAT=null;toast('Your account is active again ✓');location.hash='#/';route();return}
+  if(s.ok){const d=document.getElementById('susp');if(d)d.remove();SUSP=null;CAT=null;toast('Your account is active again ✓');if(location.hash==='#/')route();else location.hash='#/';return}
   toast(errText(s));
 }
 // while the notice is on screen, check by itself every 20 s and when the app comes back to the front,
@@ -48,7 +48,7 @@ let SUSPT=null;
 async function suspAuto(){
   if(!SUSP||!AUTH||!document.getElementById('susp'))return;
   const s=await rpc('cbt_suspension',{p_mobile:AUTH.mobile,p_code:AUTH.code},true);
-  if(s.ok&&!s.suspended){const d=document.getElementById('susp');if(d)d.remove();SUSP=null;CAT=null;toast('Your account is active again ✓');location.hash='#/';route()}
+  if(s.ok&&!s.suspended){const d=document.getElementById('susp');if(d)d.remove();SUSP=null;CAT=null;toast('Your account is active again ✓');if(location.hash==='#/')route();else location.hash='#/'}
 }
 setInterval(()=>{if(SUSP&&!document.hidden)suspAuto()},20000);
 document.addEventListener('visibilitychange',()=>{if(SUSP&&!document.hidden)suspAuto()});

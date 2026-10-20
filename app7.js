@@ -50,7 +50,7 @@ function mkList(){
   const c=MK.counts;
   if(!MK.items.length)return `<div class="card empty">${ic('check',30)}<h3 style="margin:10px 0 4px;color:var(--tx)">${c.wrong+c.skipped?'Nothing here':'All clear! 🎉'}</h3><p class="sm">${c.wrong+c.skipped?'No questions match this filter.':'Questions you get wrong or skip in tests will collect here for revision.'}</p></div>`;
   const l=MK.items.filter(it=>qMatch(it,MKQ));
-  return (l.length?l.map(mkCard).join(''):`<div class="card empty"><p class="sm">No loaded question matches “${esc(MKQ)}”.</p></div>`)+(MK.more?`<div style="text-align:center;margin-top:8px"><button class="btn ghost" onclick="mkMore()">Load more</button></div>`:'');
+  return (l.length?l.map(mkCard).join(''):`<div class="card empty"><p class="sm">No loaded question matches “${esc(MKQ)}”.</p></div>`)+(MK.more?`<div style="text-align:center;margin-top:8px"><button class="btn ghost" onclick="mkMore(this)">Load more</button></div>`:'');
 }
 function mkCard(it){
   const n=it._n,S=MK.st[n]||{},rev=S.pick!=null||S.show,q=it,k=qKey(it);
@@ -116,10 +116,14 @@ function bmUp(k){const q=bmFind(k),e=document.querySelector(`[data-bmcard="${k}"
 function bmPick(k,j){BV.st[k]={pick:j};if(navigator.vibrate)navigator.vibrate(8);rvToday(1);bmUp(k)}
 function bmTag(k,t){const o=LS.get(tgKey(),{});if(o[k]===t)delete o[k];else o[k]=t;LS.set(tgKey(),o);bmUp(k);const h=$('#bmh');if(h){const v=h.querySelector('input')?.value;h.innerHTML=bmHead()}}
 async function bmRemove(tid,i){
-  const k=tid+':'+i,e=document.querySelector(`[data-bmcard="${k}"]`);if(e)e.classList.add('mkc','out');
+  const k=tid+':'+i,e=document.querySelector(`[data-bmcard="${k}"]`);if(!e)return;   // already being removed (double tap)
+  e.classList.add('mkc','out');e.removeAttribute('data-bmcard');   // so toggleBM does not drop it at once
   await toggleBM(tid,i,true);
-  if(!BM.has(k)){BVR.items=BVR.items.filter(x=>qKey(x)!==k);BMC=BVR;setTimeout(bmRefresh,250);toast('Removed from saved')}
-  else if(e)e.classList.remove('out');
+  if(!BM.has(k)){BVR.items=BVR.items.filter(x=>qKey(x)!==k);BMC=BVR;toast('Removed from saved');
+    // collapse the card, then fix the counts in place (groups keep their order and open / closed state)
+    e.style.maxHeight=e.offsetHeight+'px';void e.offsetHeight;e.classList.add('gone');
+    setTimeout(()=>{const g=e.closest('.bmg'),h=$('#bmh');e.remove();if(h)h.innerHTML=bmHead();const n=g&&g.querySelectorAll('[data-bmcard]').length;if(n)g.querySelector('summary .n').textContent=n;else bmRefresh()},300)}
+  else{e.classList.remove('out');e.setAttribute('data-bmcard',k)}
 }
 function bmSession(){
   const T=LS.get(tgKey(),{});
@@ -132,28 +136,31 @@ function bmSession(){
 let RS=null;
 function rsStart(list,src,title){
   const l=[...list];for(let i=l.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[l[i],l[j]]=[l[j],l[i]]}
-  RS={l:l.slice(0,30),i:0,pick:{},src,title};rsDraw();
+  RS={l:l.slice(0,30),i:0,pick:{},src,title};document.querySelectorAll('.toast').forEach(t=>t.remove());rsDraw();
 }
 function rsDraw(){
   const n=RS.l.length;
   if(RS.i>=n)return rsEnd();
   const q=RS.l[RS.i],p=RS.pick[RS.i],done=p!=null,ok=Object.keys(RS.pick).filter(i=>RS.pick[i]===RS.l[i].answer).length;
-  $('#layer').innerHTML=`<div class="rsx"><div class="rstop"><button class="iconbtn" onclick="rsClose()" aria-label="Close">${ic('x',20)}</button>
+  // redraw in place: no overlay fade, keep the scroll after an answer, slide in a new question, progress bar grows
+  const o=document.querySelector('#layer .rsx'),ob=o&&o.querySelector('.rsbar i'),nq=RS.d!==RS.i,sy=o&&!nq?o.querySelector('.rsbody').scrollTop:0;RS.d=RS.i;
+  $('#layer').innerHTML=`<div class="rsx${o?' re':''}"><div class="rstop"><button class="iconbtn" onclick="rsClose()" aria-label="Close">${ic('x',20)}</button>
    <div class="grow"><b>${esc(RS.title)}</b><div class="sm mut">Question ${RS.i+1} of ${n} · ✓ ${ok}</div></div></div>
-   <div class="rsbar"><i style="width:${Math.round(RS.i*100/n)}%"></i></div>
-   <div class="rsbody"><div class="qsrc">${ic('file',13)} ${esc(q.title||'')} · Q${q.qidx+1}</div>
+   <div class="rsbar"><i style="width:${ob?ob.style.width:'0%'}"></i></div>
+   <div class="rsbody${o&&nq?' nq':''}"><div class="qsrc">${ic('file',13)} ${esc(q.title||'')} · Q${q.qidx+1}</div>
     <div class="qt">${esc(q.q)}</div>${imgTag(q.img)}
     ${q.options.map((o,j)=>{if(!o&&!(q.oimg&&q.oimg[j]))return '';const cls=done?(j===q.answer?'c':(j===p?'w':'')):'';return `<div class="ro pick ${cls}" ${done?'':`onclick="rsPick(${j})"`}><span class="k">${L[j]}</span><span style="flex:1">${esc(o)}${imgTag(q.oimg&&q.oimg[j],'oi')}</span></div>`}).join('')}
-    ${done?`<div class="fb ${p===q.answer?'g':'b'}">${p===q.answer?'Correct! 🎉':'Wrong — correct answer is '+L[q.answer]}</div>${q.explanation||q.eimg?`<div class="exp"><b>Explanation:</b> ${esc(q.explanation||'')}${imgTag(q.eimg)}</div>`:''}<div data-nk="${qKey(q)}">${noteHtml(qKey(q))}</div>`:''}</div>
+    ${done?`<div class="fb ${p===q.answer?'g':'b'}">${p===q.answer?'Correct! 🎉':'Wrong — correct answer is '+L[q.answer]}</div>${q.explanation||q.eimg?`<div class="exp"><b>Explanation:</b> ${esc(q.explanation||'')}${imgTag(q.eimg)}</div>`:''}<div data-nk="${qKey(q)}">${noteHtml(qKey(q)).replace(/ onclick="[^"]*"/,'')}</div>`:''}</div>
    <div class="rsfoot">${done?`<button class="btn block" onclick="RS.i++;rsDraw()">${RS.i+1<n?'Next question →':'See result'}</button>`:`<button class="btn ghost block" onclick="RS.i++;rsDraw()">Skip</button>`}</div></div>`;
-  const b=document.querySelector('.rsbody');if(b)b.scrollTop=0;
+  const b=document.querySelector('.rsbody'),bi=document.querySelector('.rsbar i');b.scrollTop=sy;void bi.offsetWidth;bi.style.width=Math.round(RS.i*100/n)+'%';
+  const f=o&&!nq&&b.querySelector('.fb');if(f)f.scrollIntoView({block:'nearest',behavior:RMOT()?'instant':'smooth'});
 }
 function rsPick(j){RS.pick[RS.i]=j;rvToday(1);if(navigator.vibrate)navigator.vibrate(j===RS.l[RS.i].answer?10:[20,40,20]);rsDraw()}
 function rsEnd(){
   const at=Object.keys(RS.pick).map(Number),ok=at.filter(i=>RS.pick[i]===RS.l[i].answer),pc=at.length?Math.round(ok.length*100/at.length):0;
   RS.ok=ok.map(i=>RS.l[i]);
-  $('#layer').innerHTML=`<div class="rsx"><div class="rstop"><button class="iconbtn" onclick="rsClose()" aria-label="Close">${ic('x',20)}</button><div class="grow"><b>${esc(RS.title)}</b></div></div>
-   <div class="rsbody rsend"><div class="nbring big">${ring(pc,140,11,ringCol(pc))}<span><b>${pc}%</b><small>score</small></span></div>
+  $('#layer').innerHTML=`<div class="rsx re"><div class="rstop"><button class="iconbtn" onclick="rsClose()" aria-label="Close">${ic('x',20)}</button><div class="grow"><b>${esc(RS.title)}</b></div></div>
+   <div class="rsbody rsend nq"><div class="nbring big">${ring(pc,140,11,ringCol(pc))}<span><b>${pc}%</b><small>score</small></span></div>
    <h2 style="margin:16px 0 4px">${pc>=80?'Excellent! 🔥':pc>=50?'Good progress 👍':'Keep practising 💪'}</h2>
    <p class="mut sm" style="margin:0 0 16px">${at.length} attempted · ${ok.length} correct · ${at.length-ok.length} wrong · ${RS.l.length-at.length} skipped</p>
    ${RS.src==='mk'&&ok.length?`<button class="btn block" id="rsm" onclick="rsMaster()">${ic('check')} Mark ${ok.length} correct as mastered</button>`:''}
@@ -162,7 +169,7 @@ function rsEnd(){
 }
 async function rsMaster(){
   const b=$('#rsm');if(b){b.disabled=true;b.textContent='Saving…'}
-  let n=0;for(const it of RS.ok){const r=await rpc('cbt_mistake_done',{p_test:it.test_id,p_qidx:it.qidx,p_on:true});if(r.ok)n++}
+  const n=(await Promise.all(RS.ok.map(it=>rpc('cbt_mistake_done',{p_test:it.test_id,p_qidx:it.qidx,p_on:true})))).filter(r=>r.ok).length;
   MKC=null;INS=null;toast(n+' marked as mastered ✓');rsClose();
 }
 function rsClose(){closeModal();const src=RS&&RS.src;RS=null;if(src==='mk'&&location.hash==='#/m'&&!MKC){MK=null;viewMistakes()}}

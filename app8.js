@@ -3,7 +3,7 @@ IC.up='<path d="M7 17L17 7M9 7h8v8"/>';IC.down='<path d="M7 7l10 10M17 9v8H9"/>'
 IC.users='<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0M16 4.5a3.5 3.5 0 010 7M21.5 20a6.5 6.5 0 00-4-6"/>';
 
 /* ---------- promo slider (managed from Admin → Banners) ---------- */
-let PROMO=null,PRT=null,PRI=0,PRHOLD=0;
+let PROMO=LS.get('cbt_promo',null),PRT=null,PRI=0,PRHOLD=0;
 function promoDefault(){
   const s=esc(CFG.SITE_NAME||'CBT Test Series');
   return [
@@ -38,6 +38,7 @@ function promoAuto(){
   PRT=setInterval(()=>{const t=$('#pmt');if(!t){clearInterval(PRT);return}if(PRHOLD||document.hidden||t.children.length<2)return;promoGo(PRI+1)},3500);
 }
 async function promoStart(){
+  {const t=$('#pmt');if(t&&t.children.length){PRI%=t.children.length;t.scrollLeft=PRI*t.clientWidth}}
   promoAuto();
   const before=JSON.stringify(promoSlides().map(x=>x.id+(x.img||'').length+x.link+x.title));
   await promoLoad();
@@ -55,8 +56,8 @@ function areaChart(vals,avg){
   return `<svg viewBox="0 0 ${w} ${h}" class="achart" preserveAspectRatio="none"><defs><linearGradient id="agr" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--pri)" stop-opacity=".35"/><stop offset="1" stop-color="var(--pri)" stop-opacity="0"/></linearGradient></defs>
    ${[25,50,75].map(g=>`<line x1="0" x2="${w}" y1="${Y(g)}" y2="${Y(g)}" class="agl"/>`).join('')}
    <line x1="0" x2="${w}" y1="${Y(avg)}" y2="${Y(avg)}" class="aavg"/>
-   <path d="${area}" fill="url(#agr)"/><path d="${line}" fill="none" stroke="var(--pri)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
-   ${pts.map((p,i)=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${i===n-1?4.5:3}" class="${i===n-1?'alast':'apt'}" vector-effect="non-scaling-stroke"/>`).join('')}</svg>`;
+   <g class="aplot"><path d="${area}" fill="url(#agr)"/><path d="${line}" fill="none" stroke="var(--pri)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+   ${pts.map((p,i)=>{const d=`M${p[0].toFixed(1)} ${p[1].toFixed(1)}h0`,l=i===n-1;return `<path d="${d}" stroke="var(${l?'--surface':'--pri'})" stroke-width="${l?13:9}" class="adot"/><path d="${d}" stroke="var(${l?'--pri':'--surface'})" stroke-width="${l?8.5:4.5}" class="adot"/>`}).join('')}</g></svg>`;
 }
 function dashPerf(R){
   const P=pstats(R);
@@ -67,7 +68,7 @@ function dashPerf(R){
   const delta=(v,t)=>v==null?'':`<span class="dlt ${v>0?'g':v<0?'b':''}">${v>0?ic('up',12):v<0?ic('down',12):''}${v>0?'+':''}${v}% ${t}</span>`;
   return `<div class="h2s">${ic('chart2',20)} Your dashboard</div>
   <div class="card dash">
-   <div class="dkpi"><div><span>Tests</span><b data-cu="${R.length}">${R.length}</b></div><div><span>Average</span><b>${P.avg}%</b></div><div><span>Best</span><b>${P.best}%</b></div><div><span>Accuracy</span><b>${P.acc}%</b></div></div>
+   <div class="dkpi"><div><span>Tests</span><b data-cu="${R.length}">${R.length}</b></div><div><span>Average</span><b data-cu>${P.avg}%</b></div><div><span>Best</span><b data-cu>${P.best}%</b></div><div><span>Accuracy</span><b data-cu>${P.acc}%</b></div></div>
    <div class="dchart"><div class="dch"><div><span class="sm mut">Latest score</span><div class="dbig">${last}%${delta(d,'vs last')}</div></div><span class="sm mut">Last ${S.length} test${S.length>1?'s':''}</span></div>
     ${S.length>1?areaChart(S,P.avg):`<div class="sm mut" style="padding:16px 0">Attempt one more test to see your progress graph.</div>`}
     ${S.length>1?`<div class="dleg"><span><i class="l1"></i>Score %</span><span><i class="l2"></i>Your average ${P.avg}%</span></div>`:''}</div>
@@ -105,7 +106,7 @@ async function loadDash(){
   const lb=$('#dlb'),ins=$('#ins');
   if(!(INS&&Date.now()-INS.t<90000)){
     const [a,b]=await Promise.all([rpc('cbt_insights',{}),rpc('cbt_overall',{})]);
-    INS={t:Date.now(),a:a.ok?a:null,b:b.ok?b:null};
+    INS={t:a.ok&&b.ok?Date.now():0,a:a.ok?a:null,b:b.ok?b:null};
   }
   const l2=$('#dlb'),i2=$('#ins');
   if(l2)l2.innerHTML=dashLb(INS.b);
@@ -116,18 +117,18 @@ async function loadDash(){
 IC.chart2='<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-6"/>';
 {const _vh=viewHome;viewHome=function(tab){
   if(tab!=='dash')return _vh(tab);
-  const R=CAT.results||[];
-  let o=`<div class="wrap home2">`;
+  const R=CAT.results||[],again=!!document.querySelector('.home2');
+  let o=`<div class="wrap home2${again?' still':''}">`;
   const pn=getPend();
   if(pn.length)o+=`<div class="card pendc"><span class="mki">${ic('wifi',22)}</span><div class="grow"><b>${pn.length} test waiting to submit</b><div class="sm mut">Your answers are safe on this phone. They will be sent when internet is back.</div></div><button class="btn sm" onclick="retryPend()">Submit now</button></div>`;
   o+=promoHtml()+cdCard()+liveHtml();
-  const prog=CAT.tests.filter(t=>t.in_progress&&!t.locked);
+  const lv=liveTests().map(t=>t.id),prog=CAT.tests.filter(t=>t.in_progress&&!t.locked&&!lv.includes(t.id));
   if(prog.length)o+=`<div class="h2s">${ic('play',20)} Continue your test</div>${prog.map(testRow).join('')}`;
   o+=dashPerf(R)+dashTracker();
   o+=`<div class="h2s">${ic('trophy',20)} Leaderboard</div><div id="dlb">${INS&&INS.b?dashLb(INS.b):R.length?`<div class="card"><div class="sk" style="width:50%"></div><div class="sk" style="height:60px;margin-top:12px"></div></div>`:dashLb(null)}</div>`;
+  if(again)o=o.replace(/ data-cu(="[^"]*")?/g,'');
   setApp(o+'</div>');setNav('dash');prefetchTabs();
   cdTick();promoStart();annLoad();
-  const d=document.querySelector('.dash');if(d)countUp(d);
   if(R.length)loadDash();
 }}
 
@@ -184,12 +185,13 @@ function liveHtml(){
   const L=liveTests();clearTimeout(liveIv);if(!L.length)return '';
   // at 9 PM the card leaves home by itself
   const m=liveSeen(),end=Math.min(...L.map(t=>liveEnd(liveStart(t,m))))-srvNow();
-  if(end>0&&end<864e5)liveIv=setTimeout(()=>{if(document.querySelector('.home2'))viewHome('dash')},end+1000);
+  if(end>0&&end<864e5)liveIv=setTimeout(()=>{if(document.querySelector('.home2'))typeof softRoute==='function'?softRoute():viewHome('dash')},end+1000);
   return L.map(t=>{const s=CAT.series.find(x=>x.id===t.series_id)||{},till=new Date(liveEnd(liveStart(t,m))),today=till.toDateString()===new Date(srvNow()).toDateString();
-    return `<div class="card livec" onclick="${t.attempts&&!t.in_progress?"location.hash='#/r'":`openTest('${t.id}')`}"><div class="livet"><span class="liveb"><i></i>LIVE</span><span class="sm mut">${t.opens_at?'Started '+new Date(t.opens_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):'Available now'} · Live till 9 PM${today?'':' tomorrow'}</span></div>
+    const rs=(CAT.results||[]).find(r=>r.test_id===t.id),vr=rs?`histRev('${rs.id}')`:`location.hash='#/r'`;
+    return `<div class="card livec" onclick="${t.attempts&&!t.in_progress?vr:`openTest('${t.id}')`}"><div class="livet"><span class="liveb"><i></i>LIVE</span><span class="sm mut">${t.opens_at?'Started '+new Date(t.opens_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):'Available now'} · Live till 9 PM${today?'':' tomorrow'}</span></div>
      <b class="livett">${esc(t.title)}</b><div class="sm mut">${esc(s.title||'')}${s.title?' · ':''}${t.questions} questions · ${t.duration} min</div>
      ${t.in_progress?`<button class="btn block" style="margin-top:12px" onclick="event.stopPropagation();openTest('${t.id}')">${ic('play',16)} Resume test</button>`
-      :t.attempts?`<div class="row" style="margin-top:12px;gap:8px"><span class="chip ok" style="align-self:center">✓ Attempted</span><button class="btn soft grow" onclick="event.stopPropagation();location.hash='#/r'">View result</button></div>`
+      :t.attempts?`<div class="row" style="margin-top:12px;gap:8px"><span class="chip ok" style="align-self:center">✓ Attempted</span><button class="btn soft grow" onclick="event.stopPropagation();${vr}">View result</button></div>`
       :`<button class="btn block" style="margin-top:12px" onclick="event.stopPropagation();openTest('${t.id}')">${ic('play',16)} Attempt now</button>`}</div>`}).join('');
 }
 

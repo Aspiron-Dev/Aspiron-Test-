@@ -3,7 +3,9 @@
    It never touches the database (Supabase) calls. */
 const CACHE='cbt-shell-v2';
 const SHELL=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png'];
-self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).catch(()=>{}));self.skipWaiting()});
+// Also keep every script index.html loads (with its exact ?v=), so the app opens offline after the very first visit.
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>Promise.all([c.addAll(SHELL).catch(()=>{}),
+  fetch('index.html',{cache:'no-store'}).then(r=>r.text()).then(h=>Promise.all([...h.matchAll(/<script src="([^"]+)"/g)].map(m=>c.add(m[1]).catch(()=>{})))).catch(()=>{})])).catch(()=>{}));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{
   const r=e.request,u=new URL(r.url);

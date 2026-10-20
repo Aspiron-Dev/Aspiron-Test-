@@ -15,14 +15,15 @@ function netPill(){
 }
 async function retryPend(){
   const b=document.querySelector('.pendc .btn');if(b){b.disabled=true;b.textContent='Sending…'}
-  await flushPending();CAT=null;route();
+  await flushPending();CATAT=0;route();
 }
 let flushing=false;
 async function autoFlush(){
   if(flushing||!AUTH||INTEST||!getPend().length)return;
-  flushing=true;try{await flushPending();if(!INTEST&&(location.hash===''||location.hash==='#/'||location.hash==='#/r')){CAT=null;route()}}finally{flushing=false}
+  if(CURPEND){if(retryT)sendPending(CURPEND);return}   // the student waits on the "No connection" screen: retry that one now, it shows the result
+  flushing=true;try{await flushPending();if(!INTEST){CATAT=0;catBg()}}finally{flushing=false}
 }
-window.addEventListener('online',()=>{netPill();setTimeout(autoFlush,800)});
+window.addEventListener('online',()=>{netPill();setTimeout(autoFlush,800);setTimeout(()=>{if($('#caterr'))route()},800)});
 window.addEventListener('offline',netPill);
 function remindMe(id){
   const t=CAT.tests.find(x=>x.id===id);if(!t||!t.opens_at)return;

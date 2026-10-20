@@ -41,7 +41,7 @@ function rvOpen(sid,stars){
    <label class="pfl">Your review <span class="mut">(optional)</span></label>
    <textarea class="pfi" id="rvtx" rows="4" maxlength="600" placeholder="What did you like? How did the tests help you?">${esc(r?r.body:'')}</textarea>
    ${ph?`<label class="rvph"><input type="checkbox" id="rvpc" ${RVF.photo?'checked':''}> <span class="bigav" style="width:34px;height:34px">${pfInner('')}</span> Show my profile photo</label>`:''}
-   <div class="rvpriv">${ic('lock',14)}<span>Shown on the store as <b>${esc(rvName())}</b>${ph?' with your photo if you tick the box':''}. Your mobile number and other details are never shown.</span></div>
+   <div class="rvpriv">${ic('lock',14)}<span>Shown on the store as <b>${esc(rvName())}</b>${ph?' with your photo if you tick the box.':/\.$/.test(rvName())?'':'.'} Your mobile number and other details are never shown.</span></div>
    <div class="err" id="rver" style="color:var(--bad);font-size:13px;min-height:18px"></div>
    <button class="btn block" id="rvgo" onclick="rvSave()">${ic('check')} ${r?'Save changes':'Post review'}</button>
    ${r?`<button class="btn ghost block" style="margin-top:10px;color:var(--bad)" onclick="rvDel('${sid}')">Delete my review</button>`:''}`,'review');

@@ -48,12 +48,13 @@ function secSetup(){
   const names=[];T.questions.forEach(q=>{const s=q.sec||'';if(!names.includes(s))names.push(s)});
   SEC={names,has:names.some(x=>x),of:i=>T.questions[i].sec||'',label:s=>s||'General'};
 }
-let tmark=0,tk=0;
+let tmark=0,tk=0,QDX=0;
 function flushT(){if(!P||!tmark)return;const now=Date.now(),d=Math.min(1800,Math.max(0,Math.round((now-tmark)/100)/10));if(d){P.times=P.times||{};P.times[P.cur]=Math.round(((P.times[P.cur]||0)+d)*10)/10}tmark=now}
 document.addEventListener('visibilitychange',()=>{if(!INTEST||!P)return;if(document.hidden){flushT();tmark=0;saveProg()}else tmark=Date.now()});
 function run(){
   document.body.classList.add('intest');palOpen=false;secSetup();tmark=Date.now();netPill();
   window.onbeforeunload=e=>{e.preventDefault();e.returnValue=''};
+  if(!(history.state&&history.state.cbt===P.sid))history.pushState({cbt:P.sid},'');
   clearInterval(timer);draw();timer=setInterval(tick,1000);tick();
 }
 function tick(){
@@ -79,9 +80,9 @@ const secIdx=name=>allIdx().filter(i=>SEC.of(i)===name);
 function counts(){const c=countsOf(allIdx());return{a:c.ans+c.mans,u:T.questions.length-c.ans-c.mans,m:c.mark+c.mans,n:T.questions.length}}
 function palHtml(){
   const lock=!!T.lock_back,cur=SEC.of(P.cur),idx=SEC.has?secIdx(cur):allIdx(),c=countsOf(idx);
-  return `${SEC.has?`<div class="sm mut" style="margin-bottom:8px"><b style="color:var(--tx)">${esc(SEC.label(cur))}</b></div>`:''}
+  return `<div class="palw">${SEC.has?`<div class="sm mut" style="margin-bottom:8px"><b style="color:var(--tx)">${esc(SEC.label(cur))}</b></div>`:''}
   <div class="pal">${idx.map(i=>`<button class="${stOf(i)} ${i===P.cur?'cur':''}" ${lock?'disabled':''} onclick="go(${i})">${i+1}</button>`).join('')}</div>
-  <div class="leg2"><span><i class="lg ans">${c.ans}</i>Answered</span><span><i class="lg na">${c.na}</i>Not answered</span><span><i class="lg nv">${c.nv}</i>Not visited</span><span><i class="lg mark">${c.mark}</i>Marked</span><span style="grid-column:1/3"><i class="lg mans">${c.mans}</i>Answered &amp; marked (will be evaluated)</span></div>`;
+  <div class="leg2"><span><i class="lg ans">${c.ans}</i>Answered</span><span><i class="lg na">${c.na}</i>Not answered</span><span><i class="lg nv">${c.nv}</i>Not visited</span><span><i class="lg mark">${c.mark}</i>Marked</span><span style="grid-column:1/3"><i class="lg mans">${c.mans}</i>Answered &amp; marked (will be evaluated)</span></div></div>`;
 }
 function draw(){
   const n=T.questions.length,q=T.questions[P.cur],a=P.ans[P.cur],lock=!!T.lock_back;
@@ -89,25 +90,31 @@ function draw(){
   const secTabs=SEC.has?`<div class="stabs">${SEC.names.map(s=>`<button class="${s===SEC.of(P.cur)?'on':''}" ${lock?'disabled':''} onclick="goSec(${JSON.stringify(s).replace(/"/g,'&quot;')})">${esc(SEC.label(s))}</button>`).join('')}</div>`:'';
   $('#app').innerHTML=(`<div class="cbtbar"><div class="tb-l"><div class="tb-title">${esc(T.title)}</div><div class="sm mut cand">${ic('user',13)} ${esc(AUTH.name||'')}</div></div>
    <div class="timer" id="tm">${ic('clock')}<span>--:--</span></div><button class="btn danger sm" onclick="submitAsk()">Submit</button></div>${secTabs}
-   <div class="tlayout"><section class="card qcard"><div class="qmeta"><b>Question ${P.cur+1} <span class="mut" style="font-weight:500">of ${n}</span></b><span class="chip ok">+${T.correct}</span><span class="chip warn">−${T.wrong}</span>${P.mark[P.cur]?'<span class="chip pri">Marked</span>':''}<span style="flex:1"></span>${bmBtn(P.tid,P.cur)}${rpBtn(P.tid,P.cur)}</div>
+   <div class="tlayout"><section class="card qcard"><div class="qmeta"><b>Q<span class="qw">uestion</span> ${P.cur+1} <span class="mut" style="font-weight:500">of ${n}</span></b><span class="chip ok">+${T.correct}</span><span class="chip warn">−${T.wrong}</span>${P.mark[P.cur]?'<span class="chip pri">Marked</span>':''}<span style="flex:1"></span>${bmBtn(P.tid,P.cur)}${rpBtn(P.tid,P.cur)}</div>
    <div class="qtext">${esc(q.q)}</div>${imgTag(q.img)}
-   ${q.options.map((o,i)=>(o||(q.oimg&&q.oimg[i]))?`<button class="opt ${pracCls(q,a,i)}" ${T.practice&&a!=null?'':`onclick="sel(${i})"`}><span class="k">${L[i]}</span><span class="t">${esc(o)}${imgTag(q.oimg&&q.oimg[i],'oi')}</span></button>`:'').join('')}${pracFb(q,a)}</section>
+   ${q.options.map((o,i)=>(o||(q.oimg&&q.oimg[i]))?`<button class="opt ${pracCls(q,a,i)}" data-i="${i}" ${T.practice&&a!=null?'':`onclick="sel(${i})"`}><span class="k">${L[i]}</span><span class="t">${esc(o)}${imgTag(q.oimg&&q.oimg[i],'oi')}</span></button>`:'').join('')}${pracFb(q,a)}</section>
    <aside class="side card"><div class="candbox"><div class="avatar" style="width:40px;height:40px;font-size:16px">${esc((AUTH.name||'?').trim()[0].toUpperCase())}</div><div><b>${esc(AUTH.name||'')}</b><div class="sm mut">Candidate</div></div></div>${palHtml()}
    <button class="btn danger block" style="margin-top:14px" onclick="submitAsk()">Submit test</button></aside></div>
    <div class="bbar"><div class="r"><button class="btn warn sm" onclick="markNext()">${ic('flag')} Mark &amp; Next</button><button class="btn ghost sm" onclick="clr()">Clear</button><button class="btn sm" onclick="saveNext()">Save &amp; Next ${ic('right')}</button></div>
    <div class="r nav">${lock?'':`<button class="btn ghost sm" ${P.cur===0?'disabled':''} onclick="go(${P.cur-1})">${ic('left')} Back</button>`}<button class="btn soft sm only-m" onclick="pal(true)">${ic('grid')} Palette</button>${lock?'':`<button class="btn ghost sm" ${P.cur===n-1?'disabled':''} onclick="go(${P.cur+1})">Next ${ic('right')}</button>`}</div></div>
    <div class="sheet ${palOpen?'open':''}" onclick="if(event.target===this)pal(false)"><div class="in"><div class="grab"></div><b>Question palette</b><div style="margin-top:12px">${palHtml()}</div>
    <button class="btn danger block" style="margin-top:14px" onclick="submitAsk()">Submit test</button></div></div>`);
-  tick();
+  if(QDX){const c=$('.qcard');c.style.setProperty('--qx',QDX*12+'px');c.classList.add('qin');QDX=0}
+  palCur($('.side'));tick();
 }
-function pal(v){palOpen=v;const s=document.querySelector('.sheet');if(s)s.classList.toggle('open',v)}
-function go(i){if(i<0||i>=T.questions.length)return;flushT();P.cur=i;palOpen=false;saveProg();draw();window.scrollTo(0,0)}
+function pal(v){palOpen=v;const s=document.querySelector('.sheet');if(!s)return;s.classList.remove('shut');if(v){s.classList.add('open');palCur(s)}else if(s.classList.contains('open')&&!RMOT()){s.classList.add('shut');setTimeout(()=>{if(!palOpen)s.classList.remove('open','shut')},190)}else s.classList.remove('open')}
+const palCur=r=>{const p=r&&r.querySelector('.pal'),c=p&&p.querySelector('.cur');if(c)p.scrollTop+=c.getBoundingClientRect().top-p.getBoundingClientRect().top-(p.clientHeight-c.offsetHeight)/2};
+function palSync(){document.querySelectorAll('.palw').forEach(e=>e.outerHTML=palHtml());palCur($('.side'))}
+function go(i){if(i<0||i>=T.questions.length)return;flushT();QDX=i>P.cur?1:i<P.cur?-1:0;P.cur=i;palOpen=false;saveProg();window.scrollTo({top:0,behavior:'instant'});draw()}
 function goSec(name){const idx=secIdx(name);if(!idx.length)return;go(idx.includes(P.cur)?P.cur:idx[0])}
-function sel(i){if(T.practice&&P.ans[P.cur]!=null)return;flushT();P.ans[P.cur]=i;if(navigator.vibrate)navigator.vibrate(8);saveProg();draw()}
-function clr(){if(T.practice)return;flushT();delete P.ans[P.cur];saveProg();draw()}
+function sel(i){if(T.practice&&P.ans[P.cur]!=null)return;flushT();P.ans[P.cur]=i;if(navigator.vibrate)navigator.vibrate(8);saveProg();if(T.practice)return draw();document.querySelectorAll('.qcard .opt').forEach(b=>b.classList.toggle('sel',+b.dataset.i===i));palSync()}
+function clr(){if(T.practice)return;flushT();delete P.ans[P.cur];saveProg();document.querySelectorAll('.qcard .opt.sel').forEach(b=>b.classList.remove('sel'));palSync()}
 function saveNext(){delete P.mark[P.cur];nxt()}
 function markNext(){P.mark[P.cur]=1;nxt()}
-function nxt(){flushT();if(P.cur<T.questions.length-1)P.cur++;saveProg();draw();window.scrollTo(0,0)}
+function nxt(){flushT();if(P.cur<T.questions.length-1){P.cur++;QDX=1}saveProg();window.scrollTo({top:0,behavior:'instant'});draw()}
+/* back button / edge swipe during the test: close what is open, else ask before leaving (the test keeps running and can be resumed) */
+window.addEventListener('popstate',()=>{if(!INTEST||!P)return;history.pushState({cbt:P.sid},'');const lb=document.querySelector('.lightbox');if(lb)lb.remove();else if(palOpen)pal(false);else if($('#layer').innerHTML)closeModal();else askYes({icon:'⏱️',title:'Leave the test?',msg:'Your answers are saved on this phone. The timer keeps running, so resume the test before it ends.',no:'Stay in test',ok:'Leave',yes:leaveTest})});
+function leaveTest(){if(!P||!INTEST)return;clearInterval(timer);window.onbeforeunload=null;flushT();saveProg();const hb=history.state&&history.state.cbt===P.sid;INTEST=false;P=null;T=null;palOpen=false;document.body.classList.remove('intest');netPill();CAT=null;const to=RET||'#/',g=()=>{if(location.hash!==to)location.hash=to;else route()};if(hb){window.addEventListener('popstate',g,{once:true});history.back()}else g()}
 
 /* ---------- submitting (answers are marked on the server) ---------- */
 
@@ -124,30 +131,34 @@ function submitAsk(){
   <div class="row" style="margin-top:16px"><button class="btn ghost" style="flex:1" onclick="closeModal()">Keep going</button><button class="btn danger" style="flex:1" onclick="closeModal();finish(false)">Submit</button></div>`);
 }
 async function finish(auto){
-  clearInterval(timer);window.onbeforeunload=null;flushT();
-  const it={tid:P.tid,cid:P.cid,ans:P.ans,times:P.times||{},title:(T&&T.title)||P.title,ts:Date.now()};
+  if(!P)return;clearInterval(timer);window.onbeforeunload=null;closeModal();document.querySelectorAll('.lightbox').forEach(e=>e.remove());flushT();
+  const it={tid:P.tid,cid:P.cid,ans:P.ans,times:P.times||{},title:(T&&T.title)||P.title,ts:Date.now()},hb=history.state&&history.state.cbt===P.sid;
   addPend(it);LS.del(progKey(P.tid));LS.del(tdKey(P.tid));
   INTEST=false;P=null;T=null;document.body.classList.remove('intest');
+  if(hb)history.back();
   await sendPending(it);
 }
 let CURPEND=null;
 const subAns=it=>Object.assign({},it.ans,{_t:it.times||{}});
 async function sendPending(it){
-  CURPEND=it;clearTimeout(retryT);loading('Submitting your answers…');
+  if(!getPend().some(x=>x.cid===it.cid)){CURPEND=null;CAT=null;return route()}// already sent by flushPending
+  CURPEND=it;clearTimeout(retryT);retryT=null;loading('Submitting your answers…');
   const r=await rpc('cbt_submit',{p_test:it.tid,p_answers:subAns(it),p_client_id:it.cid});
   if(r.ok){
-    delPend(it.cid);CAT=null;INS=null;
+    delPend(it.cid);CAT=null;INS=null;CURPEND=null;
     RV={result:r.result,review:r.review,filter:'all',sec:'*',tab:'ov'};
-    showResult();lb(r.result);return;
+    showResult();lb(r.result);loadCat(true).then(ok=>{if(ok&&RV&&RV.tab==='his')rRefresh()});return;
   }
   if(r.error==='network'||r.error==='server'){
-    setApp(`<div class="wrap"><div class="card empty">${ic('wifi',32)}<h3 style="margin:10px 0 4px">No connection</h3>
+    if(CURPEND!==it)return;
+    setApp(`<div class="wrap"><div class="card empty" id="pendw">${ic('wifi',32)}<h3 style="margin:10px 0 4px">No connection</h3>
       <p class="sm">Your answers are saved on this phone. We will keep trying to submit them. Please stay on this page.</p>
-      <button class="btn" onclick="sendPending(CURPEND)">Try again now</button></div></div>`);
-    retryT=setTimeout(()=>sendPending(it),8000);return;
+      <button class="btn" onclick="if(CURPEND)sendPending(CURPEND)">Try again now</button></div></div>`);
+    retryT=setTimeout(()=>{if(CURPEND!==it)return;if($('#pendw'))sendPending(it);else CURPEND=null},8000);return;
   }
   if(authErr(r))return;
-  delPend(it.cid);CAT=null;
+  if(r.error==='suspended'){CURPEND=null;return}
+  delPend(it.cid);CAT=null;CURPEND=null;
   toast(r.error==='no_session'?'This attempt was already closed.':'Could not submit this test.');
   location.hash=RET;route();
 }

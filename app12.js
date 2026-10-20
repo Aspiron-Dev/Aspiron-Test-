@@ -26,7 +26,7 @@ function upTick(){
     const L=document.querySelectorAll('[data-up]');if(!L.length){clearInterval(upIv);upIv=null;return}
     let open=0;L.forEach(e=>{const ms=+e.dataset.up-srvNow();e.textContent=upLeft(ms);if(ms<=0)open=1});
     // the moment a test opens, redraw home so it turns into the LIVE card
-    if(open){clearInterval(upIv);upIv=null;setTimeout(()=>{if(document.querySelector('.home2'))viewHome('dash')},1200)}
+    if(open){clearInterval(upIv);upIv=null;setTimeout(()=>{if(document.querySelector('.home2'))typeof softRoute==='function'?softRoute():viewHome('dash')},1200)}
   },1000);
 }
 {const _lh=liveHtml;liveHtml=function(){setTimeout(upTick,0);return _lh()+upHtml()}}

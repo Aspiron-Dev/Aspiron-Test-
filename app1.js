@@ -96,7 +96,7 @@ function errText(r){
 function authErr(r){
   if(r&&!r.ok&&AUTHERR.includes(r.error)){
     LOGINERR=r.error==='invalid'?'Your session is no longer valid. Please sign in again.':errText(r);
-    AUTH=null;LS.del('cbt_auth');CAT=null;INTEST=false;document.body.classList.remove('intest');login();
+    AUTH=null;LS.del('cbt_auth');CAT=null;INTEST=false;document.body.classList.remove('intest');closeModal();login();
     return true;
   }
   return false;
@@ -116,9 +116,11 @@ function updateHeader(){
   $('#sn').textContent=CFG.SITE_NAME||'CBT Test Series';{const sp=document.getElementById('spn');if(sp)sp.textContent=CFG.SITE_NAME||'CBT Test Series'}document.title=CFG.SITE_NAME||'CBT Test Series';
   pfHdr();
 }
-function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}
+function toast(m){document.querySelectorAll('.toast').forEach(e=>e.remove());const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),250)},2600)}
 function modal(h){$('#layer').innerHTML=`<div class="modal" onclick="if(event.target===this)closeModal()"><div class="box">${h}</div></div>`}
-function closeModal(){$('#layer').innerHTML=''}
+// #layer is emptied at once (code that checks it is unaffected); a copy of the sheet / menu plays its exit just under #layer
+let SRP='';
+function closeModal(){const l=$('#layer'),m=l.firstElementChild;if(m&&m.matches('.modal,.drw')&&!RMOT()){m.classList.remove('again');m.classList.add('out');m.removeAttribute('data-id');m.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));l.before(m);const rm=e=>{if(!e||e.target===m)m.remove()};m.addEventListener('animationend',rm);setTimeout(rm,500)}l.innerHTML='';if(SRP){const h=SRP;SRP='';setTimeout(()=>{if((location.hash||'#/')===h)softRoute()},250)}}
 const NAVIT=[['dash','#/','Home','grid'],['series','#/series','Tests','file'],['mk','#/m','Mistakes','notebook'],['bm','#/b','Saved','bmark'],['results','#/r','Results','trophy'],['tr','#/t','Tracker','pulse']];
 function setNav(tab){
   const bn=$('#bnav');
@@ -128,8 +130,15 @@ function setNav(tab){
   document.body.classList.add('hasnav');
 }
 let ROUTING=0,PGDX=0;
-let SOFT=0;
-function setApp(h){if(!ROUTING&&!SOFT||INTEST||!AUTH)document.body.classList.remove('hasnav');clearInterval(opTimer);opTimer=null;const ap=$('#app');ap.innerHTML=h;if(SOFT){ap.classList.remove('pgf');void ap.offsetWidth;ap.classList.add('pgf')}else{window.scrollTo(0,0);pgAnim(ap)}startOp();loadCovers();countUp($('#app'));hideSplash()}
+let SOFT=0,SOFTR=0;
+// #app.dataset.rt = hash of the page the router drew ('' for instructions, result, test, login). SCRY[hash] = where the student
+// was on that page; RSTY = where the page route() is drawing starts (used by its first real draw); RTBK = page an instructions/result screen covered
+let SCRY={},RSTY=null,RTBK='';
+function scrSave(){const ap=$('#app');if(ap.dataset.rt&&!ap.querySelector(':scope>.skpage'))SCRY[ap.dataset.rt]=scrollY}
+function setApp(h){const sf=SOFT||SOFTR;if(!ROUTING&&!sf||INTEST||!AUTH)document.body.classList.remove('hasnav');clearInterval(opTimer);opTimer=null;const ap=$('#app'),sk=!!ap.querySelector(':scope>.skpage'),rt=ap.dataset.rt;scrSave();ap.innerHTML=h;ap.dataset.rt=(ROUTING||sf)&&AUTH&&!INTEST?location.hash||'#/':'';if(rt&&!ap.dataset.rt)RTBK=rt;
+  if(!sf){const y=ROUTING?(RSTY!=null?RSTY:scrollY):0;if(!ap.querySelector(':scope>.skpage'))RSTY=null;window.scrollTo(0,y)}
+  if(SOFTR){ap.classList.remove('pg','pgf','srf');void ap.offsetWidth;ap.classList.add('srf')}else if(sf||sk){PGDX=0;ap.classList.remove('pg','pgf');void ap.offsetWidth;ap.classList.add('pgf')}else pgAnim(ap);
+  startOp();loadCovers();if(!SOFTR)countUp($('#app'));hideSplash()}
 function loading(m){setApp(`<div class="loading"><div><div class="spin"></div>${esc(m||'Loading…')}</div></div>`)}
 const GR=[['#1d6fe8','#12a58a'],['#0e7490','#2563eb'],['#15803d','#0ea5a4'],['#334155','#1d6fe8'],['#0f766e','#16a34a'],['#475569','#0d9488']];
 function grad(id){let h=0;for(const c of String(id))h=(h*31+c.charCodeAt(0))>>>0;const g=GR[h%GR.length];return `linear-gradient(135deg,${g[0]},${g[1]})`}
@@ -140,13 +149,13 @@ function ring(p,size,sw,col){
 }
 const ringCol=p=>p>=60?'var(--ok)':p>=35?'var(--warn)':'var(--bad)';
 function waLink(text){
-  const n=String(CFG.CONTACT_WHATSAPP||'').replace(/\D/g,'');
+  const n=String(CFG.CONTACT_WHATSAPP||CFG.SUPPORT_WA_NUMBER||'').replace(/\D/g,'');
   return n?`https://wa.me/${n}?text=${encodeURIComponent(text)}`:'';
 }
 
 /* ---------- login / request ---------- */
 function login(mode){
-  INTEST=false;document.body.classList.remove('intest');clearTimeout(retryT);updateHeader();
+  INTEST=false;SCRY={};document.body.classList.remove('intest');clearTimeout(retryT);updateHeader();
   if(!cloud){setApp(`<div class="wrap"><div class="card empty"><b>Website is not connected yet.</b><p class="sm">The admin needs to fill in config.js.</p></div></div>`);return}
   if(mode==='request')return requestView();
   const wa=waLink('Hi, I would like to get access to '+(CFG.SITE_NAME||'the test series')+'.');
@@ -166,6 +175,7 @@ function login(mode){
   ['ph','cd'].forEach(id=>$('#'+id).addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()}));
 }
 async function doLogin(){
+  if($('#lbtn').disabled)return;
   const m=$('#ph').value.replace(/\D/g,'').slice(-10),c=$('#cd').value.replace(/[^0-9a-zA-Z]/g,'').toUpperCase();
   if(m.length!==10){$('#er').textContent='Please enter a valid 10-digit mobile number.';return}
   if(c.length<4){$('#er').textContent='Please enter your access code.';return}
@@ -177,7 +187,7 @@ async function doLogin(){
     return}
   AUTH={mobile:m,code:c,name:r.name};LS.set('cbt_auth',AUTH);LS.del('cbt_dping');updateHeader();CAT=null;
   await flushPending();
-  location.hash='#/';route();
+  const w=LS.get('cbt_after',null)||'#/';LS.del('cbt_after');if(location.hash===w)route();else location.hash=w;   // one route (the hash change routes)
 }
 function requestView(){
   setApp(`<div class="wrap"><div class="card login" id="rq">
@@ -208,7 +218,7 @@ function signOut(){
   modal(`<h2>Sign out?</h2><p class="mut">You will need your access code to sign in again. Tests in progress stay saved on this device.</p>
   <div class="row"><button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn danger" style="flex:1" onclick="doSignOut()">Sign out</button></div>`);
 }
-function doSignOut(){closeModal();MKC=null;BMC=null;PREF=0;AUTH=null;ANN=null;LS.del('cbt_auth');CAT=null;login()}
+function doSignOut(){closeModal();if(LS.get('cbt_push_ok',null)&&typeof pushOff==='function')pushOff();MKC=null;BMC=null;PREF=0;AUTH=null;ANN=null;LS.del('cbt_auth');CAT=null;login()}
 
 /* ---------- catalog / routing ---------- */
 let CATAT=0;
@@ -216,34 +226,49 @@ async function loadCat(silent){
   const r=await rpc('cbt_catalog',{});
   if(!r.ok){
     if(authErr(r))return false;
-    if(!silent)setApp(`<div class="wrap"><div class="card empty">${ic('wifi',30)}<h3 style="margin:10px 0 4px">Could not load</h3><p class="sm">${esc(errText(r))}</p><button class="btn" onclick="route()">Try again</button></div></div>`);
+    if(!silent)setApp(`<div class="wrap"><div class="card empty" id="caterr">${ic('wifi',30)}<h3 style="margin:10px 0 4px">Could not load</h3><p class="sm">${esc(errText(r))}</p><button class="btn" onclick="route()">Try again</button></div></div>`);
     return false;
   }
   CAT=r;CATAT=Date.now();SOFF=r.now-Date.now();BM=new Set((r.bookmarks||[]).map(b=>b.t+':'+b.i));if(r.name&&AUTH&&AUTH.name!==r.name){AUTH.name=r.name;LS.set('cbt_auth',AUTH);updateHeader()}
   return true;
 }
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AUTH&&!INTEST&&CAT&&Date.now()-CATAT>30000)route()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AUTH&&!INTEST&&CAT&&Date.now()-CATAT>30000)catBg()});
+// catalog older than 30 s: the page is drawn at once from the copy we have; this refreshes it in the background and
+// redraws in place (softRoute) only if something changed
+let CATBG=0;const catSig=()=>JSON.stringify(Object.assign({},CAT,{now:0}));
+function catBg(){if(CATBG||!CAT)return;CATBG=1;const s=catSig();CATAT=Date.now();loadCat(true).then(ok=>{CATBG=0;if(ok&&catSig()!==s)softRoute()},()=>{CATBG=0})}
+// softRoute(): redraw the current router page in place with the current CAT: no skeleton, no jump to the top, nothing replays.
+// Does nothing on screens the router did not draw (instructions, result, solutions, test, login), during a route, or in a test;
+// with a sheet / menu open it waits until that closes. Resolves true when it redrew.
+function softRoute(){const ap=$('#app'),h=location.hash||'#/';if(INTEST||!AUTH||!CAT||ROUTING||SOFTR||!ap.dataset.rt)return Promise.resolve(false);if($('#layer').innerHTML){SRP=h;return Promise.resolve(false)}
+  const y=scrollY;SOFTR++;return Promise.resolve(route0()).catch(()=>{}).then(()=>{SOFTR--;if((location.hash||'#/')===h&&scrollY!==y)window.scrollTo(0,y);return true})}
+try{history.scrollRestoration='manual'}catch(e){}
 const navTab=h=>/^#\/(s|f)\//.test(h)||h==='#/series'?'series':/^#\/h\//.test(h)||h==='#/r'?'results':h==='#/m'?'mk':h==='#/b'?'bm':h==='#/t'?'tr':'dash';
-const NAVRK=h=>{const t=NAVIT.findIndex(x=>x[0]===navTab(h));return /^#\/(s|f|h)\//.test(h)||h==='#/n'?t+0.5:t};
+const NAVRK=h=>{if(/^#\/pyq/.test(h))return h.split('/').length/10;const t=NAVIT.findIndex(x=>x[0]===navTab(h));return /^#\/f\//.test(h)?t+.75:/^#\/(s|h)\//.test(h)||h==='#/n'?t+0.5:t};
 let LASTRK=null;
 function pgAnim(ap){
-  if(!PGDX){ap.classList.remove('pg');return}
+  if(!PGDX){ap.classList.remove('pg','pgf','srf');return}
   const d=PGDX;PGDX=0;ap.style.setProperty('--dx',(d>0?18:-18)+'px');
-  ap.classList.remove('pg');void ap.offsetWidth;ap.classList.add('pg');
+  ap.classList.remove('pg','pgf','srf');void ap.offsetWidth;ap.classList.add('pg');
   clearTimeout(ap._pt);ap._pt=setTimeout(()=>ap.classList.remove('pg'),360);
 }
 const RMOT=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
 async function route(){
   if(INTEST||!AUTH)return;
-  const h0=location.hash||'#/',rk=NAVRK(h0);let dir=0;
+  clearTimeout(retryT);retryT=null;CURPEND=null;   // leaving the "No connection" screen stops its retries; the answers stay pending
+  const h0=location.hash||'#/',rk=NAVRK(h0),ap=$('#app');let dir=0;
+  // Back / Forward to a page seen before, or back from the instructions / result that covered it → where the student was; a new visit → top
+  const st=history.state,seen=!!(st&&st.rt);if(!seen)try{history.replaceState(Object.assign({},st,{rt:1}),'')}catch(e){}
+  scrSave();RSTY=(seen||!ap.dataset.rt&&h0===RTBK)&&SCRY[h0]||0;
   if(LASTRK!==null&&rk!==LASTRK)dir=rk>LASTRK?1:-1;
   LASTRK=rk;
   ROUTING++;
   try{
     setNav(navTab(h0));
-    if(CAT&&Date.now()-CATAT>30000){await loadCat(true);if(!AUTH||INTEST)return}
+    if(CAT&&Date.now()-CATAT>30000)catBg();
     let p=null;
     if(dir&&CAT&&document.startViewTransition&&!RMOT()){
+      document.querySelectorAll('body>.modal.out,body>.drw.out').forEach(e=>e.remove());   // a closing sheet / menu is not part of the page change
       const H=document.documentElement;H.dataset.vt=dir>0?'f':'b';
       try{
         const vt=document.startViewTransition(()=>{p=route0();return Promise.race([p,new Promise(r=>setTimeout(r,40))])});
@@ -258,7 +283,7 @@ async function route(){
 async function route0(){
   annLoad();
   if(!CAT){skelPage();if(!(await loadCat()))return}
-  else if(Date.now()-CATAT>30000){await loadCat(true);if(!AUTH||INTEST)return}
+  else if(Date.now()-CATAT>30000)catBg();
   const h=location.hash||'#/';let m;
   if((m=h.match(/^#\/s\/(.+)$/)))return viewSeries(m[1]);
   if((m=h.match(/^#\/f\/(.+)$/)))return viewFolder(m[1]);
@@ -271,7 +296,8 @@ async function route0(){
   if(h==='#/series')return viewHome('series');
   return viewHome('dash');
 }
-window.addEventListener('hashchange',()=>{if(!INTEST)route()});
+// a page change (also the phone's Back button) closes an open sheet, menu or zoomed image
+window.addEventListener('hashchange',()=>{if(!INTEST){closeModal();document.querySelectorAll('.lightbox').forEach(e=>e.remove());route()}});
 
 
 /* ---------- time helpers / schedule ---------- */
@@ -288,7 +314,10 @@ function startOp(){
   const f=()=>{
     let fire=false;
     document.querySelectorAll('[data-op]').forEach(e=>{const left=(+e.dataset.op-srvNow())/1000;if(left<=0)fire=true;else e.textContent=fmtCd(left)});
-    if(fire&&!opFired&&!INTEST){opFired=true;clearInterval(opTimer);CAT=null;route()}
+    // a scheduled test opens: on its instructions page the Start button turns on (the tick stays); a list redraws in place
+    if(fire&&!opFired&&!INTEST){opFired=true;clearInterval(opTimer);CATAT=0;const sb=$('#sb'),dc=$('#dc');
+      if(sb&&dc&&!$('#app').dataset.rt){sb.innerHTML=ic('play')+' Start test now';dc.onchange=()=>{sb.disabled=!dc.checked};sb.disabled=!dc.checked;sb.classList.add('opn');return}
+      softRoute()}
   };
   f();opTimer=setInterval(f,1000);
 }

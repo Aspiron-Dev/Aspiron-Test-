@@ -104,15 +104,15 @@ async function openFile(id){
   const parts=[];let n=0,total=1,mime='application/pdf',name='file';
   while(n<total){
     const r=await rpc('cbt_file_part',{p_file:id,p_n:n});
-    if(!r.ok){closeModal();if(!authErr(r))toast('Could not download this file.');return}
+    if(!r.ok){if($('#fp'))closeModal();if(!authErr(r))toast('Could not download this file.');return}
     total=r.parts;mime=r.mime;name=r.name;parts.push(r.data||'');n++;
     const e=$('#fp');if(e)e.textContent=`Downloading… ${Math.round(n*100/total)}%`;
   }
   try{
     const bin=atob(parts.join(''));const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
     FILEURL[id]={url:URL.createObjectURL(new Blob([u],{type:mime})),name};
-  }catch(e){closeModal();toast('This file is damaged.');return}
-  showFile(id);
+  }catch(e){if($('#fp'))closeModal();toast('This file is damaged.');return}
+  if($('#fp'))showFile(id);// not if the student closed 'Downloading…' or moved on
 }
 function showFile(id){
   const f=FILEURL[id];
@@ -164,7 +164,7 @@ const imgTag=(src,cls)=>src?`<img class="qi zm ${cls||''}" src="${esc(src)}" alt
 document.addEventListener('click',e=>{
   const im=e.target.closest&&e.target.closest('img.zm');
   if(im){e.preventDefault();e.stopPropagation();const d=document.createElement('div');d.className='lightbox';d.innerHTML=`<img src="${im.src}"><button class="btn sm ghost">${ic('x')} Close</button>`;d.onclick=()=>d.remove();document.body.appendChild(d)}
-});
+},true);// capture: a tap on an option's image only zooms, it never selects the option
 async function toggleBM(tid,i,fromBM){
   BMC=null;
   const k=tid+':'+i,on=!BM.has(k);

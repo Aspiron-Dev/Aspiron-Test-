@@ -1,4 +1,4 @@
-function jumpQ(i){RV.tab='sol';RV.filter='all';RV.sec='*';rRefresh();setTimeout(()=>{const e=document.getElementById('q'+i);if(e){e.scrollIntoView({behavior:'smooth',block:'center'});e.classList.add('flash')}},60)}
+function jumpQ(i){RV.tab='sol';RV.filter='all';RV.sec='*';rRefresh();setTimeout(()=>{const e=document.getElementById('q'+i);if(e){e.scrollIntoView({behavior:'instant',block:'start'});e.classList.add('flash')}},60)}
 function rvTime(A){
   const {all,rec,hasT}=A;
   if(!hasT)return `<div class="card empty">${ic('clock',30)}<h3 style="margin:10px 0 4px;color:var(--tx)">No time data for this attempt</h3><p class="sm">Question-wise time is recorded for tests you attempt from now on.</p></div>`;
@@ -23,7 +23,8 @@ function rvSol(A){
   const sb=(k,t)=>`<button class="${sf===k?'on':''}" onclick="setSecF(${JSON.stringify(k).replace(/"/g,'&quot;')})">${esc(t)}</button>`;
   return `<div class="seg" style="width:100%;display:flex;margin-bottom:12px">${fb('all','All')}${fb('c','Correct')}${fb('w','Wrong')}${fb('s','Skipped')}</div>
    ${hasSec?`<div class="seg" style="margin-bottom:12px">${sb('*','All sections')}${names.map(s=>sb(s,s||'General')).join('')}</div>`:''}
-   ${items.map(({q,i,a,t,st})=>`<div class="card rv" id="q${i}"><div class="row" style="margin-bottom:8px"><b>Q${i+1}</b>${st==='c'?'<span class="chip ok">Correct</span>':st==='w'?'<span class="chip" style="background:var(--badSoft);color:var(--bad)">Wrong</span>':'<span class="chip">Skipped</span>'}${q.sec?`<span class="chip">${esc(q.sec)}</span>`:''}${t>0?`<span class="chip">${ic('clock',12)} ${fs(t)}</span>`:''}<span style="flex:1"></span>${tid?bmBtn(tid,i)+rpBtn(tid,i):''}</div>
+   ${items.map(({q,i,a,t,st})=>`<div class="card rv qx" id="q${i}"><div class="qxh"><span class="qno">Q${i+1}</span>${st==='c'?'<span class="chip ok">Correct</span>':st==='w'?'<span class="chip bad">Wrong</span>':'<span class="chip">Skipped</span>'}<span style="flex:1"></span>${tid?bmBtn(tid,i)+rpBtn(tid,i):''}</div>
+    ${q.sec||t>0?`<div class="qsrc">${q.sec?`<b>${esc(q.sec)}</b>`:''}${q.sec&&t>0?' · ':''}${t>0?`${ic('clock',13)} ${fs(t)}`:''}</div>`:''}
     <div class="qt">${esc(q.q)}</div>${imgTag(q.img)}
     ${q.options.map((o,j)=>{if(!o&&!(q.oimg&&q.oimg[j]))return '';const isC=j===q.answer,isY=j===a;return `<div class="ro ${isC?'c':(isY?'w':'')}"><span class="k">${L[j]}</span><span style="flex:1">${esc(o)}${imgTag(q.oimg&&q.oimg[j],'oi')}${isC||isY?`<span style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${isC?'<span class="tag g" style="margin:0">Correct answer</span>':''}${isY&&!isC?'<span class="tag r" style="margin:0">Your answer</span>':''}${isY&&isC?'<span class="tag g" style="margin:0">Your answer</span>':''}</span>`:''}</span></div>`}).join('')}
     ${q.answer==null?'<div class="sm mut" style="margin-top:6px">No answer key was set for this question, so it is not marked.</div>':''}
@@ -31,14 +32,17 @@ function rvSol(A){
    <div style="text-align:center;margin-top:8px"><button class="btn" onclick="doneResult()">Back to tests</button></div>`;
 }
 function rBody(){const A=rAnalyse();return RV.tab==='his'?rvHis(A):RV.tab==='sub'?rvSub(A):RV.tab==='time'?rvTime(A):RV.tab==='sol'?rvSol(A):rvOv(A)}
-function rRefresh(){const b=$('#rbody');if(!b)return;b.innerHTML=rBody();document.querySelectorAll('#rtabs button').forEach(x=>x.classList.toggle('on',x.dataset.t===RV.tab));countUp(b)}
-function rTab(t){RV.tab=t;rRefresh();const e=$('#rtabs');if(e&&e.getBoundingClientRect().top<0)window.scrollTo({top:Math.max(0,e.parentElement.offsetTop-10),behavior:'smooth'})}
-function setFilter(f){RV.filter=f;rRefresh()}
-function setSecF(s){RV.sec=s;rRefresh()}
-function doneResult(){RV=null;CAT=null;const h=RET&&RET!=='#/'?RET:'#/r';history.replaceState(null,'',h);route()}
+// a tab animates (bars, count-up) only the first time it is opened; later visits and filters just fade in
+function rRefresh(){const b=$('#rbody');if(!b)return;const s=RV.seen=RV.seen||{},again=!!s[RV.tab];s[RV.tab]=1;b.classList.toggle('again',again);b.innerHTML=rBody();document.querySelectorAll('#rtabs button').forEach(x=>x.classList.toggle('on',x.dataset.t===RV.tab));if(!again)countUp(b)}
+// when the tabs are stuck at the top, start the new content right below them (no jump to the middle of it)
+function rAlign(){const s=$('.rtabs'),b=$('#rbody');if(!s||!b)return;const d=b.getBoundingClientRect().top-s.getBoundingClientRect().bottom;if(d<0)window.scrollBy({top:d,behavior:'instant'})}
+function rTab(t){if(!RV)return;RV.tab=t;rRefresh();rAlign()}
+function setFilter(f){if(!RV)return;RV.filter=f;rRefresh();rAlign()}
+function setSecF(s){if(!RV)return;RV.sec=s;rRefresh();rAlign()}
+function doneResult(){RV=null;const h=RET&&RET!=='#/'?RET:'#/r';history.replaceState(null,'',h);if(NAVRK(h)===LASTRK)PGDX=-1;route()}
 function showResult(){
   document.body.classList.remove('intest');
-  RV.tab=RV.tab||'ov';
+  RV.tab=RV.tab||'ov';RV.seen={[RV.tab]:1};
   const A=rAnalyse(),rec=A.rec,p=pct(rec.score,rec.max),col=ringCol(p);
   const tb=(k,t)=>`<button data-t="${k}" class="${RV.tab===k?'on':''}" onclick="rTab('${k}')">${t}</button>`;
   setApp(`<div class="wrap"><div class="row" style="margin-bottom:12px"><button class="btn ghost sm" onclick="doneResult()">${ic('back')} Back</button><span class="mut sm" style="flex:1;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(rec.title)}</span></div>
@@ -138,7 +142,8 @@ async function viewMistakes(){
   MK=JSON.parse(JSON.stringify(MKC));SOFT=1;try{mkRender()}finally{SOFT=0}
 }
 async function mkFetch(off){
-  const r=await rpc('cbt_mistakes',{p_offset:off,p_limit:15,p_kind:MK.kind,p_sec:MK.sec});
+  const M=MK,k=M.kind,s=M.sec,r=await rpc('cbt_mistakes',{p_offset:off,p_limit:15,p_kind:k,p_sec:s});
+  if(MK!==M||M.kind!==k||M.sec!==s||off&&off!==M.items.length)return false;   // a newer filter / page was asked meanwhile
   if(!r.ok){if(!authErr(r))setApp(`<div class="wrap">${tabsHtml('mk')}<div class="card empty">${ic('wifi',30)}<h3 style="margin:10px 0 4px;color:var(--tx)">Could not open notebook</h3><p class="sm">Please check your connection and try again.</p><button class="btn" onclick="viewMistakes()">Try again</button></div></div>`),setNav('mk');return false}
   r.items.forEach(x=>{x._n=++MKN});MK.items=off?MK.items.concat(r.items):r.items;MK.more=r.more;MK.counts=r.counts;return true;
 }
@@ -176,17 +181,21 @@ function mkReset(n){delete MK.st[n];mkUp(n)}
 async function mkDone(n){
   MKC=null;
   const it=mkGet(n);if(!it)return;
-  const e=document.getElementById('mk'+n);if(e)e.classList.add('out');
+  const e=document.getElementById('mk'+n);if(e){if(e.classList.contains('out'))return;e.classList.add('out')}
   const r=await rpc('cbt_mistake_done',{p_test:it.test_id,p_qidx:it.qidx,p_on:true});
   if(!r.ok){if(e)e.classList.remove('out');toast('Could not save. Try again.');return}
   INS=null;MK.items=MK.items.filter(x=>x._n!==n);
   const c=MK.counts;c[it.kind]=Math.max(0,c[it.kind]-1);c.mastered++;
   const s=c.secs.find(x=>x.sec===it.sec);if(s)s.n--;
-  setTimeout(()=>{const h=$('#mkh');if(h)h.innerHTML=mkHead();const l=$('#mklist');if(l)l.innerHTML=mkList();toast('Marked as mastered ✓')},260);
+  if(e){e.style.maxHeight=e.offsetHeight+'px';void e.offsetHeight;e.classList.add('gone')}   // collapse, the cards below slide up
+  setTimeout(()=>{const h=$('#mkh');if(h){h.classList.add('re');h.innerHTML=mkHead()}const l=$('#mklist');if(e)e.remove();if(l&&(!e||!l.querySelector('.mkc')))l.innerHTML=mkList();toast('Marked as mastered ✓')},300);
 }
-async function mkKind(k){MK.kind=k;MK.st={};if(await mkFetch(0))mkRender()}
-async function mkSec(s){MK.sec=s;MK.st={};if(await mkFetch(0))mkRender()}
-async function mkMore(){if(await mkFetch(MK.items.length)){const l=$('#mklist');if(l)l.innerHTML=mkList()}}
+// filters: mark the tapped chip and dim the list at once, then swap only the head + list (page keeps its scroll)
+const mkOn=(sel,cls,f)=>document.querySelectorAll(sel).forEach(b=>b.classList.toggle(cls,b.getAttribute('onclick')===f));
+function mkPaint(){const h=$('#mkh'),l=$('#mklist');if(!h||!l)return mkRender();h.classList.add('re');h.innerHTML=mkHead();l.classList.remove('ld');l.innerHTML=mkList()}
+async function mkKind(k){MK.kind=k;MK.st={};mkOn('#mkh .seg button','on',`mkKind('${k}')`);const l=$('#mklist');if(l)l.classList.add('ld');if(await mkFetch(0))mkPaint()}
+async function mkSec(s){MK.sec=s;MK.st={};mkOn('#mkh .chiprow .chip','pri','mkSec('+JSON.stringify(s)+')');const l=$('#mklist');if(l)l.classList.add('ld');if(await mkFetch(0))mkPaint()}
+async function mkMore(b){if(b){if(b.disabled)return;b.disabled=true;b.textContent='Loading…'}if(await mkFetch(MK.items.length)){const l=$('#mklist');if(l)l.innerHTML=mkList()}else if(b){b.disabled=false;b.textContent='Load more'}}
 /* announcement banner */
 IC.mega='<path d="M3 11v2a1 1 0 001 1h2l5 4V6L6 10H4a1 1 0 00-1 1z"/><path d="M15.5 8.5a5 5 0 010 7M18.5 6a9 9 0 010 12"/>';
 IC.bell='<path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/>';

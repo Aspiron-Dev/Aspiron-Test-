@@ -16,7 +16,8 @@
 <meta name="apple-mobile-web-app-title" content="CBT Test">
 <title>CBT Test Series</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#f3f6f9;--surface:#ffffff;--surface2:#eef2f6;--tx:#0e1b26;--mut:#5a6b7b;--bd:#dfe6ed;
@@ -36,7 +37,7 @@ html[data-theme="dark"]{
   --glow:rgba(43,123,232,.28);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{scroll-behavior:smooth}
+html{scroll-behavior:auto}
 body{margin:0;background:var(--bg);color:var(--tx);font-family:Inter,"Noto Sans Devanagari",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;transition:background .25s,color .25s}
 a{color:var(--pri)}
 svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
@@ -1173,17 +1174,107 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 /* ===== polish v1: motion tokens (shared by the blocks below) ===== */
 :root{--m1:120ms;--m2:200ms;--m3:280ms;--eo:cubic-bezier(.2,.8,.2,1)}
 /* ==== polish:shell ==== */
+/* sheets, dialogs and the side menu leave the way they came in (app1 closeModal plays this on a copy just under #layer) */
+.modal.out,.drw.out{pointer-events:none;animation:shOut var(--m2) var(--ease) forwards}
+.modal.out .box{animation:boxOut var(--m2) var(--ease) forwards}
+.modal.bsheet.out .box{animation:shDown var(--m2) var(--ease) forwards}
+.drw.out .drp{animation:drwOut var(--m2) var(--ease) forwards}
+.modal.out .box *,.drw.out .drp *{animation:none!important}
+@keyframes shOut{to{opacity:0}}@keyframes boxOut{to{opacity:0;transform:translate3d(0,12px,0) scale(.97)}}@keyframes shDown{to{transform:translate3d(0,100%,0)}}@keyframes drwOut{to{transform:translate3d(-100%,0,0)}}
+/* one toast at a time; it fades down when done */
+.toast.out{opacity:0;transform:translateX(-50%) translateY(10px);transition:opacity var(--m2) var(--ease),transform var(--m2) var(--ease)}
+/* page refreshed in place (softRoute: back to the app, a test opens, 9 PM): a short settle, no slide, no replays */
+#app.srf{animation:srF var(--m3) var(--eo)}@keyframes srF{from{opacity:.55}}
+/* a scheduled test opens while the student waits on its instructions: Start turns on */
+#sb.opn{animation:sbOpen var(--m3) var(--eo)}@keyframes sbOpen{from{opacity:.5;transform:scale(.97)}}
 /* ==== /polish:shell ==== */
 /* ==== polish:home ==== */
+/* countdown: 4+ units fit at 320-393 px; a changed digit drops in, the ring follows */
+.cdu.many{gap:4px}.cdu.many>div{min-width:0;flex:0 1 50px}.cdu.many b{font-size:clamp(18px,6.6vw,30px)}.cdu.many i{font-size:18px}
+.cdu b.tk{animation:cdTk var(--m3) var(--eo)}@keyframes cdTk{from{opacity:.25;transform:translateY(-.22em)}}
+.cdring circle+circle{transition:stroke-dashoffset .6s var(--eo)}
+/* dashboard intro (once per visit): score chart rises from its baseline, week bars grow; dots stay round at any width */
+.aplot{transform-box:view-box;transform-origin:50% 85%;animation:apIn .6s var(--eo) 80ms backwards}@keyframes apIn{from{opacity:0;transform:scaleY(.3)}}
+.adot{fill:none;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.dash .week i{transform-origin:50% 100%;animation:wkIn .5s var(--eo) backwards}@keyframes wkIn{from{transform:scaleY(0)}}
+.dash .week div:nth-child(n+2) i{animation-delay:40ms}.dash .week div:nth-child(n+4) i{animation-delay:80ms}.dash .week div:nth-child(n+6) i{animation-delay:120ms}
+/* home redrawn in place (resume, a test goes live, 9 PM): nothing replays */
+.home2.still :is(.dash,.dtrk) *{animation:none!important}
+/* tracker: bars, ring and day strip move to the new value; a ticked box pops */
+.tkhero .pbar i,.tkbar i{transition:width .6s var(--eo)}.tkring circle+circle{transition:stroke-dashoffset .6s var(--eo)}.tkdw i{transition:height .5s var(--eo)}
+.tkck.pop{animation:tkPop var(--m3) var(--eo)}@keyframes tkPop{50%{transform:scale(1.18)}}
 /* ==== /polish:home ==== */
 /* ==== polish:exam ==== */
+/* option tap updates in place (app3 sel/clr): ease the selection; the question card no longer shrinks while an option is pressed */
+.opt{transition:transform var(--m1) var(--eo),background-color var(--m2) var(--eo),border-color var(--m2) var(--eo),box-shadow var(--m2) var(--eo)}
+.opt .k{transition:background-color var(--m2) var(--eo),border-color var(--m2) var(--eo),color var(--m2) var(--eo)}
+.intest .card:active{transform:none}
+/* question change: short fade + slide in the direction of travel (app3 draw sets .qin and --qx) */
+.qcard.qin{animation:qIn var(--m2) var(--eo)}
+@keyframes qIn{from{opacity:0;transform:translate3d(var(--qx,12px),0,0)}}
+/* palette sheet slides up like the other bottom sheets */
+.sheet.open{animation:fadeBg var(--m2) var(--eo)}.sheet.open .in{animation:sheetUp var(--m3) var(--eo)}
+.sheet.open.shut{animation:fadeBg .18s var(--eo) reverse forwards}.sheet.shut .in{animation:sheetUp .18s var(--eo) reverse forwards}
+/* image zoom fades in */
+.lightbox{animation:lbF var(--m2) var(--eo)}.lightbox img{animation:lbIn var(--m3) var(--eo)}
+@keyframes lbF{from{opacity:0}}@keyframes lbIn{from{transform:scale(.96)}}
+/* phones: question header stays on one line ("Q 12 of 180"); marking is on the instructions page */
+@media(max-width:480px){.qmeta{flex-wrap:nowrap;gap:6px}.qmeta>b{white-space:nowrap}.qmeta .qw,.qmeta>.chip.ok,.qmeta>.chip.warn{display:none}}
 /* ==== /polish:exam ==== */
 /* ==== polish:series ==== */
+/* series cards + PYQ exam cards: the same spring press as the other tappable cards */
+.card.scard2,.card.pqe{transition:transform .38s var(--spring)}
+@media(hover:hover){.card.scard2:hover{transform:translateY(-3px)}}
+.card.scard2:active,.card.pqe:not(.soon):active{transform:scale(.975);transition-duration:.1s}
+.pqsub button{transition:transform .38s var(--spring)}.pqsub button:active{transform:scale(.96);transition-duration:.08s}
+/* PYQ rows / bars: instant dim on press, soft release */
+.pqrow,.pqbar,.pqtr,.pqyr div{transition:opacity var(--m2) var(--eo)}.pqrow:active,.pqbar:active,.pqtr:active,.pqyr div:active{opacity:.6;transition-duration:0s}
+/* long one-word titles wrap instead of being cut off (360 px) */
+.sc2b h3,.shx .ttl h1,.svhl b,.fc2 b,.scnext b,.sh h1,.pqh h1{overflow-wrap:anywhere}
+/* in-place updates: filtered lists fade in, revealed PYQ answers open softly */
+@media(prefers-reduced-motion:no-preference){
+#app>.wrap>#sllist.swp,#app>.wrap>#svl.swp{animation:srSwap var(--m3) var(--eo)!important}
+#slnone{animation:srSwap var(--m3) var(--eo)}
+#pqql>.pqin{animation:srSwap var(--m3) var(--eo) backwards}
+.pqq .exp.pqin{transform-origin:50% 0;animation:pqRv var(--m3) var(--eo) backwards}
+.pqq .tag.pqin{animation:pqPop var(--m3) var(--spring) backwards}
+}
+@keyframes srSwap{from{opacity:0;transform:translate3d(0,6px,0)}}
+@keyframes pqRv{from{opacity:0;transform:translate3d(0,-4px,0) scaleY(.96)}}
+@keyframes pqPop{from{opacity:0;transform:scale(.6)}}
 /* ==== /polish:series ==== */
 /* ==== polish:results ==== */
+/* result hero: after the ring, the verdict and the 4 stat boxes rise in once */
+.rhero h2{animation:rise var(--m3) var(--eo) .12s backwards}
+.rhero .s4>div{animation:rise .4s var(--eo) backwards}.rhero .s4>div:nth-child(1){animation-delay:.18s}.rhero .s4>div:nth-child(2){animation-delay:.23s}.rhero .s4>div:nth-child(3){animation-delay:.28s}.rhero .s4>div:nth-child(4){animation-delay:.33s}
+/* result tabs: first visit rises with a short stagger; later visits and filters (#rbody.again) only fade */
+#rbody>*:nth-child(2){animation-delay:40ms}#rbody>*:nth-child(3){animation-delay:80ms}#rbody>*:nth-child(4){animation-delay:120ms}#rbody>*:nth-child(5){animation-delay:160ms}#rbody>*:nth-child(n+6){animation:none}
+#rbody>.tiles{animation:none}#rbody .tiles>div{animation:rise var(--m3) var(--eo) backwards}#rbody .tiles>div:nth-child(2){animation-delay:30ms}#rbody .tiles>div:nth-child(3){animation-delay:60ms}#rbody .tiles>div:nth-child(4){animation-delay:90ms}#rbody .tiles>div:nth-child(5){animation-delay:120ms}#rbody .tiles>div:nth-child(6){animation-delay:150ms}
+#lb>*{animation:rise var(--m3) var(--eo) backwards}
+/* bars grow with transform (no layout per frame, 180 time bars stay smooth) */
+#rbody .hb i,#rbody .tb i{transform-origin:50% 100%;animation-name:rsGrowY}
+#rbody .stk{transform-origin:0 50%;animation:rsGrowX .7s var(--eo) .1s backwards}
+#rbody.again>*{animation:rsFade var(--m2) var(--eo) backwards}#rbody.again>*:nth-child(n+6),#rbody.again .tiles>div,#rbody.again #lb>*,#rbody.again .hb i,#rbody.again .tb i,#rbody.again .stk{animation:none}
+@keyframes rsFade{from{opacity:0}}@keyframes rsGrowY{from{transform:scaleY(0)}}@keyframes rsGrowX{from{transform:scaleX(0)}}
+/* 180 solution cards: off-screen cards are not laid out / painted; jumpQ lands below the sticky tabs */
+#rbody>.rv{content-visibility:auto;contain-intrinsic-size:auto 520px;scroll-margin-top:132px}
+/* long formulas / URLs wrap inside the card instead of widening the page */
+.qx .qt,.qx .ro,.qx .exp,.rsbody .qt,.rsbody .ro,.rsbody .exp,.fb,.qnote{overflow-wrap:anywhere}
+/* mistake / saved cards: slide out, then the gap closes smoothly */
+.mkc{transition:opacity var(--m2) var(--eo),transform var(--m2) var(--eo),max-height var(--m3) var(--eo),padding var(--m3) var(--eo),margin var(--m3) var(--eo)}
+.mkc.gone{max-height:0!important;padding-top:0;padding-bottom:0;margin-top:0;margin-bottom:0;overflow:hidden}
+#mklist{transition:opacity var(--m2) var(--eo)}#mklist.ld{opacity:.45;pointer-events:none}
+#mkh.re .nbring circle{animation:none!important}
+/* revision quiz: overlay fades in once; next question slides in; feedback rises */
+.rsx.re{animation:none}.rsbody.nq{animation:rsIn var(--m3) var(--eo)}@keyframes rsIn{from{opacity:0;transform:translate3d(20px,0,0)}}
+.rsx.re .rsbody:not(.nq) .fb,.rsx.re .rsbody:not(.nq) .fb~.exp{animation:rise var(--m3) var(--eo) backwards}
+.rsx .qnote{cursor:default}
+/* rating sheet: a star pops as it lights up */
+.rvpick.big button.on{animation:rvPop .3s var(--eo)}
+@keyframes rvPop{45%{transform:scale(1.18)}}
 /* ==== /polish:results ==== */
 </style>
-<script>(function(){try{var h=document.documentElement,t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';h.dataset.accent=JSON.parse(localStorage.getItem('cbt_accent'))||'cyber'}catch(e){document.documentElement.dataset.theme='light';document.documentElement.dataset.accent='cyber'}})()</script>
+<script>(function(){try{var h=document.documentElement,t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';h.dataset.accent=JSON.parse(localStorage.getItem('cbt_accent'))||'cyber';var m=document.querySelector('meta[name=theme-color]');if(m)m.content=getComputedStyle(h).getPropertyValue('--bg').trim()||'#f3f6f9'}catch(e){document.documentElement.dataset.theme='light';document.documentElement.dataset.accent='cyber'}})()</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6', 'app7', 'app8', 'app9', 'app10', 'app11', 'app12', 'app13', 'app14', 'app15'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
 <script src="config.js?v=4"></script>
 </head>

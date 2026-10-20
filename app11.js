@@ -52,8 +52,9 @@ async function pqExam(){
      ${grp(11)}${grp(12)}</div>`);
     setNav('');
   };
-  if(PQ.sum)draw();else setApp(`<div class="wrap">${[1,2,3].map(()=>`<div class="card"><div class="sk" style="width:55%"></div><div class="sk" style="width:90%;margin-top:12px"></div></div>`).join('')}</div>`);
-  await pqSummary();if(/^#\/pyq\/[^/]+$/.test(location.hash))draw();
+  const s0=PQ.sum,k=()=>JSON.stringify([PQ.sum,!!PQ.err]),k0=k(),sd=f=>{SOFT=f?1:0;try{draw()}finally{SOFT=0}};
+  if(PQ.sum)sd(!ROUTING);else setApp(`<div class="wrap">${[1,2,3].map(()=>`<div class="card"><div class="sk" style="width:55%"></div><div class="sk" style="width:90%;margin-top:12px"></div></div>`).join('')}</div>`);
+  await pqSummary();if(k()!==k0&&/^#\/pyq\/[^/]+$/.test(location.hash))sd(s0);
 }
 
 /* ---------- 3. chapter analysis ---------- */
@@ -62,11 +63,12 @@ async function pqChapter(cid){
   PQ.sub=X.s.id;if(PQ.cid!==cid){PQ.cid=cid;PQ.f={t:'',y:'',rep:0};PQ.open={};PQ.lim=20}
   if(!PQ.ch[cid])setApp(`<div class="wrap pq">${pqHead('#/pyq/'+PQ.exam,esc(X.c.name),'Loading…')}<div class="card"><div class="sk" style="height:140px"></div></div></div>`);
   if(!PQ.sum)pqSummary();
-  if(!PQ.ch[cid]){const r=await rpc('cbt_pyq_chapter',{p_exam:PQ.exam,p_chapter:cid});PQ.ch[cid]=r&&r.ok?r.items||[]:[]}
+  let r;if(!PQ.ch[cid]){r=await rpc('cbt_pyq_chapter',{p_exam:PQ.exam,p_chapter:cid});if(r&&r.ok)PQ.ch[cid]=r.items||[];else if(authErr(r))return}
   if(location.hash!=='#/pyq/'+PQ.exam+'/'+cid)return;
+  if(!PQ.ch[cid]){setApp(`<div class="wrap pq">${pqHead('#/pyq/'+PQ.exam,esc(X.c.name),'')}<div class="card empty">${ic('wifi',30)}<h3 style="margin:10px 0 4px">Could not load</h3><p class="sm">${esc(errText(r))}</p><button class="btn" onclick="route()">Try again</button></div></div>`);setNav('');return}
   pqDrawCh(X);
 }
-function pqDrawCh(X){
+function pqDrawCh(X,re){
   const L=PQ.ch[X.c.id]||[],Y=pqYears(),c=X.c;
   const by={};L.forEach(q=>by[q.y]=(by[q.y]||0)+1);const ymx=Math.max(1,...Object.values(by));
   const tp={};c.topics.forEach(t=>tp[t.name]=0);L.forEach(q=>tp[q.t||'Other']=(tp[q.t||'Other']||0)+1);
@@ -75,28 +77,37 @@ function pqDrawCh(X){
   const yrs=Object.keys(by).map(Number),last=yrs.length?Math.max(...yrs):null,papers=new Set(L.map(q=>q.p)).size;
   const f=PQ.f,shown=L.filter(q=>(!f.t||(q.t||'Other')===f.t)&&(!f.y||q.y==f.y)&&(!f.rep||(q.rep&&q.rep.length>1)));
   const col=['#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#14b8a6'];
-  setApp(`<div class="wrap pq">${pqHead('#/pyq/'+PQ.exam,esc(c.name),`Class ${c.cls} · ${esc(X.s.name)}${c.old?' · not in current NEET syllabus':''}`)}
+  (re?pqPatch:setApp)(`<div class="wrap pq">${pqHead('#/pyq/'+PQ.exam,esc(c.name),`Class ${c.cls} · ${esc(X.s.name)}${c.old?' · not in current NEET syllabus':''}`)}
    ${L.length?`<div class="pqk"><div><b>${L.length}</b><span>Questions</span></div><div><b>${papers?(L.length/papers).toFixed(1):0}</b><span>Avg / paper</span></div><div><b>${yrs.length}</b><span>Years asked</span></div><div><b>${repKeys.size}</b><span>Repeated</span></div></div>
    <div class="h2s">📅 Year-wise questions ${last?`<span class="n">last asked ${last}</span>`:''}</div>
-   <div class="card"><div class="pqyr">${Y.map(y=>`<div class="${f.y==y?'on':''}" onclick="PQ.lim=20;PQ.f.y=PQ.f.y==${y}?'':${y};pqDrawCh(pqChap('${c.id}'))" title="${y}: ${by[y]||0} Qs"><b>${by[y]||''}</b><i class="${by[y]?'':'z'}" style="height:${by[y]?Math.max(8,by[y]/ymx*100):3}%"></i><span>'${String(y).slice(2)}</span></div>`).join('')}</div><div class="sm mut" style="text-align:center;margin-top:6px">Tap a year to see only its questions</div></div>
+   <div class="card"><div class="pqyr">${Y.map(y=>`<div class="${f.y==y?'on':''}" onclick="PQ.lim=20;PQ.f.y=PQ.f.y==${y}?'':${y};pqDrawCh(pqChap('${c.id}'),1)" title="${y}: ${by[y]||0} Qs"><b>${by[y]||''}</b><i class="${by[y]?'':'z'}" style="height:${by[y]?Math.max(8,by[y]/ymx*100):3}%"></i><span>'${String(y).slice(2)}</span></div>`).join('')}</div><div class="sm mut" style="text-align:center;margin-top:6px">Tap a year to see only its questions</div></div>
    <div class="h2s">🧩 Topic-wise weightage</div>
-   <div class="card pqtp">${tl.map(([n,v],i)=>`<div class="pqtr ${f.t===n?'on':''}" onclick="PQ.f.t=PQ.f.t===${JSON.stringify(n).replace(/"/g,'&quot;')}?'':${JSON.stringify(n).replace(/"/g,'&quot;')};pqDrawCh(pqChap('${c.id}'))"><div class="row" style="justify-content:space-between"><span>${esc(n)}</span><b>${v} <small>${L.length?Math.round(v*100/L.length):0}%</small></b></div><div class="pqtb"><i style="width:${v/tmx*100}%;background:${col[i%col.length]}"></i></div></div>`).join('')}</div>
+   <div class="card pqtp">${tl.map(([n,v],i)=>`<div class="pqtr ${f.t===n?'on':''}" onclick="PQ.f.t=PQ.f.t===${JSON.stringify(n).replace(/"/g,'&quot;')}?'':${JSON.stringify(n).replace(/"/g,'&quot;')};pqDrawCh(pqChap('${c.id}'),1)"><div class="row" style="justify-content:space-between"><span>${esc(n)}</span><b>${v} <small>${L.length?Math.round(v*100/L.length):0}%</small></b></div><div class="pqtb"><i style="width:${v/tmx*100}%;background:${col[i%col.length]}"></i></div></div>`).join('')}</div>
    <div class="h2s">📝 Questions <span class="n">${shown.length}</span></div>
-   <div class="chiprow">${[['','All topics'],...tl.filter(x=>x[1]).map(x=>[x[0],x[0]])].map(([k,t])=>`<button class="chip ${f.t===k?'pri':''}" onclick="PQ.f.t=${JSON.stringify(k).replace(/"/g,'&quot;')};pqDrawCh(pqChap('${c.id}'))">${esc(t)}</button>`).join('')}</div>
-   <div class="row pqfl"><select onchange="PQ.f.y=this.value;pqDrawCh(pqChap('${c.id}'))"><option value="">All years</option>${[...yrs].sort((a,b)=>b-a).map(y=>`<option ${f.y==y?'selected':''}>${y}</option>`).join('')}</select>
-    <button class="chip ${f.rep?'pri':''}" onclick="PQ.f.rep=PQ.f.rep?0:1;pqDrawCh(pqChap('${c.id}'))">🔁 Repeated only (${rep.length})</button></div>
-   ${shown.length?shown.slice(0,PQ.lim||20).map(pqCard).join('')+(shown.length>(PQ.lim||20)?`<div style="text-align:center"><button class="btn ghost" onclick="PQ.lim=(PQ.lim||20)+20;pqDrawCh(pqChap(PQ.cid))">Load more (${shown.length-(PQ.lim||20)} left)</button></div>`:''):`<div class="card empty sm">No questions for this filter.</div>`}`
+   <div class="chiprow">${[['','All topics'],...tl.filter(x=>x[1]).map(x=>[x[0],x[0]])].map(([k,t])=>`<button class="chip ${f.t===k?'pri':''}" onclick="PQ.f.t=${JSON.stringify(k).replace(/"/g,'&quot;')};pqDrawCh(pqChap('${c.id}'),1)">${esc(t)}</button>`).join('')}</div>
+   <div class="row pqfl"><select onchange="PQ.f.y=this.value;pqDrawCh(pqChap('${c.id}'),1)"><option value="">All years</option>${[...yrs].sort((a,b)=>b-a).map(y=>`<option ${f.y==y?'selected':''}>${y}</option>`).join('')}</select>
+    <button class="chip ${f.rep?'pri':''}" onclick="PQ.f.rep=PQ.f.rep?0:1;pqDrawCh(pqChap('${c.id}'),1)">🔁 Repeated only (${rep.length})</button></div>
+   <div id="pqql">${shown.length?shown.slice(0,PQ.lim||20).map(pqCard).join('')+(shown.length>(PQ.lim||20)?`<div style="text-align:center"><button class="btn ghost" onclick="PQ.lim=(PQ.lim||20)+20;pqDrawCh(pqChap(PQ.cid),1)">Load more (${shown.length-(PQ.lim||20)} left)</button></div>`:''):`<div class="card empty sm">No questions for this filter.</div>`}</div>`
    :`<div class="card pqnote">📚 Questions for this chapter have not been added yet. Topics of this chapter:</div><div class="card pqtp">${c.topics.map(t=>`<div class="pqtr"><span>${esc(t.name)}</span></div>`).join('')}</div>`}
   </div>`);
   setNav('');
 }
+/* taps on the chapter page (filters, Load more, Show answer) patch the page in place: no jump to the top, only what changed is touched, new cards fade in */
+function pqMorph(a,b){
+  if(a.isEqualNode(b))return;
+  if(a.nodeType===3&&b.nodeType===3){a.nodeValue=b.nodeValue;return}
+  if(a.nodeType!==1||a.nodeName!==b.nodeName||a.nodeName==='SELECT'||a.getAttribute('data-q')!==b.getAttribute('data-q')){if(b.nodeType===1)b.classList.add('pqin');a.replaceWith(b);return}
+  [...a.attributes].forEach(x=>b.hasAttribute(x.name)||a.removeAttribute(x.name));[...b.attributes].forEach(x=>a.getAttribute(x.name)!==x.value&&a.setAttribute(x.name,x.value));
+  const A=[...a.childNodes],B=[...b.childNodes];B.forEach((n,i)=>{if(A[i])pqMorph(A[i],n);else{if(n.nodeType===1)n.classList.add('pqin');a.appendChild(n)}});A.slice(B.length).forEach(n=>n.remove());
+}
+function pqPatch(h){const w=$('#app>.wrap.pq'),t=document.createElement('template');t.innerHTML=h;if(w&&t.content.firstElementChild)pqMorph(w,t.content.firstElementChild);else setApp(h)}
 function pqCard(q){
   const op=PQ.open[q.id],reps=(q.rep||[]).filter(Boolean),r=reps.length>1;
-  return `<div class="card pqq ${r?'rep':''}"><div class="pqqh"><span class="chip pri">${esc(q.p)}${q.n?' · Q'+q.n:''}</span>${q.t?`<span class="chip">${esc(q.t)}</span>`:''}${r?`<span class="chip rp" title="${esc(reps.join(', '))}">🔁 Asked ${reps.length}×</span>`:''}</div>
+  return `<div class="card pqq ${r?'rep':''}" data-q="${esc(q.id)}"><div class="pqqh"><span class="chip pri">${esc(q.p)}${q.n?' · Q'+q.n:''}</span>${q.t?`<span class="chip">${esc(q.t)}</span>`:''}${r?`<span class="chip rp" title="${esc(reps.join(', '))}">🔁 Asked ${reps.length}×</span>`:''}</div>
    ${r?`<div class="sm pqrp">Also asked in: ${reps.filter(p=>p!==q.p).map(p=>`<b>${esc(p)}</b>`).join(', ')}</div>`:''}
    <div class="qt">${esc(q.q)}</div>${q.img?'<div class="sm mut">📷 This question has a diagram — see the original paper.</div>':''}
    ${(q.o||[]).map((o,j)=>o?`<div class="ro ${op&&j===q.a?'c':''}"><span class="k">${L[j]}</span><span style="flex:1">${esc(o)}</span>${op&&j===q.a?'<span class="tag g">Correct</span>':''}</div>`:'').join('')}
-   ${op?(q.e?`<div class="exp"><b>Explanation:</b> ${esc(q.e)}</div>`:''):`<button class="btn ghost sm" onclick="PQ.open['${q.id}']=1;pqDrawCh(pqChap(PQ.cid))">${ic('eye',15)} Show answer</button>`}</div>`;
+   ${op?(q.e?`<div class="exp"><b>Explanation:</b> ${esc(q.e)}</div>`:''):`<button class="btn ghost sm" onclick="PQ.open['${q.id}']=1;pqDrawCh(pqChap(PQ.cid),1)">${ic('eye',15)} Show answer</button>`}</div>`;
 }
 
 /* ---------- routing + menu ---------- */

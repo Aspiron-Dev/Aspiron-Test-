@@ -23,10 +23,10 @@ function seriesList(){
 }
 function slList(){
   const S=CAT.series.filter(s=>SLF==='all'||(SLF==='free'?s.is_free:SLF==='prem'?!s.is_free:serInfo(s).done>0));
-  return S.length?`<div class="sgrid2">${S.map(seriesCard).join('')}</div>`:`<div class="card empty sm">No series here yet.</div>`;
+  return S.length?`<div class="sgrid2">${S.map(seriesCard).join('')}</div><div id="slnone" class="card empty sm" style="display:none">No series match your search.</div>`:`<div class="card empty sm">No series here yet.</div>`;
 }
-function filterSeries(v){v=v.trim().toLowerCase();document.querySelectorAll('.scard2').forEach(c=>{c.style.display=!v||c.textContent.toLowerCase().includes(v)?'':'none'})}
-function slDraw(){const l=$('#sllist');if(l)l.innerHTML=slList();document.querySelectorAll('.chiprow .chip').forEach(b=>b.classList.toggle('pri',b.getAttribute('onclick').includes(`'${SLF}'`)));loadCovers()}
+function filterSeries(v){v=v.trim().toLowerCase();let n=0;document.querySelectorAll('.scard2').forEach(c=>{const on=!v||c.textContent.toLowerCase().includes(v);c.style.display=on?'':'none';n+=on});const e=$('#slnone');if(e)e.style.display=v&&!n&&document.querySelector('.scard2')?'':'none'}
+function slDraw(){const l=$('#sllist');if(l){l.innerHTML=slList();l.classList.remove('swp');void l.offsetWidth;l.classList.add('swp')}document.querySelectorAll('.chiprow .chip').forEach(b=>b.classList.toggle('pri',b.getAttribute('onclick').includes(`'${SLF}'`)));loadCovers();const q=$('.qsearch input');if(q)filterSeries(q.value)}
 function seriesCard(s){
   const I=serInfo(s),open=s.is_free||s.unlocked;
   const sub=I.live.length?`<div class="scnext live"><span class="liveb"><i></i>LIVE</span>${esc(I.live[0].title)} · attempt now</div>`
@@ -48,7 +48,7 @@ function viewSeries(id){
   const s=CAT.series.find(x=>x.id===id);if(!s){location.hash='#/';return}
   if(SVID!==id){SVID=id;SVF='all'}
   const I=serInfo(s),folders=CAT.folders.filter(f=>f.series_id===id);
-  const hl=I.live[0]||CAT.tests.find(t=>t.series_id===id&&t.in_progress)||I.nxt;
+  const hl=I.live[0]||CAT.tests.find(t=>t.series_id===id&&t.in_progress)||(I.nxt&&!I.nxt.locked&&I.nxt);
   let o=`<div class="wrap"><div class="crumb"><a href="#/series">${ic('back',14)} Test series</a></div>
   <div class="card shx sv2"><div class="shc cover" style="background:${grad(s.id)}" data-cov="${s.id}" data-v="${s.cover_v||0}"><div class="ico">${ic(s.is_free?'book':'crown')}</div>
     <button class="shbtn" aria-label="Share" title="Share" onclick="event.stopPropagation();shareSeries('${id}')">${ic('share',18)}</button></div>
@@ -73,7 +73,7 @@ function viewSeries(id){
 }
 function svFilt(root){
   const L=liveIds(),c={all:root.length,new:0,done:0,wait:0};root.forEach(t=>{const s=tStat(t,L);if(s==='new'||s==='live'||s==='prog')c.new++;else if(s==='done')c.done++;else if(s==='wait')c.wait++});
-  if(root.length<4)return '';
+  if(!c[SVF]||root.length<4)SVF='all';if(root.length<4)return '';
   const b=(k,t)=>c[k]||k==='all'?`<button class="chip ${SVF===k?'pri':''}" onclick="SVF='${k}';svDraw()">${t} <small>${c[k]}</small></button>`:'';
   return `<div class="chiprow">${b('all','All')}${b('new','To attempt')}${b('done','Attempted')}${b('wait','Upcoming')}</div>`;
 }
@@ -81,7 +81,7 @@ function svList(root){
   const L=liveIds(),l=root.filter(t=>{const s=tStat(t,L);return SVF==='all'||(SVF==='new'?['new','live','prog'].includes(s):SVF===s)});
   return l.length?l.map(t=>testRow(t)).join(''):`<div class="card empty sm">No tests here.</div>`;
 }
-function svDraw(){const root=CAT.tests.filter(t=>t.series_id===SVID&&!t.folder_id),f=$('#svf'),l=$('#svl');if(f)f.innerHTML=svFilt(root);if(l)l.innerHTML=svList(root)}
+function svDraw(){const root=CAT.tests.filter(t=>t.series_id===SVID&&!t.folder_id),f=$('#svf'),l=$('#svl');if(f)f.innerHTML=svFilt(root);if(l){l.innerHTML=svList(root);l.classList.remove('swp');void l.offsetWidth;l.classList.add('swp')}}
 
 /* ---------- test rows: status stripe + LIVE badge ---------- */
 {const _tr=testRow;testRow=function(t){
@@ -166,7 +166,7 @@ async function pushSync(force){
   }catch(e){}
 }
 async function pushOff(){
-  try{const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();if(sub){await rpc('cbt_push_save',{p_sub:sub.toJSON(),p_on:false});await sub.unsubscribe()}LS.del('cbt_push_ok')}catch(e){}
+  const a=AUTH;try{const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();if(sub&&a){await rpc('cbt_push_save',{p_mobile:a.mobile,p_code:a.code,p_device:DEV,p_sub:sub.toJSON(),p_on:false},true);await sub.unsubscribe()}LS.del('cbt_push_ok')}catch(e){}
 }
 {const _en=npEnable;npEnable=function(){_en();pushSync(true)}}
 {const _tg=npToggle;npToggle=async function(){const was=npOn();await _tg();if(was&&!npOn())pushOff()}}
