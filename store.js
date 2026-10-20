@@ -51,6 +51,8 @@ function meSave(n,m){
   const old=ME();if(!old||old.mobile!==m)LSd('store_ord');   // a new number never continues the old number's order
   MEM={name:n,mobile:m};LSs('store_me',MEM);
   document.documentElement.classList.add('has-me');meChip();
+  // "You will be notified" belongs to a number: redraw those buttons for the new one
+  document.querySelectorAll('[data-soon]').forEach(e=>{const x=ST.items.find(i=>i.id===e.dataset.soon);if(x)e.outerHTML=buyBtn(x)});
 }
 function meChip(){const m=ME();if(!m)return;$('#mename').textContent=m.name.split(' ')[0];$('#meini').textContent=m.name[0].toUpperCase()}
 function gateGo(){
@@ -88,7 +90,7 @@ async function load(){
   $('#lcount').textContent=`${L.length} test series · pay with any UPI app`;
   $('#list').innerHTML=L.map(cardHtml).join('');
   loadSch();loadRv();loadXp();
-  if(ME())jump();
+  if(ME()){liveCheck();jump()}
 }
 // a shared link (#p=…) scrolls to that series; an Explore link (#x=…) opens its page
 function jump(){
@@ -108,13 +110,19 @@ function priceHtml(x){
 }
 // a card: photo, name, short description, rating, price, then Explore and Buy now (everything else is on the Explore page)
 function cardHtml(x,i){
-  const off=offPct(x),ph=!okImg(x.image);
-  return `<div class="card" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,6)}"><div class="media${ph?' isph':''}" data-view="${esc(x.id)}">${x.badge?`<span class="badge">${esc(x.badge)}</span>`:''}${off?`<span class="off">${off}% OFF</span>`:''}${mediaHtml(x)}</div>
+  const off=offPct(x),ph=!okImg(x.image),bdg=x.badge||(x.buy_on===false?'COMING SOON':'');
+  return `<div class="card" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,6)}"><div class="media${ph?' isph':''}" data-view="${esc(x.id)}">${bdg?`<span class="badge">${esc(bdg)}</span>`:''}${off?`<span class="off">${off}% OFF</span>`:''}${mediaHtml(x)}</div>
    <div class="cbody"><h3${ph?' class="sr"':''}>${esc(x.title)}</h3>${x.subtitle?`<p class="sub">${esc(x.subtitle)}</p>`:''}
    <div data-rvmini="${esc(x.id)}">${rvMini(x.id)}</div>
    ${priceHtml(x)}
    <div class="cact"><button class="btn xbtn block" data-explore="${esc(x.id)}">🔍 Explore test series</button>
-    <button class="btn block" data-buy="${esc(x.id)}">Buy now · ${inr(x.price)}</button></div></div></div>`;
+    ${buyBtn(x)}</div></div></div>`;
+}
+// Buy now, or — for a series not launched yet (Buy now off in the admin panel) — "Coming soon · Notify me"
+function buyBtn(x){
+  if(x.buy_on!==false)return `<button class="btn block" data-buy="${esc(x.id)}">Buy now · ${inr(x.price)}</button>`;
+  const m=ME(),done=!!m&&LSg('store_notify',{})[x.id]===m.mobile;
+  return `<button class="btn soon block${done?' done':''}" data-soon="${esc(x.id)}">${done?'✅ You will be notified':'🔔 Coming soon · Notify me'}</button>`;
 }
 // the one overlay that holds every sheet (checkout, schedule, demo test, help)
 function ovEl(){
@@ -150,7 +158,7 @@ function explore(id,tab){
   p.innerHTML=`<div class="xtop"><div class="xph"><button class="x" data-xback aria-label="Back">←</button><b>${esc(x.title)}</b><button class="x" data-share="${esc(id)}" aria-label="Share" title="Share">${SHARE}</button></div>
     <div class="xtabs" role="tablist">${XTABS.map(([k,l])=>`<button role="tab" data-xtab="${k}">${l}</button>`).join('')}</div></div>
    <div class="xbody" id="xbody"></div>
-   <div class="xbar"><button class="btn block" data-buy="${esc(id)}">Buy now · ${inr(x.price)}</button></div>`;
+   <div class="xbar">${buyBtn(x)}</div>`;
   document.body.style.overflow='hidden';
   if(!/[#&]x=/.test(location.hash)){history.pushState({xp:1},'','#x='+id);XH=true}
   xpDraw(true);
@@ -197,6 +205,41 @@ function xpRv(x){
    ${r.count>L.length?`<p class="sm mut" style="text-align:center;margin:10px 0">Showing ${L.length} of ${r.count} reviews.</p>`:''}`;
 }
 
+/* ---------- Coming soon: "Notify me" saves the student's name + mobile for this series (supabase_v31_store_soon.sql);
+   the admin panel lists them to message on launch ---------- */
+function soonSheet(id){
+  const x=ST.items.find(i=>i.id===id);if(!x)return;IT=x;
+  const me=ME();if(!me)return meSheet(()=>soonSheet(id));
+  const done=LSg('store_notify',{})[id]===me.mobile;
+  ovEl().innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="shd"><div class="grow"><b>${esc(x.title)}</b><span class="sm mut">Coming soon</span></div><button class="x" data-close aria-label="Close">✕</button></div>
+   <div class="soonbox"><span>${done?'✅':'🚀'}</span><b>${done?'You are on the list':'Launching soon'}</b>
+    <p>${done?`We will message you on <b>${esc(me.mobile)}</b> as soon as this test series is live.`:'This test series is not available yet. Tap “Notify me” and we will message you as soon as it is live.'}</p></div>
+   ${done?'<button class="btn soft block" data-close>OK</button>'
+    :`<p class="sm mut" style="text-align:center;margin:0 0 12px">We will message: <b>${esc(me.name)} · ${esc(me.mobile)}</b> · <a href="#" data-soonme="${esc(id)}" style="color:var(--pri)">change</a></p>
+   <div class="err" id="ner" style="text-align:center;margin:0 0 8px"></div><button class="btn soon block big" id="ngo" data-notify="${esc(id)}">🔔 Notify me</button>`}</div>`;
+}
+async function notifyGo(id){
+  const me=ME(),b=$('#ngo'),er=$('#ner');if(!me||!b)return;
+  b.disabled=true;b.textContent='Please wait…';er.textContent='';
+  const r=await rpc('cbt_store_notify',{p_item:id,p_name:me.name,p_mobile:me.mobile});
+  if(!$('#ngo'))return;
+  if(!r.ok){b.disabled=false;b.textContent='🔔 Notify me';
+    return er.textContent=r.error==='open'?'It is live now — refresh the page to buy it.':r.error==='busy'?'Too many tries. Please wait a while and try again.':r.error==='network'?'No internet. Please try again.':'Something went wrong. Please try again.'}
+  const n=LSg('store_notify',{});n[id]=me.mobile;LSs('store_notify',n);
+  const x=ST.items.find(i=>i.id===id);if(x)document.querySelectorAll(`[data-soon="${id}"]`).forEach(e=>e.outerHTML=buyBtn(x));
+  soonSheet(id);
+}
+// a series the student asked about is live now: say so once
+function liveCheck(){
+  const n=LSg('store_notify',{});let ch=false;
+  for(const id of Object.keys(n)){
+    const x=ST.items.find(i=>i.id===id);if(x&&x.buy_on===false)continue;
+    delete n[id];ch=true;
+    if(x){toast(`🎉 ${x.title} is live now — tap Buy now`);const c=document.getElementById('p_'+id);if(c)c.classList.add('hl')}
+  }
+  if(ch)LSs('store_notify',n);
+}
+
 /* ---------- checkout: pay → payment details → verify on Telegram / WhatsApp (3 steps; name + mobile are already known) ---------- */
 const STEPS=['Pay','Payment details','Verify'];
 function sheet(step,body){
@@ -207,6 +250,7 @@ function closeSheet(){closeEdit();const o=$('.ov');if(o)o.remove();document.body
 let BUYN=0;
 async function buy(id){
   IT=ST.items.find(i=>i.id===id);if(!IT)return;
+  if(IT.buy_on===false)return soonSheet(id);
   const me=ME();if(!me)return meSheet(()=>buy(id));
   const last=LSg('store_ord',null);
   // same series + same number ordered in the last 24 h → continue that order instead of making a new code
@@ -366,6 +410,9 @@ document.addEventListener('click',e=>{
   else if('mesave' in t.dataset)meSaveGo();
   else if(t.dataset.buy){closeSheet();buy(t.dataset.buy)}
   else if(t.dataset.explore)explore(t.dataset.explore);
+  else if(t.dataset.soon)soonSheet(t.dataset.soon);
+  else if(t.dataset.notify)notifyGo(t.dataset.notify);
+  else if(t.dataset.soonme){e.preventDefault();const id=t.dataset.soonme;meSheet(()=>soonSheet(id))}
   else if(t.dataset.view)explore(t.dataset.view,'d');
   else if(t.dataset.rv)explore(t.dataset.rv,'v');
   else if(t.dataset.xtab){if(XP){XP.tab=t.dataset.xtab;xpDraw(true)}}
@@ -427,7 +474,7 @@ async function fileSheet(id,o){
      <a class="btn block" href="${SCHURL}" target="_blank" rel="noopener">👁 ${o.open}</a>`
     :`<img src="${esc(r.data)}" alt="${esc(o.name)}" style="width:100%;border-radius:14px;display:block;margin-bottom:12px">`)
     +`<a class="btn soft block" style="margin-top:10px" href="${SCHURL}" download="${esc(fname)}">⬇ Download</a>
-     <button class="btn block" style="margin-top:10px" data-buy="${esc(id)}">Buy this series · ${inr(x.price)}</button>`;
+     <div style="margin-top:10px">${buyBtn(x)}</div>`;
 }
 function schedule(id){const f=SCH[id];if(f)fileSheet(id,{icon:'📅',name:f.name||'Schedule',size:f.size,open:'Open schedule',load:()=>rpc('cbt_store_schedule',{p_item:id})})}
 function demo(id,n){const d=((XD[id]||{}).demos||[]).find(z=>z.slot===n);if(d&&d.size)fileSheet(id,{icon:'🧪',name:d.title||`Demo Test ${n}`,size:d.size,open:'Open demo test',load:()=>rpc('cbt_store_demo',{p_item:id,p_slot:n})})}
