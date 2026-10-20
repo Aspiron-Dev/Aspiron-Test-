@@ -174,22 +174,24 @@ function liveSeen(){
 const LIVE_END_H=21;
 function liveEnd(ms){if(!ms)return 0;const e=new Date(ms);e.setHours(LIVE_END_H,0,0,0);if(ms>=e.getTime())e.setDate(e.getDate()+1);return e.getTime()}
 const liveStart=(t,m)=>t.opens_at||m[t.id]||0;
+// end of the live window: the admin's "Live ends" time when set, else 9 PM as above
+const liveEndT=(t,m)=>t.closes_at||liveEnd(liveStart(t,m));
 function liveTests(){
   const m=liveSeen(),now=srvNow();
   return CAT.tests.filter(t=>!t.locked&&!t.practice&&!isWait(t)&&CAT.series.some(s=>s.id===t.series_id)
-    &&now<liveEnd(liveStart(t,m))).sort((a,b)=>liveStart(b,m)-liveStart(a,m)).slice(0,2);
+    &&now<liveEndT(t,m)).sort((a,b)=>liveStart(b,m)-liveStart(a,m)).slice(0,2);
 }
 let liveIv=null;
 function liveHtml(){
   const L=liveTests();clearTimeout(liveIv);if(!L.length)return '';
   // at 9 PM the card leaves home by itself
-  const m=liveSeen(),end=Math.min(...L.map(t=>liveEnd(liveStart(t,m))))-srvNow();
+  const m=liveSeen(),end=Math.min(...L.map(t=>liveEndT(t,m)))-srvNow();
   if(end>0&&end<864e5)liveIv=setTimeout(()=>{if(document.querySelector('.home2'))viewHome('dash')},end+1000);
-  return L.map(t=>{const s=CAT.series.find(x=>x.id===t.series_id)||{},till=new Date(liveEnd(liveStart(t,m))),today=till.toDateString()===new Date(srvNow()).toDateString();
-    return `<div class="card livec" onclick="${t.attempts&&!t.in_progress?"location.hash='#/r'":`openTest('${t.id}')`}"><div class="livet"><span class="liveb"><i></i>LIVE</span><span class="sm mut">${t.opens_at?'Started '+new Date(t.opens_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):'Available now'} · Live till 9 PM${today?'':' tomorrow'}</span></div>
+  return L.map(t=>{const s=CAT.series.find(x=>x.id===t.series_id)||{},till=new Date(liveEndT(t,m)),today=till.toDateString()===new Date(srvNow()).toDateString(),pd=pendOf(t.id);
+    return `<div class="card livec" onclick="${t.attempts&&!t.in_progress?"location.hash='#/r'":`openTest('${t.id}')`}"><div class="livet"><span class="liveb"><i></i>LIVE</span><span class="sm mut">${t.opens_at?'Started '+new Date(t.opens_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):'Available now'} · Live till ${t.closes_at?(today?esc(till.toLocaleTimeString('en-IN',{hour:'numeric',minute:'2-digit',hour12:true})):esc(fmtWhen(t.closes_at))):'9 PM'+(today?'':' tomorrow')}</span></div>
      <b class="livett">${esc(t.title)}</b><div class="sm mut">${esc(s.title||'')}${s.title?' · ':''}${t.questions} questions · ${t.duration} min</div>
      ${t.in_progress?`<button class="btn block" style="margin-top:12px" onclick="event.stopPropagation();openTest('${t.id}')">${ic('play',16)} Resume test</button>`
-      :t.attempts?`<div class="row" style="margin-top:12px;gap:8px"><span class="chip ok" style="align-self:center">✓ Attempted</span><button class="btn soft grow" onclick="event.stopPropagation();location.hash='#/r'">View result</button></div>`
+      :t.attempts?`<div class="row" style="margin-top:12px;gap:8px"><span class="chip ok" style="align-self:center">✓ Attempted</span><button class="btn soft grow" onclick="event.stopPropagation();location.hash='#/r'">View result</button></div>${pd?`<div class="sm mut" style="margin-top:8px">${ic('clock',13)} Result &amp; answer key after <b>${esc(fmtWhen(pd.result_at))}</b></div>`:''}`
       :`<button class="btn block" style="margin-top:12px" onclick="event.stopPropagation();openTest('${t.id}')">${ic('play',16)} Attempt now</button>`}</div>`}).join('');
 }
 

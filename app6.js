@@ -529,7 +529,7 @@ function openAbout(){
   sheet(`<h2 class="sht">About Us</h2><div class="shl"></div><div class="legal">
    <p><b>${SN()}</b> is an online test series platform for NEET, JEE and board exam students. Our goal is simple: give every student real exam-like practice, honest analysis and the habit of regular revision.</p>
    <h4>What you get</h4>
-   <ul><li>Chapter-wise and full-length tests in a real CBT (computer based test) format</li><li>Instant results with score, accuracy, rank and time analysis</li><li>Test history to track your progress attempt by attempt</li><li>Mistake notebook and saved questions for quick revision</li><li>Study tracker and exam countdown to stay on schedule</li><li>Notices and updates directly from your teacher</li></ul>
+   <ul><li>Chapter-wise and full-length tests in a real CBT (computer based test) format</li><li>Detailed results with score, accuracy, rank and time analysis</li><li>Test history to track your progress attempt by attempt</li><li>Mistake notebook and saved questions for quick revision</li><li>Study tracker and exam countdown to stay on schedule</li><li>Notices and updates directly from your teacher</li></ul>
    <h4>Need help?</h4><p>Message us on WhatsApp or Telegram any time and our team will get back to you.</p>
    <div class="supgrid">${(SUPMSG='',supBtns())}</div><p class="sm mut" style="text-align:center;margin:8px 0 0">Chat only — calls are not available.</p></div>`,'about');
 }
