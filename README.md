@@ -24,6 +24,8 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - Until the result time, a student who submits sees only "Test submitted ✓ — result, rank and answer key after …": no score, rank, answer key, mistakes, insights or bookmarked answers for that test. After it, everything shows by itself. Tests without a result time and practice tests show results at once, as before.
 - Leaderboards and the overall rank count each student's **first** attempt of a test, only if it was on time (and, for a test with a result time, submitted before that time). Re-attempts are allowed for practice and show in the student's own results.
 - While a test runs, the answers are also saved online every few seconds. If a student leaves (Back, closed app, lost network at the end) and does not come back, the server submits the saved answers at the end time, on time.
+- The answer key is never sent to the phone during a test: `cbt_start` leaves answers out unless the test is **practice**. So for a live test keep practice off, and the key only reaches the student through the server after the result time. The key can be entered the day before without any risk.
+- When a student switches app or tab during a test (or on the instructions page), a warning in English pops up on return (`app3.js`, `leaveWarn`). The count is kept with the test progress on the phone only; nothing is sent to the server.
 
 ## Supabase SQL (run once each, in this order, in SQL Editor — on top of the original base setup)
 `supabase_v9_banners` → `v10_push` → `v11_pyq` → `v12_test_alerts` → `v13_store` → `v17_store_fix` →
