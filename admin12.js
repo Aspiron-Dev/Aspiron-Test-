@@ -83,7 +83,7 @@ function stoEdit(i){
   STOIMG=x.image||'';STOFILE=null;if(SS.demos==='err')SS.demos=undefined;stoXpInit(x);
   modal(`<div class="stohd"><h2>${i>=0?'Edit':'Add'} test series</h2><button class="iconbtn" onclick="closeModal()" aria-label="Close">✕</button></div><p class="sm mut" style="margin:2px 0 10px">Preview — this is how students see it on the store:</p><div id="p_prev"></div>
    <label class="l">Name</label><input type="text" id="p_t" maxlength="80" value="${esc(x.title)}" placeholder="e.g. NEET 2027 All India Test Series">
-   <label class="l">Short line (optional)</label><input type="text" id="p_s" maxlength="200" value="${esc(x.subtitle)}" placeholder="e.g. 30 full tests · Oct to April">
+   <label class="l">Short description on the card (optional)</label><input type="text" id="p_s" maxlength="200" value="${esc(x.subtitle)}" placeholder="e.g. NEET 2026 · 20 chapter tests + 5 full tests">
    <div class="g2"><div><label class="l">Price ₹</label><input type="number" id="p_p" min="1" value="${esc(x.price)}"></div><div><label class="l">MRP ₹ (optional, shown struck)</label><input type="number" id="p_m" min="0" value="${esc(x.mrp==null?'':x.mrp)}"></div>
     <div><label class="l">Badge (optional)</label><input type="text" id="p_b" maxlength="24" value="${esc(x.badge)}" placeholder="e.g. Bestseller"></div>
     <div><label class="l">Card colour</label><select id="p_c">${SCOL.map(([k,l])=>`<option value="${k}" ${x.color===k?'selected':''}>${l}</option>`).join('')}</select></div>
@@ -94,7 +94,7 @@ function stoEdit(i){
       <label class="l">Schedule for students (PDF or photo, up to 5 MB)</label><div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><div id="p_sch" class="sm" style="flex:1;min-width:140px">${stoSchHtml(x.id)}</div>
     <label class="btn soft sm" style="cursor:pointer">📅 Upload<input type="file" accept="application/pdf,image/*" style="display:none" onchange="stoSchUp(this,'${x.id||''}')"></label>${SS.sched&&SS.sched[x.id]?`<button class="btn ghost sm" onclick="stoSchDel('${x.id}')">Remove</button>`:''}</div>
    <label class="l">Demo tests on the Explore page (PDF or photo, up to 5 MB each)</label><div id="p_demo">${stoDemoHtml()}</div>
-   <label class="l">Features (one per line)</label><textarea id="p_f" style="min-height:130px" placeholder="30 full-length NEET mock tests&#10;All-India rank after every test&#10;Detailed solutions">${esc((x.features||[]).join('\n'))}</textarea>
+   <label class="l">What you get — on the Explore page (one per line)</label><textarea id="p_f" style="min-height:130px" placeholder="30 full-length NEET mock tests&#10;All-India rank after every test&#10;Detailed solutions">${esc((x.features||[]).join('\n'))}</textarea>
    <label class="l">Full description on the Explore page <a href="#" onclick="event.preventDefault();stoDescFill()" style="color:var(--pri);font-weight:700;text-transform:none;letter-spacing:0">· fill from series</a></label><div id="p_desc">${stoDescHtml(x)}</div>
    <label class="chk"><input type="checkbox" id="p_a" ${x.active?'checked':''}><span>Show on the store page</span></label>
    <div class="row stofoot">${i>=0?`<button class="btn danger" onclick="stoDel(${i})">Delete</button>`:''}<button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn" style="flex:1" id="p_go" onclick="stoSave(${i})">Save</button></div>`);
@@ -200,7 +200,7 @@ async function stoResync(b){
 function stoPrev(){
   const box=$('#p_prev');if(!box)return;const v=id=>{const e=$(id);return e?e.value:''};
   const price=parseInt(v('#p_p'),10)||0,mrp=parseInt(v('#p_m'),10)||0,off=mrp>price&&price?Math.round((1-price/mrp)*100):0;
-  const F=v('#p_f').split('\n').map(x=>x.trim()).filter(Boolean),col={blue:'#1d6fe8,#3b9bff',green:'#0f9d6b,#12a58a',purple:'#6d3fe0,#a855f7',orange:'#e8590c,#f59f00',red:'#d6336c,#f03e3e',dark:'#1e293b,#475569'}[v('#p_c')]||'#1d6fe8,#3b9bff';
+  const col={blue:'#1d6fe8,#3b9bff',green:'#0f9d6b,#12a58a',purple:'#6d3fe0,#a855f7',orange:'#e8590c,#f59f00',red:'#d6336c,#f03e3e',dark:'#1e293b,#475569'}[v('#p_c')]||'#1d6fe8,#3b9bff';
   box.innerHTML=`<div style="border-radius:16px;overflow:hidden;box-shadow:var(--shadow);background:var(--surface);max-width:340px;margin-bottom:6px">
    <div style="position:relative;aspect-ratio:16/9;background:linear-gradient(135deg,${col});color:#fff;display:flex;align-items:flex-end;padding:12px">
     ${STOIMG?`<img src="${esc(STOIMG)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:`<b style="font-size:17px">${esc(v('#p_t')||'Series name')}</b>`}
@@ -208,7 +208,7 @@ function stoPrev(){
     ${off?`<span style="position:absolute;top:8px;right:8px;background:#12945f;color:#fff;font-size:11px;font-weight:800;border-radius:8px;padding:3px 7px">${off}% OFF</span>`:''}</div>
    <div style="padding:10px 12px 12px"><b style="font-size:15px">${esc(v('#p_t')||'Series name')}</b>${v('#p_s')?`<div class="sm mut">${esc(v('#p_s'))}</div>`:''}
     <div style="margin:6px 0"><b style="font-size:20px">₹${price||'—'}</b> ${off?`<s class="sm mut">₹${mrp}</s>`:''}</div>
-    ${F.slice(0,4).map(f=>`<div class="sm">✓ ${esc(f)}</div>`).join('')}${F.length>4?`<div class="sm" style="color:var(--pri)">+ ${F.length-4} more</div>`:''}</div></div>`;
+    <div style="display:grid;gap:6px;margin-top:8px"><span style="text-align:center;border-radius:10px;padding:7px;font-size:12.5px;font-weight:700;background:var(--priSoft);color:var(--pri)">🔍 Explore test series</span><span style="text-align:center;border-radius:10px;padding:7px;font-size:12.5px;font-weight:700;color:#fff;background:linear-gradient(135deg,#1d6fe8,#12a58a)">Buy now · ₹${price||'—'}</span></div></div></div>`;
 }
 // whenever a series cover is uploaded or removed, keep the store's copy (and the store cards of that series) in sync
 async function stoCoverSync(sid,img){

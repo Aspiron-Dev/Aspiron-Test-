@@ -106,15 +106,15 @@ function mediaHtml(x,tag){
 function priceHtml(x){
   const off=offPct(x);return `<div class="price"><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s><span class="save">Save ${inr(x.mrp-x.price)} · ${off}% off</span>`:''}</div>`;
 }
+// a card: photo, name, short description, rating, price, then Explore and Buy now (everything else is on the Explore page)
 function cardHtml(x,i){
-  const F=x.features||[],off=offPct(x),show=F.slice(0,4),ph=!okImg(x.image);
-  return `<div class="card" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,6)}"><div class="media${ph?' isph':''}" data-view="${esc(x.id)}">${x.badge?`<span class="badge">${esc(x.badge)}</span>`:''}${off?`<span class="off">${off}% OFF</span>`:''}${mediaHtml(x)}<span data-rvb="${esc(x.id)}">${rvBadge(x.id)}</span></div>
-   <div class="cbody"><h3${ph?' class="sr"':''}>${esc(x.title)}</h3>${x.subtitle?`<div class="sub">${esc(x.subtitle)}</div>`:''}<div data-rvslot="${esc(x.id)}">${rvLine(x.id)}</div>
-   <div>${priceHtml(x)}</div>
-   ${show.length?`<ul class="f">${show.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:'<div style="flex:1"></div>'}
-   <div class="lnks"><button class="lnk" data-view="${esc(x.id)}">${F.length>4?`+${F.length-4} more · `:''}<u>Full details ›</u></button><span data-schslot="${esc(x.id)}">${schBtn(x.id)}</span></div>
-   <button class="btn xbtn block" data-explore="${esc(x.id)}">🔍 Explore test series</button>
-   <div class="row"><button class="btn soft icon" data-share="${esc(x.id)}" aria-label="Share" title="Share">${SHARE}</button><button class="btn" style="flex:1" data-buy="${esc(x.id)}">Buy now · ${inr(x.price)}</button></div></div></div>`;
+  const off=offPct(x),ph=!okImg(x.image);
+  return `<div class="card" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,6)}"><div class="media${ph?' isph':''}" data-view="${esc(x.id)}">${x.badge?`<span class="badge">${esc(x.badge)}</span>`:''}${off?`<span class="off">${off}% OFF</span>`:''}${mediaHtml(x)}</div>
+   <div class="cbody"><h3${ph?' class="sr"':''}>${esc(x.title)}</h3>${x.subtitle?`<p class="sub">${esc(x.subtitle)}</p>`:''}
+   <div data-rvmini="${esc(x.id)}">${rvMini(x.id)}</div>
+   ${priceHtml(x)}
+   <div class="cact"><button class="btn xbtn block" data-explore="${esc(x.id)}">🔍 Explore test series</button>
+    <button class="btn block" data-buy="${esc(x.id)}">Buy now · ${inr(x.price)}</button></div></div></div>`;
 }
 // the one overlay that holds every sheet (checkout, schedule, demo test, help)
 function ovEl(){
@@ -147,10 +147,10 @@ function explore(id,tab){
   XP={id,tab:tab||'d'};
   let p=$('#xp');if(!p){p=document.createElement('div');p.id='xp';p.className='xp';p.setAttribute('role','dialog');p.setAttribute('aria-modal','true');document.body.appendChild(p)}
   p.setAttribute('aria-label',x.title);
-  p.innerHTML=`<div class="xtop"><div class="xph"><button class="x" data-xback aria-label="Back">←</button><b>${esc(x.title)}</b></div>
+  p.innerHTML=`<div class="xtop"><div class="xph"><button class="x" data-xback aria-label="Back">←</button><b>${esc(x.title)}</b><button class="x" data-share="${esc(id)}" aria-label="Share" title="Share">${SHARE}</button></div>
     <div class="xtabs" role="tablist">${XTABS.map(([k,l])=>`<button role="tab" data-xtab="${k}">${l}</button>`).join('')}</div></div>
    <div class="xbody" id="xbody"></div>
-   <div class="xbar"><div class="row"><button class="btn soft icon" data-share="${esc(id)}" aria-label="Share">${SHARE}</button><button class="btn" style="flex:1" data-buy="${esc(id)}">Buy now · ${inr(x.price)}</button></div></div>`;
+   <div class="xbar"><button class="btn block" data-buy="${esc(id)}">Buy now · ${inr(x.price)}</button></div>`;
   document.body.style.overflow='hidden';
   if(!/[#&]x=/.test(location.hash)){history.pushState({xp:1},'','#x='+id);XH=true}
   xpDraw(true);
@@ -402,11 +402,9 @@ if(!ME()&&matchMedia('(hover:hover)').matches)setTimeout(()=>{const n=$('#gn');i
 /* ---------- schedule (PDF / photo) ---------- */
 let SCH={};
 const fsize=n=>n>1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
-function schBtn(id){const f=SCH[id];return f?`<button class="lnk" data-sch="${esc(id)}">📅 Schedule <small>${f.mime==='application/pdf'?'PDF':'Photo'} · ${fsize(f.size)}</small></button>`:''}
 async function loadSch(){
   const r=await rpc('cbt_store_schedules');if(!r.ok)return;
   SCH={};(r.items||[]).forEach(x=>SCH[x.id]=x);
-  document.querySelectorAll('[data-schslot]').forEach(e=>e.innerHTML=schBtn(e.dataset.schslot));
   if(XP)xpDraw();
 }
 function dataToBlob(d){
@@ -444,16 +442,8 @@ const plural=(n,w)=>`${n} ${w}${n>1?'s':''}`;
 const rvSort=(a,b)=>(b.pinned-a.pinned)||(!!b.body-!!a.body)||(b.at-a.at);
 function rvAva(x){const n=String(x.name||'S').trim()||'S',h=[...n].reduce((a,c)=>a+c.charCodeAt(0),0);return `<span class="rva c-${COLORS[h%5]}">${/^data:image\//.test(x.photo||'')?`<img src="${esc(x.photo)}" alt="">`:esc(n[0].toUpperCase())}</span>`}
 const RVNOTE=`<p class="rvnote">✔ <b>Verified</b> = written from the student's own account after their series was unlocked. One review per student.</p>`;
-// on each card: a highlighted rating strip with a line from a review, so students notice it
 const clip=(t,n)=>{t=String(t||'').replace(/\s+/g,' ').trim();return t.length>n?t.slice(0,n-1).trim()+'…':t};
-function rvLine(id){
-  const r=RV[id];if(!r||!r.count)return '';
-  const q=(r.list||[]).find(x=>x.body&&x.rating>=4)||(r.list||[]).find(x=>x.body);
-  return `<button class="rvstrip" data-rv="${esc(id)}"><div class="rvs1">${stars(r.avg,'big')}<b>${Number(r.avg).toFixed(1)}</b><span>· ${plural(r.count,'review')}</span><em>Read all ›</em></div>${q?`<div class="rvq">${rvAva(q)}<div><span class="rvqt">“${esc(clip(q.body,120))}”</span><small>${esc(q.name||'Student')} · <span class="vt">✔ Verified student</span></small></div></div>`:''}</button>`;
-}
-// on the card photo
-function rvBadge(id){const r=RV[id];return r&&r.count?`<span class="rvbadge"><i>★</i> ${Number(r.avg).toFixed(1)} <small>(${r.count})</small></span>`:''}
-// in the details sheet, under the title
+// on each card and on the Explore page: stars · average · count, opens the Reviews tab
 function rvMini(id){const r=RV[id];return r&&r.count?`<button class="rvmini" data-rv="${esc(id)}">${stars(r.avg)}<b>${Number(r.avg).toFixed(1)}</b><span>· ${plural(r.count,'review')}</span><u>Read ›</u></button>`:''}
 function rvItem(x,withTitle){
   const long=(x.body||'').length>170;
@@ -468,8 +458,6 @@ let RVDONE=false;
 async function loadRv(){
   const r=await rpc('cbt_store_reviews');RVDONE=true;if(!r.ok){if(XP)xpDraw();return}
   RV={};(r.items||[]).forEach(x=>RV[x.id]=x);
-  document.querySelectorAll('[data-rvslot]').forEach(e=>e.innerHTML=rvLine(e.dataset.rvslot));
-  document.querySelectorAll('[data-rvb]').forEach(e=>e.innerHTML=rvBadge(e.dataset.rvb));
   document.querySelectorAll('[data-rvmini]').forEach(e=>e.innerHTML=rvMini(e.dataset.rvmini));
   rvAllDraw();if(XP)xpDraw();
 }
@@ -487,7 +475,9 @@ function rvAllDraw(){
   // exact average from the star counts (each series' avg from the server is already rounded)
   const avg=S.reduce((a,b)=>a+b,0)===total?(5*S[0]+4*S[1]+3*S[2]+2*S[3]+S[4])/total:its.reduce((a,x)=>a+RV[x.id].avg*RV[x.id].count,0)/total;
   const all=rvAll();
-  if(j){j.hidden=false;j.innerHTML=`<span class="ava3">${all.slice(0,3).map(v=>rvAva(v)).join('')}</span><span class="grow"><span class="tb1">${stars(avg)}<b>${avg.toFixed(1)}</b><span>out of 5</span></span><span class="tb2">${plural(total,'review')} from verified students</span></span><u>Read ›</u>`}
+  if(j){const q=all.find(v=>v.body&&v.rating>=4);j.hidden=false;
+    j.innerHTML=`<span class="rjtop"><span class="rjbig">${avg.toFixed(1)}</span><span class="grow">${stars(avg,'big')}<span class="rjtx">${plural(total,'review')} from verified students</span></span><span class="ava3">${all.slice(0,3).map(v=>rvAva(v)).join('')}</span></span>
+     ${q?`<span class="rjq">“${esc(clip(q.body,120))}”<small>${esc(q.name||'Student')} · ✔ Verified student</small></span>`:''}<span class="rjgo">Read all reviews →</span>`}
   if(RVF&&!its.some(x=>x.id===RVF))RVF='';
   const R=RVF?RV[RVF]:{avg,count:total,stars:S};
   const L=all.filter(v=>!RVF||v.item===RVF),show=L.slice(0,RVN),more=L.length-show.length;
