@@ -232,7 +232,7 @@ function openTest(id){
     const wa=waLink(`Hi, I am ${AUTH.name} (${AUTH.mobile}). Please unlock "${s.title}" for me.`);
     return modal(`<div class="logo" style="background:var(--warn)">${ic('lock',24)}</div><h2>This test is locked</h2>
       <p class="mut" style="margin:6px 0 14px">"${esc(s.title||'This series')}" is a premium series${s.price_label?' ('+esc(s.price_label)+')':''}. Ask the admin to unlock it for your account.</p>
-      <div class="row">${wa?`<a class="btn" style="flex:1;text-decoration:none" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Contact admin</a>`:''}<button class="btn ghost" style="flex:1" onclick="closeModal()">Close</button></div>`);
+      <div class="row">${wa?`<a class="btn" style="flex:1;text-decoration:none" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Ask admin</a>`:''}<button class="btn ghost" style="flex:1" onclick="closeModal()">Close</button></div>`);
   }
   RET=location.hash||'#/';
   if(getProg(id)||t.in_progress)return startTest(id);

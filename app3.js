@@ -196,12 +196,15 @@ function countUp(root){
     requestAnimationFrame(step);
   });
 }
+let OPRV=0;
 async function openReview(id){
   skelPage();
+  const h0=location.hash,tk=++OPRV;
   const r=await rpc('cbt_review',{p_result:id});
+  if(tk!==OPRV||location.hash!==h0||INTEST)return;   // another result was tapped / the student went elsewhere meanwhile
   if(!r.ok){if(authErr(r))return;toast('Could not load this result.');route();return}
   if(r.gone){toast('This test is no longer available for review.');route();return}
-  if(!CAT)await loadCat(true);
+  if(!CAT){await loadCat(true);if(tk!==OPRV||location.hash!==h0||INTEST)return}
   RV={result:r.result,review:r.review,filter:'all',sec:'*',tab:'ov'};showResult();lb(r.result);
 }
 async function lb(res){
@@ -234,7 +237,7 @@ const avgT=a=>{const v=a.filter(x=>x.t>0);return v.length?v.reduce((s,x)=>s+x.t,
 function rvOv(A){
   const {rec,Qs,wm}=A,att=rec.correct+rec.wrong,acc=att?Math.round(rec.correct*100/att):0,p=pct(rec.score,rec.max);
   return `<div class="tiles"><div><b data-cu="${acc}">${acc}%</b><span>Accuracy</span></div><div><b>${att}/${Qs.length}</b><span>Attempted</span></div><div><b>${fmt(rec.used)}</b><span>Time used</span></div>
-   <div><b>${Qs.length?fs(rec.used/Qs.length):'–'}</b><span>Avg / question</span></div><div><b style="color:var(--bad)">−${Math.round(rec.wrong*wm*100)/100}</b><span>Negative marks</span></div><div><b data-cu="${p}">${p}%</b><span>Score</span></div></div>
+   <div><b>${Qs.length?fs(rec.used/Qs.length):'–'}</b><span>Avg / question</span></div><div>${(n=>n>0?`<b style="color:var(--bad)">−${n}</b>`:'<b>0</b>')(Math.round(rec.wrong*wm*100)/100)}<span>Negative marks</span></div><div><b data-cu="${p}">${p}%</b><span>Score</span></div></div>
    <div id="lb">${RV.lb?lbHtml(RV.lb):(rec.test_id?skel():'')}</div>`;
 }
 function rvSub(A){
