@@ -97,6 +97,7 @@ function stoEdit(i){
    <label class="l">What you get — on the Explore page (one per line)</label><textarea id="p_f" style="min-height:130px" placeholder="30 full-length NEET mock tests&#10;All-India rank after every test&#10;Detailed solutions">${esc((x.features||[]).join('\n'))}</textarea>
    <label class="l">Full description on the Explore page <a href="#" onclick="event.preventDefault();stoDescFill()" style="color:var(--pri);font-weight:700;text-transform:none;letter-spacing:0">· fill from series</a></label><div id="p_desc">${stoDescHtml(x)}</div>
    <label class="chk"><input type="checkbox" id="p_a" ${x.active?'checked':''}><span>Show on the store page</span></label>
+   <label class="chk"><input type="checkbox" id="p_buy" ${x.buy_on===false?'':'checked'}><span>Buy now is on — turn it off for a series that is not launched yet: students see “Coming soon · Notify me”</span></label>
    <div class="row stofoot">${i>=0?`<button class="btn danger" onclick="stoDel(${i})">Delete</button>`:''}<button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn" style="flex:1" id="p_go" onclick="stoSave(${i})">Save</button></div>`);
   stoSheet();if(SS.demos===undefined)stoXpLoad().then(()=>{stoXpInit(x);stoXpDraw(x)});
   stoPrev();if(!window.__stoPB){window.__stoPB=1;document.addEventListener('input',e=>{if(e.target.closest('#layer'))stoPrev()})}
@@ -114,6 +115,9 @@ async function stoSave(i){
   // the item is saved already, so a failure here only shows a message (Save again would add a new item twice)
   let xmsg='';
   if(SS.demos&&(r.id||d.id)){b.disabled=true;b.textContent='Saving demo tests…';const q=await stoXpSave(r.id||d.id,i>=0?SS.items[i]:{});if(!q.ok)xmsg=q.msg+' — open Edit and try again';await stoXpLoad(true)}
+  // Buy now on / off (supabase_v31_store_soon.sql)
+  const want=$('#p_buy').checked;
+  if(want!==(i>=0?SS.items[i].buy_on!==false:true)&&(r.id||d.id)){const q=await ALN('buy',{item:r.id||d.id,on:want});if(!q.ok)xmsg=q.error==='missing'?'Saved — but run supabase_v31_store_soon.sql once in Supabase to turn Buy now off':'Saved — but Buy now could not be changed. Try again.'}
   closeModal();await loadStore();
   // make sure the photo really reached the database
   const it=SS.items.find(x=>x.id===(r.id||d.id));
@@ -279,6 +283,14 @@ async function stoSchDel(id){
   if(!confirm('Remove the schedule from this series?'))return;
   const r=await stoSchSend(id,'','');if(!r.ok)return toast(r.msg);
   if(SS.sched)delete SS.sched[id];const box=$('#p_sch');if(box)box.innerHTML=stoSchHtml(id);toast('Schedule removed');stoDraw();
+}
+/* ---------- Coming soon: Buy now on / off + "Notify me" requests (supabase_v31_store_soon.sql) ---------- */
+async function ALN(action,data){
+  try{
+    const r=await fetch(API+'/rest/v1/rpc/cbt_admin_store_launch',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_pw:PW,p_action:action,p_data:data||{}})});
+    if(!r.ok)return{ok:false,error:r.status===404?'missing':'server'};
+    return await r.json();
+  }catch(e){return{ok:false,error:'network'}}
 }
 /* ---------- Explore page: full description + demo test 1 / 2 (supabase_v30_store_explore.sql) ---------- */
 async function AXP(action,data){

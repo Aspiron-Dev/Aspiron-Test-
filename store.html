@@ -94,6 +94,8 @@ ul.f li:before{content:"✓";flex:none;width:20px;height:20px;border-radius:50%;
 @media (hover:hover){.btn:hover{background-position:100% 0;box-shadow:0 10px 26px color-mix(in srgb,var(--pri) 36%,transparent)}}
 .btn.soft{background:var(--surface2);color:var(--tx);box-shadow:none}
 .btn.line{background:var(--surface);color:var(--tx);border:1.5px solid var(--bd);box-shadow:none}
+.btn.soon{background:linear-gradient(135deg,#f59f00,#e8590c);box-shadow:0 8px 20px rgba(232,89,12,.28)}
+.btn.soon.done{background:var(--okSoft);color:var(--okTx);box-shadow:none}
 .btn.xbtn{background:var(--priSoft);color:var(--pri);border:1.5px solid color-mix(in srgb,var(--pri) 28%,transparent);box-shadow:none}
 .btn.icon{width:50px;padding:0;flex:none;font-size:18px}
 .btn.tg{background:linear-gradient(135deg,#229ed9,#2aabee);box-shadow:0 8px 20px rgba(34,158,217,.3)}
@@ -226,6 +228,8 @@ input:focus{border-color:var(--pri);background:var(--surface);box-shadow:0 0 0 4
 .nil{font-style:normal;font-weight:500;color:var(--mut)}
 .sumok{border-top:1.5px dashed color-mix(in srgb,var(--warn) 40%,transparent);padding:10px 0;text-align:center;font-weight:800;font-size:15px;color:var(--okTx)}
 .sumnote{border-top:1.5px dashed color-mix(in srgb,var(--warn) 40%,transparent);padding-top:10px;font-size:14px;line-height:1.55}
+.soonbox{text-align:center;background:linear-gradient(135deg,var(--warnSoft),var(--surface));border:1px solid color-mix(in srgb,var(--warn) 30%,transparent);border-radius:18px;padding:20px 16px;margin-bottom:14px}
+.soonbox>span{display:block;font-size:40px;line-height:1}.soonbox>b{display:block;font-size:18px;margin-top:8px}.soonbox p{font-size:14px;color:var(--mut);margin-top:6px}
 /* small Edit box (not .mini: the Help button gets .mini when the page is scrolled) */
 .ebox{position:fixed;inset:0;z-index:55;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(3,8,18,.5);animation:fi .2s}
 .eboxin{background:var(--surface);width:100%;max-width:380px;max-height:90vh;overflow:auto;border-radius:22px;padding:16px 18px 18px;box-shadow:var(--shadow2);animation:pop .25s var(--ease)}
@@ -343,6 +347,6 @@ button.rvon{display:inline-flex;align-items:center;gap:4px;margin-top:10px;borde
 <a class="fab" id="fab" href="#" data-help aria-label="Chat with support"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8.5 8.5 0 01-12.6 7.4L3 21l1.6-5.4A8.5 8.5 0 1121 12z"/><path d="M8 10.5h8M8 14h5"/></svg><em>Help</em></a>
 <script src="config.js?v=5"></script>
 <script src="qrcode.js"></script>
-<script src="store.js?v=21"></script>
+<script src="store.js?v=22"></script>
 </body>
 </html>

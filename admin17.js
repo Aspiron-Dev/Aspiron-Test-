@@ -37,6 +37,7 @@ async function stoData(force){
   if(!force&&STOAT&&Date.now()-STOAT<20000)return{ok:true};
   const r=await ASTO('get');if(!r.ok)return r;
   SS=Object.assign(SS,{settings:r.settings||{},items:r.items||[],orders:r.orders||[]});STOAT=Date.now();
+  await stoNotifyLoad();
   if(!SS.sched){SS.sched={};try{const q=await fetch(API+'/rest/v1/rpc/cbt_store_schedules',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:'{}'});if(q.ok){const j=await q.json();(j.items||[]).forEach(x=>SS.sched[x.id]=x)}else SS.sched=null}catch(e){}}
   navBadges();return r;
 }
@@ -239,10 +240,10 @@ function setDraw(){
    <div class="h2s">📦 Test series on the store <span class="n">${on} shown${SS.items.length>on?` · ${SS.items.length-on} hidden`:''}</span></div>
    ${SS.items.length?SS.items.map((x,i)=>{const sold=(SS.orders||[]).filter(o=>o.item_id===x.id&&oSeg(o)==='done').length;return `<div class="card seit${x.active?'':' off'}">
      ${x.image?`<img src="${esc(x.image)}" alt="">`:`<span class="seph c-${esc(x.color||'blue')}">${esc((x.title||'?')[0])}</span>`}
-     <div class="grow"><b>${esc(x.title)}</b> ${x.active?'':'<span class="chip">Hidden</span>'}${x.badge?` <span class="chip">${esc(x.badge)}</span>`:''}
+     <div class="grow"><b>${esc(x.title)}</b> ${x.active?'':'<span class="chip">Hidden</span>'}${x.buy_on===false?' <span class="chip warn">🔔 Coming soon</span>':''}${x.badge?` <span class="chip">${esc(x.badge)}</span>`:''}
       <div class="sm mut">${inr(x.price)}${x.mrp?` <s>${inr(x.mrp)}</s>`:''} · ${(x.features||[]).length} features${SS.sched&&SS.sched[x.id]?' · 📅 schedule':''} · ${sold} sold</div>
       <div class="sm mut">${x.series_id?'Unlocks: '+esc((CA.series.find(z=>z.id===x.series_id)||{}).title||'series'):'<span style="color:var(--warn)">⚠️ Not linked to a series — Approve can’t unlock it</span>'}</div></div>
-     <button class="btn ghost sm" onclick="stoEdit(${i})">Edit</button></div>`}).join(''):'<div class="card empty"><p class="sm mut">No test series on the store yet.</p></div>'}
+     ${(()=>{const n=((SS.notify||{})[x.id]||[]).length;return x.buy_on===false||n?`<button class="btn ghost sm" onclick="stoNotify('${x.id}')">🔔 ${n} waiting</button>`:''})()}<button class="btn ghost sm" onclick="stoEdit(${i})">Edit</button></div>`}).join(''):'<div class="card empty"><p class="sm mut">No test series on the store yet.</p></div>'}
    <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:4px"><button class="btn" onclick="stoPick()">⚡ Add from your series</button><button class="btn ghost" onclick="stoEdit(-1)">➕ Add manually</button>${SS.items.some(x=>x.series_id)?'<button class="btn ghost" id="stors" onclick="stoResync(this)">🔄 Update all from series</button>':''}</div>
    <div class="h2s">💳 Payment details</div>
    <div class="card"><p class="sm mut" style="margin-top:0">Shown on the store page. Only this panel (admin password) can change them. Every change is recorded.</p>
@@ -251,6 +252,37 @@ function setDraw(){
      <div><label class="l">Small note on the payment step (optional)</label><input type="text" id="s_note" value="${esc(s.note||'')}" placeholder="e.g. Unlocked within 2 hours (9 am – 9 pm)"></div>
      <div><label class="l">Telegram (not used — support is SUPPORT_URL in config.js)</label><input type="text" id="s_tg" value="${esc(s.telegram||'')}" autocapitalize="off" spellcheck="false"></div></div>
     <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap"><button class="btn" onclick="stoSaveSet(this)">Save payment details</button><button class="btn ghost" onclick="stoAudit()">🕑 Change history</button></div></div>`;
+}
+
+/* ---------- Coming soon: students who tapped "Notify me" (supabase_v31_store_soon.sql) ----------
+   WhatsApp opens the launch message for one student and logs them as notified. */
+async function stoNotifyLoad(){
+  const r=await ALN('get');
+  if(!r.ok){if(r.error==='missing')SS.notify=null;return}
+  const m={};(r.notify||[]).forEach(x=>(m[x.item_id]=m[x.item_id]||[]).push(x));SS.notify=m;
+}
+function stoNotify(id){
+  const x=SS.items.find(i=>i.id===id);if(!x)return;
+  if(SS.notify===null)return toast('Run supabase_v31_store_soon.sql once in Supabase first');
+  const L=(SS.notify||{})[id]||[],left=L.filter(r=>!r.notified_at).length;
+  const msg=r=>`Hi ${String(r.name||'').split(' ')[0]||'there'}! 🎉 ${x.title} is now live on ${CFG.SITE_NAME||'our store'}. See it and buy here: ${stoUrl()}#x=${x.id}`;
+  modal(`<div class="stohd"><h2>🔔 Waiting for ${esc(x.title)}</h2><button class="iconbtn" onclick="closeModal()" aria-label="Close">✕</button></div>
+   <p class="sm mut" style="margin:2px 0 10px">${x.buy_on===false?'Buy now is <b>off</b> — students see “Coming soon”. When you launch, turn Buy now on in Edit, then message everyone here.':'Buy now is <b>on</b> — the series is live. Message everyone who is not notified yet.'}
+    Tap WhatsApp: the launch message opens and the student is logged as notified.</p>
+   ${L.length?L.map(r=>`<div class="arow" style="align-items:center;gap:10px"><div class="grow" style="min-width:0"><b>${esc(r.name)}</b> · ${esc(r.mobile)}
+     <div class="sm mut">Asked ${oAgo(r.created_at)}${r.notified_at?` · <span style="color:var(--ok)">✓ notified ${oAgo(r.notified_at)}</span>`:''}</div></div>
+     <a class="btn ${r.notified_at?'ghost':''} sm" style="text-decoration:none" target="_blank" rel="noopener" href="${esc(waTo(r.mobile,msg(r)))}" onclick="stoNotified('${x.id}','${esc(r.mobile)}')">WhatsApp</a></div>`).join('')
+    :'<p class="sm mut">Nobody has tapped “Notify me” yet.</p>'}
+   ${L.length?`<div class="row stofoot"><button class="btn ghost" style="flex:1" onclick="copyText('${L.map(r=>r.mobile).join(', ')}')">📋 Copy ${L.length} number${L.length>1?'s':''}</button>${left?`<button class="btn" style="flex:1" onclick="stoNotified('${x.id}','',this)">✓ Mark ${left} as notified</button>`:''}</div>`:''}`);
+  stoSheet();
+}
+// log as notified: one student (mobile) or everyone not notified yet (no mobile)
+async function stoNotified(id,mobile,btn){
+  if(btn){if(!confirm('Mark everyone who is not notified yet as notified?'))return;btn.disabled=true}
+  const r=await ALN('notified',{item:id,mobile});if(btn)btn.disabled=false;
+  if(!r.ok)return toast('Could not save');
+  const now=new Date().toISOString();((SS.notify||{})[id]||[]).forEach(x=>{if(mobile?x.mobile===mobile:!x.notified_at)x.notified_at=now});
+  if($('#layer .stohd'))stoNotify(id);setDraw();
 }
 
 /* ---------- apply now (the shell may already be on screen) ---------- */
