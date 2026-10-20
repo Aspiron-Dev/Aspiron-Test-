@@ -3,7 +3,8 @@ function instr(t,s){
   setApp(`<div class="wrap"><div class="ins card"><button class="btn ghost sm" onclick="route()">${ic('back')} Back</button>
   <h1 style="font-size:24px;margin-top:16px">${esc(t.title)}</h1><p class="mut" style="margin:4px 0 0">${esc(s.title||'')}</p>
   <div class="g3"><div><b>${t.questions}</b><span>Questions</span></div><div><b>${t.duration}</b><span>Minutes</span></div><div><b>+${t.correct} / −${t.wrong}</b><span>Marking</span></div></div>
-  <h3 style="font-size:15px;margin:6px 0">General instructions</h3>
+  <div class="stayw">${ic('info',18)}<span><b>Stay on this screen.</b> Once the test starts, do not switch apps, open another tab or lock your phone. You will get a warning each time you leave, and the timer keeps running.</span></div>
+  <h3 style="font-size:15px;margin:6px 0">Read before you start</h3>
   <ul>
    <li>${ic('clock')}<span>The countdown timer is shown at the top right. It <b>never pauses</b> – even if you refresh or close the page. Your answers are also saved online as you go, so the test submits automatically with them when time ends, even if the app is closed.</span></li>
    ${(t.closes_at||t.result_at)&&!t.practice?`<li>${ic('calendar')}<span>${t.closes_at?`Live till <b>${esc(fmtWhen(t.closes_at))}</b>: no new start after that. `:''}${t.result_at?`Your <b>result, rank and answer key</b> will be shown after <b>${esc(fmtWhen(t.result_at))}</b>. `:''}Only your <b>first attempt</b> counts for the rank.</span></li>`:''}
@@ -15,7 +16,7 @@ function instr(t,s){
    ${t.practice?`<li>${ic('check')}<span><b>Practice mode:</b> after you pick an option, the correct answer and explanation show immediately. You cannot change an answer after it is checked.</span></li>`:''}
    <li>${ic(t.lock_back?'lock':'info')}<span>${t.lock_back?'<b>You cannot go back</b> to previous questions once you move ahead.':'You can move freely between questions and change answers at any time.'}</span></li>
   </ul>
-  <label class="chk decl"><input type="checkbox" id="dc" onchange="$('#sb').disabled=!this.checked||${wait||closed?'true':'false'}"><span class="sm">I have read and understood all the instructions. I am ready to begin the test.</span></label>
+  <label class="chk decl"><input type="checkbox" id="dc" onchange="$('#sb').disabled=!this.checked||${wait||closed?'true':'false'}"><span class="sm">I have read and understood all the instructions. I will stay on this screen and I am ready to begin the test.</span></label>
   <button class="btn block" id="sb" disabled onclick="startTest('${t.id}')">${wait?`${ic('clock')} Opens in <span data-op="${t.opens_at}">--:--</span>`:closed?`${ic('lock')} Closed${t.result_at?' · result '+esc(fmtWhen(t.result_at)):''}`:`${ic('play')} ${t.practice?'Start practice':'Start test now'}`}</button></div></div>`);
 }
 
@@ -53,6 +54,20 @@ function secSetup(){
 let tmark=0,tk=0;
 function flushT(){if(!P||!tmark)return;const now=Date.now(),d=Math.min(1800,Math.max(0,Math.round((now-tmark)/100)/10));if(d){P.times=P.times||{};P.times[P.cur]=Math.round(((P.times[P.cur]||0)+d)*10)/10}tmark=now}
 document.addEventListener('visibilitychange',()=>{if(!INTEST||!P)return;if(document.hidden){flushT();tmark=0;saveProg()}else tmark=Date.now()});
+/* ---------- leaving the test screen: a warning (in English) when the student comes back ---------- */
+let LEFTNOW=false;
+const onTestScreen=()=>INTEST||!!$('#app .ins');   // the instructions page or a running test
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){LEFTNOW=onTestScreen();return}
+  if(LEFTNOW){LEFTNOW=false;leaveWarn()}
+});
+function leaveWarn(){
+  const n=INTEST&&P?(P.leaves=(P.leaves||0)+1):0;   // counts only inside a running test; kept with the test progress
+  if(n)saveProg();
+  modal(`<div class="lvw"><div class="lvwi">${ic('info',24)}</div><h2>Please stay on this screen</h2>
+    <p>${n?`This is warning ${n}. You left the test screen while the test was running. Switching apps, opening other tabs or locking your phone is not allowed, and the timer keeps running.`:'Once you start the test, please stay on this screen. Do not switch apps, open other tabs or lock your phone during the test.'}</p>
+    <button class="btn block" onclick="closeModal()">I understand, continue</button></div>`);
+}
 function run(){
   document.body.classList.add('intest');palOpen=false;secSetup();tmark=Date.now();netPill();
   window.onbeforeunload=e=>{e.preventDefault();e.returnValue=''};
