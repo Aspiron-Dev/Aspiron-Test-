@@ -69,6 +69,8 @@ async function publish(){
   if(!sid)return toast('Please choose a series');
   const n=Q.filter(bad).length;
   if(n&&!confirm(`${n} question(s) have problems (missing answer or option). Publish anyway?`))return;
+  const lw=liveCheck(fromLocal($('#opens').value),fromLocal($('#closes').value),fromLocal($('#resat').value),+$('#dur').value||180,$('#prac').checked);
+  if(lw===null)return;if(lw)return toast(lw);
   const b=$('#pubbtn'),st=$('#pubst');b.disabled=true;b.textContent='Publishing…';
   try{
     const fid=await resolveFolder(sid,$('#pf').value);
@@ -80,8 +82,8 @@ async function publish(){
     await flush();
     const m=EDIT&&EDIT.meta||{};
     const r=await A('test_save',{id:EDIT?EDIT.id:null,series_id:sid,folder_id:fid,title,duration:+$('#dur').value||180,correct:+$('#pm').value,wrong:+$('#nm').value,
-      lock_back:$('#lock').checked,free_preview:$('#prev').checked,active:m.active!==false,sort_order:m.sort_order||0,opens_at:fromLocal($('#opens').value),stage_token:token,count:Q.length});
-    if(!r.ok)throw new Error(r.error==='incomplete'?'upload was incomplete, please try again':r.error==='questions'?'add at least one question':(r.detail||r.error));
+      lock_back:$('#lock').checked,free_preview:$('#prev').checked,active:m.active!==false,sort_order:m.sort_order||0,opens_at:fromLocal($('#opens').value),closes_at:fromLocal($('#closes').value),result_at:fromLocal($('#resat').value),stage_token:token,count:Q.length});
+    if(!r.ok)throw new Error(r.error==='incomplete'?'upload was incomplete, please try again':r.error==='questions'?'add at least one question':r.error==='result_before_close'?'result time must be after the live end time':(r.detail||r.error));
     await setPrac(r.id,$('#prac').checked);
     EDIT={id:r.id,meta:m};st.textContent='';
     $('#editbar').innerHTML=`<div class="banner"><div class="t"><b>Published ✓</b><div class="sm mut">"${esc(title)}" is live${$('#opens').value?' and will open at the time you set':''}. You can keep editing and press Update.</div></div></div>`;
@@ -96,7 +98,7 @@ async function editQuestions(id,qi){
   Q=(t.data||[]).map(normQ);S=deriveSections();RAWIMG=[];PDFBUF=null;V={only:false,page:0};
   EDIT={id:t.id,meta:{active:t.active,sort_order:t.sort_order}};
   await tab('create');
-  $('#title').value=t.title;$('#dur').value=t.duration;$('#pm').value=t.correct_marks;$('#nm').value=t.wrong_marks;$('#lock').checked=!!t.lock_back;$('#prev').checked=!!t.free_preview;$('#prac').checked=PRAC.has(t.id);$('#opens').value=toLocal(t.opens_at);
+  $('#title').value=t.title;$('#dur').value=t.duration;$('#pm').value=t.correct_marks;$('#nm').value=t.wrong_marks;$('#lock').checked=!!t.lock_back;$('#prev').checked=!!t.free_preview;$('#prac').checked=PRAC.has(t.id);$('#opens').value=toLocal(t.opens_at);$('#closes').value=toLocal(t.closes_at);$('#resat').value=toLocal(t.result_at);
   $('#ps').value=t.series_id;onSeries();const f=CA.folders.find(x=>x.id===t.folder_id);$('#pf').value=f?f.title:'';
   $('#editbar').innerHTML=`<div class="banner"><div class="t"><b>Editing: ${esc(t.title)}</b><div class="sm mut">Change anything below, then press Update test at the bottom.</div></div><button class="btn ghost sm" onclick="newTest()">Cancel</button></div>`;
   $('#pubbtn').textContent='Update test';render();renderSecs();

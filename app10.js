@@ -24,17 +24,28 @@ function lbOverall(b){
    ${b.my_rank?`<div class="lbme"><div class="lbmr"><span>Your rank</span><b>#${b.my_rank}</b></div><div class="grow"><div class="sm">Ahead of <b>${beat}%</b> students</div><div class="bar"><i style="width:${beat}%"></i></div><div class="sm mut" style="margin-top:4px">Your avg ${b.my_pct}% · Topper ${b.top[0].pct}%</div></div></div>`:''}
    ${lbPodium(b.top,b.my_rank)}${lbRows(b.top.slice(0,10),b.my_rank,b.my_pct+'%')}</div>`;
 }
+// a cached "ranks after <time>" reply is dropped once that time has passed, so the ranks load by themselves
+const lbStale=id=>{const c=LBC[id];if(c&&c.hidden&&srvNow()>=c.result_at)delete LBC[id]};
+// my submitted attempts whose result is not out yet (live tests): shown on top of Results
+function pendCard(){
+  const L=(CAT&&CAT.pending)||[];if(!L.length)return '';
+  return `<div class="card" style="margin-bottom:12px"><b>${ic('clock')} Results coming soon</b>
+   ${L.map(x=>`<div class="row sm" style="justify-content:space-between;gap:10px;margin-top:8px"><span>${esc(x.title||'Test')}</span><span class="mut">after ${esc(fmtWhen(x.result_at))}</span></div>`).join('')}
+   <div class="sm mut" style="margin-top:8px">Your score, rank and answer key will show here by themselves at that time.</div></div>`;
+}
 function lbTest(t){
   const r=LBC[t.id],when=t.opens_at?new Date(t.opens_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'}):'';
   const head=`<div class="lbsh"><div><span class="lbk">Test</span><b>${esc(t.title)}</b></div><span class="lbt">${when}</span></div>`;
   if(!r)return `<div class="lbs" data-lbt="${t.id}">${head}<div class="sk" style="height:110px;border-radius:16px;margin-top:10px"></div><div class="sk" style="height:40px;margin-top:10px"></div></div>`;
+  if(r.ok&&r.hidden)return `<div class="lbs">${head}<div class="lbem">${ic('clock',28)}<p>Ranks will be shown after ${esc(fmtWhen(r.result_at))}.</p>${t.attempts||isClosed(t)?'':`<button class="btn sm" onclick="openTest('${t.id}')">Attempt now</button>`}</div></div>`;
   if(!r.ok||!r.top||!r.top.length)return `<div class="lbs">${head}<div class="lbem">${ic('trophy',28)}<p>No ranks yet for this test.</p>${t.attempts?'':`<button class="btn sm" onclick="openTest('${t.id}')">Attempt now</button>`}</div></div>`;
   const solo=r.total<2;
   return `<div class="lbs">${head}
    ${r.my_rank?`<div class="lbme"><div class="lbmr"><span>Your rank</span><b>#${r.my_rank}</b></div><div class="grow"><div class="lbm4"><div><b>${r.my_score}</b><span>Your score</span></div><div><b>${solo?'–':r.percentile}</b><span>Percentile</span></div><div><b>${r.avg}</b><span>Class avg</span></div><div><b>${r.top_score}</b><span>Topper</span></div></div></div></div>`
+     :t.attempts?`<div class="lbme na"><div class="grow sm">Only a first attempt submitted on time gets a rank.</div></div>`
      :`<div class="lbme na"><div class="grow sm">You have not attempted this test yet.</div><button class="btn sm" onclick="openTest('${t.id}')">Attempt</button></div>`}
    ${lbPodium(r.top,r.my_rank)}${lbRows(r.top.slice(0,10),r.my_rank,r.my_score)}
-   <div class="sm mut" style="text-align:center;margin-top:8px">${r.total} student${r.total==1?'':'s'} attempted · best score per student</div></div>`;
+   <div class="sm mut" style="text-align:center;margin-top:8px">${r.total} student${r.total==1?'':'s'} attempted · first attempt per student</div></div>`;
 }
 function lbFull(b){
   if(typeof CAT==='undefined'||!CAT)return '';
@@ -56,7 +67,7 @@ let LBS=null;function lbScroll(){clearTimeout(LBS);LBS=setTimeout(()=>{const t=$
 async function lbLoad(){
   const T=lbTests();lbMark();
   await Promise.all(T.map(async t=>{
-    if(!LBC[t.id]){const r=await rpc('cbt_leaderboard',{p_test:t.id});LBC[t.id]=r&&r.ok?r:{ok:false}}
+    lbStale(t.id);if(!LBC[t.id]){const r=await rpc('cbt_leaderboard',{p_test:t.id});LBC[t.id]=r&&r.ok?r:{ok:false}}
     const el=document.getElementById('lbs-'+t.id);if(el){el.innerHTML=lbTest(t);if(T.indexOf(t)+1===LBI)lbMark()}
   }));
   const t=$('#lbtrack');if(t&&LBI){t.scrollLeft=LBI*t.clientWidth}lbMark();
@@ -85,15 +96,15 @@ if(typeof HV!=='undefined')HV='lb';
   const seg=`<div class="seg hsseg rs3"><button class="${HV==='lb'?'on':''}" onclick="HV='lb';route()">🏆 Leaderboard</button><button class="${HV==='test'?'on':''}" onclick="HV='test';route()">By test</button><button class="${HV==='all'?'on':''}" onclick="HV='all';route()">All attempts</button></div>`;
   if(HV==='lb'){
     if(!b)setTimeout(async()=>{const r=await rpc('cbt_overall',{});if(r.ok){INS=INS||{t:Date.now(),a:null,b:null};INS.b=r;const e=$('#rlb');if(e){e.innerHTML=lbFull(r)}const k=document.querySelector('.rsk div:last-child b');if(k&&r.my_rank)k.textContent='#'+r.my_rank}},0);
-    return hero+seg+`<div id="rlb" style="margin-top:12px">${lbFull(b||null)}</div>`;
+    return pendCard()+hero+seg+`<div id="rlb" style="margin-top:12px">${lbFull(b||null)}</div>`;
   }
   const h=_hl(R).replace(/^<div class="seg hsseg">[\s\S]*?<\/div>/,'');
   if(HV==='test')setTimeout(rsRanks,0);
-  return hero+seg+h;
+  return pendCard()+hero+seg+h;
 }}
 async function rsRanks(){
   const ids=[...new Set((CAT.results||[]).map(r=>r.test_id))].filter(id=>!isPrac(id)).slice(0,12);
-  await Promise.all(ids.map(async id=>{if(!LBC[id]){const r=await rpc('cbt_leaderboard',{p_test:id});LBC[id]=r&&r.ok?r:{ok:false}}}));
+  await Promise.all(ids.map(async id=>{lbStale(id);if(!LBC[id]){const r=await rpc('cbt_leaderboard',{p_test:id});LBC[id]=r&&r.ok?r:{ok:false}}}));
   document.querySelectorAll('.hscard').forEach(c=>{
     const m=(c.getAttribute('onclick')||'').match(/#\/h\/([^']+)/);if(!m)return;
     const g=hAttempts(decodeURIComponent(m[1]));if(!g)return;const r=LBC[g.att[g.att.length-1].test_id];

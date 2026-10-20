@@ -281,6 +281,10 @@ const fmtCd=sec=>{sec=Math.max(0,Math.floor(sec));const d=Math.floor(sec/86400),
   if(d)return d+'d '+h+'h '+m+'m';
   return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')};
 const isWait=t=>t.opens_at&&t.opens_at>srvNow();
+// live window over and result not out yet: no new start (an attempt already running can still finish)
+const isClosed=t=>!!(t.closes_at&&srvNow()>t.closes_at&&(!t.result_at||srvNow()<t.result_at)&&!t.in_progress);
+// my submitted attempt of this test whose result / answer key is not shown yet (from the catalog's pending list)
+const pendOf=id=>((typeof CAT!=='undefined'&&CAT&&CAT.pending)||[]).find(x=>x.test_id===id);
 let opFired=false;
 function startOp(){
   opFired=false;

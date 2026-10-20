@@ -19,6 +19,8 @@ function testModal(id){
    <div><label class="l">Minutes</label><input type="number" id="td" value="${t.duration}"></div><div><label class="l">Order</label><input type="number" id="to" value="${t.sort_order}"></div>
    <div><label class="l">Marks per correct</label><input type="number" step="0.25" id="tc" value="${t.correct}"></div><div><label class="l">Negative marks</label><input type="number" step="0.25" id="tw" value="${t.wrong}"></div></div>
    <label class="l">Test starts at (empty = open now)</label><input type="datetime-local" id="tos" value="${toLocal(t.opens_at)}">
+   <div class="g2"><div><label class="l">Live ends (no new start after)</label><input type="datetime-local" id="tcl" value="${toLocal(t.closes_at)}"></div><div><label class="l">Result &amp; answer key at</label><input type="datetime-local" id="tra" value="${toLocal(t.result_at)}"></div></div>
+   <p class="mut sm" style="margin:6px 0 0">Optional, for live tests: no new start after "Live ends". Until the result time students only see "submitted" (no score, rank or answer key); then everything shows by itself. Rank counts each student's first attempt. <a href="#" onclick="liveFill('tos','tcl','tra');return false">Fill: live till 9 PM, result 10 PM</a></p>
    <label class="chk"><input type="checkbox" id="tl" ${t.lock_back?'checked':''}><span>Don't allow going back to previous questions</span></label>
    <label class="chk"><input type="checkbox" id="tp" ${t.free_preview?'checked':''}><span>Free preview (open even if the series is paid)</span></label>
    <label class="chk"><input type="checkbox" id="tpr" ${PRAC.has(t.id)?'checked':''}><span>Practice mode (instant answer + explanation after each question)</span></label>
@@ -28,10 +30,12 @@ function testModal(id){
 }
 async function saveTestMeta(id){
   let fid=null;
+  const lw=liveCheck(fromLocal($('#tos').value),fromLocal($('#tcl').value),fromLocal($('#tra').value),+$('#td').value||0,$('#tpr').checked);
+  if(lw===null)return;if(lw)return toast(lw);
   try{fid=await resolveFolder($('#ts').value,$('#tf').value)}catch(e){return toast(e.message)}
-  const r=await A('test_save',{id,series_id:$('#ts').value,folder_id:fid,opens_at:fromLocal($('#tos').value),title:$('#tt').value,duration:+$('#td').value,correct:+$('#tc').value,wrong:+$('#tw').value,
+  const r=await A('test_save',{id,series_id:$('#ts').value,folder_id:fid,opens_at:fromLocal($('#tos').value),closes_at:fromLocal($('#tcl').value),result_at:fromLocal($('#tra').value),title:$('#tt').value,duration:+$('#td').value,correct:+$('#tc').value,wrong:+$('#tw').value,
     sort_order:+$('#to').value||0,lock_back:$('#tl').checked,free_preview:$('#tp').checked,active:$('#ta').checked});
-  if(!r.ok){toast(r.error==='title'?'Please enter a name':'Could not save');return}
+  if(!r.ok){toast(r.error==='title'?'Please enter a name':r.error==='result_before_close'?'Result time must be after the live end time':'Could not save');return}
   await setPrac(id,$('#tpr').checked);
   closeModal();toast('Saved');await loadContent();
 }
@@ -67,6 +71,8 @@ function buildCreate(){
    <div><label class="l">Marks per correct</label><input type="number" step="0.25" id="pm" value="4"></div>
    <div><label class="l">Negative marks</label><input type="number" step="0.25" id="nm" value="1"></div></div>
    <label class="l">Test starts at (optional)</label><input type="datetime-local" id="opens"><p class="mut sm" style="margin:6px 0 0">Students cannot start the test before this time. Leave empty to open it immediately. Time is as per this phone.</p>
+   <div class="g2"><div><label class="l">Live ends (no new start after)</label><input type="datetime-local" id="closes"></div><div><label class="l">Result &amp; answer key at</label><input type="datetime-local" id="resat"></div></div>
+   <p class="mut sm" style="margin:6px 0 0">Optional, for live tests: no new start after "Live ends". Until the result time students only see "submitted" (no score, rank or answer key); then everything shows by itself. Rank counts each student's first attempt. <a href="#" onclick="liveFill('opens','closes','resat');return false">Fill: live till 9 PM, result 10 PM</a></p>
    <label class="chk"><input type="checkbox" id="lock"><span>Don't allow going back to previous questions</span></label>
    <label class="chk"><input type="checkbox" id="prev"><span>Free preview (open even if the series is paid)</span></label>
    <label class="chk"><input type="checkbox" id="prac"><span>Practice mode: show the correct answer and explanation right after each question</span></label></div>
@@ -96,6 +102,19 @@ function onSeries(){
 }
 const toLocal=ms=>{if(!ms)return '';const d=new Date(+ms),p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`};
 const fromLocal=v=>v?new Date(v).getTime():null;
+// "live till 9 PM, result 10 PM" on the day the test starts (today if no start time; next day if it starts after 9 PM)
+function liveFill(o,c,r){
+  const st=fromLocal($('#'+o).value)||Date.now(),e=new Date(st);e.setHours(21,0,0,0);if(st>=e.getTime())e.setDate(e.getDate()+1);
+  $('#'+c).value=toLocal(e.getTime());$('#'+r).value=toLocal(e.getTime()+3600000);
+}
+// checks the live window before saving: error text, '' if fine, null if the admin cancelled a warning
+function liveCheck(op,cl,rs,dur,prac){
+  if(cl&&op&&cl<=op)return 'Live end must be after the start time';
+  if(rs&&cl&&rs<cl)return 'Result time must be after the live end time';
+  if(rs&&prac)return 'Practice tests show answers at once: clear the result time or turn practice off';
+  if(rs&&cl&&rs<cl+dur*60000&&!confirm(`Someone who starts just before the live end will still be writing when the result comes out (the test is ${dur} min). Their attempt then does not count for rank. Keep these times?`))return null;
+  return '';
+}
 async function resolveFolder(sid,name){
   name=(name||'').trim();if(!name)return null;
   const f=CA.folders.find(x=>x.series_id===sid&&x.title.trim().toLowerCase()===name.toLowerCase());
@@ -106,7 +125,7 @@ async function resolveFolder(sid,name){
 }
 function newTest(){
   Q=[];S=[];EDIT=null;PDFBUF=null;V={only:false,page:0};
-  for(const id of ['raw','key','title','pf','opens'])$('#'+id).value='';
+  for(const id of ['raw','key','title','pf','opens','closes','resat'])$('#'+id).value='';
   for(const id of ['paper','keyf','jf'])$('#'+id).value='';
   $('#pst').textContent='';$('#kst').textContent='';$('#dur').value=180;$('#pm').value=4;$('#nm').value=1;$('#lock').checked=false;$('#prev').checked=false;$('#prac').checked=false;
   $('#sum').textContent='';$('#list').innerHTML='';$('#probs').innerHTML='';$('#outbox').style.display='none';$('#editbar').innerHTML='';$('#pubbtn').textContent='Publish test';$('#ocrbtn').style.display='none';
