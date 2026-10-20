@@ -145,8 +145,8 @@ async function loadActivity(){
     :x.k==='start'?`<b>${esc(x.name)}</b> started <b>${esc(x.title)}</b>`
     :x.k==='request'?`<b>${esc(x.name)}</b> requested access <span class="chip warn">pending</span>`
     :x.k==='join'?`<b>${esc(x.name)}</b> joined`
-    :`<b>${esc(x.name)}</b> reported Q${x.q} in <b>${esc(x.title||'a test')}</b>`;
-  const go=x=>x.k==='request'?"tab('students')":x.k==='report'?"tab('reports')":x.k==='result'||x.k==='start'?`lvOpen('${x.tid}')`:'';
+    :`<b>${esc(x.name)}</b> reported Q${esc(x.q)} in <b>${esc(x.title||'a test')}</b>`;
+  const go=x=>x.k==='request'?"tab('students')":x.k==='report'?"tab('reports')":x.k==='result'||x.k==='start'?`lvOpen(${esc(JSON.stringify(String(x.tid)))})`:'';
   box.innerHTML=r.items.length?r.items.slice(0,30).map(x=>{const c=ACTI[x.k]||['user',''];return `<div class="actr" ${go(x)?`onclick="${go(x)}"`:''}><span class="aico ${c[1]}">${ai(c[0],16)}</span><div class="grow">${txt(x)}</div><span class="sm mut nowrap">${ago(x.at)}</span></div>`}).join('')
     :'<div class="sm mut">Nothing yet.</div>';
 }
