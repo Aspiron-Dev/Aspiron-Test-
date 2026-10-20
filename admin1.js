@@ -11,7 +11,7 @@ const FOLDER='<svg class="i" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2
 function updTheme(){$('#thm').innerHTML=document.documentElement.dataset.theme==='dark'?SUN:MOON}
 function toggleTheme(){const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;try{localStorage.setItem('cbt_theme',JSON.stringify(t))}catch(e){}updTheme()}
 updTheme();
-if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdfjs-3.11.174/pdf.worker.min.js';
 
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}
 function modal(h,wide){$('#layer').innerHTML=`<div class="modal" onclick="if(event.target===this)closeModal()"><div class="box${wide?' wide':''}">${h}</div></div>`}

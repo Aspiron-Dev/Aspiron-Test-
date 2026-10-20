@@ -15,6 +15,8 @@ After changing a script, raise its `?v=` number in the page that loads it so pho
 
 Other files: `sw.js` (installable app, always loads the newest pages), `manifest.webmanifest` /
 `cp-dt764twzf54s5m.webmanifest` (app icons and names), `pyq-data/` (past papers for the admin PYQ import),
+`lib/` (exact copies of pdf.js 3.11.174, JSZip 3.10.1 and Tesseract.js 5.1.1 from npm, so the admin page runs no script from a third-party CDN;
+the OCR worker and language data still load from jsDelivr / tessdata as before),
 `supabase/functions/send-push` (phone notifications and 🔔 test-live alerts).
 
 ## Supabase SQL (run once each, in this order, in SQL Editor — on top of the original base setup)

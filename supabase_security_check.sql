@@ -60,3 +60,14 @@ from information_schema.columns
 where table_schema in ('public', 'cbt_private')
   and column_name ~* '(mobile|phone|name|code|password|secret|token|salt|hash|utr|payer|email|photo)'
 order by 1, 2, 3;
+
+-- 10) The code of the base functions that are NOT in this repository (admin check, login, tests, files, reports).
+--     Send this output too, so they can be checked. If your real admin password is written anywhere in it,
+--     do NOT send it: that alone is a problem to fix first.
+select n.nspname as schema_name, p.proname as function_name, pg_get_functiondef(p.oid) as definition
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname in ('public', 'cbt_private') and p.prokind = 'f'
+  and p.proname in ('cbt_admin', 'set_admin_password', 'auth', 'hash_code', 'cbt_login', 'cbt_request_access', 'cbt_catalog',
+                    'cbt_start', 'cbt_submit', 'cbt_file_part', 'cbt_notice', 'cbt_notice_img', 'cbt_leaderboard', 'cbt_report',
+                    'cbt_bookmark', 'cbt_review', 'cbt_cover', 'cbt_overall', 'cbt_insights', 'cbt_mistakes')
+order by 2;

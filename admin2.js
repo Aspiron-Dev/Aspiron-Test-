@@ -44,7 +44,7 @@ function newTestIn(sid){tab('create').then(()=>{newTest();$('#ps').value=sid;onS
 
 /* ================= CREATE ================= */
 let PDFBUF=null,V={only:false,page:0},S=[],CR=null;
-const PAGE=20,JSZIP_URL='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',TESS_URL='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+const PAGE=20,JSZIP_URL='lib/jszip-3.10.1/jszip.min.js',TESS_URL='lib/tesseract-5.1.1/tesseract.min.js';
 const emptyQ=()=>({q:'',options:['','','',''],answer:null,explanation:'',sec:'',img:null,oimg:[null,null,null,null],eimg:null});
 const normQ=q=>({q:q.q||'',options:[0,1,2,3].map(i=>(q.options&&q.options[i])||''),answer:Number.isInteger(q.answer)?q.answer:null,explanation:q.explanation||'',
   sec:q.sec||'',img:q.img||null,oimg:[0,1,2,3].map(i=>(q.oimg&&q.oimg[i])||null),eimg:q.eimg||null,gap:!!q.gap});
