@@ -1,0 +1,14 @@
+# Secrets and keys: never commit these (the Supabase publishable key in config.js is public by design)
+.env
+.env.*
+*.pem
+*.key
+*.p8
+*.p12
+service-account*.json
+
+# Local tooling
+.DS_Store
+node_modules/
+supabase/.branches/
+supabase/.temp/
