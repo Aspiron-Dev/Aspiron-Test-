@@ -107,7 +107,7 @@ function bmCard(q){
    ${S.pick!=null?`<div class="fb ${S.pick===q.answer?'g':'b'}">${S.pick===q.answer?'Correct! 🎉':'Not quite — correct answer is '+L[q.answer]}</div>`:''}
    ${hide?`<div class="row" style="margin-top:6px"><span class="sm mut" style="flex:1">Tap an option to practise</span><button class="btn ghost sm" onclick="BV.st['${k}']={show:1};bmUp('${k}')">${ic('eye',15)} Show answer</button></div>`:''}
    ${rev&&(q.explanation||q.eimg)?`<div class="exp"><b>Explanation:</b> ${esc(q.explanation||'')}${imgTag(q.eimg)}</div>`:''}
-   ${q.solved?'':`<div class="sm mut" style="margin-top:6px">${ic('lock',13)} The correct answer appears here after you attempt this test.</div>`}
+   ${q.solved?'':`<div class="sm mut" style="margin-top:6px">${ic('lock',13)} ${q.hidden&&q.result_at?'The correct answer appears here after '+esc(fmtWhen(q.result_at))+'.':'The correct answer appears here after you attempt this test.'}</div>`}
    <div data-nk="${k}">${noteHtml(k)}</div>
    <div class="tgrow">${Object.keys(TAGS).map(t=>`<button class="tgb ${tg===t?'on':''}" onclick="bmTag('${k}','${t}')">${TAGS[t][0]} ${TAGS[t][1]}</button>`).join('')}</div></div>`;
 }

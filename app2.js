@@ -20,7 +20,7 @@ function viewHome(tab){
   if(tab==='dash')o+=dashBody(R,avg);
   else if(tab==='series')o+=seriesList();
   else{
-    if(!R.length)o+=`<div class="card empty">You have not attempted any test yet.</div>`;
+    if(!R.length)o+=(typeof pendCard==='function'&&pendCard())||`<div class="card empty">You have not attempted any test yet.</div>`;
     else o+=histList(R);
   }
   setApp(o+'</div>');setNav(tab);prefetchTabs();
@@ -147,11 +147,13 @@ function viewFolder(id){
 function testRow(t){
   const p=t.best!=null&&t.best_max?pct(t.best,t.best_max):null;
   const last=(CAT.results||[]).find(r=>r.test_id===t.id);
-  const wait=isWait(t);
+  const wait=isWait(t),closed=isClosed(t),pd=pendOf(t.id);
   const status=t.in_progress?'<span class="chip warn">In progress</span>':wait?`<span class="chip pri">${ic('calendar',12)} ${esc(fmtWhen(t.opens_at))}</span>`:t.locked?`<span class="chip lockbadge">${ic('lock',12)} Locked</span>`
-    :t.attempts?`<span class="chip ok">Attempted ${t.attempts}×</span>`:'<span class="chip pri">New</span>';
+    :t.attempts?`<span class="chip ok">Attempted ${t.attempts}×</span>${pd?`<span class="chip">${ic('clock',12)} Result ${esc(fmtWhen(pd.result_at))}</span>`:''}`
+    :closed?`<span class="chip">${ic('clock',12)} Closed</span>`:'<span class="chip pri">New</span>';
   const cta=t.locked?`<button class="btn ghost sm" onclick="openTest('${t.id}')">${ic('lock')} Unlock</button>`
     :(wait&&!t.in_progress)?`<button class="btn ghost sm" disabled>${ic('clock')} <span data-op="${t.opens_at}">--:--</span></button>${typeof alBtn==="function"?alBtn(t.id):""}`
+    :closed?`<button class="btn ghost sm" disabled>${ic('lock')} Closed</button>`
     :`<button class="btn sm" onclick="openTest('${t.id}')">${t.in_progress?'Resume':t.attempts?'Try again':'Start'} ${ic('right')}</button>`;
   return `<div class="card trow"><div class="tico">${ic(t.locked?'lock':wait?'calendar':'file')}</div>
    <div class="info"><h3>${esc(t.title)}</h3><div class="chips"><span class="chip">${t.questions} questions</span><span class="chip">${t.duration} min</span>${t.practice?'<span class="chip ok">Practice</span>':''}${status}${t.free_preview&&t.locked===false?'<span class="chip pri">Free preview</span>':''}</div>
@@ -224,7 +226,7 @@ const isPrac=id=>PRACID[id]||(CAT&&CAT.tests.some(t=>t.id===id&&t.practice));
 const tdKey=id=>'cbt_td_'+AUTH.mobile+'_'+id;
 const progKey=id=>'cbt_prog_'+AUTH.mobile+'_'+id;
 const getProg=id=>LS.get(progKey(id),null);
-const saveProg=()=>LS.set(progKey(P.tid),P);
+const saveProg=()=>{LS.set(progKey(P.tid),P);if(typeof syncSoon==='function')syncSoon()};
 function openTest(id){
   const t=CAT.tests.find(x=>x.id===id);if(!t)return;
   const s=CAT.series.find(x=>x.id===t.series_id)||{};
