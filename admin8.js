@@ -25,30 +25,41 @@ function segTest(k,s){
 }
 function shownStudents(){
   const q=SF.q.toLowerCase().trim();
-  let l=ST.filter(s=>s.status!=='pending'&&(!q||s.name.toLowerCase().includes(q)||s.mobile.includes(q))&&segTest(SF.s,s));
+  let l=ST.filter(s=>s.status!=='pending'&&(!q||nameOf(s).toLowerCase().includes(q)||String(s.mobile||'').includes(q))&&segTest(SF.s,s));
   if(SF.b!=='all')l=l.filter(s=>(s.access||[]).includes(SF.b));
   const o=SF.o,pa=s=>{const p=perfOf(s);return p?p.avg:-1};
-  l.sort((a,b)=>o==='name'?a.name.localeCompare(b.name):o==='seen'?(b.last_seen||0)-(a.last_seen||0):o==='tests'?b.attempts-a.attempts:o==='hi'?pa(b)-pa(a):o==='lo'?(pa(a)<0?999:pa(a))-(pa(b)<0?999:pa(b)):b.created-a.created);
+  l.sort((a,b)=>o==='name'?nameOf(a).localeCompare(nameOf(b))
+    :o==='seen'?(b.last_seen||0)-(a.last_seen||0)
+    :o==='tests'?(b.attempts||0)-(a.attempts||0)
+    :o==='hi'?pa(b)-pa(a)
+    :o==='lo'?(pa(a)<0?999:pa(a))-(pa(b)<0?999:pa(b))
+    :(b.created||0)-(a.created||0));
   return l;
 }
 function drawList(){
   const all=ST.filter(s=>s.status!=='pending'),ps=paidSer();
   const sg=$('#sseg');if(sg)sg.innerHTML=SEGS.map(([k,t])=>{const n=all.filter(s=>segTest(k,s)).length;return k!=='all'&&!n&&SF.s!==k?'':`<button class="${SF.s===k?'on':''}" onclick="SF.s='${k}';drawList()">${t} <span class="mut">${n}</span></button>`}).join('');
   const st=$('#sstats');if(st)st.innerHTML=statsHtml();
-  const l=shownStudents(),site=stuLink();
+  const l=shownStudents();
   const cnt=$('#scount');if(cnt)cnt.textContent=`${l.length} shown`;
-  $('#slist').innerHTML=l.length?l.map(s=>{
-    const pd=isPaid(s),n=ps.filter(x=>(s.access||[]).includes(x.id)).length,sc=seenCls(s),p=perfOf(s),nw=s.created&&sNow()-s.created<7*D1;
-    return `<div class="card srow3 ${s.status==='blocked'?'blk':''} ${SEL.has(s.id)?'sel':''}"><label class="selbox"><input type="checkbox" ${SEL.has(s.id)?'checked':''} onchange="selTog('${s.id}',this.checked)"></label>
-     <div class="av3 ${pd?'avp':''}" onclick="manage('${s.id}')">${esc(s.name[0].toUpperCase())}<i class="dot ${sc}"></i></div>
-     <div class="grow" onclick="manage('${s.id}')"><div class="nm"><b>${esc(s.name)}</b>${pd?`<span class="tg paid">PAID${ps.length>1?' · '+n:''}</span>`:'<span class="tg">FREE</span>'}${nw?'<span class="tg new">NEW</span>':''}${s.status==='blocked'?'<span class="tg bad">BLOCKED</span>':''}</div>
-      <div class="sm mut s3m"><span>${esc(s.mobile)}</span><span class="seen ${sc}">${sc==='live'?'● online now':sc==='never'?'never opened':'seen '+ago(s.last_seen)}</span><span>${s.attempts} test${s.attempts==1?'':'s'}</span><span>📱 ${s.devices}/${s.max_devices}</span></div>
-      ${p?`<div class="s3p"><div class="bar3"><i style="width:${p.avg}%;background:${p.avg>=60?'var(--ok)':p.avg>=35?'var(--warn)':'var(--bad)'}"></i></div><span>avg <b>${p.avg}%</b> · best ${p.best}%</span></div>`:''}</div>
-     <div class="s3f">${ps.length?`<div class="accs">${ps.map(x=>{const on=(s.access||[]).includes(x.id);return `<button class="accchip ${on?'on':''}" onclick="toggleStuAcc('${s.id}','${x.id}')" title="${on?'Tap to remove access':'Tap to give access'}">${on?'✓':'+'} ${esc(x.title)}</button>`}).join('')}</div>`:'<span></span>'}
-      <div class="s3a"><a class="iconbtn sm" title="WhatsApp" target="_blank" rel="noopener" href="${waTo(s.mobile,`Hi ${s.name.split(' ')[0]}, `)}" onclick="event.stopPropagation()">${ai('wa',16)}</a><button class="btn ghost sm" onclick="manage('${s.id}')">Manage</button></div></div></div>`}).join('')
-   :`<div class="card empty">${ST.length?'No students match.':'No students yet. Add students or share the site link so they can request access.'}</div>`;
-  $('#bulkbar').innerHTML=SEL.size?`<div class="bulkbar"><b>${SEL.size} selected</b>${ps.length?`<select id="bsr">${ps.map(x=>`<option value="${x.id}">${esc(x.title)}</option>`).join('')}</select><button class="btn sm" onclick="bulkAcc(true)">Give access</button><button class="btn warn sm" onclick="bulkAcc(false)">Remove</button>`:''}
+  $('#slist').innerHTML=l.length?l.map(s=>studentRow(s,ps)).join(''):emptyList();
+  $('#bulkbar').innerHTML=SEL.size?`<div class="bulkbar"><b>${SEL.size} selected</b>${ps.length?`<select id="bsr" aria-label="Series">${ps.map(x=>`<option value="${x.id}">${esc(x.title)}</option>`).join('')}</select><button class="btn sm" onclick="bulkAcc(true)">Give access</button><button class="btn warn sm" onclick="bulkAcc(false)">Remove</button>`:''}
     <button class="btn soft sm" onclick="selCopy()">Copy numbers</button><button class="btn soft sm" onclick="selCsv()">CSV</button><button class="btn ghost sm" onclick="SEL.clear();drawList()">Clear</button></div>`:'';
+}
+function studentRow(s,ps){
+  const pd=isPaid(s),n=ps.filter(x=>(s.access||[]).includes(x.id)).length,sc=seenCls(s),p=perfOf(s),nw=s.created&&sNow()-s.created<7*D1;
+  const on=SEL.has(s.id),blk=s.status==='blocked',tests=s.attempts||0,pct=Math.min(100,Math.round((s.devices||0)/(s.max_devices||1)*100));
+  return `<div class="card srow3 ${blk?'blk':''} ${on?'sel':''}"><label class="selbox"><input type="checkbox" ${on?'checked':''} onchange="selTog('${s.id}',this.checked)" aria-label="Select ${esc(nameOf(s))}"></label>
+     <div class="av3 ${pd?'avp':''}" style="--h:${hueOf(s)}" onclick="manage('${s.id}')" title="Open ${esc(nameOf(s))}">${esc(ini(s))}<i class="dot ${sc}"></i></div>
+     <div class="grow" onclick="manage('${s.id}')"><div class="nm"><b>${esc(nameOf(s))}</b>${pd?`<span class="tg paid">PAID${ps.length>1?' · '+n:''}</span>`:'<span class="tg">FREE</span>'}${nw?'<span class="tg new">NEW</span>':''}${blk?'<span class="tg bad">BLOCKED</span>':''}</div>
+      <div class="sm mut s3m"><span>${esc(s.mobile)}</span><span class="seen ${sc}">${sc==='live'?'● online now':sc==='never'?'never opened':'seen '+ago(s.last_seen)}</span><span>${tests} test${tests==1?'':'s'}</span><span class="dmeter" title="${s.devices||0} of ${s.max_devices} devices in use"><i style="--p:${pct}%"></i>${s.devices||0}/${s.max_devices}</span></div>
+      ${p?`<div class="s3p"><div class="bar3"><i style="width:${p.avg}%;background:${p.avg>=60?'var(--ok)':p.avg>=35?'var(--warn)':'var(--bad)'}"></i></div><span>avg <b>${p.avg}%</b> · best ${p.best}%</span></div>`:''}</div>
+     <div class="s3f">${ps.length?`<div class="accs">${ps.map(x=>{const g=(s.access||[]).includes(x.id);return `<button class="accchip ${g?'on':''}" onclick="toggleStuAcc('${s.id}','${x.id}')" title="${g?'Tap to remove access':'Tap to give access'}">${g?'✓':'+'} ${esc(x.title)}</button>`}).join('')}</div>`:'<span></span>'}
+      <div class="s3a"><a class="iconbtn sm" title="WhatsApp" target="_blank" rel="noopener" href="${waTo(s.mobile,`Hi ${nameOf(s).split(' ')[0]}, `)}" onclick="event.stopPropagation()">${ai('wa',16)}</a><button class="btn ghost sm" onclick="manage('${s.id}')">Manage</button></div></div></div>`;
+}
+function emptyList(){
+  return ST.length?`<div class="card sempty">${svgI('search')}<b>No students match</b><span class="sm mut">Try another filter, or clear the search.</span><button class="btn ghost sm" onclick="resetSF()">Clear filters</button></div>`
+    :`<div class="card sempty">${svgI('students')}<b>No students yet</b><span class="sm mut">Add a student, or share the site link so they can request access.</span><button class="btn sm" onclick="addModal()">Add student</button></div>`;
 }
 function selCopy(){const l=ST.filter(s=>SEL.has(s.id)).map(s=>s.mobile);copyText(l.join(', '))}
 function selCsv(){const l=ST.filter(s=>SEL.has(s.id));dl('selected-students.csv',[['Name','Mobile','Status','Tests','Average %','Last seen'],...l.map(s=>{const p=perfOf(s);return [s.name,s.mobile,s.status,s.attempts,p?p.avg:'',s.last_seen?new Date(s.last_seen).toLocaleString('en-IN'):'never']})])}
@@ -80,8 +91,8 @@ async function approveAll(){
   box.querySelector('.sm.mut')?.insertAdjacentHTML('afterend',`<div class="mgp">
     <div class="sstats" style="margin:12px 0 4px">${[['Tests',p?p.n:s.attempts||0],['Average',p?p.avg+'%':'–'],['Best',p?p.best+'%':'–'],['Seen',sc==='live'?'now':sc==='never'?'never':ago(s.last_seen)]].map(x=>`<div class="sbox"><b>${x[1]}</b><span>${x[0]}</span></div>`).join('')}</div>
     ${p?`<div class="sm mut" style="margin-bottom:8px">Last test: <b style="color:var(--tx)">${esc(p.lt)}</b> · ${p.lp}% · ${ago(p.last)}</div>`:''}
-    <div class="row" style="gap:8px;flex-wrap:wrap"><a class="btn soft sm" target="_blank" rel="noopener" href="${waTo(s.mobile,`Hi ${s.name.split(' ')[0]}, `)}">${ai('wa',14)} WhatsApp</a><a class="btn soft sm" href="tel:${esc(s.mobile)}">📞 Call</a>
-     <a class="btn soft sm" target="_blank" rel="noopener" href="${waTo(s.mobile,`Hi ${s.name.split(' ')[0]}, a new test is waiting for you. Open ${site} and attempt it today. All the best! 💪`)}">🔔 Remind to study</a>
+    <div class="row" style="gap:8px;flex-wrap:wrap"><a class="btn soft sm" target="_blank" rel="noopener" href="${waTo(s.mobile,`Hi ${nameOf(s).split(' ')[0]}, `)}">${ai('wa',14)} WhatsApp</a><a class="btn soft sm" href="tel:${esc(s.mobile)}">📞 Call</a>
+     <a class="btn soft sm" target="_blank" rel="noopener" href="${waTo(s.mobile,`Hi ${nameOf(s).split(' ')[0]}, a new test is waiting for you. Open ${site} and attempt it today. All the best! 💪`)}">🔔 Remind to study</a>
      <button class="btn ghost sm" onclick="copyText('${esc(s.mobile)}')">Copy number</button></div></div>`);
 }}
 ;(window.__p=window.__p||{})['admin8']=1;
