@@ -235,15 +235,18 @@ async function loadSetup(){
 }
 function setDraw(){
   const b=$('#sebody');if(!b||!SS.items)return;const s=SS.settings||{},on=SS.items.filter(x=>x.active).length;
+  const v32=!SS.items.length||'section' in SS.items[0],G=stoGroups(),NV=G.filter(g=>g.k&&g.items.some(stoVis));
+  const cnt=c=>SS.items.filter(x=>!c||!x.course||x.course===c).length;
   b.innerHTML=`<div class="card sdlink"><div class="grow"><b>Store link</b><div class="sm mut" style="word-break:break-all">${esc(stoUrl())}</div></div>
     <button class="btn ghost sm" onclick="copyText(stoUrl())">Copy link</button><a class="btn sm" style="text-decoration:none" href="store.html" target="_blank" rel="noopener">Open</a></div>
    <div class="h2s">📦 Test series on the store <span class="n">${on} shown${SS.items.length>on?` · ${SS.items.length-on} hidden`:''}</span></div>
-   ${SS.items.length?SS.items.map((x,i)=>{const sold=(SS.orders||[]).filter(o=>o.item_id===x.id&&oSeg(o)==='done').length;return `<div class="card seit${x.active?'':' off'}">
-     ${x.image?`<img src="${esc(x.image)}" alt="">`:`<span class="seph c-${esc(x.color||'blue')}">${esc((x.title||'?')[0])}</span>`}
-     <div class="grow"><b>${esc(x.title)}</b> ${x.active?'':'<span class="chip">Hidden</span>'}${x.buy_on===false?' <span class="chip warn">🔔 Coming soon</span>':''}${x.badge?` <span class="chip">${esc(x.badge)}</span>`:''}
-      <div class="sm mut">${inr(x.price)}${x.mrp?` <s>${inr(x.mrp)}</s>`:''} · ${(x.features||[]).length} features${SS.sched&&SS.sched[x.id]?' · 📅 schedule':''} · ${sold} sold</div>
-      <div class="sm mut">${x.series_id?'Unlocks: '+esc((CA.series.find(z=>z.id===x.series_id)||{}).title||'series'):'<span style="color:var(--warn)">⚠️ Not linked to a series — Approve can’t unlock it</span>'}</div></div>
-     ${(()=>{const n=((SS.notify||{})[x.id]||[]).length;return x.buy_on===false||n?`<button class="btn ghost sm" onclick="stoNotify('${x.id}')">🔔 ${n} waiting</button>`:''})()}<button class="btn ghost sm" onclick="stoEdit(${i})">Edit</button></div>`}).join(''):'<div class="card empty"><p class="sm mut">No test series on the store yet.</p></div>'}
+   ${v32?'':`<div class="card" style="border:2px solid var(--warn);background:var(--warnSoft)"><b>⚠️ One-time setup for NEET / JEE and sections</b><p class="sm" style="margin:6px 0 0">Open Supabase → SQL Editor → New query, paste the file <b>supabase_v32_store_layout.sql</b> and press Run. Then refresh this page.</p></div>`}
+   ${v32&&SS.items.length?`<div class="oseg" role="tablist" aria-label="Show the series for">${[['','All'],['neet','NEET'],['jee','JEE']].map(([k,l])=>`<button role="tab" aria-selected="${SS.cf===k}" class="${SS.cf===k?'on':''}" onclick="SS.cf='${k}';setDraw()">${l}<em>${cnt(k)}</em></button>`).join('')}</div>
+    <div class="ohint">Each <b>section</b> is one row on the store. <b>◀ ▶</b> moves a series left / right in its row, <b>↑ ↓</b> moves the whole row up / down. Set <b>NEET / JEE</b> and the section in <b>Edit</b>.</div>`:''}
+   ${SS.items.length?G.map(g=>{const V=g.items.filter(stoVis),vi=NV.indexOf(g);if(!V.length)return '';
+     return `<div class="stosech"><span class="stosi">${g.k?stoSecIco(g.name):'✨'}</span><div class="grow"><b>${g.k?esc(g.name):v32?'No section':'All test series'}</b><div class="sm mut">${V.length} series · ${g.k?'one row on the store, left → right':v32?`shown last as “${NV.length?'More test series':'All test series'}” — choose a section in Edit`:'one row on the store, left → right'}</div></div>
+      ${g.k?`<button class="iconbtn" onclick="stoSecRen(${vi})" title="Rename this section" aria-label="Rename this section">✏️</button><button class="iconbtn" onclick="stoSecMove(${vi},-1)" ${vi===0?'disabled':''} title="Move this row up" aria-label="Move this row up">↑</button><button class="iconbtn" onclick="stoSecMove(${vi},1)" ${vi===NV.length-1?'disabled':''} title="Move this row down" aria-label="Move this row down">↓</button>`:''}</div>
+      ${V.map((x,k)=>stoRow(x,k,V.length,v32)).join('')}`}).join(''):'<div class="card empty"><p class="sm mut">No test series on the store yet.</p></div>'}
    <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:4px"><button class="btn" onclick="stoPick()">⚡ Add from your series</button><button class="btn ghost" onclick="stoEdit(-1)">➕ Add manually</button>${SS.items.some(x=>x.series_id)?'<button class="btn ghost" id="stors" onclick="stoResync(this)">🔄 Update all from series</button>':''}</div>
    <div class="h2s">💳 Payment details</div>
    <div class="card"><p class="sm mut" style="margin-top:0">Shown on the store page. Only this panel (admin password) can change them. Every change is recorded.</p>
@@ -252,6 +255,71 @@ function setDraw(){
      <div><label class="l">Small note on the payment step (optional)</label><input type="text" id="s_note" value="${esc(s.note||'')}" placeholder="e.g. Unlocked within 2 hours (9 am – 9 pm)"></div>
      <div><label class="l">Telegram (not used — support is SUPPORT_URL in config.js)</label><input type="text" id="s_tg" value="${esc(s.telegram||'')}" autocapitalize="off" spellcheck="false"></div></div>
     <div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap"><button class="btn" onclick="stoSaveSet(this)">Save payment details</button><button class="btn ghost" onclick="stoAudit()">🕑 Change history</button></div></div>`;
+}
+
+/* ---------- NEET / JEE and sections (supabase_v32_store_layout.sql): rows of the store in the same order as students see them ---------- */
+SS.cf=SS.cf||'';   // Store setup shows every series, or only the NEET / JEE ones
+const stoVis=x=>!SS.cf||!x.course||x.course===SS.cf;
+const STOSI=[[/full|complete|mock|grand|all india/i,'📚'],[/subject/i,'🧬'],[/chapter|unit/i,'📖'],[/topic/i,'🎯'],[/pyq|previous|past/i,'📝'],[/crash|revision|rapid|short/i,'⚡'],[/free|demo/i,'🎁']];
+const stoSecIco=n=>(STOSI.find(([r])=>r.test(n))||[0,'✨'])[1];
+// sections in the saved order (↑ ↓), then any others; series without a section last — as store.js does
+function stoGroups(){
+  const S=(SS.settings.sections||[]).map(x=>String(x).trim()).filter(Boolean),ord=S.map(x=>x.toLowerCase()),G=new Map();
+  const L=SS.items.slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||String(a.created_at||'').localeCompare(String(b.created_at||'')));
+  for(const x of L){const n=String(x.section||'').trim(),k=n.toLowerCase();if(!G.has(k))G.set(k,{k,name:S[ord.indexOf(k)]||n,items:[]});G.get(k).items.push(x)}
+  const rank=k=>k?(ord.includes(k)?ord.indexOf(k):1e6):2e6;
+  return [...G.values()].map((g,i)=>Object.assign(g,{i})).sort((a,b)=>rank(a.k)-rank(b.k)||a.i-b.i);
+}
+// one series: photo, name, NEET / JEE, price…, then ◀ place ▶ in its row, 🔔 waiting and Edit
+function stoRow(x,k,n,v32){
+  const sold=(SS.orders||[]).filter(o=>o.item_id===x.id&&oSeg(o)==='done').length,wait=((SS.notify||{})[x.id]||[]).length;
+  return `<div class="card seit${x.active?'':' off'}">
+   ${x.image?`<img src="${esc(x.image)}" alt="">`:`<span class="seph c-${esc(x.color||'blue')}">${esc((x.title||'?')[0])}</span>`}
+   <div class="grow"><b>${esc(x.title)}</b> ${v32?(x.course==='neet'?'<span class="chip pri">NEET</span>':x.course==='jee'?'<span class="chip pri">JEE</span>':'<span class="chip">NEET + JEE</span>'):''}${x.active?'':' <span class="chip">Hidden</span>'}${x.buy_on===false?' <span class="chip warn">🔔 Coming soon</span>':''}${x.badge?` <span class="chip">${esc(x.badge)}</span>`:''}
+    <div class="sm mut">${inr(x.price)}${x.mrp?` <s>${inr(x.mrp)}</s>`:''} · ${(x.features||[]).length} features${SS.sched&&SS.sched[x.id]?' · 📅 schedule':''} · ${sold} sold</div>
+    <div class="sm mut">${x.series_id?'Unlocks: '+esc((CA.series.find(z=>z.id===x.series_id)||{}).title||'series'):'<span style="color:var(--warn)">⚠️ Not linked to a series — Approve can’t unlock it</span>'}</div></div>
+   <div class="seact">${n>1?`<span class="semv"><button onclick="stoMove('${x.id}',-1)" ${k===0?'disabled':''} title="Move left" aria-label="Move left">◀</button><b title="Place in the row, from the left">${k+1}</b><button onclick="stoMove('${x.id}',1)" ${k===n-1?'disabled':''} title="Move right" aria-label="Move right">▶</button></span>`:''}
+    ${x.buy_on===false||wait?`<button class="btn ghost sm" onclick="stoNotify('${x.id}')">🔔 ${wait} waiting</button>`:''}<button class="btn ghost sm" onclick="stoEdit(${SS.items.indexOf(x)})">Edit</button></div></div>`;
+}
+// layout saves go one after another, so quick taps (◀ ◀) end in the last order; a failed one reloads what is saved
+let STOLQ=Promise.resolve();
+const stoLay=(a,d)=>(STOLQ=STOLQ.then(()=>ALY(a,d)));
+async function stoLayErr(r){
+  toast(r.error==='missing'?'Run supabase_v32_store_layout.sql once in Supabase first':r.error==='network'?'No internet — try again':'Could not save — try again');
+  await stoData(true);setDraw();
+}
+// the store keeps the row order shown here: saved once, before the first ◀ ▶
+function stoSecFix(G){
+  const list=G.filter(g=>g.k).map(g=>g.name),cur=SS.settings.sections||[];
+  if(list.length===cur.length&&list.every((t,i)=>t===cur[i]))return;
+  SS.settings.sections=list;return stoLay('sections',{list});
+}
+// ◀ ▶: swap with the next series shown in this row (with NEET / JEE chosen above: the next one for those students)
+async function stoMove(id,dir){
+  const G=stoGroups(),g=G.find(z=>z.items.some(x=>x.id===id));if(!g)return;
+  const V=g.items.filter(stoVis),i=V.findIndex(x=>x.id===id),j=i+dir;if(i<0||j<0||j>=V.length)return;
+  const f=stoSecFix(G),A=g.items.slice(),a=A.indexOf(V[i]),c=A.indexOf(V[j]);[A[a],A[c]]=[A[c],A[a]];
+  A.forEach((x,n)=>x.sort_order=(n+1)*10);setDraw();
+  const r=(f&&await f)||{ok:true},q=await stoLay('order',{ids:A.map(x=>x.id)});
+  if(!r.ok||!q.ok)stoLayErr(r.ok?q:r);
+}
+// ↑ ↓: a whole row (section) up / down
+async function stoSecMove(vi,dir){
+  const G=stoGroups().filter(g=>g.k),V=G.filter(g=>g.items.some(stoVis));if(!V[vi]||!V[vi+dir])return;
+  const a=G.indexOf(V[vi]),c=G.indexOf(V[vi+dir]);[G[a],G[c]]=[G[c],G[a]];
+  const list=G.map(g=>g.name);SS.settings.sections=list;setDraw();
+  const r=await stoLay('sections',{list});if(!r.ok)stoLayErr(r);
+}
+// ✏️: a new name for a section — every series in it moves to the new name (same name as another section = they join)
+async function stoSecRen(vi){
+  const G=stoGroups().filter(g=>g.k),g=G.filter(z=>z.items.some(stoVis))[vi];if(!g)return;
+  const n=String(prompt('New name of this section (its row on the store):',g.name)||'').replace(/[<>"`]/g,'').replace(/\s+/g,' ').trim().slice(0,40);
+  if(!n||n===g.name)return;
+  for(const x of g.items){const r=await stoLay('place',{item:x.id,course:x.course||'',section:n});if(!r.ok)return stoLayErr(r);x.section=n}
+  const list=[];for(const z of G){const t=z===g?n:z.name;if(!list.some(y=>y.toLowerCase()===t.toLowerCase()))list.push(t)}
+  SS.settings.sections=list;setDraw();
+  const r=await stoLay('sections',{list});if(!r.ok)return stoLayErr(r);
+  toast('Renamed ✓');
 }
 
 /* ---------- Coming soon: students who tapped "Notify me" (supabase_v31_store_soon.sql) ----------

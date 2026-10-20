@@ -79,16 +79,17 @@ async function stoSaveSet(b){
   SS.settings=Object.assign(SS.settings,d,{telegram:d.telegram.replace(/^(https?:\/\/)?(t\.me\/)?@?/,'')});toast('Saved ✓');stoDraw();
 }
 function stoEdit(i){
-  const x=i>=0?SS.items[i]:{title:'',subtitle:'',price:'',mrp:'',badge:'',features:[],color:'blue',series_id:'',active:true,sort_order:SS.items.length};
+  const x=i>=0?SS.items[i]:{title:'',subtitle:'',price:'',mrp:'',badge:'',features:[],color:'blue',series_id:'',active:true,sort_order:stoNextOrd(),course:'',section:''};
   STOIMG=x.image||'';STOFILE=null;if(SS.demos==='err')SS.demos=undefined;stoXpInit(x);
   modal(`<div class="stohd"><h2>${i>=0?'Edit':'Add'} test series</h2><button class="iconbtn" onclick="closeModal()" aria-label="Close">✕</button></div><p class="sm mut" style="margin:2px 0 10px">Preview — this is how students see it on the store:</p><div id="p_prev"></div>
    <label class="l">Name</label><input type="text" id="p_t" maxlength="80" value="${esc(x.title)}" placeholder="e.g. NEET 2027 All India Test Series">
    <label class="l">Short description on the card (optional)</label><input type="text" id="p_s" maxlength="200" value="${esc(x.subtitle)}" placeholder="e.g. NEET 2026 · 20 chapter tests + 5 full tests">
+   ${stoPlaceHtml(x.course,x.section)}
    <div class="g2"><div><label class="l">Price ₹</label><input type="number" id="p_p" min="1" value="${esc(x.price)}"></div><div><label class="l">MRP ₹ (optional, shown struck)</label><input type="number" id="p_m" min="0" value="${esc(x.mrp==null?'':x.mrp)}"></div>
     <div><label class="l">Badge (optional)</label><input type="text" id="p_b" maxlength="24" value="${esc(x.badge)}" placeholder="e.g. Bestseller"></div>
     <div><label class="l">Card colour</label><select id="p_c">${SCOL.map(([k,l])=>`<option value="${k}" ${x.color===k?'selected':''}>${l}</option>`).join('')}</select></div>
     <div><label class="l">Unlocks which series <a href="#" onclick="event.preventDefault();stoFill()" style="color:var(--pri);font-weight:700;text-transform:none;letter-spacing:0">· fill from series</a></label><select id="p_ser"><option value="">—</option>${CA.series.map(s=>`<option value="${esc(s.id)}" ${x.series_id===s.id?'selected':''}>${esc(s.title)}</option>`).join('')}</select></div>
-    <div><label class="l">Order on page</label><input type="number" id="p_o" value="${esc(x.sort_order||0)}"></div></div>
+    <input type="hidden" id="p_o" value="${esc(x.sort_order||0)}"></div>
    <label class="l">Photo on the store card</label><div class="row" style="gap:8px;align-items:center"><div id="p_img">${stoImgHtml()}</div>
     <label class="btn soft sm" style="cursor:pointer">📷 Upload<input type="file" accept="image/*" style="display:none" onchange="stoImgUp(this)"></label><button class="btn ghost sm" onclick="stoImgSet('')">Remove</button></div>
       <label class="l">Schedule for students (PDF or photo, up to 5 MB)</label><div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><div id="p_sch" class="sm" style="flex:1;min-width:140px">${stoSchHtml(x.id)}</div>
@@ -106,15 +107,19 @@ async function stoSave(i){
   const d={id:i>=0?SS.items[i].id:'',title:$('#p_t').value.trim(),subtitle:$('#p_s').value.trim(),price:parseInt($('#p_p').value,10),mrp:$('#p_m').value?parseInt($('#p_m').value,10):'',
     badge:$('#p_b').value.trim(),color:$('#p_c').value,series_id:$('#p_ser').value,sort_order:parseInt($('#p_o').value,10)||0,active:$('#p_a').checked,
     features:$('#p_f').value.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,20),image:STOIMG};
+  const pl=stoPlaceRead('p');
   if(!d.title)return toast('Enter the name');if(!(d.price>0))return toast('Enter the price');
   const b=$('#p_go');b.disabled=true;b.textContent='Saving…';
   if(d.image&&d.image.length>700000){try{d.image=await compressDataUrl(d.image,800,.7)||d.image}catch(e){}}
-  const r=await ASTO('save_item',d);b.disabled=false;b.textContent='Save';
-  if(!r.ok)return toast('Could not save');
+  const r=await ASTO('save_item',d);
+  if(!r.ok){b.disabled=false;b.textContent='Save';return toast('Could not save')}   // saved: Save stays off until the form closes (no second copy)
   if(STOFILE&&(r.id||d.id)){const q=await stoSchSend(r.id||d.id,STOFILE.data,STOFILE.name);if(!q.ok)toast(q.msg)}
   // the item is saved already, so a failure here only shows a message (Save again would add a new item twice)
   let xmsg='';
-  if(SS.demos&&(r.id||d.id)){b.disabled=true;b.textContent='Saving demo tests…';const q=await stoXpSave(r.id||d.id,i>=0?SS.items[i]:{});if(!q.ok)xmsg=q.msg+' — open Edit and try again';await stoXpLoad(true)}
+  if(SS.demos&&(r.id||d.id)){b.textContent='Saving demo tests…';const q=await stoXpSave(r.id||d.id,i>=0?SS.items[i]:{});if(!q.ok)xmsg=q.msg+' — open Edit and try again';await stoXpLoad(true)}
+  // NEET / JEE and the section (supabase_v32_store_layout.sql)
+  const o=i>=0?SS.items[i]:{};
+  if((r.id||d.id)&&(pl.course!==(o.course||'')||pl.section!==(o.section||''))){const q=await ALY('place',{item:r.id||d.id,...pl});if(!q.ok)xmsg=q.error==='missing'?'Saved — but run supabase_v32_store_layout.sql once in Supabase to set NEET / JEE and the section':'Saved — but NEET / JEE and the section could not be saved. Try again.'}
   // Buy now on / off (supabase_v31_store_soon.sql)
   const want=$('#p_buy').checked;
   if(want!==(i>=0?SS.items[i].buy_on!==false:true)&&(r.id||d.id)){const q=await ALN('buy',{item:r.id||d.id,on:want});if(!q.ok)xmsg=q.error==='missing'?'Saved — but run supabase_v31_store_soon.sql once in Supabase to turn Buy now off':'Saved — but Buy now could not be changed. Try again.'}
@@ -168,6 +173,7 @@ function stoPick(){
   const L=CA.series.filter(s=>!used.has(s.id));
   if(!L.length)return toast('All your series are already on the store');
   modal(`<div class="stohd"><h2>Add from your series</h2><button class="iconbtn" onclick="closeModal()" aria-label="Close">✕</button></div><p class="sm mut" style="margin:4px 0 12px">Name, description, number of tests and cover photo are taken from the series. Check the price, then add.</p>
+   ${stoPlaceHtml('','','k')}
    ${L.map(s=>{const a=stoAuto(s),n=CA.tests.filter(t=>t.series_id===s.id).length;return `<div class="arow" style="align-items:center;gap:10px"><label class="chk" style="padding:0;flex:1;min-width:0"><input type="checkbox" class="spk" value="${esc(s.id)}" ${s.is_free?'':'checked'}><span><b>${esc(s.title)}</b><br><span class="sm mut">${n} tests${s.is_free?' · free series':''}${s.has_cover?' · has photo':''}</span>${a.subtitle?`<br><span class="sm">“${esc(a.subtitle)}”</span>`:''}<br><span class="sm mut">${esc(a.features.slice(0,3).join(' · '))}</span></span></label>
      <input type="number" min="1" class="spp" data-id="${esc(s.id)}" value="${esc(a.price)}" placeholder="₹ price" style="width:96px;flex:none"></div>`}).join('')}
    <div class="row stofoot"><button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn" style="flex:1" id="spgo" onclick="stoPickGo()">Add selected</button></div>`);
@@ -177,15 +183,16 @@ async function stoPickGo(){
   const ids=[...document.querySelectorAll('.spk:checked')].map(e=>e.value);if(!ids.length)return toast('Select at least one series');
   const pr={};document.querySelectorAll('.spp').forEach(e=>pr[e.dataset.id]=parseInt(e.value,10));
   const miss=ids.filter(id=>!(pr[id]>0));if(miss.length)return toast('Enter the price for every selected series');
-  const b=$('#spgo');b.disabled=true;let n=0,ord=SS.items.length;
+  const b=$('#spgo');b.disabled=true;let n=0,ord=stoNextOrd(),warn='';const pl=stoPlaceRead('k');
   for(const id of ids){
     const s=CA.series.find(x=>x.id===id);b.textContent=`Adding ${++n}/${ids.length}…`;
     const a=stoAuto(s),image=await stoCover(id);
-    const r=await ASTO('save_item',{title:a.title,subtitle:a.subtitle,price:pr[id],mrp:'',badge:'',color:SCOL[(ord)%SCOL.length][0],series_id:id,sort_order:ord++,active:true,features:a.features,image});
+    const r=await ASTO('save_item',{title:a.title,subtitle:a.subtitle,price:pr[id],mrp:'',badge:'',color:SCOL[(SS.items.length+n-1)%SCOL.length][0],series_id:id,sort_order:ord,active:true,features:a.features,image});ord+=10;
     if(!r.ok){b.disabled=false;b.textContent='Try again';return toast('Could not add '+s.title)}
     if(a.description&&r.id)await AXP('desc',{item:r.id,description:a.description});
+    if(r.id&&(pl.course||pl.section)&&!warn){const q=await ALY('place',{item:r.id,...pl});if(!q.ok)warn=q.error==='missing'?' — run supabase_v32_store_layout.sql once in Supabase, then set NEET / JEE and the section in Edit':' — NEET / JEE and the section could not be set, set them in Edit'}
   }
-  closeModal();toast(`✓ ${ids.length} series added to the store`);loadStore();
+  closeModal();toast(`✓ ${ids.length} series added to the store`+warn);loadStore();
 }
 // re-fill name, description, features and photo of every store item linked to a series (price, MRP, badge, colour stay)
 async function stoResync(b){
@@ -292,6 +299,30 @@ async function ALN(action,data){
     return await r.json();
   }catch(e){return{ok:false,error:'network'}}
 }
+/* ---------- Store layout: NEET / JEE, sections (one row each on the store) and their order (supabase_v32_store_layout.sql) ---------- */
+async function ALY(action,data){
+  try{
+    const r=await fetch(API+'/rest/v1/rpc/cbt_admin_store_layout',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_pw:PW,p_action:action,p_data:data||{}})});
+    if(!r.ok)return{ok:false,error:r.status===404?'missing':'server'};
+    return await r.json();
+  }catch(e){return{ok:false,error:'network'}}
+}
+const stoNextOrd=()=>Math.max(0,...SS.items.map(x=>+x.sort_order||0))+10;
+// sections already used (in the store's order), then the usual ones
+function stoSecs(){
+  const m=new Map();
+  for(const v of [...(SS.settings.sections||[]),...SS.items.map(x=>x.section),'Full syllabus','Subject-wise','Chapter-wise','Topic-wise']){const t=String(v||'').trim();if(t&&!m.has(t.toLowerCase()))m.set(t.toLowerCase(),t)}
+  return [...m.values()];
+}
+// "Show for" (NEET / JEE / both) + "Section" with one-tap names; p = id prefix (p = Edit, k = Add from your series)
+function stoPlaceHtml(course,section,p){
+  p=p||'p';const S=stoSecs();
+  return `<div class="g2"><div><label class="l">Show for</label><select id="${p}_course"><option value="">NEET and JEE students</option><option value="neet" ${course==='neet'?'selected':''}>NEET students only</option><option value="jee" ${course==='jee'?'selected':''}>JEE students only</option></select></div>
+    <div><label class="l">Section — one row on the store</label><input type="text" id="${p}_sec" maxlength="40" list="${p}_secl" autocomplete="off" value="${esc(section||'')}" placeholder="e.g. Full syllabus"><datalist id="${p}_secl">${S.map(t=>`<option value="${esc(t)}">`).join('')}</datalist></div></div>
+   <div class="secpick">${S.slice(0,10).map(t=>`<button type="button" class="chip" onclick="stoSecPick(this,'${p}')">${esc(t)}</button>`).join('')}</div>`;
+}
+function stoSecPick(b,p){const e=$('#'+p+'_sec');if(e)e.value=b.textContent}
+function stoPlaceRead(p){const c=$('#'+p+'_course'),e=$('#'+p+'_sec');return{course:c?c.value:'',section:e?e.value.replace(/[<>"`]/g,'').replace(/\s+/g,' ').trim().slice(0,40):''}}
 /* ---------- Explore page: full description + demo test 1 / 2 (supabase_v30_store_explore.sql) ---------- */
 async function AXP(action,data){
   try{

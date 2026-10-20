@@ -835,6 +835,16 @@ button.sdk{cursor:pointer}.sdk span{font-size:12px;font-weight:700;color:var(--m
 .seit{display:flex;gap:12px;align-items:center;margin-bottom:10px}.seit.off{opacity:.7}.seit img,.seph{flex:none;width:72px;height:44px;border-radius:10px;object-fit:cover}.seit .grow{min-width:0}
 .seph{display:grid;place-items:center;color:#fff;font-weight:800;font-size:18px;background:var(--grad)}
 .seph.c-green{background:linear-gradient(135deg,#0f9d6b,#12a58a)}.seph.c-purple{background:linear-gradient(135deg,#6d3fe0,#a855f7)}.seph.c-orange{background:linear-gradient(135deg,#e8590c,#f59f00)}.seph.c-red{background:linear-gradient(135deg,#d6336c,#f03e3e)}.seph.c-dark{background:linear-gradient(135deg,#1e293b,#475569)}
+/* Store setup: sections (one row each on the store), ◀ ▶ place in a row, ↑ ↓ order of the rows (admin17.js) */
+.seit{flex-wrap:wrap}.seit .grow{flex:1 1 200px}
+.seact{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-left:auto}
+.semv{display:inline-flex;align-items:center;border:1px solid var(--hair,var(--bd));border-radius:10px;background:var(--surface);overflow:hidden}
+.semv button{border:0;background:none;color:var(--tx);width:34px;height:32px;font-size:13px;cursor:pointer}.semv button:disabled{opacity:.3;cursor:default}
+.semv b{min-width:22px;text-align:center;font-size:12.5px;color:var(--mut)}
+.stosech{display:flex;align-items:center;gap:10px;margin:20px 2px 8px}.stosech .grow{min-width:0}.stosech b{font-size:15px}
+.stosi{flex:none;width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:var(--priSoft);font-size:18px}
+.stosech .iconbtn{flex:none;width:34px;height:34px;font-size:14px}.stosech .iconbtn:disabled{opacity:.3;cursor:default}
+.secpick{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.secpick .chip{cursor:pointer;font-family:inherit}
 /* ===== Students v2: payments (admin18.js) ===== */
 .payrow{display:flex;gap:10px;align-items:center;padding:11px 0;border-top:1px solid var(--hair,var(--bd))}.payrow:first-child{border-top:0}.payrow .grow{flex:1;min-width:0}
 .payrow.sm1{padding:8px 0}.pamt{flex:none;font-size:15px}
@@ -873,12 +883,12 @@ button.sdk{cursor:pointer}.sdk span{font-size:12px;font-weight:700;color:var(--m
 <script src="pyq-syllabus.js?v=2"></script>
 <script src="admin10.js?v=2" onerror="(window.__miss=window.__miss||[]).push('admin10.js')"></script>
 <script src="admin11.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin11.js')"></script>
-<script src="admin12.js?v=17" onerror="(window.__miss=window.__miss||[]).push('admin12.js')"></script>
+<script src="admin12.js?v=18" onerror="(window.__miss=window.__miss||[]).push('admin12.js')"></script>
 <script src="admin13.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin13.js')"></script>
 <script src="admin14.js?v=2" onerror="(window.__miss=window.__miss||[]).push('admin14.js')"></script>
 <script src="admin15.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin15.js')"></script>
 <script src="admin16.js?v=3" onerror="(window.__miss=window.__miss||[]).push('admin16.js')"></script>
-<script src="admin17.js?v=4" onerror="(window.__miss=window.__miss||[]).push('admin17.js')"></script>
+<script src="admin17.js?v=5" onerror="(window.__miss=window.__miss||[]).push('admin17.js')"></script>
 <script src="admin18.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin18.js')"></script>
 
 </body>
