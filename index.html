@@ -1172,11 +1172,10 @@ h1,h2,.sht,.h2s,#splash b{font-family:var(--fh)}
 @media (max-width:340px){.supgrid{grid-template-columns:1fr}}
 /* ===== v16 (app16.js): no charts / % circles, cleaner cards, smoother motion ===== */
 /* charts and percentage circles off everywhere (the numbers stay) */
-.achart,.dchart,.dweek,.week,.trend,.rsspark,.slring,.tkring,.nbring:not(.big),.accwrap .ringbox,.mring svg,.ring>svg,.nbring.big>svg{display:none!important}
+.achart,.dchart,.dweek,.week,.trend,.rsspark,.slring,.nbring:not(.big),.accwrap .ringbox,.mring svg,.ring>svg,.nbring.big>svg{display:none!important}
 .mring{width:auto;height:auto}.mring span{position:static;display:inline-block;padding:6px 10px;border-radius:12px;background:var(--surface2);font-size:13px}
 .ring{width:auto;height:auto;margin:10px auto 14px}.ring .c{position:static}
 .nbring.big>span{position:static}
-.tkr{gap:0}
 .rsl{justify-content:flex-start}
 /* rhythm, radius, touch targets */
 .wrap .card{border-radius:20px}
@@ -1213,15 +1212,23 @@ img,svg{max-width:100%}
 .vxch{display:grid;place-items:center;color:var(--mut);transition:transform .3s var(--spring)}.vxo .vxch{transform:rotate(90deg)}
 .vxa>*:not(.qxh){animation:vxIn .38s var(--ease) both}
 @keyframes vxIn{from{opacity:0;transform:translateY(-6px)}}
-/* tracker: one filter row less (weeks stay under the Weeks button) */
-#trk .tkweeks{display:none}
-/* motion: cards rise in one after another */
-.wrap>*{animation:rise .48s var(--ease) both}
-.wrap>*:nth-child(2){animation-delay:.03s}.wrap>*:nth-child(3){animation-delay:.06s}.wrap>*:nth-child(4){animation-delay:.09s}
-.wrap>*:nth-child(5){animation-delay:.12s}.wrap>*:nth-child(n+6){animation-delay:.15s}
-.spark,.tkdw{display:none!important}
+/* study tracker: same layout as before, clearer boxes and bigger tap areas */
+#trk .card{border:1px solid var(--bd);box-shadow:var(--sh)}
+#trk .tksub{border-left:4px solid var(--sc);padding:16px}
+#trk .tksub:active{transform:none}
+#trk .tktask{padding:11px 0;min-height:48px}
+#trk .tkck{width:26px;height:26px;transition:transform .25s var(--spring),background .2s,border-color .2s}
+#trk .tktask.dn .tkck{transform:scale(1.08)}
+#trk .tktabs{border:1px solid var(--bd)}#trk .tktabs button,#trk .tkflt button{min-height:42px}
+#trk .tkwk{border:1px solid var(--bd)}
+#trk .tkact button{min-height:58px;border:1px solid var(--bd)}
+/* motion: cards rise in one after another (not on the tracker: it redraws on every tick) */
+.wrap:not(#trk)>*{animation:rise .48s var(--ease) both}
+.wrap:not(#trk)>*:nth-child(2){animation-delay:.03s}.wrap:not(#trk)>*:nth-child(3){animation-delay:.06s}.wrap:not(#trk)>*:nth-child(4){animation-delay:.09s}
+.wrap:not(#trk)>*:nth-child(5){animation-delay:.12s}.wrap:not(#trk)>*:nth-child(n+6){animation-delay:.15s}
+.spark{display:none!important}
 @keyframes rise{from{opacity:0;transform:translateY(12px)}}
-@media(prefers-reduced-motion:reduce){.wrap>*,.vxa>*,.hero5:before{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.wrap:not(#trk)>*,.vxa>*,.hero5:before{animation:none!important}}
 </style>
 <script>(function(){try{var h=document.documentElement,t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';h.dataset.accent=JSON.parse(localStorage.getItem('cbt_accent'))||'cyber'}catch(e){document.documentElement.dataset.theme='light';document.documentElement.dataset.accent='cyber'}})()</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6', 'app7', 'app8', 'app9', 'app10', 'app11', 'app12', 'app13', 'app14', 'app15', 'app16'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
