@@ -4,7 +4,8 @@
    search and a NEET | JEE switch at the top. Then: Buy now → pay with UPI → payment details → verify on Telegram /
    WhatsApp (message + screenshot). Prices, UPI ID and Telegram come only from the database. */
 // never run inside someone else's page (stops look-alike sites from framing the real store)
-if(window.top!==window.self){document.documentElement.style.display='none';try{window.top.location.replace(window.self.location.href)}catch(e){}}
+// framed only by our own app (index.html Store tab); any other site gets kicked out
+if(window.top!==window.self&&!(()=>{try{return window.top.location.origin===location.origin}catch(e){return false}})()){document.documentElement.style.display='none';try{window.top.location.replace(window.self.location.href)}catch(e){}}
 const CFG=window.CBT_CONFIG||{},API=(CFG.SUPABASE_URL||'').replace(/\/$/,'');
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
