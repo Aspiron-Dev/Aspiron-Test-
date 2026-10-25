@@ -227,12 +227,6 @@ async function settings(){
    <button class="btn block" onclick="changePw()">Change password</button>
    <button class="btn ghost block" style="margin-top:14px" onclick="signOutAdmin()">Sign out</button>`,true);
 }
-async function changePw(){
-  const np=$('#np').value;if(np.length<8){$('#ner').textContent='Password must be at least 8 characters.';return}
-  const r=await A('set_password',{new_pw:np});
-  if(r.ok){PW=np;try{sessionStorage.setItem('adm_pw',np)}catch(e){}closeModal();toast('Password changed')}
-  else $('#ner').textContent='Could not change the password.';
-}
 function signOutAdmin(){PW='';try{sessionStorage.removeItem('adm_pw')}catch(e){}closeModal();gate()}
 
 /* ---------- boot ----------
