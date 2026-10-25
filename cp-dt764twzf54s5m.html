@@ -884,6 +884,19 @@ button.sdk{cursor:pointer}.sdk span{font-size:12px;font-weight:700;color:var(--m
 .tg.pay{background:var(--okSoft);color:var(--ok)}.tg.nopay{background:var(--warnSoft);color:var(--warn)}
 .ocard.payst{border-left-color:var(--warn)}
 .stuhead{margin-bottom:12px}
+/* ==== v9 polish: one motion scale, hover lift on tiles, clear focus rings, reduced-motion safe ==== */
+:root{--ease-out:cubic-bezier(.22,1,.36,1);--ease-spring:cubic-bezier(.34,1.56,.64,1);--dur-fast:.16s;--dur:.28s}
+.card,.sbox,.ocard,.srow2{transition:transform var(--dur) var(--ease-out),box-shadow var(--dur) var(--ease-out),border-color var(--dur-fast) ease}
+@media (hover:hover) and (pointer:fine){
+  .card:hover,.sbox:hover,.ocard:hover{transform:translateY(-2px)}
+}
+.btn,.bnav button,.iconbtn,.seg button,.chip{transition:transform var(--dur-fast) var(--ease-spring),background-color var(--dur-fast) ease,color var(--dur-fast) ease,opacity var(--dur-fast) ease}
+:where(button,a,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--pri);outline-offset:2px;border-radius:10px}
+.sbox b{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+  .card:hover,.sbox:hover,.ocard:hover{transform:none}
+}
 </style>
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['admin1', 'admin2', 'admin3', 'admin4'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
@@ -902,9 +915,9 @@ button.sdk{cursor:pointer}.sdk span{font-size:12px;font-weight:700;color:var(--m
 
 <script src="lib/pdfjs-3.11.174/pdf.min.js"></script>
 <script src="parser.js?v=2"></script>
-<script src="admin1.js?v=18" onerror="(window.__miss=window.__miss||[]).push('admin1.js')"></script>
+<script src="admin1.js?v=19" onerror="(window.__miss=window.__miss||[]).push('admin1.js')"></script>
 <script src="admin2.js?v=14" onerror="(window.__miss=window.__miss||[]).push('admin2.js')"></script>
-<script src="admin3.js?v=15" onerror="(window.__miss=window.__miss||[]).push('admin3.js')"></script>
+<script src="admin3.js?v=16" onerror="(window.__miss=window.__miss||[]).push('admin3.js')"></script>
 <script src="admin4.js?v=13" onerror="(window.__miss=window.__miss||[]).push('admin4.js')"></script>
 <script src="admin5.js?v=3" onerror="(window.__miss=window.__miss||[]).push('admin5.js')"></script>
 <script src="admin6.js?v=3" onerror="(window.__miss=window.__miss||[]).push('admin6.js')"></script>
