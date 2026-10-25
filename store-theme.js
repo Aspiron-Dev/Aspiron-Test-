@@ -1,10 +1,11 @@
-/* Store: chosen light / dark theme, and whether the student already gave their name + mobile.
-   Runs in <head> before the page is drawn, so the wrong theme or the welcome screen never flashes. */
+/* Store: chosen light / dark theme, whether the student already gave their name + mobile, and their course
+   (NEET / JEE). Runs in <head> before the page is drawn, so the wrong theme, course or the welcome screen never flashes. */
 (function(){
   var d=document.documentElement;
   try{
     var t=localStorage.getItem('store_theme');if(t==='light'||t==='dark')d.setAttribute('data-theme',t);
     var m=JSON.parse(localStorage.getItem('store_me')||'null');
     if(m&&String(m.name||'').trim().length>=2&&/^[6-9]\d{9}$/.test(m.mobile||''))d.classList.add('has-me');
+    if(m&&(m.course==='neet'||m.course==='jee'))d.setAttribute('data-course',m.course);
   }catch(e){}
 })();

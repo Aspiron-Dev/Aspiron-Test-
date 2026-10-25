@@ -1,7 +1,8 @@
 /* Store page: lists the paid test series (managed in the admin panel → Store), each with its Explore page
-   (description, schedule, demo tests, reviews). The student gives name + mobile once
-   on the welcome screen, then: Buy now → pay with UPI → payment details → verify on Telegram / WhatsApp (message + screenshot).
-   Prices, UPI ID and Telegram come only from the database. */
+   (description, schedule, demo tests, reviews). The student gives name + mobile + course (NEET / JEE) once
+   on the welcome screen and sees that course's series, one row per section (Full syllabus, Subject-wise …), with a
+   search and a NEET | JEE switch at the top. Then: Buy now → pay with UPI → payment details → verify on Telegram /
+   WhatsApp (message + screenshot). Prices, UPI ID and Telegram come only from the database. */
 // never run inside someone else's page (stops look-alike sites from framing the real store)
 if(window.top!==window.self){document.documentElement.style.display='none';try{window.top.location.replace(window.self.location.href)}catch(e){}}
 const CFG=window.CBT_CONFIG||{},API=(CFG.SUPABASE_URL||'').replace(/\/$/,'');
@@ -47,20 +48,42 @@ const meOk=m=>!!m&&String(m.name||'').trim().length>=2&&/^[6-9]\d{9}$/.test(m.mo
 const ME=()=>{const m=LSg('store_me',null);return meOk(m)?m:meOk(MEM)?MEM:null};
 const meCheck=(n,m)=>n.length<2?'Please enter your name.':!/^[6-9]\d{9}$/.test(m)?'Please enter a valid 10-digit mobile number.':'';
 const meRead=(ni,mi)=>[$(ni).value.trim().replace(/\s+/g,' ').slice(0,60),$(mi).value.replace(/\D/g,'').slice(-10)];
-function meSave(n,m){
-  const old=ME();if(!old||old.mobile!==m)LSd('store_ord');   // a new number never continues the old number's order
-  MEM={name:n,mobile:m};LSs('store_me',MEM);
+function meSave(n,m,c){
+  const old=ME(),was=course();if(!old||old.mobile!==m)LSd('store_ord');   // a new number never continues the old number's order
+  MEM={name:n,mobile:m,course:CN[c]?c:was};LSs('store_me',MEM);CRS=MEM.course;
   document.documentElement.classList.add('has-me');meChip();
   // "You will be notified" belongs to a number: redraw those buttons for the new one
   document.querySelectorAll('[data-soon]').forEach(e=>{const x=ST.items.find(i=>i.id===e.dataset.soon);if(x)e.outerHTML=buyBtn(x)});
+  if(MEM.course!==was)courseGo();
 }
 function meChip(){const m=ME();if(!m)return;$('#mename').textContent=m.name.split(' ')[0];$('#meini').textContent=m.name[0].toUpperCase()}
 function gateGo(){
-  const [n,m]=meRead('#gn','#gm'),bad=meCheck(n,m);
+  const [n,m]=meRead('#gn','#gm'),c=gcPick('#gate'),bad=meCheck(n,m)||(c?'':'Please choose your course — NEET or JEE.');
   if(bad)return $('#ger').textContent=bad;
   $('#ger').textContent='';const g=$('#gate');g.classList.add('out');
-  setTimeout(()=>{meSave(n,m);g.classList.remove('out');jump()},300);
+  setTimeout(()=>{meSave(n,m,c);g.classList.remove('out');jump()},300);
 }
+/* ---------- course: NEET or JEE (welcome screen, Your details, or the switch at the top). A series set to NEET or
+   JEE in the admin panel shows only for that course; a series with no course shows for both. ---------- */
+const CN={neet:'NEET',jee:'JEE'},other=c=>c==='jee'?'neet':'jee';
+let CRS='';   // the course for this visit if the phone does not allow saving
+const course=()=>{const m=ME(),c=(m&&m.course)||CRS;return CN[c]?c:'neet'};
+const forC=(x,c)=>!x.course||x.course===(c||course());
+const gcPick=box=>{const b=$(box+' [data-gc][aria-checked=true]');return b?b.dataset.gc:''};
+const crsHtml=c=>`<span class="lab" id="mcl">Your course</span><div class="crs" role="radiogroup" aria-labelledby="mcl">${[['neet','🩺','Medical'],['jee','📐','Engineering']].map(([k,i,t])=>`<button type="button" class="crsb" role="radio" aria-checked="${k===c}" data-gc="${k}"><i>${i}</i><span><b>${CN[k]}</b><small>${t}</small></span></button>`).join('')}</div>`;
+function courseUi(){
+  const c=course();document.documentElement.dataset.course=c;
+  document.querySelectorAll('.cseg [data-course]').forEach(b=>b.setAttribute('aria-checked',b.dataset.course===c));
+  document.querySelectorAll('[data-cname]').forEach(e=>e.textContent=CN[c]);
+  const q=$('#q');if(q)q.placeholder=`Search ${CN[c]} test series`;
+}
+function setCourse(c){
+  if(!CN[c])return;const was=course();CRS=c;
+  const m=ME();if(m&&m.course!==c){MEM=Object.assign({},m,{course:c});LSs('store_me',MEM)}
+  if(c!==was)courseGo();else courseUi();
+}
+// the course changed: redraw the series and the reviews for it, from the top
+function courseGo(){courseUi();draw(true);rvAllDraw();if(scrollY>58)scrollTo({top:0,behavior:'smooth'})}
 let AFTER=null;
 // edit name / mobile later (header chip, or "change" on the payment step)
 function meSheet(then){
@@ -68,12 +91,12 @@ function meSheet(then){
   ovEl().innerHTML=`<div class="sheet" role="dialog" aria-modal="true"><div class="shd"><div class="grow"><b>Your details</b><span class="sm mut">Your series is unlocked on this mobile number.</span></div><button class="x" data-close aria-label="Close">✕</button></div>
    <label for="sn">Full name</label><div class="fld"><span>👤</span><input id="sn" autocomplete="name" maxlength="60" value="${esc(m.name||'')}" placeholder="e.g. Rahul Sharma"></div>
    <label for="sm">Mobile number</label><div class="fld"><span>📱</span><input id="sm" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel" value="${esc(m.mobile||'')}" placeholder="10-digit mobile number"></div>
-   <div class="err" id="er"></div><button class="btn block" id="go" data-mesave>${then?'Save &amp; continue →':'Save'}</button></div>`;
+   ${then?'':crsHtml(course())}<div class="err" id="er"></div><button class="btn block" id="go" data-mesave>${then?'Save &amp; continue →':'Save'}</button></div>`;
 }
 function meSaveGo(){
   const [n,m]=meRead('#sn','#sm'),bad=meCheck(n,m);
   if(bad)return $('#er').textContent=bad;
-  meSave(n,m);const a=AFTER;AFTER=null;
+  meSave(n,m,gcPick('.ov'));const a=AFTER;AFTER=null;
   if(a)a();else{closeSheet();toast('Details saved')}
 }
 
@@ -85,18 +108,74 @@ async function load(){
   // Help button + footer link open the WhatsApp / Telegram chooser
   if(!tg&&!waUrl(''))$('#fab').remove();
   if(ST.settings.payee)$('#spayee').textContent=ST.settings.payee;
-  const L=ST.items||[];
-  if(!L.length){$('#list').innerHTML=`<div class="card empty"><b>New test series coming soon</b><p class="sm">Please check back in a little while.</p></div>`;return}
-  $('#lcount').textContent=`${L.length} test series · pay with any UPI app`;
-  $('#list').innerHTML=L.map(cardHtml).join('');
+  ST.items=ST.items||[];ST.settings=ST.settings||{};
+  if(!ST.items.length){$('#list').innerHTML=`<div class="card empty"><b>New test series coming soon</b><p class="sm">Please check back in a little while.</p></div>`;return}
+  draw(true);
   loadSch();loadRv();loadXp();
   if(ME()){liveCheck();jump()}
 }
-// a shared link (#p=…) scrolls to that series; an Explore link (#x=…) opens its page
+// a shared link (#p=…) scrolls to that series (or opens it, if it is not on the page); an Explore link (#x=…) opens its page
 function jump(){
   const x=location.hash.match(/x=([0-9a-f-]{36})/);if(x&&ST.items.some(i=>i.id===x[1]))return explore(x[1]);
-  const h=location.hash.match(/p=([0-9a-f-]{36})/);
-  if(h){const c=document.getElementById('p_'+h[1]);if(c){c.classList.add('hl');setTimeout(()=>c.scrollIntoView({behavior:'smooth',block:'center'}),200)}}
+  const h=location.hash.match(/p=([0-9a-f-]{36})/);if(!h||!ST.items.some(i=>i.id===h[1]))return;
+  const c=document.getElementById('p_'+h[1]);if(!c)return explore(h[1]);
+  c.classList.add('hl');setTimeout(()=>c.scrollIntoView({behavior:'smooth',block:'center',inline:'center'}),200);
+}
+
+/* ---------- the list: the student's course, one row per section, left to right (or the search results) ---------- */
+let Q='',QT=0;
+function draw(anim){
+  const A=ST.items||[];if(!A.length)return;
+  const c=course(),L=A.filter(x=>forC(x,c)),q=Q.trim(),box=$('#list');
+  $('#leye').textContent=`${CN[c]} test series`;
+  $('#lh1').innerHTML=`Choose your <em>${CN[c]}</em> test series`;
+  $('#lcount').textContent=L.length?`${L.length} test series · pay with any UPI app`:`${CN[c]} test series are coming soon`;
+  document.body.classList.toggle('searching',!!q);
+  box.classList.toggle('noanim',!anim);
+  box.innerHTML=q?resHtml(q,L,c):secsHtml(L,c);
+  railsInit();
+}
+// sections in the order set in the admin panel (Store setup ↑ ↓), then any others; series without a section last
+const SECI=[[/full|complete|mock|grand|all india/i,'📚'],[/subject/i,'🧬'],[/chapter|unit/i,'📖'],[/topic/i,'🎯'],[/pyq|previous|past/i,'📝'],[/crash|revision|rapid|short/i,'⚡'],[/free|demo/i,'🎁']];
+const secIco=n=>(SECI.find(([r])=>r.test(n))||[0,'✨'])[1];
+function groups(L){
+  const S=(ST.settings.sections||[]).map(x=>String(x).trim()).filter(Boolean),ord=S.map(x=>x.toLowerCase()),G=new Map();
+  for(const x of L){const n=String(x.section||'').trim(),k=n.toLowerCase();if(!G.has(k))G.set(k,{k,name:S[ord.indexOf(k)]||n,items:[]});G.get(k).items.push(x)}
+  const rank=k=>k?(ord.includes(k)?ord.indexOf(k):1e6):2e6;
+  return [...G.values()].map((g,i)=>Object.assign(g,{i})).sort((a,b)=>rank(a.k)-rank(b.k)||a.i-b.i);
+}
+function secsHtml(L,c){
+  if(!L.length){const o=other(c),n=ST.items.filter(x=>forC(x,o)).length;
+    return `<div class="nores"><span>🚀</span><b>${CN[c]} test series are coming soon</b><p class="sm mut">Please check back in a little while.</p>${n?`<div class="row"><button class="btn" data-course="${o}">See ${CN[o]} test series →</button></div>`:''}</div>`}
+  const G=groups(L);
+  return G.map(g=>{const nm=g.name||(G.length>1?'More test series':'All test series');
+    return `<section class="sec" aria-label="${esc(nm)}"><div class="sech"><span class="secic" aria-hidden="true">${g.name?secIco(g.name):'✨'}</span><div class="grow"><h2>${esc(nm)}</h2><span class="secn">${g.items.length} test series</span></div>
+     <button class="seeall" data-all aria-expanded="false" hidden>See all</button><span class="rarr" hidden><button class="rab" data-rl="-1" aria-label="Previous">‹</button><button class="rab" data-rl="1" aria-label="Next">›</button></span></div>
+     <div class="rail">${g.items.map(cardHtml).join('')}</div></section>`}).join('');
+}
+// "See all" and the ‹ › buttons only when a row has more than fits
+function railsInit(){
+  document.querySelectorAll('#list .sec').forEach(s=>{
+    const r=s.querySelector('.rail'),all=s.classList.contains('all'),over=r.scrollWidth>r.clientWidth+4,a=s.querySelector('[data-all]'),ar=s.querySelector('.rarr');
+    if(a)a.hidden=!over&&!all;if(ar)ar.hidden=!over||all;railArrows(r);
+  });
+}
+function railArrows(r){const b=r.parentNode.querySelectorAll('[data-rl]');if(b.length===2){b[0].disabled=r.scrollLeft<8;b[1].disabled=r.scrollLeft+r.clientWidth>r.scrollWidth-8}}
+// search: every word must match the name, short description, section, features or description
+const norm=t=>String(t||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'');
+const hay=x=>norm([x.title,x.subtitle,x.section,x.badge,(x.features||[]).join(' '),(XD[x.id]||{}).description,x.course?CN[x.course]:''].join(' '));
+function find(q,L){const w=norm(q).split(/\s+/).filter(Boolean),t=norm(q);return L.filter(x=>{const h=hay(x);return w.every(v=>h.includes(v))}).sort((a,b)=>norm(b.title).includes(t)-norm(a.title).includes(t))}
+function resHtml(q,L,c){
+  const R=find(q,L);
+  if(R.length)return `<div><p class="resh"><b>${R.length} result${R.length>1?'s':''}</b> for “${esc(q)}”</p><div class="grid">${R.map(cardHtml).join('')}</div></div>`;
+  const o=other(c),n=find(q,ST.items.filter(x=>forC(x,o))).length;
+  return `<div class="nores"><span>🔍</span><b>No ${CN[c]} test series for “${esc(q)}”</b><p class="sm mut">Try another word — like a subject, a chapter or “full test”.</p>
+   <div class="row">${n?`<button class="btn" data-course="${o}">See ${n} in ${CN[o]} →</button>`:''}<button class="btn soft" data-qx>Clear search</button></div></div>`;
+}
+function qSet(v){
+  clearTimeout(QT);const q=$('#q');if(q&&q.value!==v)q.value=v;
+  const was=!!Q.trim();Q=v;$('#qx').hidden=!v;draw();
+  if((was||Q.trim())&&scrollY>0)scrollTo({top:0,behavior:'instant'});
 }
 const okImg=u=>/^(data:image\/|https:\/\/)/.test(u||'');
 const offPct=x=>x.mrp&&x.mrp>x.price?Math.round((1-x.price/x.mrp)*100):0;
@@ -108,12 +187,11 @@ function mediaHtml(x,tag){
 function priceHtml(x){
   const off=offPct(x);return `<div class="price"><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s><span class="save">Save ${inr(x.mrp-x.price)} · ${off}% off</span>`:''}</div>`;
 }
-// a card: photo, name, short description, rating, price, then Explore and Buy now (everything else is on the Explore page)
+// a card: photo, name, rating (one thin line), short description, price, then Explore and Buy now (everything else is on the Explore page)
 function cardHtml(x,i){
   const off=offPct(x),ph=!okImg(x.image),bdg=x.badge||(x.buy_on===false?'COMING SOON':'');
   return `<div class="card" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,6)}"><div class="media${ph?' isph':''}" data-view="${esc(x.id)}">${bdg?`<span class="badge">${esc(bdg)}</span>`:''}${off?`<span class="off">${off}% OFF</span>`:''}${mediaHtml(x)}</div>
-   <div class="cbody"><h3${ph?' class="sr"':''}>${esc(x.title)}</h3>${x.subtitle?`<p class="sub">${esc(x.subtitle)}</p>`:''}
-   <div data-rvmini="${esc(x.id)}">${rvMini(x.id)}</div>
+   <div class="cbody"><h3${ph?' class="sr"':''}>${esc(x.title)}</h3><div data-rline="${esc(x.id)}">${rLine(x.id)}</div>${x.subtitle?`<p class="sub">${esc(x.subtitle)}</p>`:''}
    ${priceHtml(x)}
    <div class="cact"><button class="btn xbtn block" data-explore="${esc(x.id)}">🔍 Explore test series</button>
     ${buyBtn(x)}</div></div></div>`;
@@ -145,7 +223,7 @@ let XP=null,XD={},XH=false;
 async function loadXp(){
   const r=await rpc('cbt_store_explore');if(!r.ok)return;
   XD={};(r.items||[]).forEach(x=>XD[x.id]=x);
-  if(XP)xpDraw();
+  if(XP)xpDraw();if(Q.trim())draw();   // search the descriptions too
 }
 const XTABS=[['d','Description'],['r','Resources'],['v','Reviews']];
 function explore(id,tab){
@@ -175,9 +253,9 @@ function xpBack(){if(XH)history.back();else{xpClose();history.replaceState(null,
 addEventListener('popstate',()=>{if($('#xp')&&!/[#&]x=/.test(location.hash)){XH=false;closeSheet();xpClose()}});
 // Description: the series photo, then everything about it
 function xpDesc(x){
-  const d=String((XD[x.id]||{}).description||'').trim(),F=x.features||[];
+  const d=String((XD[x.id]||{}).description||'').trim(),F=x.features||[],cat=[x.course?CN[x.course]:'',String(x.section||'').trim()].filter(Boolean);
   return `<div class="ximg${okImg(x.image)?'':' isph'}">${mediaHtml(x)}</div>
-   <h2 class="xt">${esc(x.title)}</h2>${x.subtitle?`<p class="xsub">${esc(x.subtitle)}</p>`:''}
+   ${cat.length?`<div class="xcat">${cat.map(t=>`<span>${esc(t)}</span>`).join('')}</div>`:''}<h2 class="xt">${esc(x.title)}</h2>${x.subtitle?`<p class="xsub">${esc(x.subtitle)}</p>`:''}
    <div data-rvmini="${esc(x.id)}">${rvMini(x.id)}</div>
    <div class="xprice">${priceHtml(x)}</div>
    ${d?`<div class="xdesc">${esc(d)}</div>`:''}
@@ -248,13 +326,26 @@ function sheet(step,body){
 }
 function closeSheet(){closeEdit();const o=$('.ov');if(o)o.remove();document.body.style.overflow=$('#xp')?'hidden':''}
 let BUYN=0;
+/* ---------- promotion link: store.html?ref=CODE. The last link opened is remembered for 30 days. Each new visit to a link
+   counts one click; an order made after that is tied to the link on the server (the admin panel counts it there). ---------- */
+const REF_OK=/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
+function captureRef(){
+  const c=(new URLSearchParams(location.search).get('ref')||'').trim().toLowerCase();
+  if(!REF_OK.test(c))return;
+  LSs('store_ref',{c,at:Date.now()});
+  try{if(!sessionStorage.getItem('ref_'+c)){sessionStorage.setItem('ref_'+c,'1');rpc('cbt_promo_click',{p_code:c})}}catch(_){}
+}
+function attachRef(order){
+  const r=LSg('store_ref',null);
+  if(order&&r&&REF_OK.test(r.c)&&Date.now()-r.at<30*864e5)rpc('cbt_promo_attach',{p_order:order,p_code:r.c});
+}
 async function buy(id){
   IT=ST.items.find(i=>i.id===id);if(!IT)return;
   if(IT.buy_on===false)return soonSheet(id);
   const me=ME();if(!me)return meSheet(()=>buy(id));
   const last=LSg('store_ord',null);
   // same series + same number ordered in the last 24 h → continue that order instead of making a new code
-  if(last&&last.item===id&&last.mobile===me.mobile&&Date.now()-last.at<864e5){ORD=last;return payStep()}
+  if(last&&last.item===id&&last.mobile===me.mobile&&Date.now()-last.at<864e5){attachRef(last.code);ORD=last;return payStep()}
   const n=++BUYN;
   sheet(1,`<div class="ld"><span class="spin"></span><span>Getting your payment details…</span></div>`);
   const r=await rpc('cbt_store_order',{p_item:IT.id,p_name:me.name,p_mobile:me.mobile});
@@ -264,7 +355,7 @@ async function buy(id){
     return sheet(1,`<div class="bigok">⚠️</div><p style="text-align:center">${t}</p><button class="btn block" style="margin-top:14px" data-buy="${esc(id)}">Try again</button>
      <p class="sm mut" style="text-align:center;margin-top:12px">For ${esc(me.name)} · ${esc(me.mobile)} · <a href="#" data-redo style="color:var(--pri)">change</a></p>`);
   }
-  ORD={item:IT.id,code:r.code,amount:r.amount,title:r.title,name:me.name,mobile:me.mobile,at:Date.now()};LSs('store_ord',ORD);
+  ORD={item:IT.id,code:r.code,amount:r.amount,title:r.title,name:me.name,mobile:me.mobile,at:Date.now()};LSs('store_ord',ORD);attachRef(r.code);
   payStep();
 }
 const upiLink=()=>{const s=ST.settings,e=encodeURIComponent;return `upi://pay?pa=${s.upi}&pn=${e(s.payee||'')}&am=${ORD.amount}&cu=INR&tn=${e(ORD.code)}`};
@@ -394,7 +485,7 @@ async function editSave(){
     const r=await rpc('cbt_store_order',{p_item:ORD.item,p_name:n,p_mobile:m});
     if(!r.ok)return fail(r.error==='busy'?'Too many tries. Please wait a while and try again.':r.error==='network'?'No internet. Please try again.':'Could not save. Please try again.');
     meSave(n,m);
-    Object.assign(ORD,{code:r.code,amount:r.amount,title:r.title,name:n,mobile:m,at:Date.now()});
+    Object.assign(ORD,{code:r.code,amount:r.amount,title:r.title,name:n,mobile:m,at:Date.now()});attachRef(r.code);
   }
   const r=await rpc('cbt_store_paid',{p_code:ORD.code,p_mobile:ORD.mobile,p_payer:py,p_utr:pu});
   if(!r.ok&&r.error==='network'){LSs('store_ord',ORD);return fail('No internet. Please try again.')}
@@ -405,6 +496,11 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('button,a,[data-view]');if(!t)return;
   if('help' in t.dataset){e.preventDefault();helpSheet();return}
   if('themeToggle' in t.dataset)themeToggle();
+  else if(t.dataset.gc){t.parentNode.querySelectorAll('[data-gc]').forEach(b=>b.setAttribute('aria-checked',b===t));if(t.closest('#gate'))$('#ger').textContent=''}
+  else if(t.dataset.course)setCourse(t.dataset.course);
+  else if('qx' in t.dataset){qSet('');const q=$('#q');if(q)q.focus()}
+  else if('all' in t.dataset){const s=t.closest('.sec');if(s){const on=s.classList.toggle('all');t.textContent=on?'Show less':'See all';t.setAttribute('aria-expanded',on);railsInit();if(!on)s.scrollIntoView({behavior:'smooth',block:'start'})}}
+  else if(t.dataset.rl){const r=t.closest('.sec').querySelector('.rail');r.scrollBy({left:(+t.dataset.rl)*r.clientWidth*.85,behavior:'smooth'})}
   else if('gate' in t.dataset)gateGo();
   else if('me' in t.dataset)meSheet();
   else if('mesave' in t.dataset)meSaveGo();
@@ -421,7 +517,6 @@ document.addEventListener('click',e=>{
   else if(t.dataset.demo)demo(t.dataset.demo,+t.dataset.slot);
   else if('rvf' in t.dataset){RVF=t.dataset.rvf;RVN=8;rvAllDraw()}
   else if('rvmore' in t.dataset){const r=$('.rvrail'),x=r?r.scrollLeft:0;RVN+=8;rvAllDraw();const r2=$('.rvrail');if(r2)r2.scrollLeft=x}
-  else if('rvjump' in t.dataset){const r=$('#reviews');if(r)r.scrollIntoView({behavior:'smooth',block:'start'})}
   else if('rvx' in t.dataset){const c=t.closest('.rv');if(c){const o=c.classList.toggle('open');t.textContent=o?'Show less':'Read more';t.setAttribute('aria-expanded',o)}}
   else if(t.dataset.share)share(t.dataset.share,!!t.closest('#xp'));
   else if('close' in t.dataset)closeSheet();
@@ -437,6 +532,7 @@ document.addEventListener('click',e=>{
   else if('paidgo' in t.dataset)paidGo();
 });
 document.addEventListener('keydown',e=>{
+  if(e.target&&e.target.id==='q'){if(e.key==='Enter'){e.preventDefault();qSet(e.target.value);e.target.blur()}else if(e.key==='Escape'&&e.target.value){e.preventDefault();qSet('')}return}
   if(e.key==='Escape'){if($('.ebox'))closeEdit();else if($('.ov'))closeSheet();else if($('#xp'))xpBack()}
   if(e.key!=='Enter')return;
   if($('#esave'))editSave();
@@ -444,7 +540,11 @@ document.addEventListener('keydown',e=>{
   else if($('#go'))meSaveGo();
   else if($('#pgo'))paidGo();
 });
-themeMeta();meChip();
+themeMeta();meChip();courseUi();
+$('#q').addEventListener('input',e=>{const v=e.target.value;$('#qx').hidden=!v;clearTimeout(QT);QT=setTimeout(()=>qSet(v),150)});
+// a row scrolled by hand: update its ‹ › buttons; the window resized: rows may fit now
+document.addEventListener('scroll',e=>{const r=e.target;if(r.classList&&r.classList.contains('rail'))railArrows(r)},{capture:true,passive:true});
+{let t=0;addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(railsInit,150)})}
 if(!ME()&&matchMedia('(hover:hover)').matches)setTimeout(()=>{const n=$('#gn');if(n)n.focus()},300);
 /* ---------- schedule (PDF / photo) ---------- */
 let SCH={};
@@ -489,8 +589,9 @@ const plural=(n,w)=>`${n} ${w}${n>1?'s':''}`;
 const rvSort=(a,b)=>(b.pinned-a.pinned)||(!!b.body-!!a.body)||(b.at-a.at);
 function rvAva(x){const n=String(x.name||'S').trim()||'S',h=[...n].reduce((a,c)=>a+c.charCodeAt(0),0);return `<span class="rva c-${COLORS[h%5]}">${/^data:image\//.test(x.photo||'')?`<img src="${esc(x.photo)}" alt="">`:esc(n[0].toUpperCase())}</span>`}
 const RVNOTE=`<p class="rvnote">✔ <b>Verified</b> = written from the student's own account after their series was unlocked. One review per student.</p>`;
-const clip=(t,n)=>{t=String(t||'').replace(/\s+/g,' ').trim();return t.length>n?t.slice(0,n-1).trim()+'…':t};
-// on each card and on the Explore page: stars · average · count, opens the Reviews tab
+// on each card, under the name: one thin line (stars · average · count), opens the Reviews tab
+function rLine(id){const r=RV[id];return r&&r.count?`<button class="rline" data-rv="${esc(id)}">${stars(r.avg)}<b>${Number(r.avg).toFixed(1)}</b><span>(${plural(r.count,'review')})</span></button>`:''}
+// on the Explore page: stars · average · count, opens the Reviews tab
 function rvMini(id){const r=RV[id];return r&&r.count?`<button class="rvmini" data-rv="${esc(id)}">${stars(r.avg)}<b>${Number(r.avg).toFixed(1)}</b><span>· ${plural(r.count,'review')}</span><u>Read ›</u></button>`:''}
 function rvItem(x,withTitle){
   const long=(x.body||'').length>170;
@@ -506,25 +607,23 @@ async function loadRv(){
   const r=await rpc('cbt_store_reviews');RVDONE=true;if(!r.ok){if(XP)xpDraw();return}
   RV={};(r.items||[]).forEach(x=>RV[x.id]=x);
   document.querySelectorAll('[data-rvmini]').forEach(e=>e.innerHTML=rvMini(e.dataset.rvmini));
+  document.querySelectorAll('[data-rline]').forEach(e=>e.innerHTML=rLine(e.dataset.rline));
   rvAllDraw();if(XP)xpDraw();
 }
-/* ---------- under the cards: every review, all series ---------- */
+/* ---------- at the end of the page: every review of the student's course ---------- */
 let RVF='',RVN=8;
 function rvAll(){
-  const L=[];for(const x of ST.items){const r=RV[x.id];if(r&&r.list)r.list.forEach(v=>L.push(Object.assign({item:x.id,title:x.title},v)))}
+  const L=[];for(const x of ST.items){const r=RV[x.id];if(forC(x)&&r&&r.list)r.list.forEach(v=>L.push(Object.assign({item:x.id,title:x.title},v)))}
   return L.sort(rvSort);
 }
 function rvAllDraw(){
-  const sec=$('#reviews'),j=$('#rvjump');if(!sec)return;
-  const its=ST.items.filter(x=>RV[x.id]&&RV[x.id].count),total=its.reduce((a,x)=>a+RV[x.id].count,0);
-  if(!total){sec.hidden=true;if(j)j.hidden=true;return}
+  const sec=$('#reviews');if(!sec)return;
+  const its=ST.items.filter(x=>forC(x)&&RV[x.id]&&RV[x.id].count),total=its.reduce((a,x)=>a+RV[x.id].count,0);
+  if(!total){sec.hidden=true;return}
   const S=[0,1,2,3,4].map(i=>its.reduce((a,x)=>a+((RV[x.id].stars||[])[i]||0),0));
   // exact average from the star counts (each series' avg from the server is already rounded)
   const avg=S.reduce((a,b)=>a+b,0)===total?(5*S[0]+4*S[1]+3*S[2]+2*S[3]+S[4])/total:its.reduce((a,x)=>a+RV[x.id].avg*RV[x.id].count,0)/total;
   const all=rvAll();
-  if(j){const q=all.find(v=>v.body&&v.rating>=4);j.hidden=false;
-    j.innerHTML=`<span class="rjtop"><span class="rjbig">${avg.toFixed(1)}</span><span class="grow">${stars(avg,'big')}<span class="rjtx">${plural(total,'review')} from verified students</span></span><span class="ava3">${all.slice(0,3).map(v=>rvAva(v)).join('')}</span></span>
-     ${q?`<span class="rjq">“${esc(clip(q.body,120))}”<small>${esc(q.name||'Student')} · ✔ Verified student</small></span>`:''}<span class="rjgo">Read all reviews →</span>`}
   if(RVF&&!its.some(x=>x.id===RVF))RVF='';
   const R=RVF?RV[RVF]:{avg,count:total,stars:S};
   const L=all.filter(v=>!RVF||v.item===RVF),show=L.slice(0,RVN),more=L.length-show.length;
@@ -536,5 +635,6 @@ function rvAllDraw(){
    <div class="rvrail">${show.map(v=>rvItem(v,!RVF&&its.length>1)).join('')}${more>0?`<button class="rvmoret" data-rvmore>See ${plural(more,'more review')} →</button>`:''}</div>
    ${RVNOTE}`;
 }
-addEventListener('scroll',()=>{const f=$('#fab');if(f)f.classList.toggle('mini',scrollY>160)},{passive:true});
+captureRef();
+addEventListener('scroll',()=>{const f=$('#fab');if(f)f.classList.toggle('mini',scrollY>160);const t=$('.top');if(t)t.classList.toggle('stuck',scrollY>58)},{passive:true});
 load();
