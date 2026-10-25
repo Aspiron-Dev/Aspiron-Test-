@@ -897,6 +897,56 @@ button.sdk{cursor:pointer}.sdk span{font-size:12px;font-weight:700;color:var(--m
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
   .card:hover,.sbox:hover,.ocard:hover{transform:none}
 }
+/* ==== v10 redesign: premium control centre (visual layer only, scoped to the admin shell) ==== */
+:root{--r-xl:26px;--r-lg:20px;--r-md:14px;--lift:0 1px 2px rgba(15,23,42,.05),0 22px 44px -24px rgba(15,23,42,.28)}
+html[data-theme="dark"],html[data-theme="dark"][data-accent]{--lift:inset 0 1px 0 rgba(255,255,255,.05),0 28px 56px -26px rgba(0,0,0,.85)}
+body.admx{font-family:Inter,"Noto Sans Devanagari",system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:-.006em}
+body.admx::before{background:radial-gradient(60% 46% at 0% 0%,color-mix(in srgb,var(--pri) 18%,transparent),transparent 70%),radial-gradient(55% 42% at 100% 0%,color-mix(in srgb,var(--pri2) 16%,transparent),transparent 70%)!important}
+
+/* top bar: frosted, slimmer, brand mark with gradient */
+body.admx .hdr{background:color-mix(in srgb,var(--surface) 74%,transparent);backdrop-filter:saturate(180%) blur(18px);-webkit-backdrop-filter:saturate(180%) blur(18px);border-bottom:1px solid var(--hair);box-shadow:none}
+body.admx .hdr .brand{font-weight:800;font-size:17px;letter-spacing:-.3px}
+body.admx .hdr .brand .logo{background:var(--grad);color:#fff;border-radius:12px;width:34px;height:34px;display:grid;place-items:center;box-shadow:0 10px 24px -10px var(--glow)}
+body.admx .hdr .iconbtn{border-radius:12px;transition:transform .2s var(--ease-spring),background-color .2s}
+body.admx .hdr .iconbtn:hover{background:var(--surface2)}
+
+/* cards and stat tiles: larger radius, layered shadow, quiet borders */
+body.admx .card,body.admx .sbox{border-radius:var(--r-lg)!important;background:var(--surface)!important;border:1px solid var(--hair)!important;box-shadow:var(--lift)!important}
+body.admx .sbox{padding:16px 18px}
+body.admx .sbox b{display:block;font-size:28px;font-weight:800;letter-spacing:-.6px;line-height:1.1}
+body.admx .sbox span{display:block;margin-top:6px;font-size:11.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--mut)}
+body.admx .sstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+
+/* hero: layered gradient with glow, bigger headline */
+body.admx .ovhero{border-radius:var(--r-xl);padding:28px;background:linear-gradient(135deg,#0891b2 0%,#4f46e5 58%,#7c3aed 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 30px 60px -28px var(--glow)}
+body.admx .ovhero:before{content:"";position:absolute;inset:0;background:radial-gradient(40% 60% at 90% 0%,rgba(255,255,255,.22),transparent 70%),radial-gradient(35% 50% at 0% 100%,rgba(255,255,255,.12),transparent 70%);pointer-events:none}
+body.admx .ovhero h2{font-size:28px;font-weight:800;letter-spacing:-.6px}
+
+/* buttons: rounder, firmer */
+body.admx .btn{border-radius:var(--r-md);font-weight:700;letter-spacing:-.005em}
+body.admx .btn.soft{border-radius:var(--r-md)}
+
+/* sidebar: floating glass panel, gradient active pill */
+body.admx #aside{top:12px;bottom:12px;left:12px;height:auto;border-radius:var(--r-xl);background:color-mix(in srgb,var(--surface) 80%,transparent)!important;backdrop-filter:blur(20px) saturate(160%);-webkit-backdrop-filter:blur(20px) saturate(160%);border:1px solid var(--hair);box-shadow:var(--lift)}
+body.admx{padding-left:272px}
+body.admx .sgrp{font-size:10.5px;letter-spacing:1px;margin:14px 10px 6px;opacity:.9}
+body.admx .sni{border-radius:14px;padding:11px 12px;font-size:14.5px;font-weight:650;transition:background-color .22s ease,color .22s ease,transform .22s var(--ease-out)}
+body.admx .sni:hover{transform:translateX(3px)}
+body.admx .sni svg{transition:transform .25s var(--ease-spring)}
+body.admx .sni:hover svg{transform:scale(1.08)}
+body.admx .sni.on{background:var(--grad);color:#fff;box-shadow:0 12px 26px -12px var(--glow)}
+body.admx .sni.on svg{stroke:#fff}
+body.admx .sni.on .nb{background:#fff;color:var(--pri)}
+
+/* phone dock: floating pill, gradient bubble on the active tab */
+@media(max-width:899px){
+ body.admx{padding-left:0}
+ body.admx #adock{left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));border-radius:26px;background:color-mix(in srgb,var(--surface) 84%,transparent);backdrop-filter:blur(22px) saturate(170%);-webkit-backdrop-filter:blur(22px) saturate(170%);box-shadow:var(--lift)}
+ #adock button{border-radius:20px;transition:background-color .25s ease,color .25s ease,transform .25s var(--ease-spring)}
+ #adock button:active{transform:scale(.94)}
+ #adock button.on{background:var(--grad);color:#fff;box-shadow:0 10px 22px -10px var(--glow)}
+ body.admx .wrap{padding-left:14px;padding-right:14px}
+}
 </style>
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['admin1', 'admin2', 'admin3', 'admin4'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
