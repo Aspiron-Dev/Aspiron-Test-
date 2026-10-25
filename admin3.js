@@ -69,6 +69,8 @@ async function publish(){
   if(!sid)return toast('Please choose a series');
   const n=Q.filter(bad).length;
   if(n&&!confirm(`${n} question(s) have problems (missing answer or option). Publish anyway?`))return;
+  const lw=liveCheck(fromLocal($('#opens').value),fromLocal($('#closes').value),fromLocal($('#resat').value),+$('#dur').value||180,$('#prac').checked);
+  if(lw===null)return;if(lw)return toast(lw);
   const b=$('#pubbtn'),st=$('#pubst');b.disabled=true;b.textContent='Publishing…';
   try{
     const fid=await resolveFolder(sid,$('#pf').value);
@@ -80,8 +82,8 @@ async function publish(){
     await flush();
     const m=EDIT&&EDIT.meta||{};
     const r=await A('test_save',{id:EDIT?EDIT.id:null,series_id:sid,folder_id:fid,title,duration:+$('#dur').value||180,correct:+$('#pm').value,wrong:+$('#nm').value,
-      lock_back:$('#lock').checked,free_preview:$('#prev').checked,active:m.active!==false,sort_order:m.sort_order||0,opens_at:fromLocal($('#opens').value),stage_token:token,count:Q.length});
-    if(!r.ok)throw new Error(r.error==='incomplete'?'upload was incomplete, please try again':r.error==='questions'?'add at least one question':(r.detail||r.error));
+      lock_back:$('#lock').checked,free_preview:$('#prev').checked,active:m.active!==false,sort_order:m.sort_order||0,opens_at:fromLocal($('#opens').value),closes_at:fromLocal($('#closes').value),result_at:fromLocal($('#resat').value),stage_token:token,count:Q.length});
+    if(!r.ok)throw new Error(r.error==='incomplete'?'upload was incomplete, please try again':r.error==='questions'?'add at least one question':r.error==='result_before_close'?'result time must be after the live end time':(r.detail||r.error));
     await setPrac(r.id,$('#prac').checked);
     EDIT={id:r.id,meta:m};st.textContent='';
     $('#editbar').innerHTML=`<div class="banner"><div class="t"><b>Published ✓</b><div class="sm mut">"${esc(title)}" is live${$('#opens').value?' and will open at the time you set':''}. You can keep editing and press Update.</div></div></div>`;
@@ -96,7 +98,7 @@ async function editQuestions(id,qi){
   Q=(t.data||[]).map(normQ);S=deriveSections();RAWIMG=[];PDFBUF=null;V={only:false,page:0};
   EDIT={id:t.id,meta:{active:t.active,sort_order:t.sort_order}};
   await tab('create');
-  $('#title').value=t.title;$('#dur').value=t.duration;$('#pm').value=t.correct_marks;$('#nm').value=t.wrong_marks;$('#lock').checked=!!t.lock_back;$('#prev').checked=!!t.free_preview;$('#prac').checked=PRAC.has(t.id);$('#opens').value=toLocal(t.opens_at);
+  $('#title').value=t.title;$('#dur').value=t.duration;$('#pm').value=t.correct_marks;$('#nm').value=t.wrong_marks;$('#lock').checked=!!t.lock_back;$('#prev').checked=!!t.free_preview;$('#prac').checked=PRAC.has(t.id);$('#opens').value=toLocal(t.opens_at);$('#closes').value=toLocal(t.closes_at);$('#resat').value=toLocal(t.result_at);
   $('#ps').value=t.series_id;onSeries();const f=CA.folders.find(x=>x.id===t.folder_id);$('#pf').value=f?f.title:'';
   $('#editbar').innerHTML=`<div class="banner"><div class="t"><b>Editing: ${esc(t.title)}</b><div class="sm mut">Change anything below, then press Update test at the bottom.</div></div><button class="btn ghost sm" onclick="newTest()">Cancel</button></div>`;
   $('#pubbtn').textContent='Update test';render();renderSecs();
@@ -127,7 +129,7 @@ async function delRes(id){
   const r=await A('result_delete',{id});if(r.ok){RS=RS.filter(x=>x.id!==id);drawRes();toast('Deleted')}
 }
 function csv(){
-  const f=resFiltered(),q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const f=resFiltered(),q=cq;
   const lines=[['Name','Mobile','Test','Score','Max','Correct','Wrong','Skipped','Time(sec)','Late','Date'].map(q).join(',')].concat(f.map(x=>[x.student,x.mobile,x.title,x.score,x.max,x.correct,x.wrong,x.skipped,x.used,x.late?'yes':'',new Date(x.at).toLocaleString('en-IN')].map(q).join(',')));
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+lines.join('\n')],{type:'text/csv'}));a.download='results.csv';document.body.appendChild(a);a.click();a.remove();
 }
@@ -190,15 +192,15 @@ function drawReports(){
   const l=RP.filter(x=>RF==='all'||x.status===RF);
   $('#pn_reports').innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:12px"><div><h2 style="font-size:20px">Student reports</h2><div class="mut sm">Problems students found in questions or answers.</div></div>
    <select id="rfs" style="max-width:170px" onchange="RF=this.value;drawReports()"><option value="open" ${RF==='open'?'selected':''}>Open (${RP.filter(x=>x.status==='open').length})</option><option value="resolved" ${RF==='resolved'?'selected':''}>Resolved</option><option value="rejected" ${RF==='rejected'?'selected':''}>Rejected</option><option value="all" ${RF==='all'?'selected':''}>All (${RP.length})</option></select></div>
-   ${l.length?l.map(x=>`<div class="card" style="margin-bottom:10px"><div class="row" style="justify-content:space-between"><b>${esc(x.title)} · Q${x.qidx+1}</b><span class="chip ${x.status==='open'?'warn':x.status==='resolved'?'ok':''}">${x.status}</span></div>
-     <div class="sm mut" style="margin:4px 0">${esc(x.student)} (${esc(x.mobile)}) · ${ago(x.at)} · <b style="color:var(--tx)">${RK[x.kind]||x.kind}</b></div>
+   ${l.length?l.map(x=>`<div class="card" style="margin-bottom:10px"><div class="row" style="justify-content:space-between"><b>${esc(x.title)} · Q${(+x.qidx||0)+1}</b><span class="chip ${x.status==='open'?'warn':x.status==='resolved'?'ok':''}">${esc(x.status)}</span></div>
+     <div class="sm mut" style="margin:4px 0">${esc(x.student)} (${esc(x.mobile)}) · ${ago(x.at)} · <b style="color:var(--tx)">${esc(RK[x.kind]||x.kind)}</b></div>
      ${x.note?`<div class="exp" style="margin:6px 0">${esc(x.note)}</div>`:''}
      <div class="sm" style="margin:6px 0;white-space:pre-wrap">${esc(x.q)||'<i>(question has no text)</i>'}</div><div class="sm mut">Current answer key: <b>${x.answer==null?'not set':'ABCD'[x.answer]}</b></div>
-     <div class="row" style="margin-top:10px">${x.test_id?`<button class="btn soft sm" onclick="editQuestions('${x.test_id}',${x.qidx})">Open question</button>`:''}
+     <div class="row" style="margin-top:10px">${x.test_id?`<button class="btn soft sm" onclick="editQuestions(${esc(JSON.stringify(String(x.test_id)))},${+x.qidx||0})">Open question</button>`:''}
      ${x.status!=='resolved'?`<button class="btn sm" onclick="repSet('${x.id}','resolved')">Mark resolved</button>`:''}${x.status==='open'?`<button class="btn ghost sm" onclick="repSet('${x.id}','rejected')">Reject</button>`:''}<button class="btn ghost sm" onclick="repDel('${x.id}')">Delete</button></div></div>`).join('')
    :'<div class="card empty">No reports here.</div>'}
    <div class="h2s">Most bookmarked questions</div>
-   ${(window.BMS||[]).length?`<div class="card">${BMS.map(x=>`<div class="rrow" style="padding:6px 0"><div class="chip pri" style="min-width:34px;justify-content:center">${x.count}★</div><div class="grow"><b>${esc(x.title)} · Q${x.qidx+1}</b><span class="sm mut" style="white-space:normal">${esc(x.q)||'(image question)'}</span><span class="sm mut">${esc((x.students||[]).join(', '))}</span></div>${x.test_id?`<button class="btn ghost sm" onclick="editQuestions('${x.test_id}',${x.qidx})">Open</button>`:''}</div>`).join('')}</div>`:'<div class="card empty">Nobody has bookmarked a question yet.</div>'}`;
+   ${(window.BMS||[]).length?`<div class="card">${BMS.map(x=>`<div class="rrow" style="padding:6px 0"><div class="chip pri" style="min-width:34px;justify-content:center">${x.count}★</div><div class="grow"><b>${esc(x.title)} · Q${(+x.qidx||0)+1}</b><span class="sm mut" style="white-space:normal">${esc(x.q)||'(image question)'}</span><span class="sm mut">${esc((x.students||[]).join(', '))}</span></div>${x.test_id?`<button class="btn ghost sm" onclick="editQuestions(${esc(JSON.stringify(String(x.test_id)))},${+x.qidx||0})">Open</button>`:''}</div>`).join('')}</div>`:'<div class="card empty">Nobody has bookmarked a question yet.</div>'}`;
 }
 async function repSet(id,status){const r=await A('report_status',{id,status});if(r.ok){const x=RP.find(y=>y.id===id);if(x)x.status=status;repBadge();drawReports()}}
 async function repDel(id){if(!confirm('Delete this report?'))return;const r=await A('report_delete',{id});if(r.ok){RP=RP.filter(y=>y.id!==id);repBadge();drawReports()}}
@@ -224,12 +226,6 @@ async function settings(){
    <div id="ner" class="sm err" style="min-height:22px;margin-top:6px"></div>
    <button class="btn block" onclick="changePw()">Change password</button>
    <button class="btn ghost block" style="margin-top:14px" onclick="signOutAdmin()">Sign out</button>`,true);
-}
-async function changePw(){
-  const np=$('#np').value;if(np.length<8){$('#ner').textContent='Password must be at least 8 characters.';return}
-  const r=await A('set_password',{new_pw:np});
-  if(r.ok){PW=np;try{sessionStorage.setItem('adm_pw',np)}catch(e){}closeModal();toast('Password changed')}
-  else $('#ner').textContent='Could not change the password.';
 }
 function signOutAdmin(){PW='';try{sessionStorage.removeItem('adm_pw')}catch(e){}closeModal();gate()}
 

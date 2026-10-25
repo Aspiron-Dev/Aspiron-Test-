@@ -11,7 +11,7 @@ const FOLDER='<svg class="i" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2
 function updTheme(){$('#thm').innerHTML=document.documentElement.dataset.theme==='dark'?SUN:MOON}
 function toggleTheme(){const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;try{localStorage.setItem('cbt_theme',JSON.stringify(t))}catch(e){}updTheme()}
 updTheme();
-if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='lib/pdfjs-3.11.174/pdf.worker.min.js';
 
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}
 function modal(h,wide){$('#layer').innerHTML=`<div class="modal" onclick="if(event.target===this)closeModal()"><div class="box${wide?' wide':''}">${h}</div></div>`}
@@ -110,57 +110,52 @@ function badge(){
 let SEL=new Set();
 const paidSer=()=>CA.series.filter(x=>!x.is_free);
 const isPaid=s=>{const p=new Set(paidSer().map(x=>x.id));return (s.access||[]).some(a=>p.has(a))};
-function statsHtml(){
-  const act=ST.filter(s=>s.status!=='pending'),paid=act.filter(isPaid).length,blk=act.filter(s=>s.status==='blocked').length;
-  const box=(n,l,c)=>`<div class="sbox"><b style="${c?'color:'+c:''}">${n}</b><span>${l}</span></div>`;
-  return box(act.length,'Students')+box(paid,'Paid','var(--ok)')+box(act.length-paid,'Free only')+box(blk,'Blocked','var(--bad)');
-}
+// names and mobiles can be missing or empty, so every helper here must cope with that
+const nameOf=s=>String(s.name||'').trim()||'Unnamed';
+const ini=s=>{const w=nameOf(s).split(/\s+/);return ((w[0]||'?')[0]+(w.length>1?w[w.length-1][0]:'')).toUpperCase()};
+const hueOf=s=>{let h=0;for(const c of String(s.id||s.mobile||''))h=(h*31+c.charCodeAt(0))>>>0;return h%360};
+const IC={
+  students:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2a5.5 5.5 0 015.5 5.3"/>',
+  paid:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
+  active:'<path d="M3 12h4l3-7 4 14 3-7h4"/>',
+  block:'<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+  dl:'<path d="M12 3v12M7 10l5 5 5-5M4 21h16"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  x:'<path d="M6 6l12 12M18 6L6 18"/>'
+};
+const svgI=k=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${IC[k]}</svg>`;
 function updStats(){const e=$('#sstats');if(e)e.innerHTML=statsHtml();badge()}
 function renderStudents(){
   badge();
+  SEL=new Set([...SEL].filter(id=>ST.some(s=>s.id===id)));
   const pend=ST.filter(s=>s.status==='pending'),ps=paidSer();
   $('#pn_students').innerHTML=`
-   ${pend.length?`<div class="h2s" style="margin-top:0">Approval requests <span class="n">${pend.length}</span></div>${pend.map(s=>`<div class="card srow reqcard"><div class="av">${esc(s.name[0].toUpperCase())}</div><div class="grow"><b>${esc(s.name)}</b><span class="sm mut">${esc(s.mobile)} · requested ${ago(s.created)}</span></div>
-     <button class="btn sm" onclick="approve('${s.id}')">Approve</button><button class="btn ghost sm" onclick="reject('${s.id}')">Reject</button></div>`).join('')}`:''}
-   <div class="sstats" id="sstats" style="margin-top:${pend.length?'22px':'0'}">${statsHtml()}</div>
-   <div class="row" style="margin:12px 0 10px;gap:10px"><div style="flex:1;min-width:180px"><input type="search" id="sq" placeholder="Search name or mobile" value="${esc(SF.q)}" oninput="SF.q=this.value;drawList()"></div>
-     <button class="btn soft" onclick="exportStudents()">CSV</button><button class="btn" onclick="addModal()">+ Add student</button></div>
+   ${pend.length?`<section class="sreq"><div class="h2s" style="margin-top:0">Approval requests <span class="n">${pend.length}</span></div>${pend.map(s=>`<div class="card srow2 reqcard"><div class="av">${esc(ini(s))}</div><div class="grow"><b>${esc(nameOf(s))}</b><span class="sm mut">${esc(s.mobile)} · requested ${ago(s.created)}</span></div>
+     <div class="sacts"><button class="btn sm" onclick="approve('${s.id}')">Approve</button><button class="btn ghost sm" onclick="reject('${s.id}')">Reject</button></div></div>`).join('')}</section>`:''}
+   <div class="sstats" id="sstats">${statsHtml()}</div>
+   <div class="stoolbar">
+     <div class="ssearch">${svgI('search')}<input type="search" id="sq" placeholder="Search name or mobile" autocomplete="off" value="${esc(SF.q)}" oninput="SF.q=this.value;drawList()"><kbd title="Press / to search">/</kbd></div>
+     <select id="so" class="ssort" onchange="SF.o=this.value;drawList()" aria-label="Sort students"><option value="new">Newest</option><option value="name">Name A–Z</option><option value="seen">Last seen</option><option value="tests">Most tests</option></select>
+     <button class="btn ghost sm" onclick="exportStudents()">${svgI('dl')}CSV</button><button class="btn sm" onclick="addModal()">${svgI('plus')}Add student</button></div>
    <div class="seg fseg" id="sseg"></div>
-   <div class="row" style="margin:10px 0 12px;gap:10px">
-     <select id="sb" style="flex:1;min-width:150px" onchange="SF.b=this.value;drawList()"><option value="all">All batches</option>${ps.map(x=>`<option value="${x.id}">${esc(x.title)} (${ST.filter(s=>(s.access||[]).includes(x.id)).length})</option>`).join('')}</select>
-     <select id="so" style="max-width:150px" onchange="SF.o=this.value;drawList()"><option value="new">Newest</option><option value="name">Name A–Z</option><option value="seen">Last seen</option><option value="tests">Most tests</option></select>
+   <div class="srow-tools"><select id="sb" class="sbatch" onchange="SF.b=this.value;drawList()" aria-label="Filter by batch"><option value="all">All batches</option>${ps.map(x=>`<option value="${x.id}">${esc(x.title)} (${ST.filter(s=>(s.access||[]).includes(x.id)).length})</option>`).join('')}</select>
      <button class="btn soft sm" onclick="selAll()">Select all shown</button></div>
    <div id="slist"></div><div id="bulkbar"></div>`;
   $('#sb').value=SF.b;$('#so').value=SF.o;drawList();
 }
-function shownStudents(){
-  const q=SF.q.toLowerCase();
-  let l=ST.filter(s=>s.status!=='pending'&&(!q||s.name.toLowerCase().includes(q)||s.mobile.includes(q)));
-  if(SF.s==='paid')l=l.filter(isPaid);else if(SF.s==='free')l=l.filter(s=>!isPaid(s));else if(SF.s==='blocked')l=l.filter(s=>s.status==='blocked');
-  if(SF.b!=='all')l=l.filter(s=>(s.access||[]).includes(SF.b));
-  const o=SF.o;
-  l.sort((a,b)=>o==='name'?a.name.localeCompare(b.name):o==='seen'?(b.last_seen||0)-(a.last_seen||0):o==='tests'?b.attempts-a.attempts:b.created-a.created);
-  return l;
-}
-function drawList(){
-  const all=ST.filter(s=>s.status!=='pending'),ps=paidSer();
-  const cn={all:all.length,paid:all.filter(isPaid).length,free:all.filter(s=>!isPaid(s)).length,blocked:all.filter(s=>s.status==='blocked').length};
-  $('#sseg').innerHTML=[['all','All'],['paid','Paid'],['free','Free'],['blocked','Blocked']].map(([k,t])=>`<button class="${SF.s===k?'on':''}" onclick="SF.s='${k}';drawList()">${t} <span class="mut">${cn[k]}</span></button>`).join('');
-  const l=shownStudents();
-  $('#slist').innerHTML=l.length?l.map(s=>{
-    const pd=isPaid(s),n=ps.filter(x=>(s.access||[]).includes(x.id)).length;
-    return `<div class="card srow2 ${s.status==='blocked'?'blk':''}"><label class="selbox"><input type="checkbox" ${SEL.has(s.id)?'checked':''} onchange="selTog('${s.id}',this.checked)"></label><div class="av ${pd?'avp':''}">${esc(s.name[0].toUpperCase())}</div>
-     <div class="grow"><div class="nm"><b>${esc(s.name)}</b>${pd?`<span class="tg paid">PAID${ps.length>1?' · '+n:''}</span>`:'<span class="tg">FREE</span>'}${s.status==='blocked'?'<span class="tg bad">BLOCKED</span>':''}</div>
-      <span class="sm mut">${esc(s.mobile)} · ${s.devices}/${s.max_devices} devices · ${s.attempts} tests · seen ${ago(s.last_seen)}</span>
-      ${ps.length?`<div class="accs">${ps.map(x=>{const on=(s.access||[]).includes(x.id);return `<button class="accchip ${on?'on':''}" onclick="toggleStuAcc('${s.id}','${x.id}')" title="${on?'Tap to remove access':'Tap to give access'}">${on?'✓':'+'} ${esc(x.title)}</button>`}).join('')}</div>`:''}</div>
-     <button class="btn ghost sm" onclick="manage('${s.id}')">Manage</button></div>`}).join('')
-   :`<div class="card empty">${ST.length?'No students match.':'No students yet. Add students or share the site link so they can request access.'}</div>`;
-  $('#bulkbar').innerHTML=SEL.size?`<div class="bulkbar"><b>${SEL.size} selected</b>${ps.length?`<select id="bsr">${ps.map(x=>`<option value="${x.id}">${esc(x.title)}</option>`).join('')}</select><button class="btn sm" onclick="bulkAcc(true)">Give access</button><button class="btn warn sm" onclick="bulkAcc(false)">Remove</button>`:''}<button class="btn ghost sm" onclick="SEL.clear();drawList()">Clear</button></div>`:'';
-}
+// press / anywhere on the Students tab to jump to search
+document.addEventListener('keydown',e=>{
+  if(e.key!=='/'||e.ctrlKey||e.metaKey||e.altKey||CUR!=='students')return;
+  if(/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)||!$('#sq'))return;
+  e.preventDefault();$('#sq').focus();
+});
+function resetSF(){SF.q='';SF.s='all';SF.b='all';const q=$('#sq');if(q)q.value='';const b=$('#sb');if(b)b.value='all';drawList()}
 function selTog(id,on){on?SEL.add(id):SEL.delete(id);drawList()}
 function selAll(){const l=shownStudents();const all=l.length&&l.every(s=>SEL.has(s.id));l.forEach(s=>all?SEL.delete(s.id):SEL.add(s.id));drawList()}
 async function toggleStuAcc(sid,ser){
-  const s=ST.find(x=>x.id===sid),on=!(s.access||[]).includes(ser);
+  const s=ST.find(x=>x.id===sid);if(!s)return;
+  const on=!(s.access||[]).includes(ser);
   const r=await A('grant',{student_id:sid,series_id:ser,on});
   if(r.ok){s.access=on?[...new Set([...(s.access||[]),ser])]:(s.access||[]).filter(x=>x!==ser);toast(on?'Access given to '+s.name:'Access removed');updStats();drawList()}
 }
@@ -211,7 +206,8 @@ async function approve(id){
   await loadStudents();showCode(r.name,r.mobile,r.code,'Approved ✓');
 }
 async function reject(id){
-  const s=ST.find(x=>x.id===id);if(!confirm(`Reject and remove the request from ${s.name}?`))return;
+  const s=ST.find(x=>x.id===id);if(!s)return;
+  if(!confirm(`Reject and remove the request from ${nameOf(s)}?`))return;
   const r=await A('student_delete',{id});if(r.ok){toast('Request removed');loadStudents()}
 }
 function addModal(){
@@ -251,37 +247,41 @@ async function addBulk(){
 }
 function manage(id){
   const s=ST.find(x=>x.id===id);if(!s)return;
-  const paid=CA.series.filter(x=>!x.is_free);
-  modal(`<div class="row" style="justify-content:space-between"><h2>${esc(s.name)}</h2><button class="iconbtn" onclick="closeModal()" aria-label="Close">✕</button></div>
-   <div class="sm mut">${esc(s.mobile)} · ${s.status==='blocked'?'Blocked':'Active'} · ${s.devices}/${s.max_devices} devices in use · ${s.attempts} tests taken</div>
-   <div class="g2" style="margin-top:6px"><div><label class="l">Name</label><input type="text" id="mn" value="${esc(s.name)}"></div><div><label class="l">Max devices</label><input type="number" id="md" min="1" max="10" value="${s.max_devices}"></div></div>
+  const paid=CA.series.filter(x=>!x.is_free),blk=s.status==='blocked',joined=s.created?new Date(s.created).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'–';
+  modal(`<div class="mhead stuhd"><span class="av ${isPaid(s)?'avp':''}" style="--h:${hueOf(s)}">${esc(ini(s))}</span>
+    <div class="grow"><h2>${esc(nameOf(s))}</h2><span class="tg ${blk?'bad':'paid'}">${blk?'BLOCKED':'ACTIVE'}</span></div><button class="iconbtn" onclick="closeModal()" aria-label="Close">${svgI('x')}</button></div>
+   <div class="sm mut" style="margin:-6px 0 14px">${esc(s.mobile)} · ${s.devices||0}/${s.max_devices} devices in use · joined ${esc(joined)}</div>
+   <div class="h2s">Details</div>
+   <div class="g2"><div><label class="l">Name</label><input type="text" id="mn" maxlength="80" value="${esc(s.name)}"></div><div><label class="l">Max devices</label><input type="number" id="md" min="1" max="10" value="${s.max_devices}"></div></div>
    <button class="btn sm" style="margin-top:10px" onclick="saveStudent('${id}')">Save changes</button>
-   <div class="h2s" style="margin-top:22px">Premium access</div>
-   ${paid.length?paid.map(x=>`<label class="chk"><input type="checkbox" ${s.access.includes(x.id)?'checked':''} onchange="grant('${id}','${x.id}',this.checked)"><span><b>${esc(x.title)}</b> <span class="mut sm">${esc(x.price_label)}</span></span></label>`).join(''):'<p class="mut sm">No paid series yet. Create one in "Series &amp; tests".</p>'}
-   <div class="h2s" style="margin-top:22px">Account</div>
-   <div class="row"><button class="btn soft sm" onclick="newCode('${id}')">New access code</button><button class="btn soft sm" onclick="resetDev('${id}')">Reset devices</button>
-   <button class="btn warn sm" onclick="blockToggle('${id}',${s.status==='blocked'?'false':'true'})">${s.status==='blocked'?'Unblock':'Block'}</button><button class="btn danger sm" onclick="delStudent('${id}')">Delete</button></div>`,true);
+   <div class="h2s">Premium access</div>
+   ${paid.length?paid.map(x=>`<label class="chk"><input type="checkbox" ${(s.access||[]).includes(x.id)?'checked':''} onchange="grant('${id}','${x.id}',this.checked)"><span><b>${esc(x.title)}</b> <span class="mut sm">${esc(x.price_label)}</span></span></label>`).join(''):'<p class="mut sm">No paid series yet. Create one in "Series &amp; tests".</p>'}
+   <div class="h2s">Account</div>
+   <div class="mactions"><button class="btn soft sm" onclick="newCode('${id}')">New access code</button><button class="btn soft sm" onclick="resetDev('${id}')">Reset devices</button>
+   <button class="btn warn sm" onclick="blockToggle('${id}',${blk?'false':'true'})">${blk?'Unblock':'Block'}</button><button class="btn danger sm" onclick="delStudent('${id}')">Delete</button></div>`,true);
 }
 async function saveStudent(id){
-  const r=await A('student_update',{id,name:$('#mn').value,max_devices:+$('#md').value||2});
-  if(r.ok){toast('Saved');await loadStudents()}
+  const name=$('#mn').value.trim(),max=Math.min(10,Math.max(1,parseInt($('#md').value,10)||2));
+  if(!name)return toast('Enter a name');
+  const r=await A('student_update',{id,name,max_devices:max});
+  if(r.ok){toast('Saved');await loadStudents()}else toast('Could not save');
 }
 async function grant(sid,ser,on){
   const r=await A('grant',{student_id:sid,series_id:ser,on});
   const s=ST.find(x=>x.id===sid);
-  if(r.ok&&s){s.access=on?[...new Set([...s.access,ser])]:s.access.filter(x=>x!==ser);toast(on?'Access given':'Access removed');if($('#slist')){updStats();drawList()}}
+  if(r.ok&&s){s.access=on?[...new Set([...(s.access||[]),ser])]:(s.access||[]).filter(x=>x!==ser);toast(on?'Access given':'Access removed');if($('#slist')){updStats();drawList()}}
 }
 async function newCode(id){
-  const s=ST.find(x=>x.id===id);
-  if(!confirm(`Create a new access code for ${s.name}? The old code and all their devices will stop working.`))return;
+  const s=ST.find(x=>x.id===id);if(!s)return;
+  if(!confirm(`Create a new access code for ${nameOf(s)}? The old code and all their devices will stop working.`))return;
   const r=await A('student_code',{id});if(!r.ok)return;
   await loadStudents();showCode(r.name,r.mobile,r.code,'New access code');
 }
 async function resetDev(id){const r=await A('student_devices_reset',{id});if(r.ok){toast('Devices reset');await loadStudents();manage(id)}}
 async function blockToggle(id,b){const r=await A('student_block',{id,block:b});if(r.ok){toast(b?'Student blocked':'Student unblocked');await loadStudents();manage(id)}}
 async function delStudent(id){
-  const s=ST.find(x=>x.id===id);
-  if(!confirm(`Delete ${s.name} permanently? Their results will be deleted too.`))return;
+  const s=ST.find(x=>x.id===id);if(!s)return;
+  if(!confirm(`Delete ${nameOf(s)} permanently? Their results will be deleted too.`))return;
   const r=await A('student_delete',{id});if(r.ok){closeModal();toast('Student deleted');loadStudents()}
 }
 
@@ -303,7 +303,7 @@ async function renderContent(){
 }
 function testArow(t){
   return `<div class="arow"><div class="grow"><b>${esc(t.title)}</b><div class="sm mut">${t.questions} questions · ${t.duration} min · +${t.correct}/−${t.wrong} · ${t.results} attempts</div>
-   <div class="chips" style="margin-top:6px">${t.opens_at?`<span class="chip pri">Starts ${new Date(+t.opens_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}</span>`:''}${t.problems?`<span class="chip" style="background:var(--badSoft);color:var(--bad)">${t.problems} need attention</span>`:''}${t.reports?`<span class="chip warn">${t.reports} report${t.reports==1?'':'s'}</span>`:''}</div></div>
+   <div class="chips" style="margin-top:6px">${t.opens_at?`<span class="chip pri">Starts ${new Date(+t.opens_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}</span>`:''}${t.closes_at?`<span class="chip">Live ends ${new Date(+t.closes_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}</span>`:''}${t.result_at?`<span class="chip ${+t.result_at>Date.now()?'warn':'ok'}">Result ${new Date(+t.result_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}</span>`:''}${t.problems?`<span class="chip" style="background:var(--badSoft);color:var(--bad)">${t.problems} need attention</span>`:''}${t.reports?`<span class="chip warn">${t.reports} report${t.reports==1?'':'s'}</span>`:''}</div></div>
    ${t.active?'':'<span class="chip">Hidden</span>'}${t.free_preview?'<span class="chip pri">Free preview</span>':''}
    <button class="btn ghost sm" onclick="analytics('${t.id}')">Analytics</button><button class="btn ghost sm" onclick="testModal('${t.id}')">Details</button><button class="btn soft sm" onclick="editQuestions('${t.id}')">Questions</button></div>`;
 }

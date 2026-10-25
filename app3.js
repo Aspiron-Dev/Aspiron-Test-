@@ -1,11 +1,13 @@
 function instr(t,s){
-  const wait=isWait(t);
+  const wait=isWait(t),closed=isClosed(t);
   setApp(`<div class="wrap"><div class="ins card"><button class="btn ghost sm" onclick="route()">${ic('back')} Back</button>
   <h1 style="font-size:24px;margin-top:16px">${esc(t.title)}</h1><p class="mut" style="margin:4px 0 0">${esc(s.title||'')}</p>
   <div class="g3"><div><b>${t.questions}</b><span>Questions</span></div><div><b>${t.duration}</b><span>Minutes</span></div><div><b>+${t.correct} / −${t.wrong}</b><span>Marking</span></div></div>
-  <h3 style="font-size:15px;margin:6px 0">General instructions</h3>
+  <div class="stayw">${ic('info',18)}<span><b>Stay on this screen.</b> Once the test starts, do not switch apps, open another tab or lock your phone. You will get a warning each time you leave, and the timer keeps running.</span></div>
+  <h3 style="font-size:15px;margin:6px 0">Read before you start</h3>
   <ul>
-   <li>${ic('clock')}<span>The countdown timer is shown at the top right. It <b>never pauses</b> – even if you refresh or close the page. The test submits automatically when time ends.</span></li>
+   <li>${ic('clock')}<span>The countdown timer is shown at the top right. It <b>never pauses</b> – even if you refresh or close the page. Your answers are also saved online as you go, so the test submits automatically with them when time ends, even if the app is closed.</span></li>
+   ${(t.closes_at||t.result_at)&&!t.practice?`<li>${ic('calendar')}<span>${t.closes_at?`Live till <b>${esc(fmtWhen(t.closes_at))}</b>: no new start after that. `:''}${t.result_at?`Your <b>result, rank and answer key</b> will be shown after <b>${esc(fmtWhen(t.result_at))}</b>. `:''}Only your <b>first attempt</b> counts for the rank.</span></li>`:''}
    <li>${ic('grid')}<span>The <b>Question Palette</b> shows the status of every question. Use it to jump to any question.</span></li>
    <li><span class="lg-row"><i class="lg nv">1</i> Not visited <i class="lg na">2</i> Not answered <i class="lg ans">3</i> Answered <i class="lg mark">4</i> Marked for review <i class="lg mans">5</i> Answered &amp; marked</span></li>
    <li>${ic('check')}<span><b>Save &amp; Next</b> saves your answer and moves ahead. <b>Mark for Review &amp; Next</b> flags the question to revisit. <b>Clear Response</b> removes your answer.</span></li>
@@ -14,8 +16,8 @@ function instr(t,s){
    ${t.practice?`<li>${ic('check')}<span><b>Practice mode:</b> after you pick an option, the correct answer and explanation show immediately. You cannot change an answer after it is checked.</span></li>`:''}
    <li>${ic(t.lock_back?'lock':'info')}<span>${t.lock_back?'<b>You cannot go back</b> to previous questions once you move ahead.':'You can move freely between questions and change answers at any time.'}</span></li>
   </ul>
-  <label class="chk decl"><input type="checkbox" id="dc" onchange="$('#sb').disabled=!this.checked||${wait?'true':'false'}"><span class="sm">I have read and understood all the instructions. I am ready to begin the test.</span></label>
-  <button class="btn block" id="sb" disabled onclick="startTest('${t.id}')">${wait?`${ic('clock')} Opens in <span data-op="${t.opens_at}">--:--</span>`:`${ic('play')} ${t.practice?'Start practice':'Start test now'}`}</button></div></div>`);
+  <label class="chk decl"><input type="checkbox" id="dc" onchange="$('#sb').disabled=!this.checked||${wait||closed?'true':'false'}"><span class="sm">I have read and understood all the instructions. I will stay on this screen and I am ready to begin the test.</span></label>
+  <button class="btn block" id="sb" disabled onclick="startTest('${t.id}')">${wait?`${ic('clock')} Opens in <span data-op="${t.opens_at}">--:--</span>`:closed?`${ic('lock')} Closed${t.result_at?' · result '+esc(fmtWhen(t.result_at)):''}`:`${ic('play')} ${t.practice?'Start practice':'Start test now'}`}</button></div></div>`);
 }
 
 async function startTest(id){
@@ -28,9 +30,13 @@ async function startTest(id){
   }
   if(!r.ok){
     if(authErr(r))return;
+    // account locked for a while (too many wrong codes typed for this number): keep the answers on this phone
+    if(r.error==='locked'&&r.wait!=null){CAT=null;await route();toast(errText(r));return}
     if(r.error==='locked'||r.error==='not_found')LS.del(progKey(id));
     if(r.error==='locked'){CAT=null;await route();toast('This test is locked.');return}
     if(r.error==='not_open'){CAT=null;await route();toast('This test opens on '+fmtWhen(r.opens_at));return}
+    if(r.error==='attempted'){CAT=null;await route();toast('You have already attempted this live test. You can attempt it again after '+fmtWhen(r.result_at)+'.');return}
+    if(r.error==='closed'){CAT=null;await route();toast('This test closed on '+fmtWhen(r.closes_at)+(r.result_at?'. Result after '+fmtWhen(r.result_at):''));return}
     toast(r.error==='not_found'?'This test is no longer available.':errText(r));CAT=null;route();return;
   }
   T=r.test;const off=r.now-Date.now();SOFF=off;
@@ -51,6 +57,20 @@ function secSetup(){
 let tmark=0,tk=0;
 function flushT(){if(!P||!tmark)return;const now=Date.now(),d=Math.min(1800,Math.max(0,Math.round((now-tmark)/100)/10));if(d){P.times=P.times||{};P.times[P.cur]=Math.round(((P.times[P.cur]||0)+d)*10)/10}tmark=now}
 document.addEventListener('visibilitychange',()=>{if(!INTEST||!P)return;if(document.hidden){flushT();tmark=0;saveProg()}else tmark=Date.now()});
+/* ---------- leaving the test screen: a warning (in English) when the student comes back ---------- */
+let LEFTNOW=false;
+const onTestScreen=()=>INTEST||!!$('#app .ins');   // the instructions page or a running test
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){LEFTNOW=onTestScreen();return}
+  if(LEFTNOW){LEFTNOW=false;leaveWarn()}
+});
+function leaveWarn(){
+  const n=INTEST&&P?(P.leaves=(P.leaves||0)+1):0;   // counts only inside a running test; kept with the test progress
+  if(n)saveProg();
+  modal(`<div class="lvw"><div class="lvwi">${ic('info',24)}</div><h2>Please stay on this screen</h2>
+    <p>${n?`This is warning ${n}. You left the test screen while the test was running. Switching apps, opening other tabs or locking your phone is not allowed, and the timer keeps running.`:'Once you start the test, please stay on this screen. Do not switch apps, open other tabs or lock your phone during the test.'}</p>
+    <button class="btn block" onclick="closeModal()">I understand, continue</button></div>`);
+}
 function run(){
   document.body.classList.add('intest');palOpen=false;secSetup();tmark=Date.now();netPill();
   window.onbeforeunload=e=>{e.preventDefault();e.returnValue=''};
@@ -135,6 +155,7 @@ const subAns=it=>Object.assign({},it.ans,{_t:it.times||{}});
 async function sendPending(it){
   CURPEND=it;clearTimeout(retryT);loading('Submitting your answers…');
   const r=await rpc('cbt_submit',{p_test:it.tid,p_answers:subAns(it),p_client_id:it.cid});
+  if(r.ok&&r.hidden){delPend(it.cid);CAT=null;INS=null;showHeld(it.title,r.result_at);return}
   if(r.ok){
     delPend(it.cid);CAT=null;INS=null;
     RV={result:r.result,review:r.review,filter:'all',sec:'*',tab:'ov'};
@@ -146,6 +167,12 @@ async function sendPending(it){
       <button class="btn" onclick="sendPending(CURPEND)">Try again now</button></div></div>`);
     retryT=setTimeout(()=>sendPending(it),8000);return;
   }
+  if(r.error==='locked'){   // account locked for a while: never drop the answers, try again in a minute
+    setApp(`<div class="wrap"><div class="card empty">${ic('lock',32)}<h3 style="margin:10px 0 4px">Please wait a few minutes</h3>
+      <p class="sm">Your answers are saved on this phone. Too many wrong access codes were typed for your number, so it is locked for ${r.wait||15} minutes. Your test will be submitted by itself after that.</p>
+      <button class="btn" onclick="sendPending(CURPEND)">Try again now</button></div></div>`);
+    retryT=setTimeout(()=>sendPending(it),60000);return;
+  }
   if(authErr(r))return;
   delPend(it.cid);CAT=null;
   toast(r.error==='no_session'?'This attempt was already closed.':'Could not submit this test.');
@@ -156,20 +183,45 @@ async function flushPending(){
   if(!AUTH)return;
   // expired local progress -> submit
   try{
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      if(k&&k.startsWith('cbt_prog_'+AUTH.mobile+'_')){
-        const p=LS.get(k,null);
-        if(p&&p.ends&&p.ends<=Date.now()+(p.off||0)){addPend({tid:p.tid,cid:p.cid,ans:p.ans||{},times:p.times||{},title:p.title,ts:Date.now()});LS.del(k);LS.del(tdKey(p.tid))}
-      }
+    // collect the keys first: deleting while walking localStorage by index skips keys
+    const ks=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('cbt_prog_'+AUTH.mobile+'_'))ks.push(k)}
+    for(const k of ks){
+      const p=LS.get(k,null);
+      if(p&&p.ends&&p.ends<=Date.now()+(p.off||0)){addPend({tid:p.tid,cid:p.cid,ans:p.ans||{},times:p.times||{},title:p.title,ts:Date.now()});LS.del(k);LS.del(tdKey(p.tid))}
     }
   }catch(e){}
   for(const it of getPend()){
     const r=await rpc('cbt_submit',{p_test:it.tid,p_answers:subAns(it),p_client_id:it.cid});
     if(r.ok||['no_session','not_found'].includes(r.error))delPend(it.cid);
-    if(r.ok)toast('Your earlier test was submitted.');
+    if(r.ok)toast(r.hidden?'Your earlier test was submitted. Result after '+fmtWhen(r.result_at)+'.':'Your earlier test was submitted.');
   }
 }
+// submitted, but the result, rank and answer key of this test are shown only after its result time
+function showHeld(title,at){
+  setApp(`<div class="wrap"><div class="card empty">${ic('check',32)}<h3 style="margin:10px 0 4px;color:var(--tx)">Test submitted ✓</h3>
+    ${title?`<p style="margin:0 0 6px"><b>${esc(title)}</b></p>`:''}<p class="sm">Your answers are saved. Your <b>result, rank and answer key</b> will be shown after <b>${esc(fmtWhen(at))}</b>.</p>
+    <button class="btn" onclick="doneResult()">Done</button></div></div>`);
+}
+
+/* ---------- auto-save: while a test runs its answers are also saved online, so the server can submit them when time ends ---------- */
+let SYNCT=null,SYNCED='';
+const syncSig=()=>P.tid+JSON.stringify(P.ans||{});
+function syncSoon(){if(!INTEST||!P||SYNCT)return;SYNCT=setTimeout(()=>{SYNCT=null;syncNow()},4000)}
+async function syncNow(){
+  if(!INTEST||!P||!AUTH)return;
+  const sig=syncSig();if(sig===SYNCED)return;
+  const r=await rpc('cbt_save',{p_test:P.tid,p_answers:subAns(P),p_client_id:P.cid});
+  if(r&&r.ok)SYNCED=sig;
+}
+// page going away (app closed, phone locked): send the latest answers with a request that outlives the page
+function syncBeacon(){
+  if(!INTEST||!P||!AUTH)return;
+  const sig=syncSig();if(sig===SYNCED)return;
+  try{fetch(API+'/rest/v1/rpc/cbt_save',{method:'POST',keepalive:true,headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},
+    body:JSON.stringify({p_mobile:AUTH.mobile,p_code:AUTH.code,p_device:DEV,p_test:P.tid,p_answers:subAns(P),p_client_id:P.cid})});SYNCED=sig}catch(e){}
+}
+addEventListener('pagehide',syncBeacon);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)syncBeacon()});
 
 
 /* ---------- result / review ---------- */
@@ -187,6 +239,7 @@ function countUp(root){
 async function openReview(id){
   skelPage();
   const r=await rpc('cbt_review',{p_result:id});
+  if(!r.ok&&r.error==='hidden'){showHeld('',r.result_at);return}
   if(!r.ok){if(authErr(r))return;toast('Could not load this result.');route();return}
   if(r.gone){toast('This test is no longer available for review.');route();return}
   if(!CAT)await loadCat(true);
@@ -205,8 +258,8 @@ function lbHtml(r){
   const solo=r.total<2;
   const hist=r.dist&&r.dist.length?`<div class="hist">${r.dist.map((n,i)=>`<div class="hb ${r.my_bucket===i?'me':''}"><i style="height:${n?Math.max(10,n/mx*100):3}%"></i><span>${i*10}</span></div>`).join('')}</div><div class="sm mut" style="text-align:center;margin-top:4px">Students by score band (% of max marks) · your band is highlighted</div>`:'';
   return `${r.my_rank?`<div class="card rankc"><div class="rk"><span class="sm">Your rank</span><b data-cu="${r.my_rank}">${r.my_rank}</b><span class="sm">of ${r.total}</span></div>
-    <div class="rkr">${solo?'':`<div><b data-cu="${r.percentile}">${r.percentile}</b><span>Percentile</span></div>`}<div><b>${r.my_score}</b><span>Your best</span></div><div><b>${r.avg}</b><span>Class avg</span></div><div><b>${r.top_score}</b><span>Topper</span></div></div>${solo?`<div class="rkn">You are the first to attempt this test. Rank will update as others attempt it.</div>`:''}</div>`:''}
-   <div class="card" style="margin-top:12px"><div class="row" style="justify-content:space-between;margin-bottom:6px"><b>${ic('trophy')} Top ${Math.min(10,r.top.length)}</b><span class="sm mut">Best score per student</span></div>
+    <div class="rkr">${solo?'':`<div><b data-cu="${r.percentile}">${r.percentile}</b><span>Percentile</span></div>`}<div><b>${r.my_score}</b><span>Your score</span></div><div><b>${r.avg}</b><span>Class avg</span></div><div><b>${r.top_score}</b><span>Topper</span></div></div>${solo?`<div class="rkn">You are the first to attempt this test. Rank will update as others attempt it.</div>`:''}</div>`:''}
+   <div class="card" style="margin-top:12px"><div class="row" style="justify-content:space-between;margin-bottom:6px"><b>${ic('trophy')} Top ${Math.min(10,r.top.length)}</b><span class="sm mut">First attempt per student</span></div>
    ${r.top.map(x=>`<div class="lb ${x.me?'me':''}"><span class="n ${x.rank<=3?'m'+x.rank:''}">${x.rank}</span><span style="flex:1">${esc(x.name)}${x.me?' (you)':''}${x.cheat?'<span class="chtag">🚩 Cheating</span>':''}</span><b>${x.score}</b></div>`).join('')}
    ${r.my_rank&&r.my_rank>10?`<div class="lb me"><span class="n">${r.my_rank}</span><span style="flex:1">You</span><b>${r.my_score}</b></div>`:''}</div>
    ${solo?'':`<div class="card" style="margin-top:12px"><b>Score distribution</b>${hist}</div>`}`;

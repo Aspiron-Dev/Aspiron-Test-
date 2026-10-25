@@ -671,6 +671,89 @@ body.admx .hdr{background:color-mix(in srgb,var(--bg) 80%,transparent);border-bo
 .tg.new{background:#e0f2fe;color:#0369a1}
 .mgp .sstats{grid-template-columns:repeat(4,1fr)}
 @media(max-width:560px){.s3f{padding-left:0}.s3a{margin-left:auto}}
+
+/* ===== admin v7: Students — refined toolbar, tiles, rows and manage sheet ===== */
+.stoolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0 10px}
+.ssearch{position:relative;flex:1;min-width:200px}
+.ssearch .i{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--mut);pointer-events:none}
+.ssearch input{padding-left:42px;padding-right:44px;border-radius:14px;height:42px;box-shadow:var(--shadow)}
+.ssearch kbd{position:absolute;right:12px;top:50%;transform:translateY(-50%);font:600 11px ui-monospace,Menlo,Consolas,monospace;color:var(--mut);border:1px solid var(--bd);border-radius:6px;padding:1px 6px;background:var(--surface2)}
+.ssort{width:auto;min-width:140px;max-width:170px;height:42px;border-radius:14px;padding:0 12px}
+.stoolbar .btn,.srow-tools .btn,.bulkbar .btn{display:inline-flex;align-items:center;gap:6px}
+.stoolbar .btn .i,.srow-tools .btn .i,.bulkbar .btn .i{width:15px;height:15px}
+.srow-tools{display:flex;gap:10px;align-items:center;margin:10px 0 12px;flex-wrap:wrap}
+.sbatch{flex:1;min-width:150px;max-width:360px}
+.sstats.st6{gap:10px}
+.sbox{background:var(--surface);border:1px solid var(--bd);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow);text-align:left;cursor:pointer;transition:transform .12s,border-color .15s;min-width:0}
+.sbox:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--pri) 35%,var(--bd))}
+.sbox b{display:block;font-size:24px;line-height:1.1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.sbox span{display:block;font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srow3{border:1px solid var(--bd);border-radius:18px;padding:14px 16px;gap:12px;transition:border-color .15s,box-shadow .2s}
+.srow3:hover{border-color:color-mix(in srgb,var(--pri) 30%,var(--bd))}
+.srow3.sel{border-color:var(--pri);box-shadow:0 0 0 3px color-mix(in srgb,var(--pri) 16%,transparent)}
+.srow3 .av3{width:44px;height:44px;border-radius:15px;font-size:15px;cursor:pointer;background:color-mix(in srgb,hsl(var(--h,210) 70% 55%) 20%,var(--surface2));color:color-mix(in srgb,hsl(var(--h,210) 75% 50%) 85%,var(--tx))}
+.srow3 .av3.avp{background:var(--grad);color:#fff}
+.srow3 .grow{cursor:pointer}
+.srow3 .nm b{font-size:15px;letter-spacing:-.01em;overflow-wrap:anywhere}
+.srow3 .s3m{margin-top:5px;font-size:13px;align-items:center}
+.srow3 .s3m>span{white-space:nowrap}
+.srow3 .seen{display:inline;height:auto;margin:0}
+.dmeter{display:inline-flex;align-items:center;gap:7px}
+.dmeter i{display:block;width:52px;height:5px;border-radius:99px;background:var(--surface2);position:relative;overflow:hidden}
+.dmeter i::after{content:"";position:absolute;left:0;top:0;bottom:0;width:var(--p,0%);background:var(--grad);border-radius:99px}
+.srow3 .s3a .btn{white-space:nowrap}
+.srow2{display:flex;align-items:center;gap:12px;padding:14px;margin-bottom:10px}
+.srow2 .grow{flex:1;min-width:0}
+.srow2 .grow>span{display:block}
+.srow2 .av{width:42px;height:42px;border-radius:14px;flex:none;background:var(--grad);color:#fff;display:grid;place-items:center;font-weight:800}
+.sacts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.sdreq{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;text-align:left}
+.sempty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:34px 20px}
+.sempty .i{width:36px;height:36px;color:var(--pri);opacity:.8}
+.sempty b{font-size:16px}
+.bulkbar{position:sticky;bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--bd);border-radius:18px;padding:10px 12px;box-shadow:0 14px 40px rgba(0,0,0,.22);margin-top:12px;z-index:5}
+.bulkbar>b{font-size:15px;margin-right:auto;padding-left:4px}
+.bulkbar select{flex:1;min-width:120px;max-width:220px;height:38px;padding:0 12px}
+.stuhd{gap:14px;margin-bottom:14px}
+.stuhd .grow{flex:1;min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.stuhd .grow h2{margin:0;overflow-wrap:anywhere}
+.stuhd .av{width:54px;height:54px;border-radius:18px;font-size:18px;flex:none;display:grid;place-items:center;font-weight:800;background:var(--grad);color:#fff}
+.stuhd .av[style*="--h"]:not(.avp){background:color-mix(in srgb,hsl(var(--h) 70% 55%) 22%,var(--surface2));color:color-mix(in srgb,hsl(var(--h) 75% 50%) 85%,var(--tx))}
+.mactions{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:760px){.sstats.st6{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.ssearch kbd{display:none}.ssearch input{padding-right:14px}.dmeter i{width:36px}}
+@media(max-width:520px){.sstats.st6{grid-template-columns:repeat(2,1fr)}.sbox{padding:10px 12px}.srow3{padding:12px}.srow3 .av3{width:40px;height:40px}.sacts{width:100%;justify-content:flex-start}}
+/* ===== admin v8: Promotions (admin19.js) ===== */
+.prsum{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+@media(max-width:1100px){.prsum{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:600px){.prsum{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.prsum .sbox b{font-size:19px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prcard{padding:16px 18px;margin-bottom:12px;border-radius:18px}
+.prcard.off{opacity:.78}
+.prtop{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.prtop .grow{flex:1;min-width:200px}
+.prtop .nm{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px}
+.prtop .nm b{font-size:16px;letter-spacing:-.01em}
+.prcode{font:600 12px ui-monospace,Menlo,Consolas,monospace;background:var(--surface2);color:var(--mut);padding:2px 8px;border-radius:8px}
+.prbtns{display:flex;gap:6px;flex-wrap:wrap}
+.prurl{margin:12px 0 10px;background:var(--surface2);border-radius:12px;padding:8px 12px;overflow:hidden}
+.prurl code{font:13px ui-monospace,Menlo,Consolas,monospace;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.prkpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px}
+.prkpi>div{background:var(--surface2);border-radius:12px;padding:9px 10px;min-width:0}
+.prkpi b{display:block;font-size:15px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prkpi span{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+.prclaim{margin-top:10px;font-size:13px;border-radius:10px;padding:7px 10px}
+.prclaim.bad{background:var(--badSoft);color:var(--bad)}
+.prclaim.ok{background:var(--okSoft);color:var(--ok)}
+.prfoot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed var(--bd);font-size:14px}
+.prfoot b.warn{color:var(--warn)}
+.prot{display:grid;gap:8px}
+.prorow{display:flex;gap:10px;align-items:flex-start;background:var(--surface2);border-radius:14px;padding:10px 12px}
+.prorow.off{opacity:.6}
+.prorow .grow{flex:1;min-width:0}
+.ost{font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.04em}
+.ost.paid{color:var(--ok)}.ost.pending{color:var(--warn)}.ost.rejected{color:var(--bad)}
+.prpay{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--bd);font-size:14px}
 #lockv{position:fixed;inset:0;z-index:999;backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);background:color-mix(in srgb,var(--bg) 70%,transparent);display:none;place-items:center}body.privacy #lockv{display:grid}
 .pwm{height:6px;border-radius:9px;background:var(--surface2);overflow:hidden;margin-top:8px}.pwm i{display:block;height:100%;transition:width .2s,background .2s}
 .pqrows{max-height:620px;overflow:auto}.pqr{display:flex;gap:10px;padding:10px 4px;border-bottom:1px solid var(--bd)}.pqr.chk{background:color-mix(in srgb,#f59e0b 9%,transparent)}
@@ -783,6 +866,16 @@ button.sdk{cursor:pointer}.sdk span{font-size:12px;font-weight:700;color:var(--m
 .seit{display:flex;gap:12px;align-items:center;margin-bottom:10px}.seit.off{opacity:.7}.seit img,.seph{flex:none;width:72px;height:44px;border-radius:10px;object-fit:cover}.seit .grow{min-width:0}
 .seph{display:grid;place-items:center;color:#fff;font-weight:800;font-size:18px;background:var(--grad)}
 .seph.c-green{background:linear-gradient(135deg,#0f9d6b,#12a58a)}.seph.c-purple{background:linear-gradient(135deg,#6d3fe0,#a855f7)}.seph.c-orange{background:linear-gradient(135deg,#e8590c,#f59f00)}.seph.c-red{background:linear-gradient(135deg,#d6336c,#f03e3e)}.seph.c-dark{background:linear-gradient(135deg,#1e293b,#475569)}
+/* Store setup: sections (one row each on the store), ◀ ▶ place in a row, ↑ ↓ order of the rows (admin17.js) */
+.seit{flex-wrap:wrap}.seit .grow{flex:1 1 200px}
+.seact{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-left:auto}
+.semv{display:inline-flex;align-items:center;border:1px solid var(--hair,var(--bd));border-radius:10px;background:var(--surface);overflow:hidden}
+.semv button{border:0;background:none;color:var(--tx);width:34px;height:32px;font-size:13px;cursor:pointer}.semv button:disabled{opacity:.3;cursor:default}
+.semv b{min-width:22px;text-align:center;font-size:12.5px;color:var(--mut)}
+.stosech{display:flex;align-items:center;gap:10px;margin:20px 2px 8px}.stosech .grow{min-width:0}.stosech b{font-size:15px}
+.stosi{flex:none;width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:var(--priSoft);font-size:18px}
+.stosech .iconbtn{flex:none;width:34px;height:34px;font-size:14px}.stosech .iconbtn:disabled{opacity:.3;cursor:default}
+.secpick{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.secpick .chip{cursor:pointer;font-family:inherit}
 /* ===== Students v2: payments (admin18.js) ===== */
 .payrow{display:flex;gap:10px;align-items:center;padding:11px 0;border-top:1px solid var(--hair,var(--bd))}.payrow:first-child{border-top:0}.payrow .grow{flex:1;min-width:0}
 .payrow.sm1{padding:8px 0}.pamt{flex:none;font-size:15px}
@@ -791,6 +884,19 @@ button.sdk{cursor:pointer}.sdk span{font-size:12px;font-weight:700;color:var(--m
 .tg.pay{background:var(--okSoft);color:var(--ok)}.tg.nopay{background:var(--warnSoft);color:var(--warn)}
 .ocard.payst{border-left-color:var(--warn)}
 .stuhead{margin-bottom:12px}
+/* ==== v9 polish: one motion scale, hover lift on tiles, clear focus rings, reduced-motion safe ==== */
+:root{--ease-out:cubic-bezier(.22,1,.36,1);--ease-spring:cubic-bezier(.34,1.56,.64,1);--dur-fast:.16s;--dur:.28s}
+.card,.sbox,.ocard,.srow2{transition:transform var(--dur) var(--ease-out),box-shadow var(--dur) var(--ease-out),border-color var(--dur-fast) ease}
+@media (hover:hover) and (pointer:fine){
+  .card:hover,.sbox:hover,.ocard:hover{transform:translateY(-2px)}
+}
+.btn,.bnav button,.iconbtn,.seg button,.chip{transition:transform var(--dur-fast) var(--ease-spring),background-color var(--dur-fast) ease,color var(--dur-fast) ease,opacity var(--dur-fast) ease}
+:where(button,a,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--pri);outline-offset:2px;border-radius:10px}
+.sbox b{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+  .card:hover,.sbox:hover,.ocard:hover{transform:none}
+}
 </style>
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['admin1', 'admin2', 'admin3', 'admin4'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
@@ -807,27 +913,28 @@ button.sdk{cursor:pointer}.sdk span{font-size:12px;font-weight:700;color:var(--m
 <main class="wrap" id="root"></main>
 <div id="layer"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="lib/pdfjs-3.11.174/pdf.min.js"></script>
 <script src="parser.js?v=2"></script>
-<script src="admin1.js?v=15" onerror="(window.__miss=window.__miss||[]).push('admin1.js')"></script>
-<script src="admin2.js?v=12" onerror="(window.__miss=window.__miss||[]).push('admin2.js')"></script>
-<script src="admin3.js?v=13" onerror="(window.__miss=window.__miss||[]).push('admin3.js')"></script>
-<script src="admin4.js?v=13" onerror="(window.__miss=window.__miss||[]).push('admin4.js')"></script>
-<script src="admin5.js?v=2" onerror="(window.__miss=window.__miss||[]).push('admin5.js')"></script>
+<script src="admin1.js?v=19" onerror="(window.__miss=window.__miss||[]).push('admin1.js')"></script>
+<script src="admin2.js?v=14" onerror="(window.__miss=window.__miss||[]).push('admin2.js')"></script>
+<script src="admin3.js?v=17" onerror="(window.__miss=window.__miss||[]).push('admin3.js')"></script>
+<script src="admin4.js?v=14" onerror="(window.__miss=window.__miss||[]).push('admin4.js')"></script>
+<script src="admin5.js?v=3" onerror="(window.__miss=window.__miss||[]).push('admin5.js')"></script>
 <script src="admin6.js?v=3" onerror="(window.__miss=window.__miss||[]).push('admin6.js')"></script>
 <script src="admin7.js?v=2" onerror="(window.__miss=window.__miss||[]).push('admin7.js')"></script>
-<script src="admin8.js?v=2" onerror="(window.__miss=window.__miss||[]).push('admin8.js')"></script>
+<script src="admin8.js?v=3" onerror="(window.__miss=window.__miss||[]).push('admin8.js')"></script>
 <script src="admin9.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin9.js')"></script>
 <script src="pyq-syllabus.js?v=2"></script>
 <script src="admin10.js?v=2" onerror="(window.__miss=window.__miss||[]).push('admin10.js')"></script>
 <script src="admin11.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin11.js')"></script>
-<script src="admin12.js?v=14" onerror="(window.__miss=window.__miss||[]).push('admin12.js')"></script>
+<script src="admin12.js?v=18" onerror="(window.__miss=window.__miss||[]).push('admin12.js')"></script>
 <script src="admin13.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin13.js')"></script>
 <script src="admin14.js?v=2" onerror="(window.__miss=window.__miss||[]).push('admin14.js')"></script>
 <script src="admin15.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin15.js')"></script>
 <script src="admin16.js?v=3" onerror="(window.__miss=window.__miss||[]).push('admin16.js')"></script>
-<script src="admin17.js?v=3" onerror="(window.__miss=window.__miss||[]).push('admin17.js')"></script>
+<script src="admin17.js?v=5" onerror="(window.__miss=window.__miss||[]).push('admin17.js')"></script>
 <script src="admin18.js?v=2" onerror="(window.__miss=window.__miss||[]).push('admin18.js')"></script>
+<script src="admin19.js?v=1" onerror="(window.__miss=window.__miss||[]).push('admin19.js')"></script>
 
 </body>
 </html>
