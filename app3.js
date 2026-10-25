@@ -30,6 +30,8 @@ async function startTest(id){
   }
   if(!r.ok){
     if(authErr(r))return;
+    // account locked for a while (too many wrong codes typed for this number): keep the answers on this phone
+    if(r.error==='locked'&&r.wait!=null){CAT=null;await route();toast(errText(r));return}
     if(r.error==='locked'||r.error==='not_found')LS.del(progKey(id));
     if(r.error==='locked'){CAT=null;await route();toast('This test is locked.');return}
     if(r.error==='not_open'){CAT=null;await route();toast('This test opens on '+fmtWhen(r.opens_at));return}
@@ -164,6 +166,12 @@ async function sendPending(it){
       <p class="sm">Your answers are saved on this phone. We will keep trying to submit them. Please stay on this page.</p>
       <button class="btn" onclick="sendPending(CURPEND)">Try again now</button></div></div>`);
     retryT=setTimeout(()=>sendPending(it),8000);return;
+  }
+  if(r.error==='locked'){   // account locked for a while: never drop the answers, try again in a minute
+    setApp(`<div class="wrap"><div class="card empty">${ic('lock',32)}<h3 style="margin:10px 0 4px">Please wait a few minutes</h3>
+      <p class="sm">Your answers are saved on this phone. Too many wrong access codes were typed for your number, so it is locked for ${r.wait||15} minutes. Your test will be submitted by itself after that.</p>
+      <button class="btn" onclick="sendPending(CURPEND)">Try again now</button></div></div>`);
+    retryT=setTimeout(()=>sendPending(it),60000);return;
   }
   if(authErr(r))return;
   delPend(it.cid);CAT=null;
