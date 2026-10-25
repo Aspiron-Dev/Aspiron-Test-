@@ -8,6 +8,9 @@
 --  3. Promotion links: anyone who guessed an order code could attach their promotion link to someone
 --     else's order and claim the commission. Now the order's mobile number must match too, and only
 --     within 2 hours of the order.
+--  4. Admin panel: anyone could send 10 wrong admin passwords and lock the admin out for 15 minutes, again and
+--     again. Now wrong passwords lock only the connection they come from; the whole panel locks only after
+--     100 wrong passwords in an hour (someone guessing at scale).
 --  Run ONCE in Supabase -> SQL Editor -> New query -> paste -> Run (after v30_promotions and v33). Safe to run again.
 -- =====================================================================
 
@@ -18,6 +21,11 @@ alter table cbt_private.students add column if not exists lock_fails int not nul
 create table if not exists cbt_private.access_requests (ip text not null default '', created_at timestamptz not null default now());
 create index if not exists access_requests_ip on cbt_private.access_requests (ip, created_at desc);
 revoke all on cbt_private.access_requests from public, anon, authenticated;
+
+create table if not exists cbt_private.admin_fails (ip text primary key, fails int not null default 0, locked_until bigint not null default 0);
+create table if not exists cbt_private.admin_fail_log (at timestamptz not null default now());
+revoke all on cbt_private.admin_fails from public, anon, authenticated;
+revoke all on cbt_private.admin_fail_log from public, anon, authenticated;
 
 -- ---------- auth ----------
 CREATE OR REPLACE FUNCTION cbt_private.auth(p_mobile text, p_code text, p_device text)
@@ -106,6 +114,43 @@ begin
 end $function$;
 
 
+-- ---------- admin_ok: wrong passwords lock only the connection they come from ----------
+create or replace function cbt_private.admin_ok(p_pw text)
+returns text language plpgsql security definer set search_path = cbt_private, pg_temp as $$
+declare
+  t bigint := cbt_private.now_ms();
+  h text; sl text; lk bigint; f cbt_private.admin_fails%rowtype;
+  hd json := coalesce(nullif(current_setting('request.headers', true), '')::json, '{}'::json);
+  v_raw text := btrim(coalesce(hd->>'cf-connecting-ip', hd->>'x-real-ip', split_part(coalesce(hd->>'x-forwarded-for', ''), ',', 1), ''));
+  v_ip text := md5('cbt-admin|' || v_raw);
+begin
+  select value into h from settings where key = 'admin_hash';
+  if h is null then return 'not_set'; end if;
+  select value into sl from settings where key = 'admin_salt';
+  -- the whole panel locks only after many wrong passwords in an hour (someone guessing from many places)
+  select value::bigint into lk from settings where key = 'admin_locked_until';
+  if coalesce(lk,0) > t then return 'locked'; end if;
+  select * into f from admin_fails where ip = v_ip;
+  if found and f.locked_until > t then return 'locked'; end if;
+  if h <> hash_code(sl, coalesce(p_pw,'')) then
+    insert into admin_fails as a (ip, fails) values (v_ip, 1)
+      on conflict (ip) do update set
+        locked_until = case when a.fails + 1 >= 10 then t + 900000 else a.locked_until end,
+        fails        = case when a.fails + 1 >= 10 then 0 else a.fails + 1 end;
+    insert into admin_fail_log default values;
+    delete from admin_fail_log where at < now() - interval '2 hours';
+    if (select count(*) from admin_fail_log where at > now() - interval '1 hour') >= 100 then
+      insert into settings values ('admin_locked_until',(t + 900000)::text)
+        on conflict (key) do update set value = excluded.value;
+      delete from admin_fail_log;
+    end if;
+    return 'invalid';
+  end if;
+  update admin_fails set fails = 0 where ip = v_ip;
+  return null;
+end $$;
+revoke all on function cbt_private.admin_ok(text) from public, anon, authenticated;
+
 -- ---------- cbt_promo_attach: order code AND the order's mobile number, within 2 hours of the order ----------
 drop function if exists public.cbt_promo_attach(text, text);
 create or replace function public.cbt_promo_attach(p_order text, p_code text, p_mobile text)
@@ -128,4 +173,4 @@ commit;
 
 notify pgrst, 'reload schema';
 
-select 'v34 installed: login lock, access requests, promotion links' as status;
+select 'v34 installed: login lock, admin lock, access requests, promotion links' as status;
