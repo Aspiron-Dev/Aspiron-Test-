@@ -33,6 +33,7 @@ async function startTest(id){
     if(r.error==='locked'||r.error==='not_found')LS.del(progKey(id));
     if(r.error==='locked'){CAT=null;await route();toast('This test is locked.');return}
     if(r.error==='not_open'){CAT=null;await route();toast('This test opens on '+fmtWhen(r.opens_at));return}
+    if(r.error==='attempted'){CAT=null;await route();toast('You have already attempted this live test. You can attempt it again after '+fmtWhen(r.result_at)+'.');return}
     if(r.error==='closed'){CAT=null;await route();toast('This test closed on '+fmtWhen(r.closes_at)+(r.result_at?'. Result after '+fmtWhen(r.result_at):''));return}
     toast(r.error==='not_found'?'This test is no longer available.':errText(r));CAT=null;route();return;
   }
