@@ -335,9 +335,9 @@ function captureRef(){
   LSs('store_ref',{c,at:Date.now()});
   try{if(!sessionStorage.getItem('ref_'+c)){sessionStorage.setItem('ref_'+c,'1');rpc('cbt_promo_click',{p_code:c})}}catch(_){}
 }
-function attachRef(order){
+function attachRef(order,mobile){
   const r=LSg('store_ref',null);
-  if(order&&r&&REF_OK.test(r.c)&&Date.now()-r.at<30*864e5)rpc('cbt_promo_attach',{p_order:order,p_code:r.c});
+  if(order&&r&&REF_OK.test(r.c)&&Date.now()-r.at<30*864e5)rpc('cbt_promo_attach',{p_order:order,p_code:r.c,p_mobile:mobile||''});
 }
 async function buy(id){
   IT=ST.items.find(i=>i.id===id);if(!IT)return;
@@ -345,7 +345,7 @@ async function buy(id){
   const me=ME();if(!me)return meSheet(()=>buy(id));
   const last=LSg('store_ord',null);
   // same series + same number ordered in the last 24 h → continue that order instead of making a new code
-  if(last&&last.item===id&&last.mobile===me.mobile&&Date.now()-last.at<864e5){attachRef(last.code);ORD=last;return payStep()}
+  if(last&&last.item===id&&last.mobile===me.mobile&&Date.now()-last.at<864e5){attachRef(last.code,last.mobile);ORD=last;return payStep()}
   const n=++BUYN;
   sheet(1,`<div class="ld"><span class="spin"></span><span>Getting your payment details…</span></div>`);
   const r=await rpc('cbt_store_order',{p_item:IT.id,p_name:me.name,p_mobile:me.mobile});
@@ -355,7 +355,7 @@ async function buy(id){
     return sheet(1,`<div class="bigok">⚠️</div><p style="text-align:center">${t}</p><button class="btn block" style="margin-top:14px" data-buy="${esc(id)}">Try again</button>
      <p class="sm mut" style="text-align:center;margin-top:12px">For ${esc(me.name)} · ${esc(me.mobile)} · <a href="#" data-redo style="color:var(--pri)">change</a></p>`);
   }
-  ORD={item:IT.id,code:r.code,amount:r.amount,title:r.title,name:me.name,mobile:me.mobile,at:Date.now()};LSs('store_ord',ORD);attachRef(r.code);
+  ORD={item:IT.id,code:r.code,amount:r.amount,title:r.title,name:me.name,mobile:me.mobile,at:Date.now()};LSs('store_ord',ORD);attachRef(r.code,me.mobile);
   payStep();
 }
 const upiLink=()=>{const s=ST.settings,e=encodeURIComponent;return `upi://pay?pa=${s.upi}&pn=${e(s.payee||'')}&am=${ORD.amount}&cu=INR&tn=${e(ORD.code)}`};
@@ -485,7 +485,7 @@ async function editSave(){
     const r=await rpc('cbt_store_order',{p_item:ORD.item,p_name:n,p_mobile:m});
     if(!r.ok)return fail(r.error==='busy'?'Too many tries. Please wait a while and try again.':r.error==='network'?'No internet. Please try again.':'Could not save. Please try again.');
     meSave(n,m);
-    Object.assign(ORD,{code:r.code,amount:r.amount,title:r.title,name:n,mobile:m,at:Date.now()});attachRef(r.code);
+    Object.assign(ORD,{code:r.code,amount:r.amount,title:r.title,name:n,mobile:m,at:Date.now()});attachRef(r.code,m);
   }
   const r=await rpc('cbt_store_paid',{p_code:ORD.code,p_mobile:ORD.mobile,p_payer:py,p_utr:pu});
   if(!r.ok&&r.error==='network'){LSs('store_ord',ORD);return fail('No internet. Please try again.')}
