@@ -91,7 +91,7 @@ function members(ctx) {
   const online = T.users.filter(u => u.online).length;
   AX.set(ctx.el, h`<div class="kpis">
       ${UI.kpi({ label: 'Team members', value: T.users.length, icon: 'team', foot: T.users.filter(u => u.active).length + ' active' })}
-      ${UI.kpi({ label: 'Online now', value: online + (act.some(isOnline) && act.find(isOnline).user_id == null ? 1 : 0), icon: 'live', tone: 'info', foot: 'in the last 3 minutes' })}
+      ${UI.kpi({ label: 'Online now', value: online + (act.some(s => !s.user_id && isOnline(s)) ? 1 : 0), icon: 'live', tone: 'info', foot: 'in the last 3 minutes' })}
       ${UI.kpi({ label: 'Signed-in devices', value: act.length, icon: 'device', tone: 'gold', foot: 'owner + team', go: '#/team/sessions' })}
       ${UI.kpi({ label: 'Refused requests', value: T.audit.filter(a => a.result === 'refused').length, icon: 'shield', tone: 'bad', foot: 'latest 300 log entries', go: '#/team/activity?f=refused' })}
     </div>
@@ -262,10 +262,13 @@ function activity(ctx) {
       <button class="btn sm" data-act="csv">${icon('download', 15)} CSV</button></div>
     <div class="card">${L.length ? h`<div class="timeline">${join(L, a => { const d = day(a), head = d !== last ? (last = d, h`<div class="section-t" style="margin:6px 0 10px">${fmt.day(a.at)}</div>`) : ''; return h`${head}<div class="tl-i ${a.result === 'refused' ? 'bad' : a.fn === 'session' ? 'mut' : a.result ? 'gold' : ''}"><div class="row wrap gap6"><b>${a.who}</b><span class="tx2">${actName(a)}</span>${a.detail ? h`<span class="pill">${a.detail}</span>` : ''}${a.result === 'refused' ? UI.pill('Refused · no permission', 'bad') : a.result ? UI.pill('Failed: ' + a.result, 'warn') : ''}</div><div class="xs mut">${fmt.time(a.at)}${a.ip ? ' · ' + a.ip : ''}</div></div>`; })}</div>`
       : UI.empty({ icon: 'history', title: 'Nothing here yet', text: 'Changes made from the console show up here: who did what, and when.' })}
-      ${T.audit.length >= 300 ? h`<div class="row end mt12"><button class="btn sm" data-act="more">Load older</button></div>` : ''}</div>`);
+      ${T.more !== false && T.audit.length >= 300 ? h`<div class="row end mt12"><button class="btn sm" data-act="more">Load older</button></div>` : ''}</div>`);
+  T.view = L;
+  if (ctx.el.__act) return;      // the listeners below read T and the route, so they are added once per page
+  ctx.el.__act = 1;
   AX.act(ctx.el, {
-    csv() { AX.u.csvDownload('activity-log.csv', [['Time', 'Who', 'Action', 'Detail', 'Result', 'IP'], ...L.map(a => [new Date(a.at).toLocaleString('en-IN'), a.who, actName(a), a.detail, a.result || 'done', a.ip])]); },
-    async more(b) { await UI.busy(b, async () => { const r = await AX.api.call('cbt_admin_team', 'get', { before: T.audit[T.audit.length - 1].id }); if (r.ok) { T.audit = T.audit.concat(r.audit || []); activity(ctx); } }); }
+    csv() { AX.u.csvDownload('activity-log.csv', [['Time', 'Who', 'Action', 'Detail', 'Result', 'IP'], ...(T.view || L).map(a => [new Date(a.at).toLocaleString('en-IN'), a.who, actName(a), a.detail, a.result || 'done', a.ip])]); },
+    async more(b) { await UI.busy(b, async () => { const r = await AX.api.call('cbt_admin_team', 'get', { before: T.audit[T.audit.length - 1].id }); if (r.ok) { const old = r.audit || []; T.more = old.length >= 300; T.audit = T.audit.concat(old.filter(a => !T.audit.some(x => x.id === a.id))); activity(ctx); } }); }
   });
   AX.act(ctx.el, { who: el => AX.go('team/activity', Object.assign({ f }, el.value ? { who: el.value } : {})) }, 'change');
 }

@@ -18,8 +18,9 @@ AX.boot = async () => {
   splash();
   const r = await check();
   if (r.ok) return start();
-  S.clear();
-  login(r.error === 'network' ? 'network' : r.error);
+  // only a real sign-in problem forgets the session; no internet or a server hiccup keeps it for the next try
+  if (['invalid', 'signed_out', 'expired', 'disabled', 'not_set', 'locked'].includes(r.error)) { S.clear(); return login(r.error); }
+  return offline(r);
 };
 function splash() {
   document.body.innerHTML = AX.html(h`<div class="lg-wrap"><div class="col" style="align-items:center;gap:18px"><div class="lg-mark">${icon('shield')}</div><span class="spin" style="color:var(--pri)"></span></div></div>`);
@@ -39,7 +40,7 @@ const LOST = {
   invalid: 'Please sign in again.', network: 'No internet connection. Check it and try again.', locked: 'Too many wrong attempts. Try again in 15 minutes.'
 };
 function login(reason) {
-  UI.closeAll();
+  UI.closeAll(); window.onhashchange = null;
   const mode = AX.ls.get('cx_lmode', 'owner');
   document.body.innerHTML = AX.html(h`<div class="lg-wrap"><form class="lg-card glass" id="lg" autocomplete="on" novalidate>
     <div class="lg-mark">${icon('shield')}</div>
@@ -93,9 +94,16 @@ function login(reason) {
   });
 }
 AX.on('auth:lost', reason => { if (!S.token) return; S.clear(); login(reason); });
+function offline(r) {
+  document.body.innerHTML = AX.html(h`<div class="lg-wrap"><div class="lg-card glass" style="text-align:center"><div class="lg-mark" style="margin:0 auto">${icon('globe')}</div>
+    <div class="lg-t">Can't reach the server</div><div class="lg-s">${AX.errText(r)} You are still signed in.</div>
+    <button class="btn pri lg block mt24" id="rt">${icon('refresh')} Try again</button><button class="btn ghost block mt8" id="so">Sign in again</button></div></div>`);
+  document.getElementById('rt').onclick = () => AX.boot();
+  document.getElementById('so').onclick = () => { S.clear(); login(); };
+}
 AX.signOut = async (all) => {
   if (!S.legacy) await AX.api.rpc('cbt_admin_logout', {});
-  S.clear(); location.hash = ''; login();
+  S.clear(); window.onhashchange = null; history.replaceState(null, '', location.pathname + location.search); login();
 };
 
 /* ---------- app shell ---------- */

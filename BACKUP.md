@@ -26,8 +26,9 @@ appears in Google Drive → `Aspiron-Backups`. If a run fails, GitHub emails you
 2. On a computer with PostgreSQL 17 tools and gpg:
    `gpg -d -o backup.dump aspiron-db-<date>.dump.gpg` (asks for the backup password)
 3. Restore into the Supabase project (an empty or new one):
-   `pg_restore --no-owner --no-privileges --clean --if-exists -d "<SUPABASE_DB_URL>" backup.dump`
+   `pg_restore --no-owner --clean --if-exists -d "<SUPABASE_DB_URL>" backup.dump`
 4. In Supabase SQL Editor run `notify pgrst, 'reload schema';`. The website and admin panel work again as before.
+5. Run `supabase_security_check.sql` and check that the anon role still cannot read the private tables (the backup keeps the permissions, so it should match).
 
 ## Safety notes
 - The 3 secrets can only be used by the workflow; GitHub hides them in logs. Only people with admin access to this

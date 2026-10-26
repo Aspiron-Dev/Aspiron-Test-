@@ -122,8 +122,14 @@ declare
   h text; sl text; lk bigint; f cbt_private.admin_fails%rowtype;
   hd json := coalesce(nullif(current_setting('request.headers', true), '')::json, '{}'::json);
   v_raw text := btrim(coalesce(hd->>'cf-connecting-ip', hd->>'x-real-ip', split_part(coalesce(hd->>'x-forwarded-for', ''), ',', 1), ''));
-  v_ip text := md5('cbt-admin|' || v_raw);
+  v_ip text := md5('cbt-admin|' || v_raw); v_e text;
 begin
+  -- a v35 sign-in session ("as1.…") is checked by v35, never counted as a wrong password (safe to re-run this file)
+  if coalesce(p_pw,'') like 'as1.%' then
+    if to_regprocedure('cbt_private.admin_session_ok(text)') is null then return 'invalid'; end if;
+    execute 'select cbt_private.admin_session_ok($1)' into v_e using p_pw;
+    return v_e;
+  end if;
   select value into h from settings where key = 'admin_hash';
   if h is null then return 'not_set'; end if;
   select value into sl from settings where key = 'admin_salt';

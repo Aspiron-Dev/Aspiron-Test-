@@ -69,7 +69,9 @@ const S = AX.session = {
     const t = { token: S.token, legacy: S.legacy, me: S.me };
     AX.ls.del('cx_tok'); AX.ss.del('cx_tok');
     // a legacy password is never kept beyond this tab
-    if (remember && !S.legacy) AX.ls.set('cx_tok', t); else AX.ss.set('cx_tok', t);
+    // the legacy token IS the admin password: it stays in memory only (a reload asks for it again)
+    if (S.legacy) return;
+    if (remember) AX.ls.set('cx_tok', t); else AX.ss.set('cx_tok', t);
   },
   clear() { S.token = ''; S.legacy = false; S.me = null; S.id = null; AX.ls.del('cx_tok'); AX.ss.del('cx_tok'); AX.cache.clear(); }
 };
@@ -163,7 +165,7 @@ AX.cache = {
   async get(key, loader, ttl = 30000, force = false) {
     const c = C.get(key);
     if (!force && c && (Date.now() - c.at < ttl)) return c.p;
-    const p = Promise.resolve().then(loader).then(r => { if (!r || r.ok === false) C.delete(key); return r; });
+    const p = Promise.resolve().then(loader).then(r => { if ((!r || r.ok === false) && C.get(key) && C.get(key).p === p) C.delete(key); return r; });
     C.set(key, { at: Date.now(), p });
     return p;
   },

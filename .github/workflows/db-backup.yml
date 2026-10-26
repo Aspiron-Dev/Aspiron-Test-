@@ -37,7 +37,7 @@ jobs:
           printf '%s\n' "$RCLONE_CONFIG_TEXT" > "$W/rclone.conf"
           F="aspiron-db-$(date -u +%Y-%m-%d_%H%M).dump"
           # whole database (public + cbt_private: students, codes, tests, results, orders, payments, team), custom format
-          /usr/lib/postgresql/17/bin/pg_dump "$DB" --no-owner --no-privileges -n public -n cbt_private -Fc -f "$W/$F"
+          /usr/lib/postgresql/17/bin/pg_dump "$DB" --no-owner -n public -n cbt_private -Fc -f "$W/$F"
           SZ=$(stat -c%s "$W/$F"); [ "$SZ" -gt 10000 ] || { echo "::error::Backup looks empty ($SZ bytes)"; exit 1; }
           printf '%s' "$PASS" > "$W/p"
           gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-file "$W/p" --symmetric --cipher-algo AES256 -o "$W/$F.gpg" "$W/$F"
