@@ -28,6 +28,22 @@ self.addEventListener('notificationclick',e=>{
     return clients.openWindow(url);
   }));
 });
+// The phone's push address can change by itself (browsers do this now and then). Subscribe again and tell the server
+// (cbt_push_rotate, supabase_v36), so notices keep arriving even if the app is not opened.
+try{self.window=self;importScripts('config.js')}catch(_){}
+self.addEventListener('pushsubscriptionchange',e=>{
+  const C=self.CBT_CONFIG||{},old=e.oldSubscription;
+  if(!C.SUPABASE_URL||!C.VAPID_PUBLIC||!old||!old.endpoint)return;
+  e.waitUntil((async()=>{
+    let sub=e.newSubscription;
+    if(!sub){
+      const k=C.VAPID_PUBLIC,r=atob((k+'='.repeat((4-k.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/'));
+      sub=await self.registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:Uint8Array.from(r,c=>c.charCodeAt(0))});
+    }
+    await fetch(C.SUPABASE_URL+'/rest/v1/rpc/cbt_push_rotate',{method:'POST',headers:{apikey:C.SUPABASE_KEY,Authorization:'Bearer '+C.SUPABASE_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({p_old:old.endpoint,p_sub:sub.toJSON()})});
+  })().catch(()=>{}));
+});
 // Ready for server push (Web Push / FCM) later: shows whatever the server sends.
 self.addEventListener('push',e=>{
   let d={};try{d=e.data?e.data.json():{}}catch(_){d={body:e.data&&e.data.text()}}

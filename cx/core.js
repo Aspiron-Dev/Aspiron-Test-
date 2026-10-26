@@ -129,16 +129,49 @@ AX.api = {
   call(fn, action, data, extra) { return AX.api.rpc(fn, Object.assign({ p_action: action, p_data: data || {} }, extra || {})); },
   // the main admin function
   admin(action, data) { return AX.api.call('cbt_admin', action, data); },
-  // phone notification through the send-push Edge Function (the admin session/password is checked there)
-  async push(payload) {
+  // phone notification through the send-push Edge Function (the admin session/password is checked there).
+  // Sent page by page (limit / after), so a long list of phones is never cut off part-way; onStep(totals) after each page.
+  // payload.series = test series ids → only those students (needs the v2 function; refused before anything is sent otherwise).
+  async push(payload, onStep) {
+    if (payload && payload.series && payload.series.length) {
+      const inf = await AX.api.pushInfo();
+      if (!inf.ok || inf.v !== 2) return { ok: false, error: inf.error === 'network' ? 'network' : 'old_push' };
+    }
+    const tot = { ok: true, sent: 0, failed: 0, removed: 0, total: 0, codes: {}, sample: [], hint: '' };
+    let after = '';
+    for (let page = 0; page < 1000; page++) {
+      let r, j = null;
+      try {
+        r = await fetch(AX.url + '/functions/v1/send-push', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', apikey: CFG.SUPABASE_KEY },
+          body: JSON.stringify(Object.assign({ pw: S.token }, payload, { limit: 150, after }))
+        });
+        try { j = await r.json(); } catch (e) {}
+      } catch (e) { return page ? Object.assign(tot, { ok: false, partial: true, error: 'network' }) : { ok: false, error: 'network' }; }
+      if (!r.ok || !j || j.ok === false) {
+        const e = { ok: false, error: r.status === 404 ? 'missing' : (j && j.error) || 'server', detail: j && (j.detail || j.message) };
+        return page ? Object.assign(tot, e, { partial: true }) : e;
+      }
+      tot.sent += j.sent || 0; tot.failed += j.failed || 0; tot.removed += j.removed || 0; tot.total += j.total || 0;
+      Object.keys(j.codes || {}).forEach(k => { tot.codes[k] = (tot.codes[k] || 0) + j.codes[k]; });
+      (j.sample || []).forEach(s => { if (tot.sample.length < 3) tot.sample.push(s); });
+      if (j.hint) tot.hint = j.hint;
+      if (onStep) onStep(tot);
+      if (j.v !== 2 || j.done !== false || !j.next) return tot;    // an old function sends everything in one call
+      after = j.next;
+    }
+    return tot;
+  },
+  // is the send-push function the new one (v: 2), and does it use the same key as config.js? (no password needed)
+  async pushInfo() {
     try {
       const r = await fetch(AX.url + '/functions/v1/send-push', {
         method: 'POST', headers: { 'Content-Type': 'application/json', apikey: CFG.SUPABASE_KEY },
-        body: JSON.stringify(Object.assign({ pw: S.token }, payload))
+        body: JSON.stringify({ mode: 'info', vapid: CFG.VAPID_PUBLIC || '' })
       });
       let j = null; try { j = await r.json(); } catch (e) {}
-      if (!r.ok) return { ok: false, error: r.status === 404 ? 'missing' : 'server', detail: j && (j.error || j.message) };
-      return j || { ok: true };
+      if (r.status === 404) return { ok: false, error: 'missing' };
+      return j && j.ok ? j : { ok: false, error: 'old' };
     } catch (e) { return { ok: false, error: 'network' }; }
   }
 };
