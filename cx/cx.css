@@ -506,3 +506,11 @@ button.kpi:hover,a.kpi:hover{transform:translateY(-2px);border-color:var(--pri-l
 /* privacy screen when the app is in the background */
 body.privacy .ax-app,body.privacy .ax-bottom,body.privacy .ov,body.privacy .ws{filter:blur(18px) saturate(.6)}
 body.privacy::after{content:"";position:fixed;inset:0;z-index:999;background:var(--scrim)}
+
+/* clickable bar charts */
+.bars.pickable .bc{border:0;background:transparent;padding:0;cursor:pointer;font:inherit;color:inherit;border-radius:10px}
+.bars.pickable .bc:hover .bv{filter:brightness(1.18)}
+.bars .bc.sel .bv{background:var(--grad-gold);box-shadow:0 6px 16px color-mix(in srgb,var(--gold) 35%,transparent)}
+.bars .bc.sel .bl{color:var(--tx);font-weight:800}
+.day-read{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:-4px 0 10px}
+.day-read b{font-family:var(--font-display);font-size:26px;font-weight:600;letter-spacing:-.02em}

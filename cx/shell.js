@@ -329,6 +329,8 @@ function palette() {
 }
 AX.palette = palette;
 
+// installable app: the browser offers "Install app" only when a service worker controls the page (sw.js, network-first)
+if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => AX.boot());
 else setTimeout(() => AX.boot(), 0);
 })();

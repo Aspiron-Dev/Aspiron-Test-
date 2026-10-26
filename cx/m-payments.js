@@ -43,10 +43,18 @@ async function money(force) {
   return { S, P, students: (S.ok && S.students) || [], M: build(P, (S.ok && S.students) || []) };
 }
 const chip = (x) => h`<span class="pill ${x.k === 'store' ? 'info' : x.k === 'free' ? 'vio' : 'gold'}">${x.k === 'store' ? 'Store' : x.k === 'free' ? 'Free' : 'Added by you'}</span>`;
-AX.money = { PMETH, PSHORT, isoDay, dayMs, build, load: money, err: payErr, chip };
+// money per day for the last n days (oldest first): [{t, label, full, value, count}] — rows from build().rows()
+function daily(rows, n) {
+  const out = [], t0 = new Date(); t0.setHours(0, 0, 0, 0);
+  for (let i = n - 1; i >= 0; i--) { const a = new Date(t0); a.setDate(a.getDate() - i); const b = new Date(a); b.setDate(b.getDate() + 1); out.push({ t: +a, e: +b, label: i === 0 ? 'Today' : String(a.getDate()), full: a.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }), value: 0, count: 0 }); }
+  (rows || []).forEach(x => { if (!x.at || !x.amount) return; const d = out.find(y => x.at >= y.t && x.at < y.e); if (d) { d.value += x.amount; d.count++; } });
+  out.forEach(d => { d.title = d.full + ': ' + fmt.inr(d.value) + ' · ' + fmt.plural(d.count, 'payment'); });
+  return out;
+}
+AX.money = { PMETH, PSHORT, isoDay, dayMs, build, load: money, err: payErr, chip, daily };
 
 /* ---------- module state ---------- */
-const V = { seg: 'all', q: '', more: 0, ctx: null, D: null };
+const V = { seg: 'all', q: '', more: 0, ctx: null, D: null, day: null };
 const SEGS = [['all', 'All'], ['store', 'Store'], ['man', 'Added by you'], ['free', 'Free'], ['none', 'Not recorded']];
 const activeSt = L => L.filter(s => s.status !== 'pending');
 const PAGE = 60;
@@ -125,6 +133,8 @@ AX.mod({
       <div id="px-list"></div>`);
     AX.act(ctx.el, {
       seg: el => { V.seg = el.dataset.v; V.more = 0; draw(); },
+      pick: el => { const d = V.T && V.T.days[+el.dataset.pick]; if (!d) return; V.day = d.t; if (V.seg === 'none') V.seg = 'all'; V.more = 0; draw(); },
+      dayAll: () => { V.day = null; V.more = 0; draw(); },
       none: () => { V.seg = 'none'; V.more = 0; draw(); document.getElementById('px-seg').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); },
       open: el => AX.openStudent ? AX.openStudent(el.dataset.sid) : AX.go('students/' + el.dataset.sid),
       order: el => AX.openOrder ? AX.openOrder(el.dataset.code) : AX.go('orders', { q: el.dataset.code }),
@@ -171,6 +181,8 @@ function stats(D) {
 function draw() {
   const D = V.D; if (!D) return;
   const T = V.T = stats(D);
+  T.days = daily(T.R, 30);
+  const si = V.day == null ? T.days.length - 1 : T.days.findIndex(d => d.t === V.day), sd = T.days[si < 0 ? T.days.length - 1 : si];
   const delta = T.last ? Math.round((T.month - T.last) * 100 / T.last) : null;
   const months = [];
   for (let i = 11; i >= 0; i--) { const a = new Date(); a.setDate(1); a.setHours(0, 0, 0, 0); a.setMonth(a.getMonth() - i); const b = new Date(a); b.setMonth(b.getMonth() + 1); months.push({ a: +a, b: +b, label: a.toLocaleDateString('en-IN', { month: 'short' }), full: a.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) }); }
@@ -179,9 +191,12 @@ function draw() {
   AX.set('#px-top', h`<div class="kpis px-kpis">
       ${UI.kpi({ label: 'Total collected', value: fmt.inr(T.total), icon: 'wallet', hero: true, foot: fmt.plural(T.R.length, 'payment') })}
       ${UI.kpi({ label: 'This month', value: fmt.inr(T.month), icon: 'calendar', tone: 'gold', delta, deltaUnit: '%', foot: delta == null ? new Date().toLocaleDateString('en-IN', { month: 'long' }) : 'vs ' + fmt.inr(T.last) + ' last month' })}
-      ${UI.kpi({ label: 'Paying students', value: fmt.num(T.paying), icon: 'users', tone: 'info', foot: 'of ' + fmt.plural(T.act.length, 'student') })}
+      ${UI.kpi({ label: 'Today', value: fmt.inr(T.days[T.days.length - 1].value), icon: 'clock', tone: 'info', foot: fmt.plural(T.days[T.days.length - 1].count, 'payment') + ' · ' + fmt.num(T.paying) + ' paying students' })}
       <button type="button" class="kpi glass warn btnk ${V.seg === 'none' ? 'on' : ''}" data-act="none"><div class="k-l">${icon('alert', 16)}<span>Not recorded</span></div><div class="k-v">${fmt.num(T.none.length)}</div><div class="k-f"><span>${T.none.length ? 'Add their old payments →' : 'Everyone has a payment'}</span></div></button>
     </div>
+    <div class="card mt16"><div class="card-h">${icon('calendar')}<h3>Day by day · last 30 days</h3><span class="grow"></span><span class="sub">Tap a day</span></div>
+      <div class="day-read"><span class="mut sm">${sd.full}</span><b>${fmt.inr(sd.value)}</b><span class="mut sm">${fmt.plural(sd.count, 'payment')}</span>${V.day != null ? h`<button class="btn xs ghost" data-act="dayAll">${icon('x', 13)} Show all days</button>` : ''}</div>
+      ${UI.chart.bars(T.days, { money: true, height: 150, pick: true, sel: si < 0 ? T.days.length - 1 : si, label: 'Money received per day, last 30 days' })}</div>
     <div class="px-top">
       <div class="card"><div class="card-h">${icon('bars')}<h3>Revenue by month</h3><span class="grow"></span><span class="sub">${best && best.value ? 'Best · ' + best.short : 'Last 12 months'}</span></div>${UI.chart.bars(bars, { money: true, height: 160, label: 'Revenue by month' })}</div>
       <div class="card"><div class="card-h">${icon('chart')}<h3>Where it came from</h3></div>
@@ -204,7 +219,8 @@ function drawList() {
       ${L.length > shown.length ? h`<div class="row mt12" style="justify-content:center"><button class="btn sm" data-act="more">Show more (${L.length - shown.length})</button></div>` : ''}`
       : h`<div class="card">${UI.empty({ icon: 'checkCircle', title: q ? 'No student matches' : 'Every student has a payment recorded', text: q ? 'Try another name or number.' : 'Nice — nothing to add here.' })}</div>`);
   }
-  const L = T.R.filter(x => (V.seg === 'all' || x.k === V.seg) && hit(x.name, x.mobile + ' ' + (x.code || '')));
+  const dayE = V.day != null ? V.day + 864e5 : null;
+  const L = T.R.filter(x => (V.seg === 'all' || x.k === V.seg) && hit(x.name, x.mobile + ' ' + (x.code || '')) && (V.day == null || (x.at >= V.day && x.at < dayE)));
   const shown = L.slice(0, PAGE * (V.more + 1));
   AX.set(el, L.length ? h`<div class="card pad0"><div class="px-row hd"><span></span><span>Student</span><span>Details</span><span>Date</span><span style="text-align:right">Amount</span><span></span></div>
       ${join(shown, x => h`<div class="px-row ${x.k !== 'store' && can ? 'edit' : ''}">
