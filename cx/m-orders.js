@@ -29,7 +29,7 @@ const SEGS = [
   { id: 'rej', t: 'Rejected', d: 'Payment could not be matched', icon: 'ban' },
   { id: 'all', t: 'All', d: 'Every order', icon: 'list' }
 ];
-const SEG_PILL = { verify: ['Payment done · verify', 'gold'], unpaid: ['Not paid', ''], done: ['Approved', 'ok'], rej: ['Rejected', 'bad'] };
+const SEG_PILL = { verify: ['To verify', 'gold'], unpaid: ['Not paid', ''], done: ['Approved', 'ok'], rej: ['Rejected', 'bad'] };
 
 /* ---------- shared store kit (AX.sto) ---------- */
 const S = AX.sto = {};
@@ -171,7 +171,7 @@ S.approve = async (code) => {
 // result sheet: steps, the new code (shown once), message + WhatsApp / Telegram / Copy
 S.doneSheet = ({ title, name, mobile, code, steps, acc, msg, sub }) => {
   const L = S.links(mobile, msg), bad = (steps || []).some(s => s.tone === 'bad');
-  UI.modal({ title, sub: sub || [name, fmt.mobile(m10(mobile)), code].filter(Boolean).join(' · '), sticky: true, size: '',
+  UI.modal({ title, sub: sub || [name, fmt.mobile(m10(mobile)), code].filter(Boolean).join(' · '), sticky: true, size: 'oc-dm',
     icon: h`<span class="oc-done ${bad ? 'bad' : ''}">${icon(bad ? 'alert' : 'check', 16)}</span>`,
     body: h`${steps && steps.length ? h`<ul class="oc-steps">${join(steps, s => h`<li class="${s.tone}">${icon(s.tone === 'bad' ? 'alert' : 'check', 15)}<span>${s.t}</span></li>`)}</ul>` : ''}
       ${acc ? h`<div class="code-big mt16">${acc.slice(0, 4)}-${acc.slice(4)}</div><p class="xs mut mt8" style="text-align:center">Send this code now — for safety it is stored scrambled and cannot be shown again.</p>` : ''}
@@ -228,7 +228,7 @@ function orderCard(o, D, full) {
     : sg === 'done' ? h`<button class="btn sm ghost" data-act="undo" data-code="${o.code}">${icon('undo', 15)} Undo</button><button class="btn sm" data-act="login" data-code="${o.code}">${icon('copy', 15)} Login message</button><button class="btn sm" data-act="student" data-m="${o.mobile}">${icon('user', 15)} Student</button>`
     : h`<button class="btn sm ghost" data-act="undo" data-code="${o.code}">${icon('undo', 15)} Undo</button>`;
   return h`<article class="card oc s-${sg}" data-code="${o.code}">
-    <header class="row top">${UI.avatar(o.name, o.mobile || o.code)}<div class="grow"><button class="oc-name ell" data-act="open" data-code="${o.code}">${o.name || 'Student'}</button><div class="xs mut">${fmt.mobile(m10(o.mobile))} · ${fmt.ago(o.created_at)}</div></div>${UI.pill(P[0], P[1], true)}</header>
+    <header class="row top">${UI.avatar(o.name, o.mobile || o.code)}<div class="grow"><button class="oc-name ell" data-act="open" data-code="${o.code}">${o.name || 'Student'}</button><div class="xs mut ell">${fmt.mobile(m10(o.mobile))} · ${fmt.ago(o.created_at)}</div></div>${UI.pill(P[0], P[1], true)}</header>
     <div class="oc-item"><div class="grow"><div class="xs mut">${icon('book', 13)} Series${it && !it.series_id ? h` · <span style="color:var(--warn)">not linked</span>` : ''}</div><b class="oc-t">${o.item_title || '—'}</b></div><div class="oc-amt">${fmt.inr(o.amount)}</div></div>
     ${o.payer || o.utr ? h`<div class="oc-pay"><div><div class="k">Paid from</div><div class="v">${o.payer || '—'}</div></div><div><div class="k">UTR</div><div class="v row gap4"><span class="mono ell">${o.utr || '—'}</span>${o.utr ? UI.copyBtn(o.utr) : ''}</div></div></div>` : ''}
     <div class="xs mut row wrap gap6"><span class="mono">${o.code}</span>${o.paid_at ? h`<span>· details sent ${fmt.ago(o.paid_at)}</span>` : ''}${full ? h`<span>· ordered ${fmt.dt(o.created_at)}</span>` : ''}</div>
@@ -413,7 +413,8 @@ AX.mod({
     const r = await AX.data.store(); if (!r || !r.ok) return [];
     const ver = (r.orders || []).filter(o => S.seg(o) === 'verify');
     const out = [{ title: 'Payments to verify', sub: fmt.inr(ver.reduce((s, o) => s + (Number(o.amount) || 0), 0)) + ' waiting · check the UTR and approve', count: ver.length, go: '#/orders/verify', icon: 'wallet', tone: 'bad', badge: true }];
-    if (AX.can('students')) { const st = await AX.data.students(); if (st && st.ok) out.push({ title: 'Access requests', sub: 'New students waiting for an access code', count: (st.students || []).filter(s => s.status === 'pending').length, go: '#/orders/req', icon: 'userPlus', tone: 'gold', badge: true }); }
+    // the Students module already lists access requests in the bell; only add them here when it is not loaded (no double count)
+    if (AX.can('students') && !AX.mods.students) { const st = await AX.data.students(); if (st && st.ok) out.push({ title: 'Access requests', sub: 'New students waiting for an access code', count: (st.students || []).filter(s => s.status === 'pending').length, go: '#/orders/req', icon: 'userPlus', tone: 'gold', badge: true }); }
     return out;
   }
 });
@@ -423,7 +424,7 @@ AX.actions.push({ label: 'Access requests', icon: 'userPlus', perm: ['store'], r
 AX.css('orders', `
 .oc-kpis .kpi{border-radius:var(--r-lg)}
 .oc-kpis .kpi.on{border-color:var(--pri-line);box-shadow:var(--shadow),0 0 0 1px var(--pri-line) inset}
-.oc-segs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 4px;margin:0 -2px}
+.oc-segs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 4px;margin:18px -2px 0}
 .oc-segs::-webkit-scrollbar{display:none}
 .oc-segs .chip{flex:none}
 .oc-segs .chip .ax-ic{width:15px;height:15px}
@@ -431,7 +432,7 @@ AX.css('orders', `
 .oc-tools .search .inp{border-radius:var(--r-pill)}
 .oc-hint{margin-bottom:14px}
 .oc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,400px),1fr));gap:14px;align-items:start}
-.oc{position:relative;display:flex;flex-direction:column;gap:12px;padding:16px 16px 14px;overflow:hidden}
+.oc{container-type:inline-size;position:relative;display:flex;flex-direction:column;gap:12px;padding:16px 16px 14px;overflow:hidden}
 .oc::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:var(--oc,var(--line-2))}
 .oc.s-verify{--oc:var(--gold)}.oc.s-done{--oc:var(--ok)}.oc.s-rej{--oc:var(--bad)}.oc.s-req{--oc:var(--info)}.oc.s-unpaid{--oc:var(--faint)}
 .oc-name{display:block;border:0;background:none;padding:0;font-weight:750;font-size:15px;color:var(--tx);text-align:left;cursor:pointer;max-width:100%}
@@ -462,7 +463,15 @@ AX.css('orders', `
 .oc-steps li .ax-ic{margin-top:2px;color:var(--ok)}
 .oc-steps li.bad{color:var(--warn)}.oc-steps li.bad .ax-ic{color:var(--warn)}
 .oc-msg{white-space:pre-wrap;font-size:13.5px;line-height:1.55;max-height:260px;overflow:auto;overflow-wrap:anywhere}
+@container (max-width:470px){
+  .oc-act{width:100%;margin-left:0}
+  .oc-act .btn{flex:1}
+  .oc-act .btn.pri{flex:1.6}
+}
 @media (max-width:560px){
+  .oc-dm .m-f .sp{display:none}
+  .oc-dm .m-f .btn{flex:1 1 28%;min-width:0;padding:0 10px}
+  .oc-dm .m-f .btn.pri{flex-basis:100%}
   .oc-tools #oc-when span{max-width:84px;overflow:hidden;text-overflow:ellipsis}
   .oc-con{width:100%}
   .oc-con .ibtn{flex:1;width:auto;height:42px}
