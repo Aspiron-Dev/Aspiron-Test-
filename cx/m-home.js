@@ -77,19 +77,28 @@ AX.mod({
         <div class="col gap16">
           <div class="card pad0"><div class="card-h" style="padding:16px 16px 4px">${icon('bell')}<h3>Needs attention</h3><span class="grow"></span><button class="btn xs ghost" data-act="ref">${icon('refresh', 13)}</button></div>
             <div class="list" id="hm-att">${attHtml(att)}</div></div>
-          ${canStore || canPay ? h`<div class="card"><div class="card-h">${icon('chart')}<h3>Money received · last 14 days</h3><span class="grow"></span><b class="num">${fmt.inr(days.reduce((s, d) => s + d.value, 0))}</b></div>${UI.chart.area(days, { money: true, label: 'Revenue per day' })}</div>` : ''}
+          ${canStore || canPay ? h`<div class="card"><div class="card-h">${icon('chart')}<h3>Money received · last 14 days</h3><span class="grow"></span><b class="num">${fmt.inr(days.reduce((s, d) => s + d.value, 0))}</b></div>
+            <div class="day-read" id="hm-mr"><span class="mut sm">${new Date(days[13].t).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</span><b>${fmt.inr(days[13].value)}</b><span class="mut sm">tap a day</span></div>
+            ${UI.chart.bars(days.map((d, i) => ({ label: i === 13 ? 'Today' : String(new Date(d.t).getDate()), value: d.value, title: d.label + ': ' + fmt.inr(d.value) })), { money: true, height: 150, pick: true, sel: 13, label: 'Money received per day' })}</div>` : ''}
           ${o && (o.top || []).length ? h`<div class="card pad0"><div class="card-h" style="padding:16px 16px 4px">${icon('trophy')}<h3>Most attempted tests</h3></div><div class="list">${join(o.top.slice(0, 5), (t, i) => h`<div class="li ${canRes ? 'click' : ''}" data-act="ana" data-id="${t.id}"><span class="av sm" style="--c:${['#c9a45c', '#94a3b8', '#b45309', '#14b8a6', '#6366f1'][i]}">${i + 1}</span><div class="grow"><div class="t ell">${t.title}</div><div class="s">${fmt.num(t.students)} students · ${fmt.num(t.attempts)} attempts</div></div><div style="width:90px"><div class="bar-meter"><i style="width:${Math.round(t.avg_pct || 0)}%"></i></div><div class="xs mut mt4" style="text-align:right">${t.avg_pct == null ? '—' : Math.round(t.avg_pct) + '% avg'}</div></div></div>`)}</div></div>` : ''}
         </div>
         <div class="col gap16">
           <div class="card pad0"><div class="card-h" style="padding:16px 16px 4px">${icon('calendar')}<h3>Tests: live & coming up</h3><span class="grow"></span>${AX.can('content') ? h`<a class="btn xs ghost" href="#/tests">Studio ${icon('chevR', 13)}</a>` : ''}</div>
             <div class="list">${liveNow.length + soon.length + resWait.length ? h`${join(liveNow, t => testRow(t, 'live'))}${join(resWait.slice(0, 4), t => testRow(t, 'res'))}${join(soon.slice(0, 6), t => testRow(t, 'soon'))}` : UI.empty({ icon: 'calendar', title: 'Nothing scheduled this week', text: 'Scheduled and live tests show up here.' })}</div></div>
-          ${o ? h`<div class="card"><div class="card-h">${icon('bars')}<h3>Test attempts · last 7 days</h3><span class="grow"></span><b class="num">${fmt.num((o.days || []).reduce((s, d) => s + (d.n || 0), 0))}</b></div>${UI.chart.bars((o.days || []).map(d => ({ label: d.d, value: d.n })), { label: 'Attempts per day' })}</div>` : ''}
+          ${o ? h`<div class="card"><div class="card-h">${icon('bars')}<h3>Test attempts · last 7 days</h3><span class="grow"></span><b class="num">${fmt.num((o.days || []).reduce((s, d) => s + (d.n || 0), 0))}</b></div><div class="day-read" id="hm-ar"><span class="mut sm">${(o.days || []).length ? o.days[o.days.length - 1].d : ''}</span><b>${fmt.num(((o.days || [])[(o.days || []).length - 1] || {}).n || 0)}</b><span class="mut sm">attempts · tap a day</span></div>${UI.chart.bars((o.days || []).map(d => ({ label: d.d, value: d.n })), { pick: true, sel: (o.days || []).length - 1, label: 'Attempts per day' })}</div>` : ''}
           ${a ? h`<div class="card pad0"><div class="card-h" style="padding:16px 16px 4px">${icon('activity')}<h3>Recent student activity</h3></div><div class="list">${(a.items || []).length ? join(a.items.slice(0, 8), it => h`<div class="li"><span class="av sm" style="--c:${AX.u.hue(it.k)}">${icon(actIcon[it.k] || 'activity', 15)}</span><div class="grow sm">${actText(it)}</div><span class="xs mut" style="white-space:nowrap">${fmt.ago(it.at)}</span></div>`) : UI.empty({ icon: 'activity', title: 'Quiet for now' })}</div></div>` : ''}
         </div>
       </div>
       ${!o && !a && !kpis.length ? h`<div class="card mt16">${UI.empty({ icon: 'lock', tone: 'lock', title: 'Welcome', text: 'Your access is limited. Use the menu to open the parts you can work on.' })}</div>` : ''}`);
     AX.act(ctx.el, {
       async ref(b) { await UI.busy(b, () => AX.refreshAttention()); },
+      // tap a bar: show that day's number above the chart
+      pick(el) {
+        const card = el.closest('.card'), i = +el.dataset.pick, money = card.querySelector('#hm-mr');
+        card.querySelectorAll('.bc').forEach((b, j) => { b.classList.toggle('sel', j === i); b.setAttribute('aria-pressed', j === i ? 'true' : 'false'); });
+        if (money) { const d = days[i]; AX.set(money, h`<span class="mut sm">${new Date(d.t).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</span><b>${fmt.inr(d.value)}</b>`); }
+        else { const d = (o.days || [])[i]; if (d) AX.set(card.querySelector('#hm-ar'), h`<span class="mut sm">${d.d}</span><b>${fmt.num(d.n)}</b><span class="mut sm">attempts</span>`); }
+      },
       ana(el) { if (canRes && AX.openAnalytics) AX.openAnalytics(el.dataset.id); else if (canRes) AX.go('results'); },
       test(el, e) { if (AX.openTest && AX.can('content', 'manage')) { e.preventDefault(); AX.openTest(el.dataset.id); } }
     });

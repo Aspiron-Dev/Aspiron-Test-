@@ -187,16 +187,16 @@ function overview(el) {
   AX.set(el, h`${req ? h`<a class="card st-banner" href="#/orders/req"><span class="st-li gold">${icon('userPlus', 20)}</span><div class="grow"><b>${fmt.plural(req, 'new access request')}</b><div class="sm mut">Approve and give the access code</div></div>${icon('chevR', 18)}</a>` : ''}
     <div class="row wrap between" style="margin-bottom:14px"><div class="chips">${join(['1', '7', '30', 'all'], k => h`<button class="chip ${T.dp === k ? 'on' : ''}" data-act="dp" data-v="${k}">${DPL[k]}</button>`)}</div></div>
     <div class="kpis">
-      ${UI.kpi({ label: 'Money received · ' + (pick ? new Date(pick.t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : DPL[T.dp]), value: fmt.inr(rev), icon: 'rupee', hero: true, foot: fmt.plural(revN, 'payment') + (T.money ? ' · store + added' : ' · store orders') })}
+      ${UI.kpi({ label: 'Money received · ' + (pick ? new Date(pick.t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : DPL[T.dp]), value: fmt.inr(rev), icon: 'rupee', hero: true, foot: fmt.plural(revN, 'payment') + ' · all time ' + fmt.inr(money.reduce((a, x) => a + (x.amount || 0), 0)) })}
       ${UI.kpi({ label: 'To verify', value: ver.length, icon: 'wallet', tone: ver.length ? 'gold' : '', go: '#/orders/verify', foot: ver.length ? 'Payment done · tap to check' : 'All checked' })}
       ${UI.kpi({ label: 'Not paid yet', value: un.length, icon: 'clock', tone: 'info', go: '#/orders/unpaid', foot: 'Follow up · counselling' })}
-      ${UI.kpi({ label: 'Orders', value: O.length, icon: 'cart', tone: 'vio', foot: pct(done.length, O.length) + '% became paid' })}
+      ${UI.kpi({ label: 'Orders', value: d.orders.length >= 300 && T.dp === 'all' ? '300+' : O.length, icon: 'cart', tone: 'vio', foot: d.orders.length >= 300 ? 'latest 300 orders counted' : pct(done.length, O.length) + '% became paid' })}
     </div>
     <div class="grid st-2 mt16">
       <div class="card"><div class="card-h">${icon('filter')}<h3 class="grow">Where students stop</h3><span class="xs mut">${DPL[T.dp]}</span></div>
         <div class="col gap16">${join(funnel, ([l, n, ic], i) => h`<div><div class="row between sm"><span class="row gap6 tx2">${icon(ic, 15)}${l}</span><b class="num">${fmt.num(n)}${i ? h` <span class="xs mut">${pct(n, funnel[0][1])}%</span>` : ''}</b></div><div class="bar-meter mt8 ${i === 2 ? '' : 'gold'}"><i style="width:${O.length ? Math.max(n ? 3 : 0, pct(n, O.length)) : 0}%"></i></div></div>`)}</div></div>
       <div class="card"><div class="card-h">${icon('bars')}<h3 class="grow">Money per day · last 14 days</h3><b class="num">${fmt.inr(tot14)}</b></div>
-        <div class="xs mut" style="margin:-6px 0 6px">Tap a day to see it above${pick ? h` · <a href="#" data-act="dayAll">show ${DPL[T.dp]}</a>` : ''}</div>
+        <div class="day-read">${pick ? h`<span class="mut sm">${new Date(pick.t).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</span><b>${fmt.inr(rev)}</b><span class="mut sm">${fmt.plural(revN, 'payment')}</span><a href="#" class="sm" data-act="dayAll">Clear</a>` : h`<span class="mut sm">Tap a day to see its money</span>`}</div>
         ${UI.chart.bars(days.map((x, i) => ({ label: i === 13 ? 'Today' : String(new Date(x.t).getDate()), value: x.v, title: new Date(x.t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ': ' + fmt.inr(x.v) + ' · ' + fmt.plural(x.n, 'payment') })), { money: true, height: 160, pick: true, sel: pick ? days.findIndex(x => x.t === pick.t) : -1, label: 'Money received per day for the last 14 days' })}</div>
     </div>
     <div class="grid st-2 mt16">
