@@ -68,7 +68,9 @@ function monthDays(rows, off) {
 AX.money = { PMETH, PSHORT, isoDay, dayMs, build, load: money, err: payErr, chip, daily, monthDays };
 
 /* ---------- module state ---------- */
-const V = { seg: 'all', q: '', more: 0, ctx: null, D: null, day: null, mon: 0 };
+const V = { seg: 'all', q: '', more: 0, ctx: null, D: null, day: null, mon: 0, sp: 'month', sv: null };
+// which test series a payment belongs to: store orders by their item, payments added by hand have no series
+const serOf = x => x.k === 'store' ? (x.what || 'Store order') : x.k === 'man' ? 'Added by you (no series)' : null;
 const SEGS = [['all', 'All'], ['store', 'Store'], ['man', 'Added by you'], ['free', 'Free'], ['none', 'Not recorded']];
 const activeSt = L => L.filter(s => s.status !== 'pending');
 const PAGE = 60;
@@ -101,6 +103,15 @@ AX.css('payments', `
 .px-un:first-child{border-top:0}
 .px-un .acts{display:flex;gap:6px;margin-left:auto}
 .px-legend{display:flex;flex-direction:column;gap:10px;font-size:13px}
+.px-ser{display:flex;flex-direction:column;gap:6px}
+.px-sr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--solid-2);text-align:left;color:var(--tx);font:inherit;cursor:pointer}
+.px-sr:hover{border-color:var(--pri-line)}
+.px-sr.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.px-sr .t{font-weight:700;font-size:14px;line-height:1.3;overflow-wrap:anywhere}
+#px-seg{scroll-margin-top:84px}
+.px-sr .m{height:6px;border-radius:4px;background:var(--hover);overflow:hidden}
+.px-sr .m i{display:block;height:100%;border-radius:4px;background:var(--grad-pri)}
+.px-sr .m i.gold{background:var(--grad-gold)}
 .px-legend .r{display:flex;align-items:center;gap:10px}
 .px-legend i{width:10px;height:10px;border-radius:3px;flex:none}
 .px-legend b{margin-left:auto;font-variant-numeric:tabular-nums}
@@ -149,6 +160,9 @@ AX.mod({
       seg: el => { V.seg = el.dataset.v; V.more = 0; draw(); },
       pick: el => { const d = V.T && V.T.days[+el.dataset.pick]; if (!d) return; V.day = d.t; if (V.seg === 'none') V.seg = 'all'; V.more = 0; draw(); },
       dayAll: () => { V.day = null; V.more = 0; draw(); },
+      sp: (el, e) => { const b = e.target.closest('button[data-v]'); if (!b) return; V.sp = b.dataset.v; draw(); },
+      ser: el => { V.sv = V.sv === el.dataset.k ? null : el.dataset.k; if (V.seg === 'none') V.seg = 'all'; V.more = 0; draw(); if (V.sv) { const l = document.getElementById('px-seg'); if (l) l.scrollIntoView({ block: 'start', behavior: 'smooth' }); } },
+      serAll: () => { V.sv = null; V.more = 0; draw(); },
       mon: el => { const m = V.mon + (+el.dataset.d); if (m < 0 || m > MONTHS_BACK) return; V.mon = m; V.day = null; V.more = 0; draw(); },
       pickMon: el => { V.mon = 11 - (+el.dataset.pick); V.day = null; V.more = 0; draw(); const c = document.getElementById('px-days'); if (c) c.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); },
       none: () => { V.seg = 'none'; V.more = 0; draw(); document.getElementById('px-seg').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); },
@@ -206,6 +220,10 @@ function draw() {
   for (let i = 11; i >= 0; i--) { const a = new Date(); a.setDate(1); a.setHours(0, 0, 0, 0); a.setMonth(a.getMonth() - i); const b = new Date(a); b.setMonth(b.getMonth() + 1); months.push({ a: +a, b: +b, label: a.toLocaleDateString('en-IN', { month: 'short' }), full: a.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) }); }
   const bars = months.map(m => { const v = T.R.filter(x => x.at >= m.a && x.at < m.b).reduce((s, x) => s + x.amount, 0); return { label: m.label, value: v, title: m.full + ': ' + fmt.inr(v), short: m.label + ' ' + String(new Date(m.a).getFullYear()).slice(2) + ' · ' + fmt.inr(v) }; });
   const best = bars.reduce((a, b) => b.value > a.value ? b : a, bars[0]);
+  // money per test series in the chosen period (this chart's month, or all time)
+  const sa = V.sp === 'all' ? 0 : T.days[0].t, sb = V.sp === 'all' ? Infinity : T.days[T.days.length - 1].e;
+  const SG = {}; T.R.forEach(x => { const k = serOf(x); if (!k || !x.amount || !(x.at >= sa && x.at < sb)) return; const g = SG[k] = SG[k] || { k, v: 0, n: 0, store: x.k === 'store' }; g.v += x.amount; g.n++; });
+  const ser = Object.values(SG).sort((a, b) => b.v - a.v), serTot = ser.reduce((s, g) => s + g.v, 0);
   AX.set('#px-top', h`<div class="kpis px-kpis">
       ${UI.kpi({ label: 'Total collected', value: fmt.inr(T.total), icon: 'wallet', hero: true, foot: fmt.plural(T.R.length, 'payment') })}
       ${UI.kpi({ label: 'This month', value: fmt.inr(T.month), icon: 'calendar', tone: 'gold', delta, deltaUnit: '%', foot: delta == null ? new Date().toLocaleDateString('en-IN', { month: 'long' }) : 'vs ' + fmt.inr(T.last) + ' last month' })}
@@ -221,7 +239,14 @@ function draw() {
       <div class="card"><div class="card-h">${icon('chart')}<h3>Where it came from</h3></div>
         <div class="row gap16" style="align-items:center"><div style="width:120px;flex:none">${UI.chart.donut([{ label: 'Store', value: T.store, color: 'var(--info)' }, { label: 'Added by you', value: T.man, color: 'var(--gold)' }], { size: 120, center: fmt.short(T.total), sub: 'total ₹', label: 'Store vs added by you' })}</div>
         <div class="px-legend grow"><div class="r"><i style="background:var(--info)"></i>Store orders<b>${fmt.inr(T.store)}</b></div><div class="r"><i style="background:var(--gold)"></i>Added by you<b>${fmt.inr(T.man)}</b></div><div class="r xs mut"><i style="background:var(--vio)"></i>Free<b>${fmt.plural(T.cnt.free, 'student')}</b></div></div></div></div>
-    </div>`);
+    </div>
+    <div class="card mt16" id="px-ser"><div class="card-h">${icon('layers')}<h3>By test series</h3><span class="grow"></span>
+        <div class="seg" data-act="sp">${join([['month', T.days.name], ['all', 'All time']], ([v, l]) => h`<button type="button" data-v="${v}" class="${V.sp === v ? 'on' : ''}">${l}</button>`)}</div></div>
+      <div class="day-read"><span class="mut sm">Total</span><b>${fmt.inr(serTot)}</b><span class="mut sm">${fmt.plural(ser.reduce((s, g) => s + g.n, 0), 'payment')} · tap a series to see its payments</span>${V.sv ? h`<button class="btn xs ghost" data-act="serAll">${icon('x', 13)} Show all series</button>` : ''}</div>
+      ${ser.length ? h`<div class="px-ser">${join(ser, g => { const pc = serTot ? Math.round(g.v * 100 / serTot) : 0; return h`<button type="button" class="px-sr ${V.sv === g.k ? 'on' : ''}" data-act="ser" data-k="${g.k}" aria-pressed="${V.sv === g.k ? 'true' : 'false'}">
+          <span class="t">${g.k}</span><b class="num">${fmt.inr(g.v)}</b>
+          <span class="m"><i class="${g.store ? '' : 'gold'}" style="width:${Math.max(2, pc)}%"></i></span><span class="xs mut">${pc}% · ${fmt.plural(g.n, 'payment')}</span></button>`; })}</div>`
+        : UI.empty({ icon: 'layers', title: 'No payments in ' + (V.sp === 'all' ? 'this list' : T.days.name), text: 'Pick another month with ‹ › above, or choose All time.' })}</div>`);
   AX.set('#px-seg', join(SEGS, ([k, l]) => h`<button type="button" class="chip ${V.seg === k ? 'on' : ''} ${k === 'none' && T.cnt.none ? 'alert' : ''}" data-act="seg" data-v="${k}">${l}<em>${T.cnt[k]}</em></button>`));
   drawList();
 }
@@ -239,7 +264,7 @@ function drawList() {
       : h`<div class="card">${UI.empty({ icon: 'checkCircle', title: q ? 'No student matches' : 'Every student has a payment recorded', text: q ? 'Try another name or number.' : 'Nice — nothing to add here.' })}</div>`);
   }
   const dayE = V.day != null ? V.day + 864e5 : null;
-  const L = T.R.filter(x => (V.seg === 'all' || x.k === V.seg) && hit(x.name, x.mobile + ' ' + (x.code || '')) && (V.day == null || (x.at >= V.day && x.at < dayE)));
+  const L = T.R.filter(x => (V.seg === 'all' || x.k === V.seg) && hit(x.name, x.mobile + ' ' + (x.code || '')) && (V.day == null || (x.at >= V.day && x.at < dayE)) && (V.sv == null || serOf(x) === V.sv));
   const shown = L.slice(0, PAGE * (V.more + 1));
   AX.set(el, L.length ? h`<div class="card pad0"><div class="px-row hd"><span></span><span>Student</span><span>Details</span><span>Date</span><span style="text-align:right">Amount</span><span></span></div>
       ${join(shown, x => h`<div class="px-row ${x.k !== 'store' && can ? 'edit' : ''}">
