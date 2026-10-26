@@ -33,7 +33,7 @@ function build(P, students) {
   };
   const rows = () => [
     ...orders.map(o => { const s = stByMob.get(o.mobile); return { k: 'store', id: o.code, amount: Number(o.amount) || 0, at: dayMs(o.at), name: (s && s.name) || o.name || 'Buyer', mobile: o.mobile || '', sid: s && s.id, what: o.item_title || 'Store order', code: o.code }; }),
-    ...list.map(p => { const s = stById.get(p.student_id); return { k: Number(p.amount) === 0 || p.method === 'free' ? 'free' : 'man', id: p.id, amount: Number(p.amount) || 0, at: dayMs(p.paid_on), name: p.name || (s && s.name) || 'Student', mobile: p.mobile || (s && s.mobile) || '', sid: s ? s.id : null, what: PSHORT[p.method] || p.method || '', method: p.method, note: p.note || '', p }; })
+    ...list.map(p => { const s = stById.get(p.student_id); return { k: Number(p.amount) === 0 || p.method === 'free' ? 'free' : 'man', id: p.id, amount: Number(p.amount) || 0, at: dayMs(p.paid_on), name: p.name || (s && s.name) || 'Deleted student', mobile: p.mobile || (s && s.mobile) || '', sid: s ? s.id : null, what: PSHORT[p.method] || p.method || '', method: p.method, note: p.note || '', p }; })
   ].sort((a, b) => (b.at || 0) - (a.at || 0));
   return { ok: !!(P && P.ok), missing: !!(P && P.error === 'missing'), error: P && !P.ok ? P : null, list, orders, of, rows };
 }
@@ -58,7 +58,7 @@ AX.css('payments', `
 .px-kpis .kpi.btnk:hover{transform:translateY(-2px);border-color:var(--pri-line)}
 .px-kpis .kpi.btnk.on{border-color:var(--warn)}
 .px-tools{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:22px 0 14px}
-.px-tools .search{flex:1;min-width:220px;max-width:380px}
+.px-tools .search{flex:1;min-width:260px;max-width:380px}
 .px-row{display:grid;grid-template-columns:38px minmax(0,1.4fr) minmax(0,1.6fr) 120px 110px 40px;gap:14px;align-items:center;padding:12px 16px;border-top:1px solid var(--line)}
 .px-row:first-child{border-top:0}
 .px-row.hd{background:var(--solid-2);font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);padding:10px 16px}
@@ -67,7 +67,9 @@ AX.css('payments', `
 .px-row button.nm:hover{color:var(--pri)}
 .px-row .amt{font-family:var(--font-display);font-weight:600;font-size:17px;text-align:right;font-variant-numeric:tabular-nums}
 .px-row .amt.free{color:var(--vio);font-family:var(--font);font-size:13px;font-weight:800}
-.px-row .det{display:flex;gap:6px;align-items:center;flex-wrap:wrap;min-width:0;font-size:13px;color:var(--tx-2)}
+.px-row .det{display:flex;gap:6px;align-items:center;min-width:0;font-size:13px;color:var(--tx-2)}
+.px-row .det>*{flex:none}
+.px-row .det>.ell{flex:0 1 auto}
 .px-row .det .mono{color:var(--mut);font-size:12px}
 .px-row .dt{font-size:13px;color:var(--mut)}
 .px-mdt{display:none}
@@ -172,7 +174,7 @@ function draw() {
   const delta = T.last ? Math.round((T.month - T.last) * 100 / T.last) : null;
   const months = [];
   for (let i = 11; i >= 0; i--) { const a = new Date(); a.setDate(1); a.setHours(0, 0, 0, 0); a.setMonth(a.getMonth() - i); const b = new Date(a); b.setMonth(b.getMonth() + 1); months.push({ a: +a, b: +b, label: a.toLocaleDateString('en-IN', { month: 'short' }), full: a.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) }); }
-  const bars = months.map(m => { const v = T.R.filter(x => x.at >= m.a && x.at < m.b).reduce((s, x) => s + x.amount, 0); return { label: m.label, value: v, title: m.full + ': ' + fmt.inr(v) }; });
+  const bars = months.map(m => { const v = T.R.filter(x => x.at >= m.a && x.at < m.b).reduce((s, x) => s + x.amount, 0); return { label: m.label, value: v, title: m.full + ': ' + fmt.inr(v), short: m.label + ' ' + String(new Date(m.a).getFullYear()).slice(2) + ' · ' + fmt.inr(v) }; });
   const best = bars.reduce((a, b) => b.value > a.value ? b : a, bars[0]);
   AX.set('#px-top', h`<div class="kpis px-kpis">
       ${UI.kpi({ label: 'Total collected', value: fmt.inr(T.total), icon: 'wallet', hero: true, foot: fmt.plural(T.R.length, 'payment') })}
@@ -181,9 +183,9 @@ function draw() {
       <button type="button" class="kpi glass warn btnk ${V.seg === 'none' ? 'on' : ''}" data-act="none"><div class="k-l">${icon('alert', 16)}<span>Not recorded</span></div><div class="k-v">${fmt.num(T.none.length)}</div><div class="k-f"><span>${T.none.length ? 'Add their old payments →' : 'Everyone has a payment'}</span></div></button>
     </div>
     <div class="px-top">
-      <div class="card"><div class="card-h">${icon('bars')}<h3>Revenue by month</h3><span class="grow"></span><span class="sub">${best && best.value ? 'Best: ' + best.title : 'Last 12 months'}</span></div>${UI.chart.bars(bars, { money: true, height: 160, label: 'Revenue by month' })}</div>
+      <div class="card"><div class="card-h">${icon('bars')}<h3>Revenue by month</h3><span class="grow"></span><span class="sub">${best && best.value ? 'Best · ' + best.short : 'Last 12 months'}</span></div>${UI.chart.bars(bars, { money: true, height: 160, label: 'Revenue by month' })}</div>
       <div class="card"><div class="card-h">${icon('chart')}<h3>Where it came from</h3></div>
-        <div class="row gap16" style="align-items:center">${UI.chart.donut([{ label: 'Store', value: T.store, color: 'var(--info)' }, { label: 'Added by you', value: T.man, color: 'var(--gold)' }], { size: 120, center: fmt.short(T.total), sub: 'total ₹', label: 'Store vs added by you' })}
+        <div class="row gap16" style="align-items:center"><div style="width:120px;flex:none">${UI.chart.donut([{ label: 'Store', value: T.store, color: 'var(--info)' }, { label: 'Added by you', value: T.man, color: 'var(--gold)' }], { size: 120, center: fmt.short(T.total), sub: 'total ₹', label: 'Store vs added by you' })}</div>
         <div class="px-legend grow"><div class="r"><i style="background:var(--info)"></i>Store orders<b>${fmt.inr(T.store)}</b></div><div class="r"><i style="background:var(--gold)"></i>Added by you<b>${fmt.inr(T.man)}</b></div><div class="r xs mut"><i style="background:var(--vio)"></i>Free<b>${fmt.plural(T.cnt.free, 'student')}</b></div></div></div></div>
     </div>`);
   AX.set('#px-seg', join(SEGS, ([k, l]) => h`<button type="button" class="chip ${V.seg === k ? 'on' : ''} ${k === 'none' && T.cnt.none ? 'alert' : ''}" data-act="seg" data-v="${k}">${l}<em>${T.cnt[k]}</em></button>`));
@@ -207,7 +209,7 @@ function drawList() {
   AX.set(el, L.length ? h`<div class="card pad0"><div class="px-row hd"><span></span><span>Student</span><span>Details</span><span>Date</span><span style="text-align:right">Amount</span><span></span></div>
       ${join(shown, x => h`<div class="px-row ${x.k !== 'store' && can ? 'edit' : ''}">
         <span class="pav">${UI.avatar(x.name, x.sid || x.mobile, 'sm')}</span>
-        <div class="who" style="min-width:0">${x.sid ? h`<button class="nm" data-act="open" data-sid="${x.sid}">${x.name}</button>` : h`<div class="nm">${x.name}</div>`}<div class="xs mut ell">${x.mobile ? fmt.mobile(x.mobile) : 'No account'}<span class="px-mdt"> · ${x.at ? fmt.date(x.at) : '—'}</span></div></div>
+        <div class="who" style="min-width:0">${x.sid ? h`<button class="nm" data-act="open" data-sid="${x.sid}">${x.name}</button>` : h`<div class="nm">${x.name}</div>`}<div class="xs mut ell">${x.mobile ? fmt.mobile(x.mobile) : 'Account deleted'}<span class="px-mdt"> · ${x.at ? fmt.date(x.at) : '—'}</span></div></div>
         <div class="det">${chip(x)}<span class="ell">${x.what}</span>${x.code ? h`<button class="btn xs ghost mono" data-act="order" data-code="${x.code}" title="Open order">${x.code}</button>` : ''}${x.note ? h`<span class="xs mut ell" title="${x.note}">· ${x.note}</span>` : ''}</div>
         <span class="dt">${x.at ? fmt.date(x.at) : '—'}</span>
         <span class="amt ${x.amount ? '' : 'free'}">${x.amount ? fmt.inr(x.amount) : 'Free'}</span>
