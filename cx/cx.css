@@ -305,7 +305,8 @@ button.kpi:hover,a.kpi:hover{transform:translateY(-2px);border-color:var(--pri-l
   .ov.sheetable .modal{width:100%;max-height:92vh;border-radius:24px 24px 0 0;animation:ax-sheet var(--std) var(--ease);padding-bottom:env(safe-area-inset-bottom)}
   .ov.sheetable .m-h::before{content:"";position:absolute;left:50%;top:7px;transform:translateX(-50%);width:40px;height:4px;border-radius:2px;background:var(--line-2)}
   .ov.sheetable .m-h{position:relative;padding-top:22px}
-  .m-f .btn{flex:1}
+  .m-f .btn{flex:1 1 auto;min-width:max-content}
+  .m-f .sp{display:none}
 }
 @keyframes ax-sheet{from{transform:translateY(100%)}to{transform:none}}
 .drawer-ov{justify-content:flex-end;align-items:stretch;padding:0}
