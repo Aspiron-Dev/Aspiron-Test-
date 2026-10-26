@@ -176,7 +176,7 @@ AX.css('live', `
 .lv-stat{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px 14px;border-radius:var(--r-lg);border:1px solid var(--line);background:color-mix(in srgb,var(--solid) 55%,transparent);text-align:left;color:var(--tx);min-width:0;transition:border-color var(--fast),background var(--fast),transform var(--fast)}
 .lv-stat:hover{border-color:var(--line-2);transform:translateY(-1px)}
 .lv-stat .k-l{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--mut);min-width:0;max-width:100%}
-.lv-stat .k-l span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lv-stat .k-l span{min-width:0;line-height:1.3}
 .lv-stat .k-v{font-family:var(--font-display);font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1.1;margin-top:4px;font-variant-numeric:lining-nums tabular-nums}
 .lv-stat .k-f{font-size:11.5px;color:var(--faint);font-weight:650}
 .lv-stat.pri .k-l .ax-ic{color:var(--pri)}.lv-stat.ok .k-l .ax-ic{color:var(--ok)}.lv-stat.warn .k-l .ax-ic{color:var(--warn)}.lv-stat.mut .k-l .ax-ic{color:var(--mut)}
