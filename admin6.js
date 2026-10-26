@@ -85,7 +85,7 @@ function shareSeriesAdm(id){
 let PUSHON=true;
 async function sendPush(o){
   try{
-    const r=await fetch(CFG.SUPABASE_URL+'/functions/v1/send-push',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(Object.assign({pw:PW},o))});
+    const r=await fetch(CFG.SUPABASE_URL+'/functions/v1/Send-push',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(Object.assign({pw:PW},o))});
     const j=await r.json().catch(()=>({ok:false,error:'server'}));
     if(j.ok)toast(j.total?`📲 Sent to ${j.sent} phone${j.sent==1?'':'s'}`:'📲 No phones have turned on notifications yet');
     else toast(r.status===404?'Phone push is not set up yet (see setup steps)':'Phone push failed: '+(j.error||r.status));
