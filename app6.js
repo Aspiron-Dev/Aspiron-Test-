@@ -496,11 +496,11 @@ async function viewNotices(){
 }
 if(!IC.reset)IC.reset='<path d="M3 12a9 9 0 109-9 9.7 9.7 0 00-6.7 2.8L3 8"/><path d="M3 3v5h5"/>';
 function installApp(){
-  if(isStandalone()){toast('The app is already installed');return}
+  if(isStandalone()||LS.get('cbt_installed',0)){toast('The app is already installed');return}
   if(typeof DIP!=='undefined'&&DIP){const p=DIP;DIP=null;p.prompt();p.userChoice&&p.userChoice.then(c=>{if(c&&c.outcome==='accepted')toast('Installing…')}).catch(()=>{});return}
   const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
   const st=ios?[['Open this site in <b>Safari</b>'],['Tap the <b>Share</b> button (square with an arrow)'],['Tap <b>Add to Home Screen</b>, then <b>Add</b>']]
-    :[['Open this site in <b>Chrome</b>'],['Tap the <b>⋮</b> menu at the top right'],['Tap <b>Install app</b> or <b>Add to Home screen</b>, then <b>Install</b>']];
+    :[['Tap the <b>⋮</b> menu at the top right of Chrome'],['Tap <b>Install app</b> (or <b>Add to Home screen</b>)'],['Tap <b>Install</b>, then open the app from your home screen']];
   sheet(`<h2 class="sht">Install the app</h2><div class="shl"></div>
    <div class="instv"><span class="instico">${ic('download',26)}</span><p class="sm mut" style="margin:0">Open the test series like an app — full screen, from your home screen, no app store needed.</p></div>
    <ol class="isteps">${st.map((s,i)=>`<li><b class="n">${i+1}</b><span>${s[0]}</span></li>`).join('')}</ol>

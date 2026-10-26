@@ -109,7 +109,7 @@ function npHelp(kind){
   const steps=kind==='app'?(ios?[['Tap <b>⋯</b> or the share button at the top'],['Choose <b>Open in Safari</b>'],['Add the site to your Home Screen, open it from there and turn notifications on']]
       :[['Tap <b>⋮</b> at the top right'],['Choose <b>Open in Chrome</b> (or "Open in browser")'],['Open Settings there and turn notifications on']])
     :ios?[['Add this site to your <b>Home Screen</b> (Share → Add to Home Screen)'],['Open it from the Home Screen icon'],['Turn on Phone Notifications again and tap <b>Allow</b>']]
-    :[['Tap the <b>🔒 lock / ⓘ icon</b> next to the website address at the top'],['Tap <b>Permissions</b> → <b>Notifications</b>'],['Choose <b>Allow</b>, then come back here — it switches on by itself']];
+    :[['Tap the <b>⋮</b> menu at the top right, then <b>Settings</b>'],['Tap <b>Notifications</b> and make sure <b>Site notifications</b> is <b>on</b>'],['Tap <b>Site settings</b> → <b>Notifications</b>, find this site under <b>Blocked</b>, tap it and choose <b>Allow</b>']];
   sheet(`<h2 class="sht">${ic('bell',20)} Turn on notifications</h2><div class="shl"></div>
    <p class="sm mut" style="margin:0 0 12px">${kind==='app'?'You opened the site inside another app (like WhatsApp or Telegram). Notifications only work in your phone’s browser.':kind==='blocked'?'Notifications were blocked for this site earlier. Your phone only lets <b>you</b> unblock them — it takes 10 seconds:':'Tap <b>Allow</b> when your phone asks. If no question appeared, do this once:'}</p>
    <ol class="isteps">${steps.map((x,i)=>`<li><b class="n">${i+1}</b><span>${x[0]}</span></li>`).join('')}</ol>
