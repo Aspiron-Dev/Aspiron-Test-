@@ -100,3 +100,38 @@ pushSync=async function(force){
   return _so.apply(this,arguments);
 }}
 ;(window.__p=window.__p||{})['app18']=1;
+
+/* ===== v37: one setup pop-up on every app open, until notifications are on and the app is installed =====
+   It shows only the things still missing (install, notifications), with a button for each and a Skip.
+   It comes back on the next app open; Skip hides it for this open only. */
+let SETUPSHOWN=false;
+const setupIos=()=>/iphone|ipad|ipod/i.test(navigator.userAgent);
+function setupNeed(){
+  const need=[];
+  if(!isStandalone())need.push('install');
+  // on iPhone, notifications work only from the installed app
+  if(npSup()&&!npOn()&&(!setupIos()||isStandalone()))need.push('notify');
+  return need;
+}
+function setupRow(k){
+  if(k==='install')return `<div class="setrow"><span class="setico">${ic('install',20)}</span><div class="grow"><b>Install the app</b><div class="sm mut">Open it from your home screen, like an app.</div></div><button class="btn sm" onclick="setupDo('install')">Install</button></div>`;
+  const blocked=Notification.permission==='denied';
+  return `<div class="setrow"><span class="setico">${ic('bell',20)}</span><div class="grow"><b>Turn on notifications</b><div class="sm mut">Get test alerts and notices even when the app is closed.</div></div><button class="btn sm" onclick="setupDo('notify')">${blocked?'How?':'Turn on'}</button></div>`;
+}
+function setupPop(){
+  if(SETUPSHOWN||INTEST||!AUTH||npInApp()||$('#layer').innerHTML||location.hash.replace('#','').replace('/','')!=='')return;
+  const need=setupNeed();
+  if(!need.length)return;
+  SETUPSHOWN=true;
+  sheet(`<h2 class="sht">Two quick things</h2><p class="sm mut" style="margin:0 0 12px">So you never miss a test or a result. Each takes one tap.</p>
+    ${need.map(setupRow).join('')}
+    <div class="row" style="margin-top:14px"><button class="btn ghost block" onclick="closeModal()">Skip</button></div>`,'setup');
+}
+function setupDo(k){
+  if(k==='install'){closeModal();installApp();return}
+  npAskYes();   // asks the browser, turns notifications on, or shows the "how" steps when blocked
+}
+npAskMaybe=function(){clearTimeout(NPASKT);NPASKT=setTimeout(setupPop,2500)};
+// the small install bar at the bottom is replaced by the pop-up above
+showInstall=function(){};
+;(window.__p=window.__p||{})['app18']=2;

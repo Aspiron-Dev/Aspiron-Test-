@@ -35,7 +35,7 @@ const AT_ONCE = 25;      // notifications in flight at the same time
 // deno-lint-ignore no-explicit-any
 type DB = any;
 type Sub = { endpoint: string; p256dh: string; auth: string; mobile?: string };
-type Stats = { sent: number; removed: number; failed: number; codes: Record<string, number>; sample: string[]; dead: string[] };
+type Stats = { sent: number; removed: number; failed: number; codes: Record<string, number>; sample: string[]; dead: string[]; why: Set<string> };
 
 async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -71,7 +71,7 @@ async function handle(req: Request): Promise<Response> {
   const limit = paged ? Math.min(Math.max(Math.floor(Number(b.limit)) || 120, 1), PAGE_MAX) : PAGE_MAX;
   let after = String(b.after || "");
 
-  const st: Stats = { sent: 0, removed: 0, failed: 0, codes: {}, sample: [], dead: [] };
+  const st: Stats = { sent: 0, removed: 0, failed: 0, codes: {}, sample: [], dead: [], why: new Set() };
   let total = 0, done = false;
   for (;;) {
     const page = await targets(db, series, after, limit);
@@ -133,6 +133,8 @@ async function sendMany(jobs: { s: Sub; payload: string; ttl: number; done?: (ok
           const passing = code === 0 || code === 429 || code >= 500;
           if (passing && attempt === 0) { await new Promise((r) => setTimeout(r, 800)); continue; }
           st.failed++;
+          const reason = String(err.body || "").match(/VapidPkHashMismatch|UnauthorizedRegistration|BadJwtToken|InvalidJwt|InvalidSubject|ExpiredJwt/);
+          if (reason) st.why.add(reason[0]);
           const k = String(code || "network");
           st.codes[k] = (st.codes[k] || 0) + 1;
           if (st.sample.length < 3) st.sample.push((k + " " + String(err.body || err.message || "")).replace(/\s+/g, " ").slice(0, 160));
@@ -156,6 +158,11 @@ async function removeDead(db: DB, st: Stats) {
 function hint(st: Stats): string {
   if (!st.failed) return "";
   const c = st.codes;
+  // the push service says why: an old subscription (made with another key) or a wrong private key / subject
+  if (st.why.has("VapidPkHashMismatch") || st.why.has("UnauthorizedRegistration"))
+    return "These phones turned on notifications with an older key. Each student opens the app once and it switches the phone over by itself; the rest stay on the list until then.";
+  if (st.why.has("BadJwtToken") || st.why.has("InvalidJwt") || st.why.has("ExpiredJwt") || st.why.has("InvalidSubject"))
+    return "The push service rejected the signature: VAPID_PRIVATE does not match VAPID_PUBLIC, or VAPID_SUBJECT is not a mailto: or https: address. Check both secrets.";
   if ((c["401"] || 0) + (c["403"] || 0) >= st.failed / 2)
     return "The push service refused the key: VAPID_PUBLIC / VAPID_PRIVATE in Supabase secrets must be one pair, and VAPID_PUBLIC must be the same as in config.js. Set VAPID_SUBJECT to a real mailto: address.";
   if (c["400"] || c["413"]) return "The push service did not accept the message (check VAPID_SUBJECT, and keep the text short).";
@@ -194,7 +201,7 @@ async function dueAlerts(db: DB, pub: string, priv: string, worker: number) {
   const mobiles = [...new Set(due.map((d) => d.mobile))];
   const { data: subs } = await db.from("cbt_push_subs").select("endpoint,mobile,p256dh,auth").in("mobile", mobiles);
 
-  const st: Stats = { sent: 0, removed: 0, failed: 0, codes: {}, sample: [], dead: [] };
+  const st: Stats = { sent: 0, removed: 0, failed: 0, codes: {}, sample: [], dead: [], why: new Set() };
   // per alert: delivered to at least one phone? / only passing problems?
   const res = due.map(() => ({ phones: 0, ok: 0, passing: 0 }));
   const jobs: Parameters<typeof sendMany>[0] = [];
