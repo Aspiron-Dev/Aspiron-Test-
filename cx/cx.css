@@ -502,3 +502,7 @@ button.kpi:hover,a.kpi:hover{transform:translateY(-2px);border-color:var(--pri-l
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
 }
 @media print{.ax-side,.ax-top,.ax-bottom,#ax-toasts{display:none!important}.ax-app{display:block}body::before{display:none}}
+
+/* privacy screen when the app is in the background */
+body.privacy .ax-app,body.privacy .ax-bottom,body.privacy .ov,body.privacy .ws{filter:blur(18px) saturate(.6)}
+body.privacy::after{content:"";position:fixed;inset:0;z-index:999;background:var(--scrim)}

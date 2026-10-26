@@ -21,6 +21,7 @@ AX.mod({
           <p class="xs mut mt8">Saved on this device only.</p></div>
         <div class="card"><div class="card-h">${icon('smartphone')}<h3>This device</h3></div>
           <dl class="kv"><dt>Signed in as</dt><dd>${me.name || 'Owner'}${me.owner ? ' (owner)' : ' (@' + me.username + ')'}</dd><dt>Device</dt><dd>${AX.u.device()}</dd><dt>Sign-in</dt><dd>${AX.session.legacy ? 'Password, this tab only' : AX.ls.get('cx_tok', null) ? 'Kept on this device' : 'Until this tab closes'}</dd></dl>
+          <div class="mt16">${AX.f.switch({ name: 'lock', value: AX.autoLock && AX.autoLock.get(), label: 'Sign out after 15 minutes without use', hint: 'Recommended on a shared or office computer.' })}</div>
           <div class="row wrap mt16">${!standalone ? h`<button class="btn sm" data-act="install">${icon('download', 15)} Install as an app</button>` : UI.pill('Installed as an app', 'ok')}<button class="btn sm danger" data-act="out">${icon('logout', 15)} Sign out</button></div></div>
         <div class="card"><div class="card-h">${icon('zap')}<h3>Shortcuts</h3></div>
           <dl class="kv"><dt><span class="kbd">Ctrl K</span> or <span class="kbd">/</span></dt><dd>Search everything and run commands</dd><dt><span class="kbd">Esc</span></dt><dd>Close a window</dd><dt><span class="kbd">+</span> button</dt><dd>Create a student, test, payment…</dd></dl></div>
@@ -40,6 +41,7 @@ AX.mod({
       },
       out() { AX.signOut(); }
     });
+    ctx.el.querySelector('[name=lock]').addEventListener('change', e => { AX.autoLock.set(e.target.checked); UI.toast(e.target.checked ? 'Will sign out after 15 minutes without use' : 'Stays signed in'); });
     const r = await AX.api.admin('usage');
     if (!ctx.alive()) return;
     const box = ctx.el.querySelector('#st-db');

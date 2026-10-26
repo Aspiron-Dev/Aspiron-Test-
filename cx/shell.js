@@ -166,6 +166,21 @@ function drawNav() {
   const mw = document.getElementById('ax-mewrap'); if (mw) AX.set(mw, meCard());
 }
 AX.redrawNav = drawNav;
+
+/* ---------- privacy screen + auto sign-out after 15 minutes without use ---------- */
+let LAST = Date.now();
+['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach(ev => addEventListener(ev, () => { LAST = Date.now(); }, { passive: true, capture: true }));
+AX.autoLock = {
+  get() { const v = AX.ls.get('cx_autolock', null); return v == null ? (S.legacy || !AX.ls.get('cx_tok', null)) : !!v; },
+  set(v) { AX.ls.set('cx_autolock', !!v); }
+};
+setInterval(() => {
+  if (!S.token || !document.getElementById('ax-page') || !AX.autoLock.get()) return;
+  if (Date.now() - LAST > 15 * 60000) { AX.signOut().then(() => UI.toast('Signed out after 15 minutes without use', { tone: 'warn', ms: 6000 })); }
+}, 30000);
+const priv = on => { if (S.token && document.getElementById('ax-page')) document.body.classList.toggle('privacy', on); };
+document.addEventListener('visibilitychange', () => priv(document.hidden));
+addEventListener('blur', () => priv(true)); addEventListener('focus', () => priv(false));
 function navSheet() {
   const me = S.me || {};
   UI.modal({ title: null, size: 'narrow', foot: null,
