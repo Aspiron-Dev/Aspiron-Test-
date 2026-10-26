@@ -37,7 +37,7 @@ AX.mod({
       theme(el, e) { const b = e.target.closest('button'); if (!b) return; AX.theme.set(b.dataset.v); el.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); AX.redrawNav(); },
       async install() {
         if (installEvt) { installEvt.prompt(); const r = await installEvt.userChoice; installEvt = null; if (r.outcome === 'accepted') UI.toast('Installed'); return; }
-        UI.modal({ title: 'Install as an app', size: 'narrow', body: h`<ol class="sm tx2" style="line-height:1.9;padding-left:18px;margin:0"><li>Android (Chrome): menu <b>⋮</b> → <b>Add to Home screen</b> / <b>Install app</b>.</li><li>iPhone (Safari): <b>Share</b> → <b>Add to Home Screen</b>.</li><li>Computer (Chrome / Edge): the install icon in the address bar.</li></ol>` });
+        UI.modal({ title: 'Install as an app', size: 'narrow', body: h`<ol class="sm tx2" style="line-height:1.9;padding-left:18px;margin:0"><li>Android (Chrome): menu <b>⋮</b> → <b>Add to Home screen</b> / <b>Install app</b>.</li><li>Phone says <b>“Could not open app”</b>? Remove the old icon (long-press → <b>Uninstall</b>), refresh this page and install again. Still failing? Use <b>⋮</b> → <b>Add to Home screen</b> → <b>Create shortcut</b>: it opens in Chrome and always works.</li><li>iPhone (Safari): <b>Share</b> → <b>Add to Home Screen</b>.</li><li>Computer (Chrome / Edge): the install icon in the address bar.</li></ol>` });
       },
       out() { AX.signOut(); }
     });
