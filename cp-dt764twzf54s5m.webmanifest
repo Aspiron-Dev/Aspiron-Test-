@@ -1,14 +1,14 @@
 {
-  "id": "./cp-dt764twzf54s5m.html",
-  "name": "Aspiron Panel",
-  "short_name": "Aspiron Panel",
+  "id": "./cp-dt764twzf54s5m.html?app=control",
+  "name": "Aspiron Control",
+  "short_name": "Aspiron Control",
   "description": "Admin control centre for the test series",
-  "start_url": "./cp-dt764twzf54s5m.html",
+  "start_url": "./cp-dt764twzf54s5m.html?app=control",
   "scope": "./cp-dt764twzf54s5m.html",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#0f172a",
-  "theme_color": "#1e1b4b",
+  "orientation": "any",
+  "background_color": "#060a13",
+  "theme_color": "#060a13",
   "icons": [
     {
       "src": "admin-icon-192.png",

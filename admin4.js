@@ -20,9 +20,11 @@ function countUp(root){
 }
 const fs=t=>{t=Math.round(t||0);return t<60?t+'s':Math.floor(t/60)+'m '+String(t%60).padStart(2,'0')+'s'};
 function dl(name,lines){
+  lines=lines.map(l=>Array.isArray(l)?l.map(cq).join(','):l);   // rows given as arrays: quote every cell
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+lines.join('\n')],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},800);
 }
-const cq=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+// a cell that starts with = + - @ would run as a formula in Excel (a student could type it as their name): prefix '
+const cq=v=>{let s=String(v==null?'':v);if(/^[=+\-@\t\r]/.test(s)&&!/^-?\d+(\.\d+)?$/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'};
 
 /* ---- overview ---- */
 let OV=null;

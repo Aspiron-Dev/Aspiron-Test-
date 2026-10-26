@@ -141,7 +141,8 @@ function stuDecor(){
   if(!PAY.ok&&!PAY.orders.length)return;
   document.querySelectorAll('#slist .srow3').forEach(row=>{
     const m=(row.querySelector('.av3')||{}).outerHTML,id=m&&(m.match(/manage\('([^']+)'\)/)||[])[1],s=id&&(ST||[]).find(x=>x.id===id),nm=row.querySelector('.nm');
-    if(!s||!nm||nm.querySelector('.tg.pay'))return;
+    if(!s||!nm)return;
+    nm.querySelectorAll('.tg.pay,.tg.nopay').forEach(e=>e.remove());
     const p=payOf(s);nm.insertAdjacentHTML('beforeend',p.n?`<span class="tg pay">${p.total?payInr(p.total):'FREE'}</span>`:'<span class="tg nopay">NO PAYMENT</span>');
   });
 }
@@ -155,7 +156,7 @@ function stuDecor(){
       ...p.man.map(x=>`<div class="payrow sm1"><div class="grow"><b>${x.amount?payInr(x.amount):'Free'}</b> <span class="pchip ${x.amount?'man':'free'}">${PMETH[x.method]||x.method}</span><div class="sm mut">${payDay(x.paid_on)}${x.note?' · '+esc(x.note):''}</div></div><button class="iconbtn sm" aria-label="Edit payment" onclick="payModal('${s.id}','${x.id}')">${ai('edit',15)}</button></div>`)];
     box.insertAdjacentHTML('beforeend',`<div id="paymg" class="card" style="margin-top:12px"><div class="row" style="justify-content:space-between;align-items:center"><b>💰 Payments · ${p.total?payInr(p.total):p.n?'Free':'none yet'}</b><button class="btn sm" onclick="payModal('${s.id}')">＋ Add payment</button></div>
      ${items.length?items.join(''):`<p class="sm mut" style="margin:6px 0 0">${PAY.missing?'Run supabase_v29_payments.sql once to add payments.':'No payment recorded. Joined before the store? Add what they paid.'}</p>`}</div>`)};
-  if(PAY.at)add();else payData(false).then(add);
+  payData(false).then(add);
 }}
 
 /* ---------- Students page: clean header; access requests moved to Store → Orders ---------- */
@@ -165,10 +166,35 @@ function stuDecor(){
   p.querySelectorAll('.reqcard').forEach(e=>e.remove());
   [...p.querySelectorAll('.h2s')].forEach(h=>{if(/Approval requests/.test(h.textContent))h.remove()});
   const st=$('#sstats');if(st)st.style.marginTop='0';
-  const act=activeSt(),pend=(ST||[]).filter(s=>s.status==='pending').length,tot=PAY.at?payRows().reduce((a,x)=>a+(x.amount||0),0):null;
-  p.insertAdjacentHTML('afterbegin',`<div class="phead stuhead"><div><h1>Students</h1><p class="sm mut">${act.length} student${act.length===1?'':'s'}${tot!=null?` · ${payInr(tot)} collected`:''}</p></div>
+  const pend=(ST||[]).filter(s=>s.status==='pending').length;
+  p.insertAdjacentHTML('afterbegin',`<div class="phead stuhead"><div><h1>Students</h1><p class="sm mut">${stuHeadTxt()}</p></div>
     <button class="btn ghost sm" onclick="tab('payments')">${ai('payments',15)} Payments</button></div>
    ${pend?`<button class="card sdreq" onclick="ORDF.seg='req';tab('orders')">🙋 <b>${pend} new access request${pend>1?'s':''}</b><span class="sm mut">Now in Store → Orders ›</span></button>`:''}`);
+}}
+
+function stuHeadTxt(){
+  const act=activeSt(),tot=PAY.ok?payRows().reduce((a,x)=>a+(x.amount||0),0):null;
+  return `${act.length} student${act.length===1?'':'s'}${tot!=null?` · ${payInr(tot)} collected`:''}`;
+}
+
+/* ---------- keep the money in step with store orders ----------
+   Approve, Undo and Reject change the order on the server. The payments are read again at once, so an order
+   that is undone or rejected stops counting everywhere (student chip, Students header, Manage, Payments page). */
+{const _as=ASTO;ASTO=async function(action,data){
+  const r=await _as(action,data);
+  if(r&&r.ok&&action==='order_status'){PAY.at=0;payData(true).then(payRefresh)}
+  return r;
+}}
+function payRefresh(){
+  if($('#paybody'))payDraw();
+  if($('#slist'))stuDecor();
+  const h=document.querySelector('.stuhead p');if(h)h.textContent=stuHeadTxt();
+}
+// approving a second order for the same series would count the money twice: ask first
+{const _ap=stoApprove;stoApprove=function(code,btn){
+  const o=SS.orders.find(x=>x.code===code),d=o&&SS.orders.find(x=>x.code!==code&&x.status==='paid'&&x.mobile===o.mobile&&x.item_id===o.item_id);
+  if(!d)return _ap(code,btn);
+  chAsk('Already approved for this series',`<b>${esc(o.name)}</b> already has an approved order for <b>${esc(o.item_title)}</b> (order ${esc(d.code)} · ${payInr(d.amount)}). Approving this one too counts the money twice. If it is the same payment, tap Cancel and <b>Reject</b> this order.`,'Approve anyway',async()=>{closeModal();await _ap(code,btn)});
 }}
 
 /* ---------- apply now (the shell may already be on screen) ---------- */

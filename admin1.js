@@ -125,11 +125,6 @@ const IC={
   x:'<path d="M6 6l12 12M18 6L6 18"/>'
 };
 const svgI=k=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${IC[k]}</svg>`;
-function statsHtml(){
-  const act=ST.filter(s=>s.status!=='pending'),paid=act.filter(isPaid).length,blk=act.filter(s=>s.status==='blocked').length;
-  const box=(n,l,c)=>`<div class="sbox"><b style="${c?'color:'+c:''}">${n}</b><span>${l}</span></div>`;
-  return box(act.length,'Students')+box(paid,'Paid','var(--ok)')+box(act.length-paid,'Free only')+box(blk,'Blocked','var(--bad)');
-}
 function updStats(){const e=$('#sstats');if(e)e.innerHTML=statsHtml();badge()}
 function renderStudents(){
   badge();
@@ -155,30 +150,6 @@ document.addEventListener('keydown',e=>{
   if(/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)||!$('#sq'))return;
   e.preventDefault();$('#sq').focus();
 });
-function shownStudents(){
-  const q=SF.q.toLowerCase();
-  let l=ST.filter(s=>s.status!=='pending'&&(!q||s.name.toLowerCase().includes(q)||s.mobile.includes(q)));
-  if(SF.s==='paid')l=l.filter(isPaid);else if(SF.s==='free')l=l.filter(s=>!isPaid(s));else if(SF.s==='blocked')l=l.filter(s=>s.status==='blocked');
-  if(SF.b!=='all')l=l.filter(s=>(s.access||[]).includes(SF.b));
-  const o=SF.o;
-  l.sort((a,b)=>o==='name'?a.name.localeCompare(b.name):o==='seen'?(b.last_seen||0)-(a.last_seen||0):o==='tests'?b.attempts-a.attempts:b.created-a.created);
-  return l;
-}
-function drawList(){
-  const all=ST.filter(s=>s.status!=='pending'),ps=paidSer();
-  const cn={all:all.length,paid:all.filter(isPaid).length,free:all.filter(s=>!isPaid(s)).length,blocked:all.filter(s=>s.status==='blocked').length};
-  $('#sseg').innerHTML=[['all','All'],['paid','Paid'],['free','Free'],['blocked','Blocked']].map(([k,t])=>`<button class="${SF.s===k?'on':''}" onclick="SF.s='${k}';drawList()">${t} <span class="mut">${cn[k]}</span></button>`).join('');
-  const l=shownStudents();
-  $('#slist').innerHTML=l.length?l.map(s=>{
-    const pd=isPaid(s),n=ps.filter(x=>(s.access||[]).includes(x.id)).length;
-    return `<div class="card srow2 ${s.status==='blocked'?'blk':''}"><label class="selbox"><input type="checkbox" ${SEL.has(s.id)?'checked':''} onchange="selTog('${s.id}',this.checked)"></label><div class="av ${pd?'avp':''}">${esc(s.name[0].toUpperCase())}</div>
-     <div class="grow"><div class="nm"><b>${esc(s.name)}</b>${pd?`<span class="tg paid">PAID${ps.length>1?' · '+n:''}</span>`:'<span class="tg">FREE</span>'}${s.status==='blocked'?'<span class="tg bad">BLOCKED</span>':''}</div>
-      <span class="sm mut">${esc(s.mobile)} · ${s.devices}/${s.max_devices} devices · ${s.attempts} tests · seen ${ago(s.last_seen)}</span>
-      ${ps.length?`<div class="accs">${ps.map(x=>{const on=(s.access||[]).includes(x.id);return `<button class="accchip ${on?'on':''}" onclick="toggleStuAcc('${s.id}','${x.id}')" title="${on?'Tap to remove access':'Tap to give access'}">${on?'✓':'+'} ${esc(x.title)}</button>`}).join('')}</div>`:''}</div>
-     <button class="btn ghost sm" onclick="manage('${s.id}')">Manage</button></div>`}).join('')
-   :`<div class="card empty">${ST.length?'No students match.':'No students yet. Add students or share the site link so they can request access.'}</div>`;
-  $('#bulkbar').innerHTML=SEL.size?`<div class="bulkbar"><b>${SEL.size} selected</b>${ps.length?`<select id="bsr">${ps.map(x=>`<option value="${x.id}">${esc(x.title)}</option>`).join('')}</select><button class="btn sm" onclick="bulkAcc(true)">Give access</button><button class="btn warn sm" onclick="bulkAcc(false)">Remove</button>`:''}<button class="btn ghost sm" onclick="SEL.clear();drawList()">Clear</button></div>`:'';
-}
 function resetSF(){SF.q='';SF.s='all';SF.b='all';const q=$('#sq');if(q)q.value='';const b=$('#sb');if(b)b.value='all';drawList()}
 function selTog(id,on){on?SEL.add(id):SEL.delete(id);drawList()}
 function selAll(){const l=shownStudents();const all=l.length&&l.every(s=>SEL.has(s.id));l.forEach(s=>all?SEL.delete(s.id):SEL.add(s.id));drawList()}

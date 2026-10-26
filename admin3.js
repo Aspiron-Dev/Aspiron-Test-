@@ -129,7 +129,7 @@ async function delRes(id){
   const r=await A('result_delete',{id});if(r.ok){RS=RS.filter(x=>x.id!==id);drawRes();toast('Deleted')}
 }
 function csv(){
-  const f=resFiltered(),q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const f=resFiltered(),q=cq;
   const lines=[['Name','Mobile','Test','Score','Max','Correct','Wrong','Skipped','Time(sec)','Late','Date'].map(q).join(',')].concat(f.map(x=>[x.student,x.mobile,x.title,x.score,x.max,x.correct,x.wrong,x.skipped,x.used,x.late?'yes':'',new Date(x.at).toLocaleString('en-IN')].map(q).join(',')));
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+lines.join('\n')],{type:'text/csv'}));a.download='results.csv';document.body.appendChild(a);a.click();a.remove();
 }
@@ -226,12 +226,6 @@ async function settings(){
    <div id="ner" class="sm err" style="min-height:22px;margin-top:6px"></div>
    <button class="btn block" onclick="changePw()">Change password</button>
    <button class="btn ghost block" style="margin-top:14px" onclick="signOutAdmin()">Sign out</button>`,true);
-}
-async function changePw(){
-  const np=$('#np').value;if(np.length<8){$('#ner').textContent='Password must be at least 8 characters.';return}
-  const r=await A('set_password',{new_pw:np});
-  if(r.ok){PW=np;try{sessionStorage.setItem('adm_pw',np)}catch(e){}closeModal();toast('Password changed')}
-  else $('#ner').textContent='Could not change the password.';
 }
 function signOutAdmin(){PW='';try{sessionStorage.removeItem('adm_pw')}catch(e){}closeModal();gate()}
 
