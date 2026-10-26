@@ -12,5 +12,5 @@ window.CBT_CONFIG = {
   TG_CHANNEL: "https://t.me/+1gxzLpz91LtmNDM9",   // Telegram channel link put in messages sent to students (leave "" to hide)
   SHORT_URL: "https://aspiron-dev.github.io/Aspiron-Test-/",   // website link put in messages sent to students (opens instantly, no shortener)
   // Web Push (notifications when the app is closed). Public key only — the private key lives in Supabase secrets.
-  VAPID_PUBLIC: "BL5h3VZW43Ggv_Wc-tjnfS3Mz-4Y_oZ5lJ47XF6gEkxVA4tkgYH5w7w8YaG8wfFdT6QcYw4ag7u5_YnPxDrhX7U"
+  VAPID_PUBLIC: "BMbCxWsFmWCBrfBf073L9m9uo1zkwhVvGrbe7C21ho2ToTvcXFTgpjjKsSxLjoT-O8UMyx1qXSRJ_gMAbQyN9TA"
 };
