@@ -69,8 +69,17 @@ AX.money = { PMETH, PSHORT, isoDay, dayMs, build, load: money, err: payErr, chip
 
 /* ---------- module state ---------- */
 const V = { seg: 'all', q: '', more: 0, ctx: null, D: null, day: null, mon: 0, sp: 'month', sv: null };
-// which test series a payment belongs to: store orders by their item, payments added by hand have no series
-const serOf = x => x.k === 'store' ? (x.what || 'Store order') : x.k === 'man' ? 'Added by you (no series)' : null;
+// which test series a payment belongs to: a store order by the series its item unlocks (else the item name);
+// a payment added by hand by the paid series the student has access to ("Biology + Chemistry" when several)
+const NOSER = 'Added by you · no paid series';
+const serOf = x => { const M = V.SM || {}; if (x.k === 'store') return (M.item && M.item.get(x.what)) || x.what || 'Store order'; if (x.k === 'man') return (x.sid && M.stu && M.stu.get(x.sid)) || NOSER; return null; };
+function serMaps(students, C, ST) {
+  const ser = ((C && C.ok && C.series) || []).filter(x => !x.is_free), byId = new Map(ser.map(x => [x.id, x.title || 'Series']));
+  const stu = new Map(); (students || []).forEach(st => { const t = ser.filter(x => (st.access || []).includes(x.id)).map(x => byId.get(x.id)); if (t.length) stu.set(st.id, t.join(' + ')); });
+  const all = new Map(((C && C.ok && C.series) || []).map(x => [x.id, x.title || 'Series']));
+  const item = new Map(); ((ST && ST.ok && ST.items) || []).forEach(it => { if (it.series_id && all.has(it.series_id) && it.title) item.set(it.title, all.get(it.series_id)); });
+  return { stu, item };
+}
 const SEGS = [['all', 'All'], ['store', 'Store'], ['man', 'Added by you'], ['free', 'Free'], ['none', 'Not recorded']];
 const activeSt = L => L.filter(s => s.status !== 'pending');
 const PAGE = 60;
@@ -146,8 +155,9 @@ AX.mod({
     const ph = document.getElementById('ax-ph');
     if (ph) AX.act(ph, { csv: () => csv(), add: () => AX.addPayment({}) });
     AX.set(ctx.el, h`${UI.skeleton(4, 'kpi')}<div class="mt16">${UI.skeleton(6)}</div>`);
-    const D = await money(true);
+    const [D, C, ST] = await Promise.all([money(true), AX.data.catalog().catch(() => null), AX.can('store') ? AX.data.store().catch(() => null) : null]);
     if (!ctx.alive()) return;
+    V.SM = serMaps(D.students, C, ST);
     if (!D.S.ok) { AX.set(ctx.el, UI.errorBox(D.S)); AX.act(ctx.el, { retry: () => ctx.reload() }); return; }
     if (!D.P.ok && D.P.error !== 'missing') { AX.set(ctx.el, UI.errorBox(D.P, 'supabase_v29_payments.sql')); AX.act(ctx.el, { retry: () => ctx.reload() }); return; }
     V.D = D;
@@ -222,7 +232,7 @@ function draw() {
   const best = bars.reduce((a, b) => b.value > a.value ? b : a, bars[0]);
   // money per test series in the chosen period (this chart's month, or all time)
   const sa = V.sp === 'all' ? 0 : T.days[0].t, sb = V.sp === 'all' ? Infinity : T.days[T.days.length - 1].e;
-  const SG = {}; T.R.forEach(x => { const k = serOf(x); if (!k || !x.amount || !(x.at >= sa && x.at < sb)) return; const g = SG[k] = SG[k] || { k, v: 0, n: 0, store: x.k === 'store' }; g.v += x.amount; g.n++; });
+  const SG = {}; T.R.forEach(x => { const k = serOf(x); if (!k || !x.amount || !(x.at >= sa && x.at < sb)) return; const g = SG[k] = SG[k] || { k, v: 0, n: 0, sto: 0, man: 0 }; g.v += x.amount; g.n++; if (x.k === 'store') g.sto += x.amount; else g.man += x.amount; });
   const ser = Object.values(SG).sort((a, b) => b.v - a.v), serTot = ser.reduce((s, g) => s + g.v, 0);
   AX.set('#px-top', h`<div class="kpis px-kpis">
       ${UI.kpi({ label: 'Total collected', value: fmt.inr(T.total), icon: 'wallet', hero: true, foot: fmt.plural(T.R.length, 'payment') })}
@@ -245,7 +255,7 @@ function draw() {
       <div class="day-read"><span class="mut sm">Total</span><b>${fmt.inr(serTot)}</b><span class="mut sm">${fmt.plural(ser.reduce((s, g) => s + g.n, 0), 'payment')} · tap a series to see its payments</span>${V.sv ? h`<button class="btn xs ghost" data-act="serAll">${icon('x', 13)} Show all series</button>` : ''}</div>
       ${ser.length ? h`<div class="px-ser">${join(ser, g => { const pc = serTot ? Math.round(g.v * 100 / serTot) : 0; return h`<button type="button" class="px-sr ${V.sv === g.k ? 'on' : ''}" data-act="ser" data-k="${g.k}" aria-pressed="${V.sv === g.k ? 'true' : 'false'}">
           <span class="t">${g.k}</span><b class="num">${fmt.inr(g.v)}</b>
-          <span class="m"><i class="${g.store ? '' : 'gold'}" style="width:${Math.max(2, pc)}%"></i></span><span class="xs mut">${pc}% · ${fmt.plural(g.n, 'payment')}</span></button>`; })}</div>`
+          <span class="m"><i class="${g.sto ? '' : 'gold'}" style="width:${Math.max(2, pc)}%"></i></span><span class="xs mut">${pc}% · ${fmt.plural(g.n, 'payment')}</span>${g.sto && g.man ? h`<span class="xs mut" style="grid-column:1/-1">Store ${fmt.inr(g.sto)} · added by you ${fmt.inr(g.man)}</span>` : g.man && g.k !== NOSER ? h`<span class="xs mut" style="grid-column:1/-1">Added by you · by the student’s series access</span>` : ''}</button>`; })}</div>`
         : UI.empty({ icon: 'layers', title: 'No payments in ' + (V.sp === 'all' ? 'this list' : T.days.name), text: 'Pick another month with ‹ › above, or choose All time.' })}</div>`);
   AX.set('#px-seg', join(SEGS, ([k, l]) => h`<button type="button" class="chip ${V.seg === k ? 'on' : ''} ${k === 'none' && T.cnt.none ? 'alert' : ''}" data-act="seg" data-v="${k}">${l}<em>${T.cnt[k]}</em></button>`));
   drawList();
