@@ -51,10 +51,24 @@ function daily(rows, n) {
   out.forEach(d => { d.title = d.full + ': ' + fmt.inr(d.value) + ' · ' + fmt.plural(d.count, 'payment'); });
   return out;
 }
-AX.money = { PMETH, PSHORT, isoDay, dayMs, build, load: money, err: payErr, chip, daily };
+// money per day for one calendar month (off = 0 this month, 1 last month…); this month stops at today
+function monthDays(rows, off) {
+  const a = new Date(); a.setHours(0, 0, 0, 0); a.setDate(1); a.setMonth(a.getMonth() - off);
+  const end = new Date(a); end.setMonth(end.getMonth() + 1);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const n = Math.round(((off ? +end : +today + 864e5) - +a) / 864e5);
+  const out = [];
+  for (let i = 0; i < n; i++) { const d = new Date(a); d.setDate(i + 1); const e = new Date(d); e.setDate(e.getDate() + 1); out.push({ t: +d, e: +e, label: String(i + 1), full: d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }), value: 0, count: 0 }); }
+  (rows || []).forEach(x => { if (!x.at || !x.amount) return; const d = out.find(y => x.at >= y.t && x.at < y.e); if (d) { d.value += x.amount; d.count++; } });
+  out.forEach(d => { d.title = d.full + ': ' + fmt.inr(d.value) + ' · ' + fmt.plural(d.count, 'payment'); });
+  out.name = a.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  out.total = out.reduce((s, d) => s + d.value, 0); out.count = out.reduce((s, d) => s + d.count, 0);
+  return out;
+}
+AX.money = { PMETH, PSHORT, isoDay, dayMs, build, load: money, err: payErr, chip, daily, monthDays };
 
 /* ---------- module state ---------- */
-const V = { seg: 'all', q: '', more: 0, ctx: null, D: null, day: null };
+const V = { seg: 'all', q: '', more: 0, ctx: null, D: null, day: null, mon: 0 };
 const SEGS = [['all', 'All'], ['store', 'Store'], ['man', 'Added by you'], ['free', 'Free'], ['none', 'Not recorded']];
 const activeSt = L => L.filter(s => s.status !== 'pending');
 const PAGE = 60;
@@ -135,6 +149,8 @@ AX.mod({
       seg: el => { V.seg = el.dataset.v; V.more = 0; draw(); },
       pick: el => { const d = V.T && V.T.days[+el.dataset.pick]; if (!d) return; V.day = d.t; if (V.seg === 'none') V.seg = 'all'; V.more = 0; draw(); },
       dayAll: () => { V.day = null; V.more = 0; draw(); },
+      mon: el => { const m = V.mon + (+el.dataset.d); if (m < 0 || m > MONTHS_BACK) return; V.mon = m; V.day = null; V.more = 0; draw(); },
+      pickMon: el => { V.mon = 11 - (+el.dataset.pick); V.day = null; V.more = 0; draw(); const c = document.getElementById('px-days'); if (c) c.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); },
       none: () => { V.seg = 'none'; V.more = 0; draw(); document.getElementById('px-seg').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); },
       open: el => AX.openStudent ? AX.openStudent(el.dataset.sid) : AX.go('students/' + el.dataset.sid),
       order: el => AX.openOrder ? AX.openOrder(el.dataset.code) : AX.go('orders', { q: el.dataset.code }),
@@ -178,11 +194,13 @@ function stats(D) {
     cnt: { all: R.length, store: R.filter(x => x.k === 'store').length, man: R.filter(x => x.k === 'man').length, free: R.filter(x => x.k === 'free').length, none: none.length },
     store: sum(R.filter(x => x.k === 'store')), man: sum(R.filter(x => x.k !== 'store')) };
 }
+const MONTHS_BACK = 23;
 function draw() {
   const D = V.D; if (!D) return;
   const T = V.T = stats(D);
-  T.days = daily(T.R, 30);
-  const si = V.day == null ? T.days.length - 1 : T.days.findIndex(d => d.t === V.day), sd = T.days[si < 0 ? T.days.length - 1 : si];
+  T.days = monthDays(T.R, V.mon);
+  const today = daily(T.R, 1)[0];
+  const si = V.day != null ? T.days.findIndex(d => d.t === V.day) : V.mon === 0 ? T.days.length - 1 : -1, sd = T.days[si];
   const delta = T.last ? Math.round((T.month - T.last) * 100 / T.last) : null;
   const months = [];
   for (let i = 11; i >= 0; i--) { const a = new Date(); a.setDate(1); a.setHours(0, 0, 0, 0); a.setMonth(a.getMonth() - i); const b = new Date(a); b.setMonth(b.getMonth() + 1); months.push({ a: +a, b: +b, label: a.toLocaleDateString('en-IN', { month: 'short' }), full: a.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }) }); }
@@ -191,14 +209,15 @@ function draw() {
   AX.set('#px-top', h`<div class="kpis px-kpis">
       ${UI.kpi({ label: 'Total collected', value: fmt.inr(T.total), icon: 'wallet', hero: true, foot: fmt.plural(T.R.length, 'payment') })}
       ${UI.kpi({ label: 'This month', value: fmt.inr(T.month), icon: 'calendar', tone: 'gold', delta, deltaUnit: '%', foot: delta == null ? new Date().toLocaleDateString('en-IN', { month: 'long' }) : 'vs ' + fmt.inr(T.last) + ' last month' })}
-      ${UI.kpi({ label: 'Today', value: fmt.inr(T.days[T.days.length - 1].value), icon: 'clock', tone: 'info', foot: fmt.plural(T.days[T.days.length - 1].count, 'payment') + ' · ' + fmt.num(T.paying) + ' paying students' })}
+      ${UI.kpi({ label: 'Today', value: fmt.inr(today.value), icon: 'clock', tone: 'info', foot: fmt.plural(today.count, 'payment') + ' · ' + fmt.num(T.paying) + ' paying students' })}
       <button type="button" class="kpi glass warn btnk ${V.seg === 'none' ? 'on' : ''}" data-act="none"><div class="k-l">${icon('alert', 16)}<span>Not recorded</span></div><div class="k-v">${fmt.num(T.none.length)}</div><div class="k-f"><span>${T.none.length ? 'Add their old payments →' : 'Everyone has a payment'}</span></div></button>
     </div>
-    <div class="card mt16"><div class="card-h">${icon('calendar')}<h3>Day by day · last 30 days</h3><span class="grow"></span><span class="sub">Tap a day</span></div>
-      <div class="day-read"><span class="mut sm">${sd.full}</span><b>${fmt.inr(sd.value)}</b><span class="mut sm">${fmt.plural(sd.count, 'payment')}</span>${V.day != null ? h`<button class="btn xs ghost" data-act="dayAll">${icon('x', 13)} Show all days</button>` : ''}</div>
-      ${UI.chart.bars(T.days, { money: true, height: 150, pick: true, sel: si < 0 ? T.days.length - 1 : si, label: 'Money received per day, last 30 days' })}</div>
+    <div class="card mt16" id="px-days"><div class="card-h">${icon('calendar')}<h3>Day by day</h3><span class="grow"></span>
+        <div class="mon-nav"><button type="button" class="ibtn sm line" data-act="mon" data-d="1" ${V.mon >= MONTHS_BACK ? 'disabled' : ''} aria-label="Previous month" title="Previous month">${icon('chevL', 16)}</button><b>${T.days.name}</b><button type="button" class="ibtn sm line" data-act="mon" data-d="-1" ${V.mon === 0 ? 'disabled' : ''} aria-label="Next month" title="Next month">${icon('chevR', 16)}</button></div></div>
+      <div class="day-read">${sd ? h`<span class="mut sm">${sd.full}</span><b>${fmt.inr(sd.value)}</b><span class="mut sm">${fmt.plural(sd.count, 'payment')}</span>` : h`<span class="mut sm">${T.days.name} total</span><b>${fmt.inr(T.days.total)}</b><span class="mut sm">${fmt.plural(T.days.count, 'payment')} · tap a day</span>`}${V.day != null ? h`<button class="btn xs ghost" data-act="dayAll">${icon('x', 13)} Show all days</button>` : ''}</div>
+      ${UI.chart.bars(T.days, { money: true, height: 150, pick: true, sel: si, label: 'Money received per day, ' + T.days.name })}</div>
     <div class="px-top">
-      <div class="card"><div class="card-h">${icon('bars')}<h3>Revenue by month</h3><span class="grow"></span><span class="sub">${best && best.value ? 'Best · ' + best.short : 'Last 12 months'}</span></div>${UI.chart.bars(bars, { money: true, height: 160, label: 'Revenue by month' })}</div>
+      <div class="card"><div class="card-h">${icon('bars')}<h3>Revenue by month</h3><span class="grow"></span><span class="sub">${best && best.value ? 'Best · ' + best.short : 'Last 12 months'}</span></div>${UI.chart.bars(bars, { money: true, height: 160, pick: true, act: 'pickMon', sel: 11 - V.mon, label: 'Revenue by month — tap a month to see its days' })}</div>
       <div class="card"><div class="card-h">${icon('chart')}<h3>Where it came from</h3></div>
         <div class="row gap16" style="align-items:center"><div style="width:120px;flex:none">${UI.chart.donut([{ label: 'Store', value: T.store, color: 'var(--info)' }, { label: 'Added by you', value: T.man, color: 'var(--gold)' }], { size: 120, center: fmt.short(T.total), sub: 'total ₹', label: 'Store vs added by you' })}</div>
         <div class="px-legend grow"><div class="r"><i style="background:var(--info)"></i>Store orders<b>${fmt.inr(T.store)}</b></div><div class="r"><i style="background:var(--gold)"></i>Added by you<b>${fmt.inr(T.man)}</b></div><div class="r xs mut"><i style="background:var(--vio)"></i>Free<b>${fmt.plural(T.cnt.free, 'student')}</b></div></div></div></div>
