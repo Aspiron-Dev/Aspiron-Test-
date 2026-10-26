@@ -144,6 +144,7 @@ function start() {
   drawNav();
   const $ = id => document.getElementById(id);
   $('ax-search').onclick = palette;
+  $('ax-crumb').onclick = e => { if (e.target.closest('[data-act=back]')) goBack(); };
   $('ax-new').onclick = e => createMenu(e.currentTarget);
   $('ax-bell').onclick = e => attention(e.currentTarget);
   $('ax-theme').onclick = () => { AX.theme.toggle(); AX.set($('ax-theme'), icon(AX.theme.get() === 'dark' ? 'sun' : 'moon')); };
@@ -217,6 +218,17 @@ async function heartbeat() {
 }
 
 /* ---------- router ---------- */
+// top-left trail: a back arrow on every page but home; the group name goes home, the module name goes to its first page
+const NAV = [];
+// tab = {title, href} of the open tab (shown when the page has tabs), sub = name of an opened item (student, test…)
+function crumb(m, sub, tab) {
+  const back = m.id !== 'home' || CUR.parts.length ? h`<button type="button" class="ibtn sm line cb-back" data-act="back" aria-label="Back" title="Back">${icon('chevL', 16)}</button>` : '';
+  const grp = m.group ? h`<a href="#/home" class="cb-grp">${m.group}</a>${icon('chevR', 14)}` : '';
+  const sep = icon('chevR', 14), last = sub || (tab && tab.title);
+  if (!last) return h`${back}${grp}<b class="ell">${m.title}</b>`;
+  return h`${back}${grp}<a href="#/${m.id}" class="cb-mod">${m.title}</a>${sep}${sub && tab ? h`<a href="${tab.href}" class="cb-tab">${tab.title}</a>${sep}` : ''}<b class="ell">${last}</b>`;
+}
+function goBack() { if (NAV.length > 1) history.back(); else AX.go(CUR.mod !== 'home' && CUR.parts.length ? CUR.mod : 'home'); }
 function route() {
   const p = AX.parseHash();
   let m = AX.mods[p.mod];
@@ -225,7 +237,8 @@ function route() {
   const n = ++ROUTE_N;
   CUR = { mod: m.id, parts: p.parts, q: p.q };
   drawNav();
-  AX.set('#ax-crumb', h`${m.group ? h`<span>${m.group}</span>${icon('chevR', 14)}` : ''}<b class="ell">${m.title}</b>`);
+  const hs = location.hash; if (NAV[NAV.length - 2] === hs) NAV.pop(); else if (NAV[NAV.length - 1] !== hs) NAV.push(hs);
+  AX.set('#ax-crumb', crumb(m));
   const page = document.getElementById('ax-page');
   page.innerHTML = '<div class="ph" id="ax-ph"></div><nav class="ptabs hide" id="ax-tabs"></nav><div id="ax-body"></div>';
   const body = document.getElementById('ax-body');
@@ -239,7 +252,8 @@ function route() {
       const tb = document.getElementById('ax-tabs');
       if (o.tabs && o.tabs.length) { tb.classList.remove('hide'); AX.set(tb, join(o.tabs.filter(t => !t.perm || AX.can(...[].concat(t.perm))), t => h`<a href="${t.href || '#/' + m.id + '/' + t.id}" class="${t.id === o.tab ? 'on' : ''}">${t.icon ? icon(t.icon, 16) : ''}${t.title}${t.count ? h`<em>${t.count}</em>` : ''}</a>`)); }
       else tb.classList.add('hide');
-      if (o.crumb) AX.set('#ax-crumb', h`${m.group ? h`<span>${m.group}</span>${icon('chevR', 14)}` : ''}<a href="#/${m.id}">${m.title}</a>${icon('chevR', 14)}<b class="ell">${o.crumb}</b>`);
+      const ot = o.tabs && o.tab != null && o.tabs.find(t => t.id === o.tab), tab = ot ? { title: ot.title, href: ot.href || '#/' + m.id + '/' + ot.id } : null;
+      if (o.crumb || tab) AX.set('#ax-crumb', crumb(m, o.crumb, tab));
       document.title = (o.title || m.title) + ' · Aspiron Control';
     },
     reload: () => route()
