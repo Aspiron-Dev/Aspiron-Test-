@@ -291,7 +291,9 @@ UI.chart = {
   // bars([{label, value, title}], {money:true, height})
   bars(data, o = {}) {
     const max = Math.max(1, ...data.map(d => d.value || 0));
-    return h`<div class="bars" style="height:${o.height || 150}px" role="img" aria-label="${o.label || 'Bar chart'}">${join(data, d => h`<div class="bc" title="${d.title || (d.label + ': ' + (o.money ? AX.fmt.inr(d.value) : AX.fmt.num(d.value)))}"><div class="bv ${d.value ? '' : 'zero'}" style="height:${d.value ? Math.max(4, Math.round(d.value * 100 / max)) : 3}%"></div><span class="bl">${d.label}</span></div>`)}</div>`;
+    // o.pick: bars are buttons (data-pick="<index>", wire with AX.act(root, {pick(el){…}})); o.sel: index shown as selected
+    return h`<div class="bars ${o.pick ? 'pickable' : ''}" style="height:${o.height || 150}px" ${o.pick ? '' : raw('role="img"')} aria-label="${o.label || 'Bar chart'}">${join(data, (d, i) => { const t = d.title || (d.label + ': ' + (o.money ? AX.fmt.inr(d.value) : AX.fmt.num(d.value))); const inner = h`<div class="bv ${d.value ? '' : 'zero'}" style="height:${d.value ? Math.max(4, Math.round(d.value * 100 / max)) : 3}%"></div><span class="bl">${d.label}</span>`;
+      return o.pick ? h`<button type="button" class="bc ${o.sel === i ? 'sel' : ''}" data-act="pick" data-pick="${i}" title="${t}" aria-label="${t}" aria-pressed="${o.sel === i ? 'true' : 'false'}">${inner}</button>` : h`<div class="bc" title="${t}">${inner}</div>`; })}</div>`;
   },
   // spark([numbers], {w,h,color})
   spark(vals, o = {}) {

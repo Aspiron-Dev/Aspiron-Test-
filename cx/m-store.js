@@ -23,7 +23,7 @@ const clean40 = v => String(v || '').replace(/[<>"`]/g, '').replace(/\s+/g, ' ')
 const kb = n => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
 const TABS = [{ id: 'overview', title: 'Overview', icon: 'chart' }, { id: 'items', title: 'Items', icon: 'layers' }, { id: 'layout', title: 'Layout', icon: 'grid' },
   { id: 'explore', title: 'Explore pages', icon: 'compass' }, { id: 'soon', title: 'Coming soon', icon: 'bell' }, { id: 'settings', title: 'Payment settings', icon: 'settings' }];
-const T = { cf: '', dp: '30', tab: 'overview', cat: null, notify: undefined, demos: undefined, sched: undefined, view: null };
+const T = { day: null, money: null, cf: '', dp: '30', tab: 'overview', cat: null, notify: undefined, demos: undefined, sched: undefined, view: null };
 const can = () => AX.can('store', 'manage');
 const D = () => S.cur || { items: [], orders: [], settings: {} };
 
@@ -141,6 +141,8 @@ AX.mod({
     const ph = document.getElementById('ax-ph');
     if (ph) AX.act(ph, { pick: () => pickSeries(), add: () => editItem(null) });
     const d = await loadAll(tab === 'overview');
+    // money comes from the payments ledger (every approved order + payments added by hand), same numbers as Payments
+    if (tab === 'overview' && AX.can('payments') && AX.money) { const P = await AX.data.payments(true); T.money = P && P.ok ? AX.money.build(P, []).rows() : null; } else if (tab === 'overview') T.money = null;
     if (!ctx.alive()) return;
     if (!d.ok) { AX.set(ctx.el, UI.errorBox(d, 'supabase_v13_store.sql')); AX.act(ctx.el, { retry: () => ctx.reload() }); return; }
     T.view = { alive: ctx.alive, paint: () => paint(ctx) };
@@ -166,14 +168,18 @@ function overview(el) {
   const d = D(), now = Date.now();
   const from = T.dp === 'all' ? 0 : new Date().setHours(0, 0, 0, 0) - (Number(T.dp) - 1) * DAY;
   const O = d.orders.filter(o => ms(o.created_at) >= from), done = O.filter(o => S.seg(o) === 'done'), paidStep = O.filter(o => S.seg(o) !== 'unpaid');
-  const rev = done.reduce((s, o) => s + (Number(o.amount) || 0), 0);
+  // money by the day it was paid: payments ledger when allowed, else approved orders by payment date
+  const money = T.money || d.orders.filter(o => S.seg(o) === 'done').map(o => ({ at: ms(o.paid_at || o.created_at), amount: Number(o.amount) || 0, k: 'store' }));
+  const pick = T.day != null ? { t: T.day, e: T.day + DAY } : null;
+  const inRange = x => pick ? x.at >= pick.t && x.at < pick.e : x.at >= from;
+  const rev = money.filter(inRange).reduce((s, x) => s + (x.amount || 0), 0), revN = money.filter(x => inRange(x) && x.amount).length;
   const ver = d.orders.filter(o => S.seg(o) === 'verify').sort((a, b) => ms(b.paid_at || b.created_at) - ms(a.paid_at || a.created_at));
   const un = O.filter(o => S.seg(o) === 'unpaid').sort((a, b) => ms(b.created_at) - ms(a.created_at));
   const req = d.students ? S.requests(d).length : 0;
   const pct = (a, c) => c ? Math.round(a * 100 / c) : 0;
   // revenue per day (approved orders, by order date), last 14 days
   const days = []; for (let i = 13; i >= 0; i--) { const t = new Date(); t.setHours(0, 0, 0, 0); t.setDate(t.getDate() - i); days.push({ t: t.getTime(), v: 0, n: 0 }); }
-  d.orders.filter(o => S.seg(o) === 'done').forEach(o => { const t = ms(o.created_at); const b = days.find((x, i) => t >= x.t && (i === 13 || t < days[i + 1].t)); if (b) { b.v += Number(o.amount) || 0; b.n++; } });
+  money.forEach(o => { const t = o.at; const b = days.find((x, i) => t >= x.t && (i === 13 || t < days[i + 1].t)); if (b && o.amount) { b.v += o.amount; b.n++; } });
   const tot14 = days.reduce((s, x) => s + x.v, 0);
   const bySeries = Object.values(O.reduce((m, o) => { const k = o.item_title || '—'; const g = m[k] = m[k] || { t: k, n: 0, p: 0, v: 0 }; g.n++; if (S.seg(o) === 'done') { g.p++; g.v += Number(o.amount) || 0; } return m; }, {})).sort((a, b) => b.v - a.v || b.n - a.n);
   const DPL = { 1: 'Today', 7: '7 days', 30: '30 days', all: 'All time' };
@@ -181,7 +187,7 @@ function overview(el) {
   AX.set(el, h`${req ? h`<a class="card st-banner" href="#/orders/req"><span class="st-li gold">${icon('userPlus', 20)}</span><div class="grow"><b>${fmt.plural(req, 'new access request')}</b><div class="sm mut">Approve and give the access code</div></div>${icon('chevR', 18)}</a>` : ''}
     <div class="row wrap between" style="margin-bottom:14px"><div class="chips">${join(['1', '7', '30', 'all'], k => h`<button class="chip ${T.dp === k ? 'on' : ''}" data-act="dp" data-v="${k}">${DPL[k]}</button>`)}</div></div>
     <div class="kpis">
-      ${UI.kpi({ label: 'Revenue · ' + DPL[T.dp], value: fmt.inr(rev), icon: 'rupee', hero: true, foot: fmt.plural(done.length, 'approved order') })}
+      ${UI.kpi({ label: 'Money received · ' + (pick ? new Date(pick.t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : DPL[T.dp]), value: fmt.inr(rev), icon: 'rupee', hero: true, foot: fmt.plural(revN, 'payment') + (T.money ? ' · store + added' : ' · store orders') })}
       ${UI.kpi({ label: 'To verify', value: ver.length, icon: 'wallet', tone: ver.length ? 'gold' : '', go: '#/orders/verify', foot: ver.length ? 'Payment done · tap to check' : 'All checked' })}
       ${UI.kpi({ label: 'Not paid yet', value: un.length, icon: 'clock', tone: 'info', go: '#/orders/unpaid', foot: 'Follow up · counselling' })}
       ${UI.kpi({ label: 'Orders', value: O.length, icon: 'cart', tone: 'vio', foot: pct(done.length, O.length) + '% became paid' })}
@@ -189,8 +195,9 @@ function overview(el) {
     <div class="grid st-2 mt16">
       <div class="card"><div class="card-h">${icon('filter')}<h3 class="grow">Where students stop</h3><span class="xs mut">${DPL[T.dp]}</span></div>
         <div class="col gap16">${join(funnel, ([l, n, ic], i) => h`<div><div class="row between sm"><span class="row gap6 tx2">${icon(ic, 15)}${l}</span><b class="num">${fmt.num(n)}${i ? h` <span class="xs mut">${pct(n, funnel[0][1])}%</span>` : ''}</b></div><div class="bar-meter mt8 ${i === 2 ? '' : 'gold'}"><i style="width:${O.length ? Math.max(n ? 3 : 0, pct(n, O.length)) : 0}%"></i></div></div>`)}</div></div>
-      <div class="card"><div class="card-h">${icon('bars')}<h3 class="grow">Revenue · last 14 days</h3><b class="num">${fmt.inr(tot14)}</b></div>
-        ${UI.chart.bars(days.map((x, i) => ({ label: i === 13 ? 'Today' : String(new Date(x.t).getDate()), value: x.v, title: new Date(x.t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ': ' + fmt.inr(x.v) + ' · ' + fmt.plural(x.n, 'order') })), { money: true, height: 160, label: 'Revenue of approved orders per day for the last 14 days' })}</div>
+      <div class="card"><div class="card-h">${icon('bars')}<h3 class="grow">Money per day · last 14 days</h3><b class="num">${fmt.inr(tot14)}</b></div>
+        <div class="xs mut" style="margin:-6px 0 6px">Tap a day to see it above${pick ? h` · <a href="#" data-act="dayAll">show ${DPL[T.dp]}</a>` : ''}</div>
+        ${UI.chart.bars(days.map((x, i) => ({ label: i === 13 ? 'Today' : String(new Date(x.t).getDate()), value: x.v, title: new Date(x.t).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ': ' + fmt.inr(x.v) + ' · ' + fmt.plural(x.n, 'payment') })), { money: true, height: 160, pick: true, sel: pick ? days.findIndex(x => x.t === pick.t) : -1, label: 'Money received per day for the last 14 days' })}</div>
     </div>
     <div class="grid st-2 mt16">
       <div class="card pad0"><div class="card-h st-ch">${icon('wallet')}<h3 class="grow">Payments to verify</h3><a class="btn xs ghost" href="#/orders/verify">See all ${icon('chevR', 13)}</a></div>
@@ -613,12 +620,15 @@ async function saveSettings(btn) {
 const byId = id => D().items.find(x => x.id === id);
 const ACTS = {
   retry: () => AX.route(),
-  dp: el => { T.dp = el.dataset.v; T.view.paint(); },
+  dp: el => { T.dp = el.dataset.v; T.day = null; T.view.paint(); },
+
+  dayAll: () => { T.day = null; T.view.paint(); },
   cf: el => { T.cf = el.dataset.v; T.view.paint(); },
   open: el => S.openOrder(el.dataset.code),
   approve: el => UI.busy(el, () => S.approve(el.dataset.code)),
   contact: el => S.onContact(el),
-  pick: () => pickSeries(),
+  // a day bar on the overview chart (data-pick) or "Add from your series"
+  pick: el => { if (el.dataset.pick == null) return pickSeries(); const t = new Date(); t.setHours(0, 0, 0, 0); t.setDate(t.getDate() - (13 - Number(el.dataset.pick))); T.day = t.getTime(); T.view.paint(); },
   add: () => editItem(null),
   edit: el => editItem(byId(el.dataset.id)),
   imenu: el => itemMenu(el, byId(el.dataset.id)),

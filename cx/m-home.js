@@ -23,22 +23,28 @@ AX.mod({
     AX.set(ctx.el, h`<div id="hm-live"></div>${UI.skeleton(5, 'kpi')}<div class="grid g2 mt16">${UI.skeleton(5)}${UI.skeleton(5)}</div>`);
 
     const canStore = AX.can('store'), canRes = AX.can('results');
-    const [ov, act, cat, sto] = await Promise.all([
+    const canPay = AX.can('payments') && AX.money;
+    const [ov, act, cat, sto, pay] = await Promise.all([
       AX.cache.get('ov', () => AX.api.call('cbt_admin2', 'overview'), 30000),
       AX.cache.get('activity', () => AX.api.call('cbt_admin3', 'activity'), 20000),
       AX.data.catalog(),
-      canStore ? AX.data.store() : Promise.resolve(null)
+      canStore ? AX.data.store() : Promise.resolve(null),
+      canPay ? AX.data.payments() : Promise.resolve(null)
     ]);
     if (!ctx.alive()) return;
     const o = ov && ov.ok ? ov : null, a = act && act.ok ? act : null;
     const orders = sto && sto.ok ? (sto.orders || []) : [];
     const now = Date.now();
     const paid = orders.filter(x => x.status === 'paid');
-    const rev30 = paid.filter(x => ms(x.paid_at || x.created_at) > now - 30 * DAY).reduce((s, x) => s + (x.amount || 0), 0);
-    const revPrev = paid.filter(x => { const t = ms(x.paid_at || x.created_at); return t <= now - 30 * DAY && t > now - 60 * DAY; }).reduce((s, x) => s + (x.amount || 0), 0);
+    // all money received (approved orders + payments added by hand) by the day it was paid — same as the Payments page
+    const money = pay && pay.ok ? AX.money.build(pay, []).rows().map(x => ({ at: x.at, amount: x.amount })) : paid.map(x => ({ at: ms(x.paid_at || x.created_at), amount: Number(x.amount) || 0 }));
+    const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    const today = money.filter(x => x.at >= +t0).reduce((s, x) => s + (x.amount || 0), 0);
+    const rev30 = money.filter(x => x.at > now - 30 * DAY).reduce((s, x) => s + (x.amount || 0), 0);
+    const revPrev = money.filter(x => x.at <= now - 30 * DAY && x.at > now - 60 * DAY).reduce((s, x) => s + (x.amount || 0), 0);
     const verify = orders.filter(x => oSeg(x) === 'verify');
     const days = []; for (let i = 13; i >= 0; i--) { const d = new Date(now - i * DAY); d.setHours(0, 0, 0, 0); days.push({ t: d.getTime(), label: d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), value: 0 }); }
-    paid.forEach(x => { const t = new Date(ms(x.paid_at || x.created_at)); t.setHours(0, 0, 0, 0); const d = days.find(y => y.t === t.getTime()); if (d) d.value += x.amount || 0; });
+    money.forEach(x => { if (!x.at) return; const t = new Date(x.at); t.setHours(0, 0, 0, 0); const d = days.find(y => y.t === t.getTime()); if (d) d.value += x.amount || 0; });
     // tests: live now / upcoming / waiting for results
     const tests = (cat && cat.ok ? cat.tests : []) || [];
     const liveNow = tests.filter(t => t.active && t.opens_at && ms(t.opens_at) <= now && (!t.closes_at || ms(t.closes_at) > now));
@@ -47,7 +53,7 @@ AX.mod({
     const att = AX.getAttention ? AX.getAttention() : [];
 
     const kpis = [];
-    if (canStore) kpis.push(UI.kpi({ label: 'Revenue · 30 days', value: fmt.inr(rev30), icon: 'rupee', hero: true, tone: 'gold', go: '#/store', delta: revPrev ? Math.round((rev30 - revPrev) * 100 / revPrev) : null, foot: revPrev ? 'vs previous 30 days' : paid.length + ' approved orders' }));
+    if (canStore || canPay) kpis.push(UI.kpi({ label: 'Money received · 30 days', value: fmt.inr(rev30), icon: 'rupee', hero: true, tone: 'gold', go: canPay ? '#/payments' : '#/store', delta: revPrev ? Math.round((rev30 - revPrev) * 100 / revPrev) : null, foot: 'Today ' + fmt.inr(today) + (revPrev ? ' · vs previous 30 days' : '') }));
     if (o) {
       kpis.push(UI.kpi({ label: 'Active students · 7 days', value: fmt.num(o.active7), icon: 'users', go: '#/students', foot: 'of ' + fmt.num(o.students) + ' students' }));
       kpis.push(UI.kpi({ label: 'Attempts today', value: fmt.num(o.today), icon: 'activity', tone: 'info', go: canRes ? '#/results' : null, foot: fmt.num(o.week) + ' this week' }));
@@ -71,7 +77,7 @@ AX.mod({
         <div class="col gap16">
           <div class="card pad0"><div class="card-h" style="padding:16px 16px 4px">${icon('bell')}<h3>Needs attention</h3><span class="grow"></span><button class="btn xs ghost" data-act="ref">${icon('refresh', 13)}</button></div>
             <div class="list" id="hm-att">${attHtml(att)}</div></div>
-          ${canStore ? h`<div class="card"><div class="card-h">${icon('chart')}<h3>Revenue · last 14 days</h3><span class="grow"></span><b class="num">${fmt.inr(days.reduce((s, d) => s + d.value, 0))}</b></div>${UI.chart.area(days, { money: true, label: 'Revenue per day' })}</div>` : ''}
+          ${canStore || canPay ? h`<div class="card"><div class="card-h">${icon('chart')}<h3>Money received · last 14 days</h3><span class="grow"></span><b class="num">${fmt.inr(days.reduce((s, d) => s + d.value, 0))}</b></div>${UI.chart.area(days, { money: true, label: 'Revenue per day' })}</div>` : ''}
           ${o && (o.top || []).length ? h`<div class="card pad0"><div class="card-h" style="padding:16px 16px 4px">${icon('trophy')}<h3>Most attempted tests</h3></div><div class="list">${join(o.top.slice(0, 5), (t, i) => h`<div class="li ${canRes ? 'click' : ''}" data-act="ana" data-id="${t.id}"><span class="av sm" style="--c:${['#c9a45c', '#94a3b8', '#b45309', '#14b8a6', '#6366f1'][i]}">${i + 1}</span><div class="grow"><div class="t ell">${t.title}</div><div class="s">${fmt.num(t.students)} students · ${fmt.num(t.attempts)} attempts</div></div><div style="width:90px"><div class="bar-meter"><i style="width:${Math.round(t.avg_pct || 0)}%"></i></div><div class="xs mut mt4" style="text-align:right">${t.avg_pct == null ? '—' : Math.round(t.avg_pct) + '% avg'}</div></div></div>`)}</div></div>` : ''}
         </div>
         <div class="col gap16">
