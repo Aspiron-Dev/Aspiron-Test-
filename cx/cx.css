@@ -116,7 +116,7 @@ p{margin:0}
 .btn{--h:40px;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:var(--h);padding:0 16px;border-radius:var(--r-md);border:1px solid var(--line-2);background:var(--solid-2);color:var(--tx);font-weight:650;font-size:14px;white-space:nowrap;transition:transform var(--fast) var(--ease),background var(--fast),border-color var(--fast),box-shadow var(--fast);user-select:none;text-decoration:none!important;min-width:0}
 .btn:hover{background:var(--solid-3);border-color:var(--line-2)}
 .btn:active{transform:translateY(1px) scale(.99)}
-.btn[disabled],.btn.busy{opacity:.55;pointer-events:none}
+.btn[disabled],.btn.busy,.ibtn[disabled]{opacity:.55;pointer-events:none}
 .btn.pri{background:var(--grad-pri);border-color:transparent;color:var(--pri-ink);box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 8px 22px color-mix(in srgb,var(--pri-2) 35%,transparent)}
 .btn.pri:hover{filter:brightness(1.06)}
 .btn.gold{background:var(--grad-gold);border-color:transparent;color:#2a1d05}
@@ -255,6 +255,9 @@ button.kpi:hover,a.kpi:hover{transform:translateY(-2px);border-color:var(--pri-l
 .bars .bv.zero{background:var(--hover)}
 .bars .bc:hover .bv{filter:brightness(1.15)}
 .bars .bl{font-size:10.5px;color:var(--faint);white-space:nowrap}
+.bars .bl.hid{visibility:hidden}
+.bars.dense{gap:3px}
+.bars.dense .bv{border-radius:5px 5px 3px 3px}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--mut)}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 
@@ -514,4 +517,6 @@ body.privacy::after{content:"";position:fixed;inset:0;z-index:999;background:var
 .bars .bc.sel .bv{background:var(--grad-gold);box-shadow:0 6px 16px color-mix(in srgb,var(--gold) 35%,transparent)}
 .bars .bc.sel .bl{color:var(--tx);font-weight:800}
 .day-read{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:-4px 0 10px}
+.mon-nav{display:flex;align-items:center;gap:6px}
+.mon-nav b{min-width:96px;text-align:center;font-size:13.5px}
 .day-read b{font-family:var(--font-display);font-size:26px;font-weight:600;letter-spacing:-.02em}
