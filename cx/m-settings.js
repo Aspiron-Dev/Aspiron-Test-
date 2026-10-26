@@ -49,8 +49,8 @@ AX.mod({
     const lim = r.limit_bytes || 524288000, used = r.db_bytes || 0, pc = Math.min(100, Math.round(used * 100 / lim));
     const parts = [['Tests & questions', r.tests_bytes, '#14b8a6'], ['Files (PDFs)', r.files_bytes, '#6366f1'], ['Covers', r.covers_bytes, '#c9a45c'], ['Results', r.results_bytes, '#0ea5e9']];
     AX.set(box, h`<div class="card-h">${icon('db')}<h3>Database storage</h3><span class="grow"></span>${UI.pill(pc + '% used', pc > 85 ? 'bad' : pc > 65 ? 'warn' : 'ok')}</div>
-      <div class="row" style="gap:18px;align-items:center">${UI.chart.donut(parts.map(p => ({ label: p[0], value: p[1] || 0, color: p[2] })), { center: pc + '%', sub: 'of ' + fmt.bytes(lim), size: 128 })}
-        <div class="col gap6 grow">${join(parts, p => h`<div class="row sm"><i style="width:10px;height:10px;border-radius:3px;background:${p[2]};display:inline-block"></i><span class="grow tx2">${p[0]}</span><b class="num">${fmt.bytes(p[1] || 0)}</b></div>`)}</div></div>
+      <div class="row wrap" style="gap:18px;align-items:center">${UI.chart.donut(parts.map(p => ({ label: p[0], value: p[1] || 0, color: p[2] })), { center: pc + '%', sub: 'of ' + fmt.bytes(lim), size: 128 })}
+        <div class="col gap6 grow" style="min-width:180px">${join(parts, p => h`<div class="row sm"><i style="width:10px;height:10px;border-radius:3px;background:${p[2]};display:inline-block"></i><span class="grow tx2">${p[0]}</span><b class="num">${fmt.bytes(p[1] || 0)}</b></div>`)}</div></div>
       <div class="divider"></div>
       <div class="row wrap sm mut"><span>${fmt.num(r.students)} students</span>·<span>${fmt.num(r.tests)} tests</span>·<span>${fmt.num(r.results)} results</span>·<span>${fmt.bytes(used)} of ${fmt.bytes(lim)}</span></div>`);
   }
