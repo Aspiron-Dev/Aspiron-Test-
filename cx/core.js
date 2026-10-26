@@ -142,7 +142,7 @@ AX.api = {
     for (let page = 0; page < 1000; page++) {
       let r, j = null;
       try {
-        r = await fetch(AX.url + '/functions/v1/send-push', {
+        r = await fetch(AX.url + '/functions/v1/Send-push', {
           method: 'POST', headers: { 'Content-Type': 'application/json', apikey: CFG.SUPABASE_KEY },
           body: JSON.stringify(Object.assign({ pw: S.token }, payload, { limit: 150, after }))
         });
@@ -165,7 +165,7 @@ AX.api = {
   // is the send-push function the new one (v: 2), and does it use the same key as config.js? (no password needed)
   async pushInfo() {
     try {
-      const r = await fetch(AX.url + '/functions/v1/send-push', {
+      const r = await fetch(AX.url + '/functions/v1/Send-push', {
         method: 'POST', headers: { 'Content-Type': 'application/json', apikey: CFG.SUPABASE_KEY },
         body: JSON.stringify({ mode: 'info', vapid: CFG.VAPID_PUBLIC || '' })
       });

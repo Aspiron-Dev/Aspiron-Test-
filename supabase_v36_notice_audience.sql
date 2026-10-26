@@ -305,6 +305,7 @@ end $$;
 grant execute on function public.cbt_admin_ann_aud(text, text, jsonb) to anon, authenticated;
 
 -- ---------- the minute job: "test is LIVE" alerts, now with several workers at once ----------
+-- The function's address is …/functions/v1/Send-push (capital S: Supabase keeps the first slug, and the address is case-sensitive).
 -- Each worker takes its own small batch (see cbt_alerts_claim), so a test that many students watch is announced in a minute or two.
 create extension if not exists pg_cron;
 create extension if not exists pg_net with schema extensions;
@@ -313,7 +314,7 @@ do $$ begin
 end $$;
 select cron.schedule('cbt-test-alerts', '* * * * *', $job$
   select net.http_post(
-    url     := 'https://klvvhbqkhbdzysgpykpr.supabase.co/functions/v1/send-push',
+    url     := 'https://klvvhbqkhbdzysgpykpr.supabase.co/functions/v1/Send-push',
     headers := '{"Content-Type":"application/json","apikey":"sb_publishable_pt-b8kuOOsxyyAz277qsNA_q6e8D2G3"}'::jsonb,
     body    := ('{"mode":"due","w":' || w || '}')::jsonb)
   from generate_series(1, 4) as w;
