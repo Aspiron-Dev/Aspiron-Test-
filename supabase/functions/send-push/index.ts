@@ -37,7 +37,7 @@ type DB = any;
 type Sub = { endpoint: string; p256dh: string; auth: string; mobile?: string };
 type Stats = { sent: number; removed: number; failed: number; codes: Record<string, number>; sample: string[]; dead: string[] };
 
-Deno.serve(async (req) => {
+async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ ok: false, error: "method" }, 405);
 
@@ -45,7 +45,8 @@ Deno.serve(async (req) => {
   try { b = await req.json(); } catch { return json({ ok: false, error: "body" }, 400); }
 
   const pub = Deno.env.get("VAPID_PUBLIC") || "", priv = Deno.env.get("VAPID_PRIVATE") || "";
-  if (b.mode === "info") return json({ ok: true, v: 2, vapid: !!(pub && priv), key_ok: typeof b.vapid === "string" ? b.vapid === pub : null });
+  if (b.mode === "info") return json({ ok: true, v: 2, vapid: !!(pub && priv), key_ok: typeof b.vapid === "string" ? b.vapid === pub : null,
+    secrets: { VAPID_PUBLIC: !!pub, VAPID_PRIVATE: !!priv, VAPID_SUBJECT: !!Deno.env.get("VAPID_SUBJECT") } });
 
   const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 
@@ -55,7 +56,7 @@ Deno.serve(async (req) => {
   const { data: auth, error: aerr } = await db.rpc("cbt_admin", { p_pw: String(b.pw || ""), p_action: "ping", p_data: {} });
   if (aerr || !auth || !(auth as { ok?: boolean }).ok) return json({ ok: false, error: (auth as { error?: string })?.error || "invalid" }, 401);
 
-  if (!pub || !priv) return json({ ok: false, error: "vapid_missing" }, 500);
+  if (!pub || !priv) return vapidMissing();
   webpush.setVapidDetails(Deno.env.get("VAPID_SUBJECT") || "mailto:admin@example.com", pub, priv);
 
   const payload = JSON.stringify({
@@ -85,7 +86,24 @@ Deno.serve(async (req) => {
   await removeDead(db, st);
   return json({ ok: true, v: 2, sent: st.sent, removed: st.removed, failed: st.failed, total, done, next: after,
                 codes: st.codes, sample: st.sample, hint: hint(st) });
+}
+
+Deno.serve(async (req) => {
+  try {
+    return await handle(req);
+  } catch (e) {
+    const msg = String((e as Error)?.message || e).slice(0, 300);
+    console.error("send-push crashed:", msg);
+    return json({ ok: false, error: "crash", detail: msg }, 500);
+  }
 });
+
+// the VAPID keys are two secrets; say which one is missing (in the Logs tab and in the admin "Check setup" answer)
+function vapidMissing(): Response {
+  const missing = [!Deno.env.get("VAPID_PUBLIC") && "VAPID_PUBLIC", !Deno.env.get("VAPID_PRIVATE") && "VAPID_PRIVATE"].filter(Boolean) as string[];
+  console.error("send-push: missing secret(s):", missing.join(", "));
+  return json({ ok: false, error: "vapid_missing", missing }, 500);
+}
 
 // one page of phones, in endpoint order
 async function targets(db: DB, series: string[], after: string, limit: number): Promise<{ rows: Sub[]; error?: string; detail?: string }> {
@@ -147,7 +165,7 @@ function hint(st: Stats): string {
 
 // ---------- "test is LIVE now" alerts (the 🔔 on a scheduled test) ----------
 async function dueAlerts(db: DB, pub: string, priv: string, worker: number) {
-  if (!pub || !priv) return json({ ok: false, error: "vapid_missing" }, 500);
+  if (!pub || !priv) return vapidMissing();
   webpush.setVapidDetails(Deno.env.get("VAPID_SUBJECT") || "mailto:admin@example.com", pub, priv);
 
   const now = new Date();

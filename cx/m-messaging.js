@@ -145,7 +145,9 @@ async function pushCheck(btn) {
   await UI.busy(btn, async () => {
     const r = await AX.api.pushInfo();
     if (!r.ok) return UI.toast(r.error === 'missing' ? 'The send-push function is not deployed.' : r.error === 'network' ? 'No internet connection.' : 'send-push is the old version: deploy supabase/functions/send-push again (needed for test-series notifications and batch sending).', { tone: 'warn' });
-    if (!r.vapid) return UI.toast('send-push has no VAPID keys: add VAPID_PUBLIC and VAPID_PRIVATE in Supabase → Edge Functions → Secrets.', { tone: 'bad' });
+    const miss = ['VAPID_PUBLIC', 'VAPID_PRIVATE'].filter(k => r.secrets && r.secrets[k] === false);
+    if (miss.length || !r.vapid) return UI.toast('Missing secret in Supabase → Edge Functions → Secrets: ' + (miss.join(' and ') || 'VAPID keys') + '. Add it, then deploy send-push again.', { tone: 'bad' });
+    if (r.secrets && r.secrets.VAPID_SUBJECT === false) UI.toast('Tip: add the secret VAPID_SUBJECT = mailto:your-email@example.com', { tone: 'warn' });
     if (r.key_ok === false) return UI.toast('The VAPID_PUBLIC secret in Supabase is not the same as VAPID_PUBLIC in config.js, so phones refuse the notifications. Make them the same key pair.', { tone: 'bad' });
     UI.toast('Phone notifications are set up correctly ✓');
   });
