@@ -99,7 +99,7 @@ AX.can = (mod, lvl = 'view') => {
 AX.isOwner = () => !!(S.me && S.me.owner);
 
 /* ---------- API ---------- */
-const AUTH_ERR = ['invalid', 'signed_out', 'expired', 'disabled', 'not_set'];
+const AUTH_ERR = ['invalid', 'signed_out', 'expired', 'disabled', 'not_set', 'need_2fa'];
 AX.api = {
   // raw PostgREST RPC. args = the function's named parameters. Adds p_pw unless auth:false.
   async rpc(fn, args, opt = {}) {
@@ -187,6 +187,10 @@ AX.errText = (r, what) => {
     invalid: 'Wrong password.', locked: 'Too many wrong attempts. Try again in 15 minutes.',
     signed_out: 'You were signed out.', expired: 'Your sign-in expired. Please sign in again.',
     disabled: 'This team account is paused by the owner.', not_set: 'The admin password is not set yet.',
+    need_2fa: 'Two-step sign-in is on: sign in with your password and code.', current_pw: 'The password is wrong.',
+    otp_invalid: 'Wrong code. Use the newest code in your authenticator app.', otp_locked: 'Too many wrong codes. Try again in 15 minutes.',
+    session: 'Sign out and sign in again first.', setup_expired: 'The set-up took too long. Please start again.',
+    pw_locked: 'Too many wrong passwords. Try again in 15 minutes.',
     bad_request: 'The server rejected this request' + (r && r.detail ? ': ' + r.detail : '.')
   };
   return map[e] || (e ? 'Could not save (' + e + ').' : 'Something went wrong.');

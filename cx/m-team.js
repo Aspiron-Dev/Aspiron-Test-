@@ -39,6 +39,8 @@ const ACT = {
   'cbt_admin_cheat:flag': 'Tagged cheating', 'cbt_admin_cheat:unflag': 'Removed a cheating tag', 'cbt_admin_cheat:suspend': 'Suspended a student', 'cbt_admin_cheat:lift': 'Lifted a suspension',
   'cbt_admin_pyq:bulk': 'Added PYQ questions', 'cbt_admin_pyq:update': 'Edited a PYQ question', 'cbt_admin_pyq:delete': 'Deleted a PYQ question', 'cbt_admin_pyq:delete_paper': 'Deleted a PYQ paper',
   'cbt_admin_team:user_save': 'Saved a team member', 'cbt_admin_team:user_delete': 'Removed a team member', 'cbt_admin_team:session_revoke': 'Signed out a session',
+  'cbt_admin_2fa:start': 'Started two-step set-up', 'cbt_admin_2fa:confirm': 'Turned on two-step sign-in', 'cbt_admin_2fa:off': 'Turned off two-step sign-in',
+  'cbt_admin_2fa:recovery': 'Made new recovery codes', 'cbt_admin_2fa:reset': "Reset a member's two-step sign-in",
   'cbt_admin_team:sessions_revoke': 'Signed out sessions', 'cbt_admin_team:owner_password': 'Changed the owner password', 'cbt_admin_team:self_password': 'Changed own password', 'cbt_admin_team:self_revoke': 'Signed out own session'
 };
 const actName = a => ACT[a.fn + ':' + a.act] || (a.fn.replace(/^cbt_admin_?/, '') || 'admin') + ' · ' + a.act.replace(/_/g, ' ');
@@ -48,8 +50,8 @@ const isOnline = s => s.active && Date.now() - Date.parse(s.last_seen) < 180000;
 
 async function load(force) {
   if (!force && T.at && Date.now() - T.at < 15000) return { ok: true };
-  const r = await AX.api.call('cbt_admin_team', 'get');
-  if (r.ok) { T.users = r.users || []; T.sessions = r.sessions || []; T.audit = r.audit || []; T.current = r.current; T.at = Date.now(); }
+  const [r, z] = await Promise.all([AX.api.call('cbt_admin_team', 'get'), AX.api.call('cbt_admin_2fa', 'status')]);
+  if (r.ok) { T.users = r.users || []; T.sessions = r.sessions || []; T.audit = r.audit || []; T.current = r.current; T.at = Date.now(); T.tfa = (z.ok && z.members) || {}; T.tfaOwner = !!(z.ok && z.enabled); }
   return r;
 }
 
@@ -96,11 +98,11 @@ function members(ctx) {
       ${UI.kpi({ label: 'Refused requests', value: T.audit.filter(a => a.result === 'refused').length, icon: 'shield', tone: 'bad', foot: 'latest 300 log entries', go: '#/team/activity?f=refused' })}
     </div>
     <div class="section-t">Owner</div>
-    <div class="card row" style="gap:14px">${UI.avatar('Owner', 'owner', 'lg')}<div class="grow"><div class="row gap6"><b class="lg">You</b>${UI.pill('Owner', 'gold')}</div><div class="sm mut">Full access to everything, including this page. Signed in on ${fmt.plural(act.filter(s => !s.user_id).length, 'device')}.</div></div><a class="btn sm" href="#/team/sessions">${icon('device', 15)} Devices</a></div>
+    <div class="card row" style="gap:14px">${UI.avatar('Owner', 'owner', 'lg')}<div class="grow"><div class="row gap6"><b class="lg">You</b>${UI.pill('Owner', 'gold')}${T.tfaOwner ? UI.pill('2-step on', 'ok') : h`<a class="pill warn" href="#/settings">2-step off · turn on</a>`}</div><div class="sm mut">Full access to everything, including this page. Signed in on ${fmt.plural(act.filter(s => !s.user_id).length, 'device')}.</div></div><a class="btn sm" href="#/team/sessions">${icon('device', 15)} Devices</a></div>
     <div class="section-t">Team members</div>
     ${T.users.length ? h`<div class="grid g2">${join(T.users, u => {
       const ss = T.sessions.filter(s => s.user_id === u.id && s.active);
-      return h`<div class="card"><div class="row top">${UI.avatar(u.name, u.username)}<div class="grow"><div class="row gap6 wrap"><b class="ell">${u.name}</b>${!u.active ? UI.pill('Paused', 'warn') : u.online ? h`<span class="pill ok"><span class="live-dot"></span> Online</span>` : ''}</div><div class="xs mut mono">@${u.username}</div></div>
+      return h`<div class="card"><div class="row top">${UI.avatar(u.name, u.username)}<div class="grow"><div class="row gap6 wrap"><b class="ell">${u.name}</b>${(T.tfa || {})[u.id] ? UI.pill('2-step on', 'ok') : ''}${!u.active ? UI.pill('Paused', 'warn') : u.online ? h`<span class="pill ok"><span class="live-dot"></span> Online</span>` : ''}</div><div class="xs mut mono">@${u.username}</div></div>
         <button class="ibtn sm" data-act="menu" data-id="${u.id}" aria-label="More">${icon('moreV', 17)}</button></div>
         <div class="chips mt12">${Object.keys(u.perms || {}).length ? join(AX.MODS.filter(m => (u.perms || {})[m]), m => h`<span class="pill ${u.perms[m] === 'manage' ? 'pri' : ''}">${AX.MOD_INFO[m].t}${u.perms[m] === 'manage' ? '' : ' · view'}</span>`) : UI.pill('No access yet', 'warn')}</div>
         ${u.note ? h`<p class="sm mut mt12">${u.note}</p>` : ''}
@@ -116,13 +118,23 @@ function members(ctx) {
         { label: 'Edit access', icon: 'edit', fn: () => editMember(u, ctx) },
         { label: 'Set a new password', icon: 'key', fn: () => newPassword(u, ctx) },
         { label: 'Sign out all their devices', icon: 'logout', fn: () => revokeUser(u, ctx) },
+        ...((T.tfa || {})[u.id] ? [{ label: 'Reset two-step sign-in (lost phone)', icon: 'shield', fn: () => resetTfa(u, ctx) }] : []),
         { label: u.active ? 'Pause account' : 'Resume account', icon: u.active ? 'pause' : 'play', fn: () => pause(u, ctx) },
         { sep: true }, { label: 'Remove from team', icon: 'trash', tone: 'danger', fn: () => removeMember(u, ctx) }
       ]);
     }
   });
 }
-function genPw() { const a = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789', s = new Uint32Array(12); crypto.getRandomValues(s); return [...s].map(x => a[x % a.length]).join('').replace(/^(.{4})(.{4})/, '$1-$2-'); }
+function genPw() { const a = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'; for (;;) { const s = new Uint32Array(12); crypto.getRandomValues(s); const p = [...s].map(x => a[x % a.length]).join('').replace(/^(.{4})(.{4})/, '$1-$2-'); if (!weak(p)) return p; } }
+// same rule as the database (adm_pw_weak): 10+ characters, letters and numbers, not an obvious word
+const weak = p => p.length < 10 || !/[A-Za-z]/.test(p) || !/\d/.test(p) || /password|passw0rd|aspiron|admin|qwerty|12345678|abcdefgh/i.test(p);
+const WEAK = 'At least 10 characters with letters and numbers (not “aspiron”, “admin”, “password”…)';
+async function resetTfa(u, ctx) {
+  if (!(await UI.confirm({ title: 'Reset two-step sign-in for ' + u.name + '?', text: 'Do this only if they lost their phone. They can then sign in with the password alone and should turn two-step sign-in on again in Settings.', yes: 'Reset', tone: 'danger' }))) return;
+  const r = await AX.api.call('cbt_admin_2fa', 'reset', { user_id: u.id });
+  if (!r.ok) return UI.err(r);
+  UI.toast('Two-step sign-in reset for ' + u.name); T.at = 0; ctx.reload();
+}
 function panelLink() { const k = AX.ls.get('adm_k', null) || (() => { try { return localStorage.getItem('adm_k'); } catch (e) { return ''; } })(); return location.origin + location.pathname.replace(/zz-cxtest\.html$/, 'cp-dt764twzf54s5m.html') + (k ? '#k=' + k : ''); }
 function editMember(u, ctx) {
   const isNew = !u; u = u || { name: '', username: '', perms: {}, active: true, note: '' };
@@ -135,7 +147,7 @@ function editMember(u, ctx) {
       <div class="form-grid">
         ${AX.f.input({ name: 'name', label: 'Full name', value: u.name, max: 60, required: true, placeholder: 'e.g. Ravi Kumar' })}
         ${AX.f.input({ name: 'username', label: 'Username', value: u.username, max: 30, placeholder: 'e.g. ravi.k', hint: '3–30 letters, numbers, dot, dash or underscore', auto: 'off' })}
-        <div class="fld full"><label for="f-password">${isNew ? 'Password' : 'New password (leave empty to keep the current one)'}</label><div class="row"><div class="inp-wrap grow"><input class="inp mono" id="f-password" name="password" type="text" value="${isNew ? genPw() : ''}" autocomplete="new-password" placeholder="${isNew ? '' : 'Unchanged'}" maxlength="72"></div><button type="button" class="btn" data-act="gen">${icon('sparkle', 16)} Generate</button></div><div class="hint">At least 8 characters. ${isNew ? 'Share it privately; they can change it after signing in.' : 'A new password signs them out everywhere.'}</div><div class="err" data-err="password"></div></div>
+        <div class="fld full"><label for="f-password">${isNew ? 'Password' : 'New password (leave empty to keep the current one)'}</label><div class="row"><div class="inp-wrap grow"><input class="inp mono" id="f-password" name="password" type="text" value="${isNew ? genPw() : ''}" autocomplete="new-password" placeholder="${isNew ? '' : 'Unchanged'}" maxlength="72"></div><button type="button" class="btn" data-act="gen">${icon('sparkle', 16)} Generate</button></div><div class="hint">At least 10 characters with letters and numbers. ${isNew ? 'Share it privately; they can change it after signing in.' : 'A new password signs them out everywhere.'}</div><div class="err" data-err="password"></div></div>
         ${AX.f.input({ name: 'note', label: 'Note (only you see this)', value: u.note, max: 200, placeholder: 'e.g. Handles WhatsApp support, evening shift', full: true })}
       </div>
       <div><div class="row between wrap"><div><div class="b lg">What can they do?</div><div class="sm mut">View = can see. Full = can see and change. Team & access, passwords and sessions stay with the owner.</div></div></div>
@@ -159,14 +171,14 @@ function editMember(u, ctx) {
           d.username = String(d.username || '').trim().toLowerCase(); d.name = String(d.name || '').trim();
           if (d.name.length < 2) return AX.f.error(f, 'name', 'Enter the full name');
           if (!/^[a-z0-9._-]{3,30}$/.test(d.username) || d.username === 'owner') return AX.f.error(f, 'username', '3–30 letters, numbers, dot, dash or underscore');
-          if ((isNew || d.password) && String(d.password).length < 8) return AX.f.error(f, 'password', 'At least 8 characters');
+          if ((isNew || d.password) && weak(String(d.password))) return AX.f.error(f, 'password', WEAK);
           if (!Object.keys(perms).length && !(await UI.confirm({ title: 'No access selected', text: 'This member will be able to sign in but will not see any section. Save anyway?', yes: 'Save anyway' }))) return;
           await UI.busy(btn, async () => {
             const r = await AX.api.call('cbt_admin_team', 'user_save', { id: isNew ? null : u.id, name: d.name, username: d.username, password: d.password || '', perms, note: d.note || '', active: isNew ? true : !!d.active });
             if (!r.ok) {
               if (r.error === 'taken') return AX.f.error(f, 'username', 'This username is already used');
               if (r.error === 'username') return AX.f.error(f, 'username', 'Use 3–30 letters, numbers, dot, dash or underscore');
-              if (r.error === 'password') return AX.f.error(f, 'password', 'At least 8 characters');
+              if (r.error === 'password') return AX.f.error(f, 'password', WEAK);
               return UI.err(r);
             }
             close(); T.at = 0;
@@ -284,17 +296,17 @@ function security(ctx) {
       ${AX.f.input({ name: 'again', label: 'Repeat the new password', type: 'password', auto: 'new-password' })}
       <button class="btn pri" data-act="save" type="button">${icon('check', 16)} Change password</button></div></form>
     <div class="col gap16"><div class="callout gold">${icon('shieldCheck')}<div class="sm"><b>What happens</b><br>Your other devices are signed out. Team members keep working with their own passwords. The old style of signing in with this password (backup panel, phone-notification sender) uses the new password at once.</div></div>
-      <div class="card"><div class="card-h">${icon('info')}<h3>Good habits</h3></div><ul class="sm tx2" style="margin:0;padding-left:18px;line-height:1.8"><li>Give each person their own team account. Never share the owner password.</li><li>Use View access when someone only needs to look.</li><li>Check “Where signed in” now and then and sign out devices you don't know.</li><li>Pause an account the day someone stops working with you.</li></ul></div></div></div>`);
+      <div class="card"><div class="card-h">${icon('info')}<h3>Good habits</h3></div><ul class="sm tx2" style="margin:0;padding-left:18px;line-height:1.8"><li>Turn on two-step sign-in (Settings) for yourself, and ask every team member to do the same.</li><li>Give each person their own team account. Never share the owner password.</li><li>Use View access when someone only needs to look.</li><li>Check “Where signed in” now and then and sign out devices you don't know.</li><li>Pause an account the day someone stops working with you.</li></ul></div></div></div>`);
   const f = ctx.el.querySelector('#pf'); UI.wire(f);
   f.querySelector('[name=new_pw]').addEventListener('input', e => { const s = score(e.target.value); const m = f.querySelector('#pw-m'); m.style.width = (s * 25) + '%'; m.style.background = s < 2 ? 'var(--bad)' : s < 3 ? 'var(--warn)' : ''; });
   AX.act(f, { async save(btn) {
     AX.f.clearErrors(f); const d = AX.f.read(f);
     if (!d.current) return AX.f.error(f, 'current', 'Enter your current password');
-    if (d.new_pw.length < 10 || score(d.new_pw) < 3) return AX.f.error(f, 'new_pw', 'Use at least 10 characters with letters, numbers and a symbol');
+    if (weak(d.new_pw) || score(d.new_pw) < 3) return AX.f.error(f, 'new_pw', 'Use at least 10 characters with letters, numbers and a symbol');
     if (d.new_pw !== d.again) return AX.f.error(f, 'again', 'The two passwords are different');
     await UI.busy(btn, async () => {
       const r = await AX.api.call('cbt_admin_team', 'owner_password', { current: d.current, new_pw: d.new_pw });
-      if (!r.ok) return r.error === 'current_pw' ? AX.f.error(f, 'current', 'The current password is wrong') : UI.err(r);
+      if (!r.ok) return r.error === 'current_pw' ? AX.f.error(f, 'current', 'The current password is wrong') : r.error === 'short' ? AX.f.error(f, 'new_pw', WEAK) : UI.err(r);
       f.reset(); UI.toast('Password changed. Your other devices were signed out.');
     });
   } });
@@ -312,7 +324,7 @@ async function renderSelf(ctx) {
       <div class="card pad0"><div class="card-h" style="padding:16px 16px 0">${icon('device')}<h3>Signed in on</h3></div><div class="list">${ss.length ? join(ss, s => h`<div class="li">${icon(devIcon(s.device), 18)}<div class="grow"><b>${s.device || 'Device'}</b> ${s.id === r.current ? UI.pill('This device', 'pri') : ''}<div class="xs mut">${s.ip ? 'IP ' + s.ip + ' · ' : ''}last active ${fmt.ago(s.last_seen)}</div></div>${s.id !== r.current ? h`<button class="btn sm danger" data-act="out" data-id="${s.id}">Sign out</button>` : ''}</div>`) : UI.empty({ icon: 'device', title: 'Only this device' })}</div></div></div>
     <form class="card" id="sp" autocomplete="off"><div class="card-h">${icon('key')}<h3>Change my password</h3></div><div class="col gap16">
       ${AX.f.input({ name: 'current', label: 'Current password', type: 'password', auto: 'current-password' })}
-      ${AX.f.input({ name: 'new_pw', label: 'New password', type: 'password', auto: 'new-password', hint: 'At least 8 characters.' })}
+      ${AX.f.input({ name: 'new_pw', label: 'New password', type: 'password', auto: 'new-password', hint: 'At least 10 characters with letters and numbers.' })}
       ${AX.f.input({ name: 'again', label: 'Repeat new password', type: 'password', auto: 'new-password' })}
       <button class="btn pri" type="button" data-act="pw">${icon('check', 16)} Change password</button></div></form></div>`);
   UI.wire(ctx.el);
@@ -320,9 +332,9 @@ async function renderSelf(ctx) {
     async out(el) { const x = await AX.api.call('cbt_admin_team', 'self_revoke', { id: el.dataset.id }); if (!x.ok) return UI.err(x); UI.toast('Signed out'); ctx.reload(); },
     async pw(btn) {
       const f = ctx.el.querySelector('#sp'); AX.f.clearErrors(f); const d = AX.f.read(f);
-      if (d.new_pw.length < 8) return AX.f.error(f, 'new_pw', 'At least 8 characters');
+      if (weak(d.new_pw)) return AX.f.error(f, 'new_pw', WEAK);
       if (d.new_pw !== d.again) return AX.f.error(f, 'again', 'The two passwords are different');
-      await UI.busy(btn, async () => { const x = await AX.api.call('cbt_admin_team', 'self_password', { current: d.current, new_pw: d.new_pw }); if (!x.ok) return x.error === 'current_pw' ? AX.f.error(f, 'current', 'The current password is wrong') : UI.err(x); f.reset(); UI.toast('Password changed. Other devices were signed out.'); });
+      await UI.busy(btn, async () => { const x = await AX.api.call('cbt_admin_team', 'self_password', { current: d.current, new_pw: d.new_pw }); if (!x.ok) return x.error === 'current_pw' ? AX.f.error(f, 'current', 'The current password is wrong') : x.error === 'short' ? AX.f.error(f, 'new_pw', WEAK) : UI.err(x); f.reset(); UI.toast('Password changed. Other devices were signed out.'); });
     }
   });
 }
