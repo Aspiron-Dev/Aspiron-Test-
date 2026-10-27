@@ -290,10 +290,10 @@ function priceHtml(x,short){
 }
 // a card: photo, name, rating (one thin line), short description, price, then Explore and Buy now (everything else is on the Explore page)
 function cardHtml(x,i){
-  const own=!!MINE[x.id],off=own?0:offPct(x),ph=!okImg(x.image),bdg=own?'':x.badge||(x.buy_on===false?'Coming soon':'');
-  return `<article class="sc${own?' own':''}" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,7)}"><div class="sc-m${ph?' isph':''}" data-view="${esc(x.id)}">${own?`<span class="tag own">${I('ok')}Unlocked</span>`:''}${bdg?`<span class="tag${x.buy_on===false&&!x.badge?' soon':''}">${esc(bdg)}</span>`:''}${off?`<span class="tag off">${off}% off</span>`:''}${mediaHtml(x)}</div>
+  const off=offPct(x),ph=!okImg(x.image),bdg=x.badge||(x.buy_on===false?'Coming soon':'');
+  return `<article class="sc" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,7)}"><div class="sc-m${ph?' isph':''}" data-view="${esc(x.id)}">${bdg?`<span class="tag${x.buy_on===false&&!x.badge?' soon':''}">${esc(bdg)}</span>`:''}${off?`<span class="tag off">${off}% off</span>`:''}${mediaHtml(x)}</div>
    <div class="sc-b"><h3 class="sc-t${ph?' sr':''}">${esc(x.title)}</h3><div class="rlw" data-rline="${esc(x.id)}">${rLine(x.id)}</div>${x.subtitle?`<p class="sc-s">${esc(x.subtitle)}</p>`:''}
-   ${own?`<div class="pr"><span class="pill ok">${I('ok')}Unlocked for you</span></div>`:priceHtml(x,1)}
+   ${priceHtml(x,1)}
    <div class="sc-a"><button class="btn line" data-explore="${esc(x.id)}">${I('compass')}Explore</button>${buyBtn(x,1)}</div></div></article>`;
 }
 // Buy now, or — for a series not launched yet (Buy now off in the admin panel) — "Coming soon · Notify me", or — for a
@@ -321,7 +321,7 @@ function rowHtml(x,i,q){
   const r=RV[x.id],s=secName(x),off=offPct(x);
   return `<div class="srow" style="--i:${Math.min(i,9)}"><button class="sr-main" data-view="${esc(x.id)}">${thumb(x)}<span class="grow"><b class="sr-t">${hiLite(x.title,q)}</b>
     <span class="sr-m">${r&&r.count?`<span class="rt">${I('star','fill')}${Number(r.avg).toFixed(1)}<small>(${r.count})</small></span>`:''}${s?`<span>${esc(s)}</span>`:''}${x.buy_on===false?'<span class="pill gold">Coming soon</span>':''}</span>
-    ${x.subtitle?`<span class="sr-s">${hiLite(x.subtitle,q)}</span>`:''}</span><span class="sr-p">${MINE[x.id]?`<span class="pill ok">${I('ok')}Unlocked</span>`:`<b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s>`:''}`}</span>${I('cr','sr-c')}</button><div class="sr-buy">${buyBtn(x,1)}</div></div>`;
+    ${x.subtitle?`<span class="sr-s">${hiLite(x.subtitle,q)}</span>`:''}</span><span class="sr-p"><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s>`:''}</span>${I('cr','sr-c')}</button><div class="sr-buy">${buyBtn(x,1)}</div></div>`;
 }
 function sDraw(){
   const box=$('#sres'),fl=$('#sfil');if(!box)return;
@@ -428,11 +428,10 @@ function explore(id,tab){
   requestAnimationFrame(()=>{const k=$('#xp .ink');if(k)k.classList.add('ready')});
   if(FINE)p.querySelector('[data-xback]').focus({preventScroll:true});
 }
-// the bar at the bottom: price + Buy now, or "Unlocked" + Let's study
+// the bar at the bottom: price + Buy now (or Let's study)
 function xbarHtml(x){
   const off=offPct(x);
-  return `${MINE[x.id]?`<div class="xbp"><small>Your series</small><span class="own">${I('ok')}Unlocked</span></div>`
-    :`<div class="xbp"><small>Price</small><span><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s>`:''}</span></div>`}${buyBtn(x,1)}`;
+  return `<div class="xbp"><small>Price</small><span><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s>`:''}</span></div>${buyBtn(x,1)}`;
 }
 // the line under the open tab slides to it
 function xpInk(){const t=$('[data-xtab].on'),k=$('#xp .ink');if(t&&k){k.style.setProperty('--x',t.offsetLeft+'px');k.style.setProperty('--w',t.offsetWidth+'px')}}
@@ -465,8 +464,7 @@ function xpDesc(x){
   return `<div class="ximg${okImg(x.image)?'':' isph'}">${mediaHtml(x)}</div>
    ${x.course||s?`<div class="xcat">${x.course?`<span class="pill pri">${CN[x.course]}</span>`:''}${s?`<span class="pill">${esc(s)}</span>`:''}</div>`:''}<h2 class="xt">${esc(x.title)}</h2>${x.subtitle?`<p class="xsub">${esc(x.subtitle)}</p>`:''}
    <div data-rvmini="${esc(x.id)}">${rvMini(x.id)}</div>
-   ${MINE[x.id]?`<div class="xprice own"><b>${I('ok')}Unlocked for you</b><p>Tap “Let's study” and sign in on the main website with your mobile number and the access code we sent you.</p></div>`
-     :`<div class="xprice">${priceHtml(x)}<p>${I('shield')}Pay with any UPI app · every order has its own code</p></div>`}
+   <div class="xprice">${priceHtml(x)}<p>${I('shield')}Pay with any UPI app · every order has its own code</p></div>
    ${d?`<h4 class="xh">About this test series</h4><div class="xdesc">${esc(d)}</div>`:''}
    ${F.length?`<h4 class="xh">What you get</h4><ul class="feat">${F.map(f=>`<li>${I('check')}<span>${esc(f)}</span></li>`).join('')}</ul>`:''}`;
 }
@@ -667,8 +665,7 @@ function vStep(){
    <dl><div><dt>Student name</dt><dd>${esc(ORD.name)}</dd></div><div><dt>Mobile no.</dt><dd>${esc(ORD.mobile)}</dd></div></dl>
    <dl><div><dt>Order code</dt><dd class="code">${esc(ORD.code)}</dd></div><div><dt>Paid from account of</dt><dd>${v(ORD.payer)}</dd></div><div><dt>UTR / Transaction ID</dt><dd class="code">${v(ORD.utr)}</dd></div></dl>
    <p class="sumok">${I('ok')}Payment done</p></div>
-   <div class="callout gold mt12">${I('info')}<span><b>Note:</b> Is message ke saath apna <b>payment screenshot</b> zaroor bhejein — verification ke liye.</span></div>
-   <p class="sm mut center mt12">${I('bookopen')} After we approve it, this series shows “Let's study” here in the store.</p>`,
+   <div class="callout gold mt12">${I('info')}<span><b>Note:</b> Is message ke saath apna <b>payment screenshot</b> zaroor bhejein — verification ke liye.</span></div>`,
    `${tg?`<a class="btn tg lg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(tgLink(msg))}">${I('tg')}Verify on Telegram</a>`:''}${wa?`<a class="btn wa lg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(waUrl(msg))}">${I('wa')}Verify on WhatsApp</a>`:''}`);
 }
 /* Edit (small box over the summary): name, mobile, account holder, UTR. Series and order code stay as they are.
@@ -721,10 +718,7 @@ async function loadMine(){
   const now=ME();if(!r.ok||!now||now.mobile!==me.mobile)return;   // no v37 yet, offline, or the number changed meanwhile
   const N={};(r.items||[]).forEach(id=>{if(ST.items.some(x=>x.id===id))N[id]=1});
   const k=Object.keys(N).sort().join();if(k===MINEK)return;
-  const seen=LSg('store_seen',{}),fresh=Object.keys(N).filter(id=>!seen[me.mobile+id]);
-  fresh.forEach(id=>seen[me.mobile+id]=1);LSs('store_seen',seen);
   MINE=N;MINEK=k;mineUi();
-  if(fresh.length){const x=ST.items.find(i=>i.id===fresh[0]);toast(`Payment verified — ${x.title} is unlocked. Tap “Let's study”`)}
 }
 // redraw everything that shows Buy now or Let's study
 function mineUi(){
@@ -742,11 +736,9 @@ const lastOrd=()=>{const o=LSg('store_ord',null),m=ME();return o&&m&&o.mobile===
 const ago=ms=>{const m=Math.max(1,Math.round((Date.now()-ms)/6e4));return m<60?plural(m,'minute')+' ago':plural(Math.round(m/60),'hour')+' ago'};
 function meDraw(){
   const box=$('#mebox'),m=ME();if(!box||!m)return;
-  const c=course(),o0=lastOrd(),o=o0&&!MINE[o0.item]?o0:null,N=LSg('store_notify',{}),soon=ST.items.filter(x=>N[x.id]===m.mobile&&x.buy_on===false),own=ST.items.filter(x=>MINE[x.id]);
+  const c=course(),o0=lastOrd(),o=o0&&!MINE[o0.item]?o0:null,N=LSg('store_notify',{}),soon=ST.items.filter(x=>N[x.id]===m.mobile&&x.buy_on===false);
   const T=[['','auto','Auto'],['light','sun','Light'],['dark','moon','Dark']],s=themeSaved();
   box.innerHTML=`<div class="card pf"><span class="av lg">${esc(m.name[0].toUpperCase())}</span><div class="grow"><h2>${esc(m.name)}</h2><p class="mono">${esc(m.mobile)}</p><span class="pill pri">${I(c==='jee'?'atom':'steth')}${CN[c]}</span></div><button class="btn line sm" data-me>${I('edit')}Edit</button></div>
-   ${own.length?`<div class="card mine"><div class="card-h"><span class="hic ok">${I('bookopen')}</span><div class="grow"><h3>Your test series</h3><p class="sub">Approved for ${esc(m.mobile)}. Sign in on the main website with this number and your access code.</p></div></div>
-     <div class="list">${own.map(x=>`<div class="li">${thumb(x)}<span class="grow"><b>${esc(x.title)}</b><small class="okt">${I('ok')}Unlocked</small></span><a class="btn study sm" href="${STUDY}" data-study="${esc(x.id)}">${I('bookopen')}Let's study</a></div>`).join('')}</div></div>`:''}
    ${o?`<div class="card ord"><div class="card-h"><span class="hic gold">${I('receipt')}</span><div class="grow"><h3>Your order</h3><p class="sub">Made ${ago(o.at)} · continue within 24 hours</p></div></div>
      <div class="ordb"><div class="grow"><b>${esc(o.title)}</b><span>${inr(o.amount)} · Order code <b class="code">${esc(o.code)}</b></span></div>
      ${o.payer?`<button class="btn pri" data-ordv>${I('shield')}Verify payment</button>`:`<button class="btn pri" data-buy="${esc(o.item)}">${I('card')}Continue payment</button>`}</div></div>`:''}
