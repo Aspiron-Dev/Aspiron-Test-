@@ -127,11 +127,6 @@ p{margin:0}
 .btn.goldl{background:var(--gold-soft);border-color:color-mix(in srgb,var(--gold) 40%,transparent);color:var(--gold)}
 .btn.goldl:hover{background:color-mix(in srgb,var(--gold) 20%,transparent)}
 .btn.okb{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 35%,transparent);color:var(--ok)}
-/* Let's study: a series this student bought and the admin approved */
-.btn.study{background:linear-gradient(135deg,#4ade80 0%,#16a34a 55%,#15803d 100%);border-color:transparent;color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 8px 22px rgba(22,163,74,.32)}
-.btn.study:hover{filter:brightness(1.07);background:linear-gradient(135deg,#4ade80 0%,#16a34a 55%,#15803d 100%)}
-.btn.study::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:40%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.38),transparent);transform:skewX(-20deg);pointer-events:none;opacity:0}
-@media (hover:hover){.btn.study:hover::after{animation:sweep .85s var(--ease)}}
 .btn.line{background:transparent;border-color:var(--line-2);color:var(--tx)}
 .btn.line:hover{background:var(--hover);border-color:var(--pri-line)}
 .btn.soft{background:var(--pri-soft);border-color:var(--pri-line);color:var(--pri)}
@@ -588,10 +583,6 @@ mark{background:color-mix(in srgb,var(--pri) 26%,transparent);color:inherit;bord
 .li .th{width:64px}
 .li b{display:block;font-weight:700}
 .li small{display:block;font-size:12px;color:var(--gold);font-weight:700}
-.li small.hs{color:var(--mut);font-weight:600}
-.li small.hs .code{color:var(--tx-2)}
-.li>.btn{flex:none}
-.hist .li{padding:12px 4px}
 @media (max-width:520px){.pf{flex-wrap:wrap}.pf .btn{width:100%}.ordb .btn{width:100%}}
 
 /* ---------- welcome screen (name, mobile, course) ---------- */

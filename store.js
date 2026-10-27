@@ -16,7 +16,7 @@ const I=(n,c)=>`<svg class="i${c?' '+c:''}" aria-hidden="true"><use href="#i-${n
 const bigI=(n,k)=>`<div class="bigi ${k||'pri'}">${I(n)}</div>`;
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const inr=n=>'₹'+Number(n||0).toLocaleString('en-IN');
-const plural=(n,w)=>`${n} ${w}${n>1?'s':''}`;
+const plural=(n,w)=>{n=Number(n)||0;return `${n} ${w}${n>1?'s':''}`};
 let ST={settings:{},items:[]},ORD=null,IT=null,LOADED=0;   // LOADED: 0 = loading, 1 = ready, -1 = could not load
 const LSg=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(_){return d}};
 const LSs=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(_){}};
@@ -78,7 +78,6 @@ function meSave(n,m,c){
   // "You will be notified" belongs to a number: redraw those buttons for the new one
   $$('[data-soon]').forEach(e=>{const x=ST.items.find(i=>i.id===e.dataset.soon);if(x)e.outerHTML=buyBtn(x,e.dataset.k)});
   if(MEM.course!==was)courseGo();
-  loadMine();
 }
 // the name everywhere: menu, menu bar, greeting, Profile
 function meUi(){
@@ -199,7 +198,7 @@ async function load(){
   if(ST.settings.payee)$$('[data-payee]').forEach(e=>e.textContent=ST.settings.payee);
   if(!ST.items.length){$('#kpis').hidden=true;$('#list').innerHTML=emptyHtml('rocket','New test series coming soon','Please check back in a little while.','gold');sDraw();rvAllDraw();return}
   draw(true);if(VW==='search')sDraw();if(VW==='me')meDraw();
-  loadSch();loadRv();loadXp();loadMine();
+  loadSch();loadRv();loadXp();
   if(ME()){liveCheck();jump()}
 }
 const emptyHtml=(ic,t,p,k,more)=>`<div class="card empty ${k||''}"><div class="e-ic">${I(ic)}</div><h4>${t}</h4><p>${p}</p>${more||''}</div>`;
@@ -209,7 +208,7 @@ function jump(){
   if(x&&ST.items.some(i=>i.id===x[1])){if(!history.state)under({xp:1},'#x='+x[1]);return explore(x[1])}
   const h=location.hash.match(/p=([0-9a-f-]{36})/);if(!h||!ST.items.some(i=>i.id===h[1]))return;
   const c=document.getElementById('p_'+h[1]);if(!c)return explore(h[1]);
-  HL.add(h[1]);c.classList.add('hl');setTimeout(()=>c.scrollIntoView({behavior:RM?'auto':'smooth',block:'center',inline:'center'}),250);
+  c.classList.add('hl');setTimeout(()=>c.scrollIntoView({behavior:RM?'auto':'smooth',block:'center',inline:'center'}),250);
 }
 
 /* ---------- Home: greeting, three numbers, then the course's series, one row per section, left to right ---------- */
@@ -278,7 +277,6 @@ function railsInit(){
   });
 }
 function railArrows(r){const b=r.parentNode.querySelectorAll('[data-rl]');if(b.length===2){b[0].disabled=r.scrollLeft<8;b[1].disabled=r.scrollLeft+r.clientWidth>r.scrollWidth-8}}
-const HL=new Set();   // cards to highlight (a shared link, a series that is live now); kept when the list is drawn again
 const okImg=u=>/^(data:image\/|https:\/\/)/.test(u||'');
 const offPct=x=>x.mrp&&x.mrp>x.price?Math.round((1-x.price/x.mrp)*100):0;
 const colOf=x=>COLORS.includes(x.color)?x.color:'blue';
@@ -292,15 +290,13 @@ function priceHtml(x,short){
 // a card: photo, name, rating (one thin line), short description, price, then Explore and Buy now (everything else is on the Explore page)
 function cardHtml(x,i){
   const off=offPct(x),ph=!okImg(x.image),bdg=x.badge||(x.buy_on===false?'Coming soon':'');
-  return `<article class="sc${HL.has(x.id)?' hl':''}" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,7)}"><div class="sc-m${ph?' isph':''}" data-view="${esc(x.id)}">${bdg?`<span class="tag${x.buy_on===false&&!x.badge?' soon':''}">${esc(bdg)}</span>`:''}${off?`<span class="tag off">${off}% off</span>`:''}${mediaHtml(x)}</div>
+  return `<article class="sc" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,7)}"><div class="sc-m${ph?' isph':''}" data-view="${esc(x.id)}">${bdg?`<span class="tag${x.buy_on===false&&!x.badge?' soon':''}">${esc(bdg)}</span>`:''}${off?`<span class="tag off">${off}% off</span>`:''}${mediaHtml(x)}</div>
    <div class="sc-b"><h3 class="sc-t${ph?' sr':''}">${esc(x.title)}</h3><div class="rlw" data-rline="${esc(x.id)}">${rLine(x.id)}</div>${x.subtitle?`<p class="sc-s">${esc(x.subtitle)}</p>`:''}
    ${priceHtml(x,1)}
    <div class="sc-a"><button class="btn line" data-explore="${esc(x.id)}">${I('compass')}Explore</button>${buyBtn(x,1)}</div></div></article>`;
 }
-// Buy now, or — for a series not launched yet (Buy now off in the admin panel) — "Coming soon · Notify me", or — for a
-// series bought on this phone and approved in the admin panel — "Let's study". short = on a card
+// Buy now, or — for a series not launched yet (Buy now off in the admin panel) — "Coming soon · Notify me". short = on a card
 function buyBtn(x,short){
-  if(MINE[x.id])return `<a class="btn study block" href="${STUDY}" data-study="${esc(x.id)}"${short?' data-k="1"':''}>${I('bookopen')}Let's study</a>`;
   if(x.buy_on!==false)return `<button class="btn pri block" data-buy="${esc(x.id)}">${I('bag')}${short?'Buy now':`Buy now · ${inr(x.price)}`}</button>`;
   const m=ME(),done=!!m&&LSg('store_notify',{})[x.id]===m.mobile;
   return `<button class="btn ${done?'okb':'goldl'} block" data-soon="${esc(x.id)}"${short?' data-k="1"':''}>${done?`${I('ok')}${short?'Notified':'You will be notified'}`:`${I('bell')}${short?'Notify me':'Coming soon · Notify me'}`}</button>`;
@@ -309,7 +305,7 @@ function buyBtn(x,short){
 /* ---------- Search: every word must match the name, short description, section, features or description ---------- */
 let Q='',QT=0,SF='',SLAST='';   // the words, the section chosen above the results ('' = all), the results shown last
 const norm=t=>String(t||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'');
-const hay=x=>norm([x.title,x.subtitle,x.section,x.badge,(x.features||[]).join(' '),(XD[x.id]||{}).description,x.course?CN[x.course]:''].join(' '));
+const hay=x=>norm([x.title,x.subtitle,x.section,x.badge,(x.features||[]).join(' '),(XD[x.id]||{}).description,CN[x.course]||''].join(' '));
 function find(q,L){const w=norm(q).split(/\s+/).filter(Boolean),t=norm(q);return L.filter(x=>{const h=hay(x);return w.every(v=>h.includes(v))}).sort((a,b)=>norm(b.title).includes(t)-norm(a.title).includes(t))}
 // the words found, marked in the text
 function hiLite(s,q){
@@ -328,11 +324,11 @@ function sDraw(){
   const box=$('#sres'),fl=$('#sfil');if(!box)return;
   if(LOADED===0){fl.innerHTML='';box.innerHTML='<div class="rows">'+'<div class="skel srk"></div>'.repeat(4)+'</div>';return}
   if(LOADED<0||!ST.items.length){fl.innerHTML='';box.innerHTML=emptyHtml('rocket','Nothing to search yet','Test series will show here as soon as they are added.','gold');return}
-  const c=course(),L=ST.items.filter(x=>forC(x,c)),G=groups(L);
-  if(SF&&!G.some(g=>g.k===SF))SF='';
-  fl.innerHTML=G.length>1?[['','All',L.length],...G.map(g=>[g.k,g.name||'Other',g.items.length])].map(([k,n,m])=>`<button class="chip${SF===k?' on':''}" data-sf="${esc(k)}">${esc(n)}<em>${m}</em></button>`).join(''):'';
-  const base=SF?L.filter(x=>String(x.section||'').trim().toLowerCase()===SF):L,q=Q.trim();
-  const R=q?find(q,base):G.filter(g=>!SF||g.k===SF).flatMap(g=>g.items);
+  const c=course(),L=ST.items.filter(x=>forC(x,c)),G=groups(L),gk=g=>g.k||'~';   // '~' = the series without a section ('' is "All")
+  if(SF&&!G.some(g=>gk(g)===SF))SF='';
+  fl.innerHTML=G.length>1?[['','All',L.length],...G.map(g=>[gk(g),g.name||'Other',g.items.length])].map(([k,n,m])=>`<button class="chip${SF===k?' on':''}" data-sf="${esc(k)}">${esc(n)}<em>${m}</em></button>`).join(''):'';
+  const base=SF?L.filter(x=>(String(x.section||'').trim().toLowerCase()||'~')===SF):L,q=Q.trim();
+  const R=q?find(q,base):G.filter(g=>!SF||gk(g)===SF).flatMap(g=>g.items);
   // the same results as before (another letter typed): no rising in again
   if(R.length){const ids=R.map(x=>x.id).join(),still=ids===SLAST;SLAST=ids;box.innerHTML=`<p class="resh">${q?`<b>${R.length} result${R.length>1?'s':''}</b> for “${esc(q)}”`:`<b>${R.length}</b> ${CN[c]} test series`}</p><div class="rows${still?' still':''}">${R.map((x,i)=>rowHtml(x,i,q)).join('')}</div>`;return}
   SLAST='';
@@ -419,26 +415,22 @@ function explore(id,tab){
   if(XP&&XP.id===id){XP.tab=tab||XP.tab;return xpDraw(true,true)}
   XP={id,tab:tab||'d'};XTI=XTABS.findIndex(t=>t[0]===XP.tab);if(!$('#xp'))XPF=document.activeElement;
   let p=$('#xp');if(!p){p=document.createElement('div');p.id='xp';p.className='xp';p.addEventListener('click',e=>{if(e.target===p)xpBack()});document.body.appendChild(p)}
+  const off=offPct(x);
   p.innerHTML=`<div class="xpd" role="dialog" aria-modal="true" aria-label="${esc(x.title)}"><div class="xtop"><div class="xph"><button class="ibtn" data-xback aria-label="Back">${I('back','xb-m')}${I('x','xb-d')}</button><b class="xpt">${esc(x.title)}</b><button class="ibtn" data-share="${esc(id)}" aria-label="Share" title="Share">${I('share')}</button></div>
     <div class="xtabs" role="tablist">${XTABS.map(([k,l])=>`<button role="tab" data-xtab="${k}">${l}</button>`).join('')}<span class="ink"></span></div></div>
    <div class="xbody" id="xbody"></div>
-   <div class="xbar">${xbarHtml(x)}</div></div>`;
+   <div class="xbar"><div class="xbp"><small>Price</small><span><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s>`:''}</span></div>${buyBtn(x,1)}</div></div>`;
   document.body.style.overflow='hidden';
   if(!/[#&]x=/.test(location.hash)){history[sh?'replaceState':'pushState']({xp:1},'','#x='+id);XH=true}
   xpDraw(true);
   requestAnimationFrame(()=>{const k=$('#xp .ink');if(k)k.classList.add('ready')});
   if(FINE)p.querySelector('[data-xback]').focus({preventScroll:true});
 }
-// the bar at the bottom: price + Buy now (or Let's study)
-function xbarHtml(x){
-  const off=offPct(x);
-  return `<div class="xbp"><small>Price</small><span><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s>`:''}</span></div>${buyBtn(x,1)}`;
-}
 // the line under the open tab slides to it
 function xpInk(){const t=$('[data-xtab].on'),k=$('#xp .ink');if(t&&k){k.style.setProperty('--x',t.offsetLeft+'px');k.style.setProperty('--w',t.offsetWidth+'px')}}
 function xpDraw(top,anim){
   const b=$('#xbody');if(!b||!XP)return;const x=ST.items.find(i=>i.id===XP.id);if(!x)return xpClose();
-  const n=(RV[x.id]||{}).count||0,ti=XTABS.findIndex(t=>t[0]===XP.tab),dx=Math.sign(ti-XTI)*26;XTI=ti;
+  const n=Number((RV[x.id]||{}).count)||0,ti=XTABS.findIndex(t=>t[0]===XP.tab),dx=Math.sign(ti-XTI)*26;XTI=ti;
   $$('[data-xtab]').forEach(t=>{const k=t.dataset.xtab,on=k===XP.tab;t.classList.toggle('on',on);t.setAttribute('aria-selected',on);if(k==='v')t.innerHTML=n?`Reviews <em>${n}</em>`:'Reviews'});
   xpInk();
   b.innerHTML=`<div class="xin${top||anim?' go':''}" style="--dx:${dx}px">${XP.tab==='r'?xpRes(x):XP.tab==='v'?xpRv(x):xpDesc(x)}</div>`;
@@ -463,7 +455,7 @@ addEventListener('popstate',e=>{
 function xpDesc(x){
   const d=String((XD[x.id]||{}).description||'').trim(),F=x.features||[],s=secName(x);
   return `<div class="ximg${okImg(x.image)?'':' isph'}">${mediaHtml(x)}</div>
-   ${x.course||s?`<div class="xcat">${x.course?`<span class="pill pri">${CN[x.course]}</span>`:''}${s?`<span class="pill">${esc(s)}</span>`:''}</div>`:''}<h2 class="xt">${esc(x.title)}</h2>${x.subtitle?`<p class="xsub">${esc(x.subtitle)}</p>`:''}
+   ${CN[x.course]||s?`<div class="xcat">${CN[x.course]?`<span class="pill pri">${CN[x.course]}</span>`:''}${s?`<span class="pill">${esc(s)}</span>`:''}</div>`:''}<h2 class="xt">${esc(x.title)}</h2>${x.subtitle?`<p class="xsub">${esc(x.subtitle)}</p>`:''}
    <div data-rvmini="${esc(x.id)}">${rvMini(x.id)}</div>
    <div class="xprice">${priceHtml(x)}<p>${I('shield')}Pay with any UPI app · every order has its own code</p></div>
    ${d?`<h4 class="xh">About this test series</h4><div class="xdesc">${esc(d)}</div>`:''}
@@ -489,7 +481,7 @@ function xpRv(x){
   if(!r||!r.count)return emptyHtml('chat','No reviews yet','Reviews are written by students whose series is unlocked.','gold');
   const L=(r.list||[]).slice().sort(rvSort);
   return `${rvSum(r.avg,r.count,r.stars||[])}<div class="rvlist">${L.map(v=>rvItem(v)).join('')}</div>
-   ${r.count>L.length?`<p class="sm mut center mt12">Showing ${L.length} of ${r.count} reviews.</p>`:''}${RVNOTE}`;
+   ${r.count>L.length?`<p class="sm mut center mt12">Showing ${L.length} of ${Number(r.count)||0} reviews.</p>`:''}${RVNOTE}`;
 }
 
 /* ---------- Coming soon: "Notify me" saves the student's name + mobile for this series (supabase_v31_store_soon.sql);
@@ -521,7 +513,7 @@ function liveCheck(){
   for(const id of Object.keys(n)){
     const x=ST.items.find(i=>i.id===id);if(x&&x.buy_on===false)continue;
     delete n[id];ch=true;
-    if(x){toast(`${x.title} is live now — tap Buy now`,'gift');HL.add(id);const c=document.getElementById('p_'+id);if(c)c.classList.add('hl')}
+    if(x){toast(`${x.title} is live now — tap Buy now`,'gift');const c=document.getElementById('p_'+id);if(c)c.classList.add('hl')}
   }
   if(ch)LSs('store_notify',n);
 }
@@ -548,12 +540,11 @@ function attachRef(order,mobile){
 }
 async function buy(id){
   IT=ST.items.find(i=>i.id===id);if(!IT)return;
-  if(MINE[id]){location.href=STUDY;return}
   if(IT.buy_on===false)return soonSheet(id);
   const me=ME();if(!me)return meSheet(()=>buy(id));
   const last=LSg('store_ord',null);
   // same series + same number ordered in the last 24 h → continue that order instead of making a new code
-  if(last&&last.item===id&&last.mobile===me.mobile&&Date.now()-last.at<864e5){attachRef(last.code,last.mobile);ORD=last;codeKeep(last);return payStep()}
+  if(last&&last.item===id&&last.mobile===me.mobile&&Date.now()-last.at<864e5){attachRef(last.code,last.mobile);ORD=last;return payStep()}
   const n=++BUYN;
   sheet(1,`<div class="ld"><span class="spin"></span><span>Getting your payment details…</span></div><div class="skel qrsk"></div>`);
   const r=await rpc('cbt_store_order',{p_item:IT.id,p_name:me.name,p_mobile:me.mobile});
@@ -563,7 +554,7 @@ async function buy(id){
     return sheet(1,`${bigI('alert','bad')}<p class="center lg b">${t}</p>
      <p class="for">For ${esc(me.name)} · ${esc(me.mobile)} · <a href="#" data-redo>change</a></p>`,`<button class="btn pri lg block" data-buy="${esc(id)}">${I('next')}Try again</button>`);
   }
-  ORD={item:IT.id,code:r.code,amount:r.amount,title:r.title,name:me.name,mobile:me.mobile,at:Date.now()};LSs('store_ord',ORD);codeKeep(ORD);attachRef(r.code,me.mobile);
+  ORD={item:IT.id,code:r.code,amount:r.amount,title:r.title,name:me.name,mobile:me.mobile,at:Date.now()};LSs('store_ord',ORD);attachRef(r.code,me.mobile);
   payStep();
 }
 const upiLink=()=>{const s=ST.settings,e=encodeURIComponent;return `upi://pay?pa=${s.upi}&pn=${e(s.payee||'')}&am=${ORD.amount}&cu=INR&tn=${e(ORD.code)}`};
@@ -693,7 +684,7 @@ async function editSave(){
     const r=await rpc('cbt_store_order',{p_item:ORD.item,p_name:n,p_mobile:m});
     if(!r.ok)return fail(r.error==='busy'?'Too many tries. Please wait a while and try again.':r.error==='network'?'No internet. Please try again.':'Could not save. Please try again.');
     meSave(n,m);
-    Object.assign(ORD,{code:r.code,amount:r.amount,title:r.title,name:n,mobile:m,at:Date.now()});codeKeep(ORD);attachRef(r.code,m);
+    Object.assign(ORD,{code:r.code,amount:r.amount,title:r.title,name:n,mobile:m,at:Date.now()});attachRef(r.code,m);
   }
   const r=await rpc('cbt_store_paid',{p_code:ORD.code,p_mobile:ORD.mobile,p_payer:py,p_utr:pu});
   if(!r.ok&&r.error==='network'){LSs('store_ord',ORD);return fail('No internet. Please try again.')}
@@ -701,57 +692,14 @@ async function editSave(){
   closeEdit();if($('.ov'))vStep();
 }
 
-/* ---------- Let's study: every series the student bought and the admin approved (Orders → Approve & unlock), or that
-   the team unlocked for them, shows "Let's study" instead of "Buy now". It opens the main website, where the student
-   signs in with mobile + access code. The server looks them up by mobile number (supabase_v38_store_purchases.sql,
-   with the purchase history for Profile); without v38 it answers for the order codes kept on this phone (v37), and
-   without either file the store keeps showing "Buy now". ---------- */
-const STUDY='index.html?from=store';
-let MINE={},MINEK='',HIST=[];   // the series the student can study (id → 1), the purchase history
-function codeKeep(o){
-  if(!o||!o.code)return;
-  const L=LSg('store_codes',[]).filter(x=>x.c!==o.code);L.unshift({c:o.code,i:o.item,m:o.mobile,at:o.at||Date.now()});LSs('store_codes',L.slice(0,20));
-}
-const myCodes=m=>LSg('store_codes',[]).filter(x=>x&&x.m===m);
-async function loadMine(){
-  const me=ME();if(!me||LOADED!==1)return;
-  let r=await rpc('cbt_store_purchases',{p_mobile:me.mobile});
-  if(!r.ok&&r.error==='missing'){const C=myCodes(me.mobile);r=C.length?await rpc('cbt_store_mine',{p_mobile:me.mobile,p_codes:C.map(x=>x.c)}):{ok:true,items:[]}}
-  const now=ME();if(!r.ok||!now||now.mobile!==me.mobile)return;   // offline, busy, or the number changed meanwhile
-  const N={};(r.items||[]).forEach(id=>{if(ST.items.some(x=>x.id===id))N[id]=1});
-  const H=Array.isArray(r.history)?r.history.filter(x=>x&&x.title):[];
-  const k=Object.keys(N).length||H.length?Object.keys(N).sort().join()+'|'+H.map(x=>(x.code||x.item)+(N[x.item]?'+':'')).join():'';
-  if(k===MINEK)return;   // nothing new: the page is not drawn again
-  MINE=N;HIST=H;MINEK=k;mineUi();
-}
-// redraw everything that shows Buy now or Let's study
-function mineUi(){
-  draw();if(VW==='search')sDraw();if(VW==='me')meDraw();
-  if(XP){const x=ST.items.find(i=>i.id===XP.id),b=$('#xp .xbar');if(x&&b)b.innerHTML=xbarHtml(x);xpDraw()}
-}
-// an order still waiting for the admin (last 14 days): checked again every minute; and whenever the student comes back to the store
-const waiting=()=>{const me=ME();return !!me&&myCodes(me.mobile).some(x=>!MINE[x.i]&&Date.now()-x.at<14*864e5)};
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadMine()});
-setInterval(()=>{if(document.visibilityState==='visible'&&waiting())loadMine()},60000);
-codeKeep(LSg('store_ord',null));   // an order made before v37
-// Profile: what the student bought (approved orders, then series unlocked by the team), newest first
-function histHtml(){
-  if(!HIST.length)return '';
-  const day=t=>new Date(t).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
-  return `<div class="card hist"><div class="card-h"><span class="hic ok">${I('receipt')}</span><div class="grow"><h3>Purchase history</h3><p class="sub">${HIST.length} test series · approved for ${esc((ME()||{}).mobile||'')}</p></div></div>
-   <div class="list">${HIST.map(h=>{const x=ST.items.find(i=>i.id===h.item),own=!!MINE[h.item];
-     return `<div class="li">${x?thumb(x):`<span class="th c-blue">${I('layers')}</span>`}<span class="grow"><b>${esc(h.title)}</b><small class="hs">${h.code?`${h.amount!=null?inr(h.amount)+' · ':''}${h.at?day(h.at)+' · ':''}<span class="code">${esc(h.code)}</span>`:'Unlocked by the team'}</small></span>${own?`<a class="btn study sm" href="${STUDY}" data-study="${esc(h.item)}">${I('bookopen')}Let's study</a>`:''}</div>`}).join('')}</div></div>`;
-}
-
 /* ---------- Profile: details, course, theme, the last order (24 h) and the "Notify me" list ---------- */
 const lastOrd=()=>{const o=LSg('store_ord',null),m=ME();return o&&m&&o.mobile===m.mobile&&Date.now()-o.at<864e5&&ST.items.some(i=>i.id===o.item)?o:null};
 const ago=ms=>{const m=Math.max(1,Math.round((Date.now()-ms)/6e4));return m<60?plural(m,'minute')+' ago':plural(Math.round(m/60),'hour')+' ago'};
 function meDraw(){
   const box=$('#mebox'),m=ME();if(!box||!m)return;
-  const c=course(),o0=lastOrd(),o=o0&&!MINE[o0.item]?o0:null,N=LSg('store_notify',{}),soon=ST.items.filter(x=>N[x.id]===m.mobile&&x.buy_on===false);
+  const c=course(),o=lastOrd(),N=LSg('store_notify',{}),soon=ST.items.filter(x=>N[x.id]===m.mobile&&x.buy_on===false);
   const T=[['','auto','Auto'],['light','sun','Light'],['dark','moon','Dark']],s=themeSaved();
   box.innerHTML=`<div class="card pf"><span class="av lg">${esc(m.name[0].toUpperCase())}</span><div class="grow"><h2>${esc(m.name)}</h2><p class="mono">${esc(m.mobile)}</p><span class="pill pri">${I(c==='jee'?'atom':'steth')}${CN[c]}</span></div><button class="btn line sm" data-me>${I('edit')}Edit</button></div>
-   ${histHtml()}
    ${o?`<div class="card ord"><div class="card-h"><span class="hic gold">${I('receipt')}</span><div class="grow"><h3>Your order</h3><p class="sub">Made ${ago(o.at)} · continue within 24 hours</p></div></div>
      <div class="ordb"><div class="grow"><b>${esc(o.title)}</b><span>${inr(o.amount)} · Order code <b class="code">${esc(o.code)}</b></span></div>
      ${o.payer?`<button class="btn pri" data-ordv>${I('shield')}Verify payment</button>`:`<button class="btn pri" data-buy="${esc(o.item)}">${I('card')}Continue payment</button>`}</div></div>`:''}
@@ -772,10 +720,12 @@ async function loadSch(){
   SCH={};(r.items||[]).forEach(x=>SCH[x.id]=x);
   if(XP)xpDraw();
 }
+// only a PDF or a photo (the admin panel allows nothing else); anything else is not opened, so a wrong file can never
+// run as a page of the store
+const FILET=['application/pdf','image/jpeg','image/png','image/webp'];
 function dataToBlob(d){
-  const m=d.match(/^data:([^;]+);base64,(.*)$/);if(!m)return null;
-  const b=atob(m[2]),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);
-  return new Blob([u],{type:m[1]});
+  const m=String(d||'').match(/^data:([a-z]+\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=\s]*)$/);if(!m||!FILET.includes(m[1]))return null;
+  try{const b=atob(m[2].replace(/\s+/g,'')),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return new Blob([u],{type:m[1]})}catch(_){return null}
 }
 let SCHURL=null,FILEN=0;
 // a schedule or demo test file: PDF (open / download) or photo
@@ -785,12 +735,13 @@ async function fileSheet(id,o){
   box('<div class="skel box"></div>');
   const r=await o.load();
   if(n!==FILEN||!$(`.ov [data-file="${n}"]`))return;   // closed, or another file opened meanwhile
-  if(!r.ok||!r.data)return box(emptyHtml('alert','Could not open it','Please try again.','bad'));
-  const blob=dataToBlob(r.data);if(SCHURL)URL.revokeObjectURL(SCHURL);SCHURL=blob?URL.createObjectURL(blob):r.data;
-  const pdf=r.mime==='application/pdf',fname=((o.name||'').replace(/[^\w\- ]+/g,'').trim()||'File')+(pdf?'.pdf':r.mime==='image/png'?'.png':'.jpg');
+  const blob=r.ok&&r.data?dataToBlob(r.data):null;
+  if(!blob)return box(emptyHtml('alert','Could not open it','Please try again.','bad'));
+  if(SCHURL)URL.revokeObjectURL(SCHURL);SCHURL=URL.createObjectURL(blob);
+  const pdf=blob.type==='application/pdf',fname=((o.name||'').replace(/[^\w\- ]+/g,'').trim()||'File')+(pdf?'.pdf':blob.type==='image/png'?'.png':blob.type==='image/webp'?'.webp':'.jpg');
   box(pdf?`<div class="pdfbox">${bigI(o.icon,o.k)}<b>${esc(o.name)}</b><small>PDF · ${fsize(o.size)}</small></div>`
-    :`<img class="fimg" src="${esc(r.data)}" alt="${esc(o.name)}">`,
-    `${pdf?`<a class="btn pri lg block" href="${SCHURL}" target="_blank" rel="noopener">${I('eye')}${o.open}</a>`:''}<a class="btn line lg block" href="${SCHURL}" download="${esc(fname)}">${I('dl')}Download</a>${buyBtn(x)}`);
+    :`<img class="fimg" src="${esc(r.data)}" alt="${esc(o.name)}">`,   // a checked photo (data: — what the page may show)
+    `${pdf?`<a class="btn pri lg block" href="${esc(SCHURL)}" target="_blank" rel="noopener">${I('eye')}${o.open}</a>`:''}<a class="btn line lg block" href="${esc(SCHURL)}" download="${esc(fname)}">${I('dl')}Download</a>${buyBtn(x)}`);
 }
 function schedule(id){const f=SCH[id];if(f)fileSheet(id,{icon:'cal',k:'gold',name:f.name||'Schedule',size:f.size,open:'Open schedule',load:()=>rpc('cbt_store_schedule',{p_item:id})})}
 function demo(id,n){const d=((XD[id]||{}).demos||[]).find(z=>z.slot===n);if(d&&d.size)fileSheet(id,{icon:'file',k:'vio',name:d.title||`Demo Test ${n}`,size:d.size,open:'Open demo test',load:()=>rpc('cbt_store_demo',{p_item:id,p_slot:n})})}
@@ -816,6 +767,7 @@ function rvItem(x,withTitle){
     ${x.body?`<p class="rvb">${esc(x.body)}</p>${long?'<button class="rvx" data-rvx aria-expanded="false">Read more</button>':''}`:`<p class="rvb rvno">Gave ${Number(x.rating)||0} star${x.rating>1?'s':''} · no written review</p>`}${x.reply?`<div class="rvr"><b><img src="icon-192.png" alt="">Reply from ${esc(CFG.SITE_NAME||'the team')}</b><p>${esc(x.reply)}</p></div>`:''}${withTitle&&x.title?`<button class="rvon" data-view="${esc(x.item)}">on <b>${esc(x.title)}</b>${I('cr')}</button>`:''}</article>`;
 }
 function rvSum(avg,count,S){
+  count=Number(count)||0;S=[0,1,2,3,4].map(i=>Number((S||[])[i])||0);
   return `<div class="rvsum"><div class="rvbig"><b>${Number(avg).toFixed(1)}</b>${stars(avg)}<span>${plural(count,'review')}</span></div>
     <div class="rvbars">${[5,4,3,2,1].map((n,i)=>`<div><span>${n}${I('star','fill')}</span><i><em style="width:${count?Math.round((S[i]||0)*100/count):0}%"></em></i><span>${S[i]||0}</span></div>`).join('')}</div></div>`;
 }

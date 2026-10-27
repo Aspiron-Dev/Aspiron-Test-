@@ -69,9 +69,6 @@ const DEV=devId();
 let AUTH=LS.get('cbt_auth',null);      // {mobile, code, name}
 let SOFF=0, BM=new Set(), SEC=null, FILEURL={}, opTimer=null;
 let CAT=null, T=null, P=null, timer=null, INTEST=false, palOpen=false, warned=false, RV=null, retryT=null, RET='#/', LOGINERR='';
-// opened from the store's "Let's study" (store.html → index.html?from=store): the login fills in the store's mobile number
-let FROMSTORE=/[?&]from=store(&|$)/.test(location.search);
-if(FROMSTORE)try{history.replaceState(history.state,'',location.pathname+location.hash)}catch(e){}
 
 /* ---------- api ---------- */
 async function rpc(fn,args,noAuth){
@@ -157,7 +154,6 @@ function login(mode){
    <div class="logo">${ic('key',26)}</div>
    <h1 style="font-size:26px">Student login</h1>
    <p class="mut" style="margin:6px 0 0">Enter your mobile number and the access code given to you.</p>
-   ${FROMSTORE?`<div class="storeok">${ic('book',20)}<span><b>Payment verified — welcome!</b> Sign in with your mobile number and the access code we sent you on WhatsApp / Telegram.</span></div>`:''}
    <label class="l">Mobile number</label><input type="tel" id="ph" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="10-digit mobile number">
    <label class="l">Access code</label><input type="text" id="cd" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="12" placeholder="e.g. A1B2-C3D4">
    <div id="er" class="sm err" style="min-height:22px;margin-top:8px">${esc(LOGINERR)}</div>
@@ -168,8 +164,6 @@ function login(mode){
   </div></div>`);
   LOGINERR='';
   ['ph','cd'].forEach(id=>$('#'+id).addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()}));
-  const sm=FROMSTORE?String((LS.get('store_me',null)||{}).mobile||''):'';
-  if(/^[6-9]\d{9}$/.test(sm)){$('#ph').value=sm;setTimeout(()=>{const c=$('#cd');if(c)c.focus()},300)}
 }
 async function doLogin(){
   const m=$('#ph').value.replace(/\D/g,'').slice(-10),c=$('#cd').value.replace(/[^0-9a-zA-Z]/g,'').toUpperCase();
@@ -181,7 +175,7 @@ async function doLogin(){
     if(r.error==='device_limit'&&typeof devPick==='function'&&await devPick(m,c,true))return;
     if(r.error==='device_limit'&&!$('#devhelp'))$('#er').insertAdjacentHTML('afterend',`<button id="devhelp" class="btn soft block" style="margin-bottom:10px" onclick="supportSheet('Hi, please reset the devices on my account. Mobile: ${m}')">📱 Ask for device reset</button>`);
     return}
-  AUTH={mobile:m,code:c,name:r.name};LS.set('cbt_auth',AUTH);FROMSTORE=false;LS.del('cbt_dping');updateHeader();CAT=null;
+  AUTH={mobile:m,code:c,name:r.name};LS.set('cbt_auth',AUTH);LS.del('cbt_dping');updateHeader();CAT=null;
   await flushPending();
   location.hash='#/';route();
 }
