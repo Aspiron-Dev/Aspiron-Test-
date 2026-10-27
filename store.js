@@ -78,6 +78,7 @@ function meSave(n,m,c){
   // "You will be notified" belongs to a number: redraw those buttons for the new one
   $$('[data-soon]').forEach(e=>{const x=ST.items.find(i=>i.id===e.dataset.soon);if(x)e.outerHTML=buyBtn(x,e.dataset.k)});
   if(MEM.course!==was)courseGo();
+  loadMine();
 }
 // the name everywhere: menu, menu bar, greeting, Profile
 function meUi(){
@@ -198,7 +199,7 @@ async function load(){
   if(ST.settings.payee)$$('[data-payee]').forEach(e=>e.textContent=ST.settings.payee);
   if(!ST.items.length){$('#kpis').hidden=true;$('#list').innerHTML=emptyHtml('rocket','New test series coming soon','Please check back in a little while.','gold');sDraw();rvAllDraw();return}
   draw(true);if(VW==='search')sDraw();if(VW==='me')meDraw();
-  loadSch();loadRv();loadXp();
+  loadSch();loadRv();loadXp();loadMine();
   if(ME()){liveCheck();jump()}
 }
 const emptyHtml=(ic,t,p,k,more)=>`<div class="card empty ${k||''}"><div class="e-ic">${I(ic)}</div><h4>${t}</h4><p>${p}</p>${more||''}</div>`;
@@ -289,14 +290,16 @@ function priceHtml(x,short){
 }
 // a card: photo, name, rating (one thin line), short description, price, then Explore and Buy now (everything else is on the Explore page)
 function cardHtml(x,i){
-  const off=offPct(x),ph=!okImg(x.image),bdg=x.badge||(x.buy_on===false?'Coming soon':'');
-  return `<article class="sc" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,7)}"><div class="sc-m${ph?' isph':''}" data-view="${esc(x.id)}">${bdg?`<span class="tag${x.buy_on===false&&!x.badge?' soon':''}">${esc(bdg)}</span>`:''}${off?`<span class="tag off">${off}% off</span>`:''}${mediaHtml(x)}</div>
+  const own=!!MINE[x.id],off=own?0:offPct(x),ph=!okImg(x.image),bdg=own?'':x.badge||(x.buy_on===false?'Coming soon':'');
+  return `<article class="sc${own?' own':''}" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,7)}"><div class="sc-m${ph?' isph':''}" data-view="${esc(x.id)}">${own?`<span class="tag own">${I('ok')}Unlocked</span>`:''}${bdg?`<span class="tag${x.buy_on===false&&!x.badge?' soon':''}">${esc(bdg)}</span>`:''}${off?`<span class="tag off">${off}% off</span>`:''}${mediaHtml(x)}</div>
    <div class="sc-b"><h3 class="sc-t${ph?' sr':''}">${esc(x.title)}</h3><div class="rlw" data-rline="${esc(x.id)}">${rLine(x.id)}</div>${x.subtitle?`<p class="sc-s">${esc(x.subtitle)}</p>`:''}
-   ${priceHtml(x,1)}
+   ${own?`<div class="pr"><span class="pill ok">${I('ok')}Unlocked for you</span></div>`:priceHtml(x,1)}
    <div class="sc-a"><button class="btn line" data-explore="${esc(x.id)}">${I('compass')}Explore</button>${buyBtn(x,1)}</div></div></article>`;
 }
-// Buy now, or — for a series not launched yet (Buy now off in the admin panel) — "Coming soon · Notify me". short = on a card
+// Buy now, or — for a series not launched yet (Buy now off in the admin panel) — "Coming soon · Notify me", or — for a
+// series bought on this phone and approved in the admin panel — "Let's study". short = on a card
 function buyBtn(x,short){
+  if(MINE[x.id])return `<a class="btn study block" href="${STUDY}" data-study="${esc(x.id)}"${short?' data-k="1"':''}>${I('bookopen')}Let's study</a>`;
   if(x.buy_on!==false)return `<button class="btn pri block" data-buy="${esc(x.id)}">${I('bag')}${short?'Buy now':`Buy now · ${inr(x.price)}`}</button>`;
   const m=ME(),done=!!m&&LSg('store_notify',{})[x.id]===m.mobile;
   return `<button class="btn ${done?'okb':'goldl'} block" data-soon="${esc(x.id)}"${short?' data-k="1"':''}>${done?`${I('ok')}${short?'Notified':'You will be notified'}`:`${I('bell')}${short?'Notify me':'Coming soon · Notify me'}`}</button>`;
@@ -304,7 +307,7 @@ function buyBtn(x,short){
 
 /* ---------- Search: every word must match the name, short description, section, features or description ---------- */
 let Q='',QT=0,SF='',SLAST='';   // the words, the section chosen above the results ('' = all), the results shown last
-const norm=t=>String(t||'').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'');
+const norm=t=>String(t||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'');
 const hay=x=>norm([x.title,x.subtitle,x.section,x.badge,(x.features||[]).join(' '),(XD[x.id]||{}).description,x.course?CN[x.course]:''].join(' '));
 function find(q,L){const w=norm(q).split(/\s+/).filter(Boolean),t=norm(q);return L.filter(x=>{const h=hay(x);return w.every(v=>h.includes(v))}).sort((a,b)=>norm(b.title).includes(t)-norm(a.title).includes(t))}
 // the words found, marked in the text
@@ -318,7 +321,7 @@ function rowHtml(x,i,q){
   const r=RV[x.id],s=secName(x),off=offPct(x);
   return `<div class="srow" style="--i:${Math.min(i,9)}"><button class="sr-main" data-view="${esc(x.id)}">${thumb(x)}<span class="grow"><b class="sr-t">${hiLite(x.title,q)}</b>
     <span class="sr-m">${r&&r.count?`<span class="rt">${I('star','fill')}${Number(r.avg).toFixed(1)}<small>(${r.count})</small></span>`:''}${s?`<span>${esc(s)}</span>`:''}${x.buy_on===false?'<span class="pill gold">Coming soon</span>':''}</span>
-    ${x.subtitle?`<span class="sr-s">${hiLite(x.subtitle,q)}</span>`:''}</span><span class="sr-p"><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s>`:''}</span>${I('cr','sr-c')}</button><div class="sr-buy">${buyBtn(x,1)}</div></div>`;
+    ${x.subtitle?`<span class="sr-s">${hiLite(x.subtitle,q)}</span>`:''}</span><span class="sr-p">${MINE[x.id]?`<span class="pill ok">${I('ok')}Unlocked</span>`:`<b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s>`:''}`}</span>${I('cr','sr-c')}</button><div class="sr-buy">${buyBtn(x,1)}</div></div>`;
 }
 function sDraw(){
   const box=$('#sres'),fl=$('#sfil');if(!box)return;
@@ -415,16 +418,21 @@ function explore(id,tab){
   if(XP&&XP.id===id){XP.tab=tab||XP.tab;return xpDraw(true,true)}
   XP={id,tab:tab||'d'};XTI=XTABS.findIndex(t=>t[0]===XP.tab);if(!$('#xp'))XPF=document.activeElement;
   let p=$('#xp');if(!p){p=document.createElement('div');p.id='xp';p.className='xp';p.addEventListener('click',e=>{if(e.target===p)xpBack()});document.body.appendChild(p)}
-  const off=offPct(x);
   p.innerHTML=`<div class="xpd" role="dialog" aria-modal="true" aria-label="${esc(x.title)}"><div class="xtop"><div class="xph"><button class="ibtn" data-xback aria-label="Back">${I('back','xb-m')}${I('x','xb-d')}</button><b class="xpt">${esc(x.title)}</b><button class="ibtn" data-share="${esc(id)}" aria-label="Share" title="Share">${I('share')}</button></div>
     <div class="xtabs" role="tablist">${XTABS.map(([k,l])=>`<button role="tab" data-xtab="${k}">${l}</button>`).join('')}<span class="ink"></span></div></div>
    <div class="xbody" id="xbody"></div>
-   <div class="xbar"><div class="xbp"><small>Price</small><span><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s>`:''}</span></div>${buyBtn(x,1)}</div></div>`;
+   <div class="xbar">${xbarHtml(x)}</div></div>`;
   document.body.style.overflow='hidden';
   if(!/[#&]x=/.test(location.hash)){history[sh?'replaceState':'pushState']({xp:1},'','#x='+id);XH=true}
   xpDraw(true);
   requestAnimationFrame(()=>{const k=$('#xp .ink');if(k)k.classList.add('ready')});
   if(FINE)p.querySelector('[data-xback]').focus({preventScroll:true});
+}
+// the bar at the bottom: price + Buy now, or "Unlocked" + Let's study
+function xbarHtml(x){
+  const off=offPct(x);
+  return `${MINE[x.id]?`<div class="xbp"><small>Your series</small><span class="own">${I('ok')}Unlocked</span></div>`
+    :`<div class="xbp"><small>Price</small><span><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s>`:''}</span></div>`}${buyBtn(x,1)}`;
 }
 // the line under the open tab slides to it
 function xpInk(){const t=$('[data-xtab].on'),k=$('#xp .ink');if(t&&k){k.style.setProperty('--x',t.offsetLeft+'px');k.style.setProperty('--w',t.offsetWidth+'px')}}
@@ -457,7 +465,8 @@ function xpDesc(x){
   return `<div class="ximg${okImg(x.image)?'':' isph'}">${mediaHtml(x)}</div>
    ${x.course||s?`<div class="xcat">${x.course?`<span class="pill pri">${CN[x.course]}</span>`:''}${s?`<span class="pill">${esc(s)}</span>`:''}</div>`:''}<h2 class="xt">${esc(x.title)}</h2>${x.subtitle?`<p class="xsub">${esc(x.subtitle)}</p>`:''}
    <div data-rvmini="${esc(x.id)}">${rvMini(x.id)}</div>
-   <div class="xprice">${priceHtml(x)}<p>${I('shield')}Pay with any UPI app · every order has its own code</p></div>
+   ${MINE[x.id]?`<div class="xprice own"><b>${I('ok')}Unlocked for you</b><p>Tap “Let's study” and sign in on the main website with your mobile number and the access code we sent you.</p></div>`
+     :`<div class="xprice">${priceHtml(x)}<p>${I('shield')}Pay with any UPI app · every order has its own code</p></div>`}
    ${d?`<h4 class="xh">About this test series</h4><div class="xdesc">${esc(d)}</div>`:''}
    ${F.length?`<h4 class="xh">What you get</h4><ul class="feat">${F.map(f=>`<li>${I('check')}<span>${esc(f)}</span></li>`).join('')}</ul>`:''}`;
 }
@@ -540,11 +549,12 @@ function attachRef(order,mobile){
 }
 async function buy(id){
   IT=ST.items.find(i=>i.id===id);if(!IT)return;
+  if(MINE[id]){location.href=STUDY;return}
   if(IT.buy_on===false)return soonSheet(id);
   const me=ME();if(!me)return meSheet(()=>buy(id));
   const last=LSg('store_ord',null);
   // same series + same number ordered in the last 24 h → continue that order instead of making a new code
-  if(last&&last.item===id&&last.mobile===me.mobile&&Date.now()-last.at<864e5){attachRef(last.code,last.mobile);ORD=last;return payStep()}
+  if(last&&last.item===id&&last.mobile===me.mobile&&Date.now()-last.at<864e5){attachRef(last.code,last.mobile);ORD=last;codeKeep(last);return payStep()}
   const n=++BUYN;
   sheet(1,`<div class="ld"><span class="spin"></span><span>Getting your payment details…</span></div><div class="skel qrsk"></div>`);
   const r=await rpc('cbt_store_order',{p_item:IT.id,p_name:me.name,p_mobile:me.mobile});
@@ -554,7 +564,7 @@ async function buy(id){
     return sheet(1,`${bigI('alert','bad')}<p class="center lg b">${t}</p>
      <p class="for">For ${esc(me.name)} · ${esc(me.mobile)} · <a href="#" data-redo>change</a></p>`,`<button class="btn pri lg block" data-buy="${esc(id)}">${I('next')}Try again</button>`);
   }
-  ORD={item:IT.id,code:r.code,amount:r.amount,title:r.title,name:me.name,mobile:me.mobile,at:Date.now()};LSs('store_ord',ORD);attachRef(r.code,me.mobile);
+  ORD={item:IT.id,code:r.code,amount:r.amount,title:r.title,name:me.name,mobile:me.mobile,at:Date.now()};LSs('store_ord',ORD);codeKeep(ORD);attachRef(r.code,me.mobile);
   payStep();
 }
 const upiLink=()=>{const s=ST.settings,e=encodeURIComponent;return `upi://pay?pa=${s.upi}&pn=${e(s.payee||'')}&am=${ORD.amount}&cu=INR&tn=${e(ORD.code)}`};
@@ -657,7 +667,8 @@ function vStep(){
    <dl><div><dt>Student name</dt><dd>${esc(ORD.name)}</dd></div><div><dt>Mobile no.</dt><dd>${esc(ORD.mobile)}</dd></div></dl>
    <dl><div><dt>Order code</dt><dd class="code">${esc(ORD.code)}</dd></div><div><dt>Paid from account of</dt><dd>${v(ORD.payer)}</dd></div><div><dt>UTR / Transaction ID</dt><dd class="code">${v(ORD.utr)}</dd></div></dl>
    <p class="sumok">${I('ok')}Payment done</p></div>
-   <div class="callout gold mt12">${I('info')}<span><b>Note:</b> Is message ke saath apna <b>payment screenshot</b> zaroor bhejein — verification ke liye.</span></div>`,
+   <div class="callout gold mt12">${I('info')}<span><b>Note:</b> Is message ke saath apna <b>payment screenshot</b> zaroor bhejein — verification ke liye.</span></div>
+   <p class="sm mut center mt12">${I('bookopen')} After we approve it, this series shows “Let's study” here in the store.</p>`,
    `${tg?`<a class="btn tg lg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(tgLink(msg))}">${I('tg')}Verify on Telegram</a>`:''}${wa?`<a class="btn wa lg block vbtn" data-verify target="_blank" rel="noopener" href="${esc(waUrl(msg))}">${I('wa')}Verify on WhatsApp</a>`:''}`);
 }
 /* Edit (small box over the summary): name, mobile, account holder, UTR. Series and order code stay as they are.
@@ -684,7 +695,7 @@ async function editSave(){
     const r=await rpc('cbt_store_order',{p_item:ORD.item,p_name:n,p_mobile:m});
     if(!r.ok)return fail(r.error==='busy'?'Too many tries. Please wait a while and try again.':r.error==='network'?'No internet. Please try again.':'Could not save. Please try again.');
     meSave(n,m);
-    Object.assign(ORD,{code:r.code,amount:r.amount,title:r.title,name:n,mobile:m,at:Date.now()});attachRef(r.code,m);
+    Object.assign(ORD,{code:r.code,amount:r.amount,title:r.title,name:n,mobile:m,at:Date.now()});codeKeep(ORD);attachRef(r.code,m);
   }
   const r=await rpc('cbt_store_paid',{p_code:ORD.code,p_mobile:ORD.mobile,p_payer:py,p_utr:pu});
   if(!r.ok&&r.error==='network'){LSs('store_ord',ORD);return fail('No internet. Please try again.')}
@@ -692,14 +703,50 @@ async function editSave(){
   closeEdit();if($('.ov'))vStep();
 }
 
+/* ---------- Let's study: a series bought on this phone and approved in the admin panel (Orders → Approve & unlock)
+   shows "Let's study" instead of "Buy now". It opens the main website, where the student signs in with mobile + access
+   code. The phone keeps its order codes; the server answers only for orders that are approved and still unlocked
+   (supabase_v37_store_study.sql). Without that file the store keeps showing "Buy now". ---------- */
+const STUDY='index.html?from=store';
+let MINE={},MINEK='';   // the approved series (id → 1)
+function codeKeep(o){
+  if(!o||!o.code)return;
+  const L=LSg('store_codes',[]).filter(x=>x.c!==o.code);L.unshift({c:o.code,i:o.item,m:o.mobile,at:o.at||Date.now()});LSs('store_codes',L.slice(0,20));
+}
+const myCodes=m=>LSg('store_codes',[]).filter(x=>x&&x.m===m);
+async function loadMine(){
+  const me=ME();if(!me||LOADED!==1)return;
+  const C=myCodes(me.mobile);if(!C.length&&!MINEK)return;
+  const r=C.length?await rpc('cbt_store_mine',{p_mobile:me.mobile,p_codes:C.map(x=>x.c)}):{ok:true,items:[]};
+  const now=ME();if(!r.ok||!now||now.mobile!==me.mobile)return;   // no v37 yet, offline, or the number changed meanwhile
+  const N={};(r.items||[]).forEach(id=>{if(ST.items.some(x=>x.id===id))N[id]=1});
+  const k=Object.keys(N).sort().join();if(k===MINEK)return;
+  const seen=LSg('store_seen',{}),fresh=Object.keys(N).filter(id=>!seen[me.mobile+id]);
+  fresh.forEach(id=>seen[me.mobile+id]=1);LSs('store_seen',seen);
+  MINE=N;MINEK=k;mineUi();
+  if(fresh.length){const x=ST.items.find(i=>i.id===fresh[0]);toast(`Payment verified — ${x.title} is unlocked. Tap “Let's study”`)}
+}
+// redraw everything that shows Buy now or Let's study
+function mineUi(){
+  draw();if(VW==='search')sDraw();if(VW==='me')meDraw();
+  if(XP){const x=ST.items.find(i=>i.id===XP.id),b=$('#xp .xbar');if(x&&b)b.innerHTML=xbarHtml(x);xpDraw()}
+}
+// an order still waiting for the admin (last 14 days): checked again when the student comes back to the store and every minute
+const waiting=()=>{const me=ME();return !!me&&myCodes(me.mobile).some(x=>!MINE[x.i]&&Date.now()-x.at<14*864e5)};
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&(waiting()||MINEK))loadMine()});
+setInterval(()=>{if(document.visibilityState==='visible'&&waiting())loadMine()},60000);
+codeKeep(LSg('store_ord',null));   // an order made before this update
+
 /* ---------- Profile: details, course, theme, the last order (24 h) and the "Notify me" list ---------- */
 const lastOrd=()=>{const o=LSg('store_ord',null),m=ME();return o&&m&&o.mobile===m.mobile&&Date.now()-o.at<864e5&&ST.items.some(i=>i.id===o.item)?o:null};
 const ago=ms=>{const m=Math.max(1,Math.round((Date.now()-ms)/6e4));return m<60?plural(m,'minute')+' ago':plural(Math.round(m/60),'hour')+' ago'};
 function meDraw(){
   const box=$('#mebox'),m=ME();if(!box||!m)return;
-  const c=course(),o=lastOrd(),N=LSg('store_notify',{}),soon=ST.items.filter(x=>N[x.id]===m.mobile&&x.buy_on===false);
+  const c=course(),o0=lastOrd(),o=o0&&!MINE[o0.item]?o0:null,N=LSg('store_notify',{}),soon=ST.items.filter(x=>N[x.id]===m.mobile&&x.buy_on===false),own=ST.items.filter(x=>MINE[x.id]);
   const T=[['','auto','Auto'],['light','sun','Light'],['dark','moon','Dark']],s=themeSaved();
   box.innerHTML=`<div class="card pf"><span class="av lg">${esc(m.name[0].toUpperCase())}</span><div class="grow"><h2>${esc(m.name)}</h2><p class="mono">${esc(m.mobile)}</p><span class="pill pri">${I(c==='jee'?'atom':'steth')}${CN[c]}</span></div><button class="btn line sm" data-me>${I('edit')}Edit</button></div>
+   ${own.length?`<div class="card mine"><div class="card-h"><span class="hic ok">${I('bookopen')}</span><div class="grow"><h3>Your test series</h3><p class="sub">Approved for ${esc(m.mobile)}. Sign in on the main website with this number and your access code.</p></div></div>
+     <div class="list">${own.map(x=>`<div class="li">${thumb(x)}<span class="grow"><b>${esc(x.title)}</b><small class="okt">${I('ok')}Unlocked</small></span><a class="btn study sm" href="${STUDY}" data-study="${esc(x.id)}">${I('bookopen')}Let's study</a></div>`).join('')}</div></div>`:''}
    ${o?`<div class="card ord"><div class="card-h"><span class="hic gold">${I('receipt')}</span><div class="grow"><h3>Your order</h3><p class="sub">Made ${ago(o.at)} · continue within 24 hours</p></div></div>
      <div class="ordb"><div class="grow"><b>${esc(o.title)}</b><span>${inr(o.amount)} · Order code <b class="code">${esc(o.code)}</b></span></div>
      ${o.payer?`<button class="btn pri" data-ordv>${I('shield')}Verify payment</button>`:`<button class="btn pri" data-buy="${esc(o.item)}">${I('card')}Continue payment</button>`}</div></div>`:''}

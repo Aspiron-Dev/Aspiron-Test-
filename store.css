@@ -127,6 +127,11 @@ p{margin:0}
 .btn.goldl{background:var(--gold-soft);border-color:color-mix(in srgb,var(--gold) 40%,transparent);color:var(--gold)}
 .btn.goldl:hover{background:color-mix(in srgb,var(--gold) 20%,transparent)}
 .btn.okb{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 35%,transparent);color:var(--ok)}
+/* Let's study: a series this student bought and the admin approved */
+.btn.study{background:linear-gradient(135deg,#4ade80 0%,#16a34a 55%,#15803d 100%);border-color:transparent;color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 8px 22px rgba(22,163,74,.32)}
+.btn.study:hover{filter:brightness(1.07);background:linear-gradient(135deg,#4ade80 0%,#16a34a 55%,#15803d 100%)}
+.btn.study::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:40%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.38),transparent);transform:skewX(-20deg);pointer-events:none;opacity:0}
+@media (hover:hover){.btn.study:hover::after{animation:sweep .85s var(--ease)}}
 .btn.line{background:transparent;border-color:var(--line-2);color:var(--tx)}
 .btn.line:hover{background:var(--hover);border-color:var(--pri-line)}
 .btn.soft{background:var(--pri-soft);border-color:var(--pri-line);color:var(--pri)}
@@ -385,6 +390,11 @@ button.kpi:active{transform:scale(.98)}
 .tag{position:absolute;z-index:2;top:10px;left:10px;display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#fff;background:rgba(6,10,19,.72);border:1px solid rgba(255,255,255,.16)}
 .tag.off{left:auto;right:10px;background:var(--grad-pri);color:#03201b;border-color:transparent}
 .tag.soon{background:var(--grad-gold);color:#2a1d05;border-color:transparent}
+.tag.own{gap:5px;background:#16a34a;border-color:transparent;letter-spacing:.06em}
+.tag.own .i{width:13px;height:13px;stroke-width:2.4}
+.sc.own{border-color:color-mix(in srgb,var(--ok) 35%,transparent)}
+.pr .pill.ok{height:28px;padding:0 12px;font-size:12.5px}
+.pr .pill.ok .i{width:15px;height:15px}
 .sc-b{display:flex;flex-direction:column;gap:6px;padding:14px 16px 16px;flex:1;min-width:0}
 .sc-t{font-size:15.5px;font-weight:750;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .sc-s{color:var(--mut);font-size:13px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -583,6 +593,11 @@ mark{background:color-mix(in srgb,var(--pri) 26%,transparent);color:inherit;bord
 .li .th{width:64px}
 .li b{display:block;font-weight:700}
 .li small{display:block;font-size:12px;color:var(--gold);font-weight:700}
+.li small.okt{display:flex;align-items:center;gap:4px;color:var(--ok)}
+.li small.okt .i{width:13px;height:13px}
+.li>.btn{flex:none}
+.card.mine{border-color:color-mix(in srgb,var(--ok) 35%,transparent);background:linear-gradient(135deg,var(--ok-soft),var(--solid) 60%)}
+.sr-p .pill .i{width:12px;height:12px}
 @media (max-width:520px){.pf{flex-wrap:wrap}.pf .btn{width:100%}.ordb .btn{width:100%}}
 
 /* ---------- welcome screen (name, mobile, course) ---------- */
@@ -729,6 +744,8 @@ html:not(.has-me) body{overflow:hidden}
 .xbp b{font-family:var(--font-display);font-size:25px;font-weight:600;letter-spacing:-.02em}
 .xbp s{font-size:13px;color:var(--faint);font-weight:600}
 .xbar .btn{--h:50px;flex:1;max-width:340px;margin-left:auto;border-radius:14px;font-size:15px}
+.xbp .own{display:flex;align-items:center;gap:6px;margin-top:4px;color:var(--ok);font-weight:800;font-size:16px}
+.xbp .own .i{width:18px;height:18px}
 @media (min-width:760px){.xb-m{display:none}.xb-d{display:block}}
 @media (max-width:759px){.xp::before,.xpx::before{display:none}.xpd{border-left:0;box-shadow:none}}
 .ximg{position:relative;aspect-ratio:16/9;border-radius:18px;overflow:hidden;background:var(--solid-3);box-shadow:var(--shadow)}
@@ -741,6 +758,10 @@ html:not(.has-me) body{overflow:hidden}
 .xprice .pr b{font-size:32px}
 .xprice p{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12.5px;color:var(--mut)}
 .xprice p .i{width:15px;height:15px;color:var(--ok)}
+.xprice.own{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 35%,transparent)}
+.xprice.own b{display:flex;align-items:center;gap:8px;color:var(--ok);font-size:17px;font-weight:800}
+.xprice.own b .i{width:20px;height:20px}
+.xprice.own p{color:var(--tx-2)}
 .xh{font-size:11.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin:26px 0 10px}
 .xin>.xh:first-child{margin-top:4px}
 .xdesc{white-space:pre-wrap;color:var(--tx-2);font-size:14.5px;line-height:1.7;overflow-wrap:anywhere}
