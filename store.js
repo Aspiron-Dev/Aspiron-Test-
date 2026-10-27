@@ -209,7 +209,7 @@ function jump(){
   if(x&&ST.items.some(i=>i.id===x[1])){if(!history.state)under({xp:1},'#x='+x[1]);return explore(x[1])}
   const h=location.hash.match(/p=([0-9a-f-]{36})/);if(!h||!ST.items.some(i=>i.id===h[1]))return;
   const c=document.getElementById('p_'+h[1]);if(!c)return explore(h[1]);
-  c.classList.add('hl');setTimeout(()=>c.scrollIntoView({behavior:RM?'auto':'smooth',block:'center',inline:'center'}),250);
+  HL.add(h[1]);c.classList.add('hl');setTimeout(()=>c.scrollIntoView({behavior:RM?'auto':'smooth',block:'center',inline:'center'}),250);
 }
 
 /* ---------- Home: greeting, three numbers, then the course's series, one row per section, left to right ---------- */
@@ -278,6 +278,7 @@ function railsInit(){
   });
 }
 function railArrows(r){const b=r.parentNode.querySelectorAll('[data-rl]');if(b.length===2){b[0].disabled=r.scrollLeft<8;b[1].disabled=r.scrollLeft+r.clientWidth>r.scrollWidth-8}}
+const HL=new Set();   // cards to highlight (a shared link, a series that is live now); kept when the list is drawn again
 const okImg=u=>/^(data:image\/|https:\/\/)/.test(u||'');
 const offPct=x=>x.mrp&&x.mrp>x.price?Math.round((1-x.price/x.mrp)*100):0;
 const colOf=x=>COLORS.includes(x.color)?x.color:'blue';
@@ -291,7 +292,7 @@ function priceHtml(x,short){
 // a card: photo, name, rating (one thin line), short description, price, then Explore and Buy now (everything else is on the Explore page)
 function cardHtml(x,i){
   const off=offPct(x),ph=!okImg(x.image),bdg=x.badge||(x.buy_on===false?'Coming soon':'');
-  return `<article class="sc" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,7)}"><div class="sc-m${ph?' isph':''}" data-view="${esc(x.id)}">${bdg?`<span class="tag${x.buy_on===false&&!x.badge?' soon':''}">${esc(bdg)}</span>`:''}${off?`<span class="tag off">${off}% off</span>`:''}${mediaHtml(x)}</div>
+  return `<article class="sc${HL.has(x.id)?' hl':''}" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,7)}"><div class="sc-m${ph?' isph':''}" data-view="${esc(x.id)}">${bdg?`<span class="tag${x.buy_on===false&&!x.badge?' soon':''}">${esc(bdg)}</span>`:''}${off?`<span class="tag off">${off}% off</span>`:''}${mediaHtml(x)}</div>
    <div class="sc-b"><h3 class="sc-t${ph?' sr':''}">${esc(x.title)}</h3><div class="rlw" data-rline="${esc(x.id)}">${rLine(x.id)}</div>${x.subtitle?`<p class="sc-s">${esc(x.subtitle)}</p>`:''}
    ${priceHtml(x,1)}
    <div class="sc-a"><button class="btn line" data-explore="${esc(x.id)}">${I('compass')}Explore</button>${buyBtn(x,1)}</div></div></article>`;
@@ -520,7 +521,7 @@ function liveCheck(){
   for(const id of Object.keys(n)){
     const x=ST.items.find(i=>i.id===id);if(x&&x.buy_on===false)continue;
     delete n[id];ch=true;
-    if(x){toast(`${x.title} is live now — tap Buy now`,'gift');const c=document.getElementById('p_'+id);if(c)c.classList.add('hl')}
+    if(x){toast(`${x.title} is live now — tap Buy now`,'gift');HL.add(id);const c=document.getElementById('p_'+id);if(c)c.classList.add('hl')}
   }
   if(ch)LSs('store_notify',n);
 }
@@ -700,12 +701,13 @@ async function editSave(){
   closeEdit();if($('.ov'))vStep();
 }
 
-/* ---------- Let's study: a series bought on this phone and approved in the admin panel (Orders → Approve & unlock)
-   shows "Let's study" instead of "Buy now". It opens the main website, where the student signs in with mobile + access
-   code. The phone keeps its order codes; the server answers only for orders that are approved and still unlocked
-   (supabase_v37_store_study.sql). Without that file the store keeps showing "Buy now". ---------- */
+/* ---------- Let's study: every series the student bought and the admin approved (Orders → Approve & unlock), or that
+   the team unlocked for them, shows "Let's study" instead of "Buy now". It opens the main website, where the student
+   signs in with mobile + access code. The server looks them up by mobile number (supabase_v38_store_purchases.sql,
+   with the purchase history for Profile); without v38 it answers for the order codes kept on this phone (v37), and
+   without either file the store keeps showing "Buy now". ---------- */
 const STUDY='index.html?from=store';
-let MINE={},MINEK='';   // the approved series (id → 1)
+let MINE={},MINEK='',HIST=[];   // the series the student can study (id → 1), the purchase history
 function codeKeep(o){
   if(!o||!o.code)return;
   const L=LSg('store_codes',[]).filter(x=>x.c!==o.code);L.unshift({c:o.code,i:o.item,m:o.mobile,at:o.at||Date.now()});LSs('store_codes',L.slice(0,20));
@@ -713,23 +715,33 @@ function codeKeep(o){
 const myCodes=m=>LSg('store_codes',[]).filter(x=>x&&x.m===m);
 async function loadMine(){
   const me=ME();if(!me||LOADED!==1)return;
-  const C=myCodes(me.mobile);if(!C.length&&!MINEK)return;
-  const r=C.length?await rpc('cbt_store_mine',{p_mobile:me.mobile,p_codes:C.map(x=>x.c)}):{ok:true,items:[]};
-  const now=ME();if(!r.ok||!now||now.mobile!==me.mobile)return;   // no v37 yet, offline, or the number changed meanwhile
+  let r=await rpc('cbt_store_purchases',{p_mobile:me.mobile});
+  if(!r.ok&&r.error==='missing'){const C=myCodes(me.mobile);r=C.length?await rpc('cbt_store_mine',{p_mobile:me.mobile,p_codes:C.map(x=>x.c)}):{ok:true,items:[]}}
+  const now=ME();if(!r.ok||!now||now.mobile!==me.mobile)return;   // offline, busy, or the number changed meanwhile
   const N={};(r.items||[]).forEach(id=>{if(ST.items.some(x=>x.id===id))N[id]=1});
-  const k=Object.keys(N).sort().join();if(k===MINEK)return;
-  MINE=N;MINEK=k;mineUi();
+  const H=Array.isArray(r.history)?r.history.filter(x=>x&&x.title):[];
+  const k=Object.keys(N).length||H.length?Object.keys(N).sort().join()+'|'+H.map(x=>(x.code||x.item)+(N[x.item]?'+':'')).join():'';
+  if(k===MINEK)return;   // nothing new: the page is not drawn again
+  MINE=N;HIST=H;MINEK=k;mineUi();
 }
 // redraw everything that shows Buy now or Let's study
 function mineUi(){
   draw();if(VW==='search')sDraw();if(VW==='me')meDraw();
   if(XP){const x=ST.items.find(i=>i.id===XP.id),b=$('#xp .xbar');if(x&&b)b.innerHTML=xbarHtml(x);xpDraw()}
 }
-// an order still waiting for the admin (last 14 days): checked again when the student comes back to the store and every minute
+// an order still waiting for the admin (last 14 days): checked again every minute; and whenever the student comes back to the store
 const waiting=()=>{const me=ME();return !!me&&myCodes(me.mobile).some(x=>!MINE[x.i]&&Date.now()-x.at<14*864e5)};
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&(waiting()||MINEK))loadMine()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')loadMine()});
 setInterval(()=>{if(document.visibilityState==='visible'&&waiting())loadMine()},60000);
-codeKeep(LSg('store_ord',null));   // an order made before this update
+codeKeep(LSg('store_ord',null));   // an order made before v37
+// Profile: what the student bought (approved orders, then series unlocked by the team), newest first
+function histHtml(){
+  if(!HIST.length)return '';
+  const day=t=>new Date(t).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+  return `<div class="card hist"><div class="card-h"><span class="hic ok">${I('receipt')}</span><div class="grow"><h3>Purchase history</h3><p class="sub">${HIST.length} test series · approved for ${esc((ME()||{}).mobile||'')}</p></div></div>
+   <div class="list">${HIST.map(h=>{const x=ST.items.find(i=>i.id===h.item),own=!!MINE[h.item];
+     return `<div class="li">${x?thumb(x):`<span class="th c-blue">${I('layers')}</span>`}<span class="grow"><b>${esc(h.title)}</b><small class="hs">${h.code?`${h.amount!=null?inr(h.amount)+' · ':''}${h.at?day(h.at)+' · ':''}<span class="code">${esc(h.code)}</span>`:'Unlocked by the team'}</small></span>${own?`<a class="btn study sm" href="${STUDY}" data-study="${esc(h.item)}">${I('bookopen')}Let's study</a>`:''}</div>`}).join('')}</div></div>`;
+}
 
 /* ---------- Profile: details, course, theme, the last order (24 h) and the "Notify me" list ---------- */
 const lastOrd=()=>{const o=LSg('store_ord',null),m=ME();return o&&m&&o.mobile===m.mobile&&Date.now()-o.at<864e5&&ST.items.some(i=>i.id===o.item)?o:null};
@@ -739,6 +751,7 @@ function meDraw(){
   const c=course(),o0=lastOrd(),o=o0&&!MINE[o0.item]?o0:null,N=LSg('store_notify',{}),soon=ST.items.filter(x=>N[x.id]===m.mobile&&x.buy_on===false);
   const T=[['','auto','Auto'],['light','sun','Light'],['dark','moon','Dark']],s=themeSaved();
   box.innerHTML=`<div class="card pf"><span class="av lg">${esc(m.name[0].toUpperCase())}</span><div class="grow"><h2>${esc(m.name)}</h2><p class="mono">${esc(m.mobile)}</p><span class="pill pri">${I(c==='jee'?'atom':'steth')}${CN[c]}</span></div><button class="btn line sm" data-me>${I('edit')}Edit</button></div>
+   ${histHtml()}
    ${o?`<div class="card ord"><div class="card-h"><span class="hic gold">${I('receipt')}</span><div class="grow"><h3>Your order</h3><p class="sub">Made ${ago(o.at)} · continue within 24 hours</p></div></div>
      <div class="ordb"><div class="grow"><b>${esc(o.title)}</b><span>${inr(o.amount)} · Order code <b class="code">${esc(o.code)}</b></span></div>
      ${o.payer?`<button class="btn pri" data-ordv>${I('shield')}Verify payment</button>`:`<button class="btn pri" data-buy="${esc(o.item)}">${I('card')}Continue payment</button>`}</div></div>`:''}
