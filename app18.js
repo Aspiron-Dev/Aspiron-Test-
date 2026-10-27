@@ -106,11 +106,18 @@ pushSync=async function(force){
    It comes back on the next app open; Skip hides it for this open only. */
 let SETUPSHOWN=false;
 const setupIos=()=>/iphone|ipad|ipod/i.test(navigator.userAgent);
-function setupNeed(){
+// installed = opened as the app, or Chrome says this site's app is on the phone, or it was installed here before
+async function setupInstalled(){
+  if(isStandalone()){LS.set('cbt_installed',1);return true}
+  try{if(navigator.getInstalledRelatedApps){const a=await navigator.getInstalledRelatedApps();if(a.length){LS.set('cbt_installed',1);return true}}}catch(e){}
+  return !!LS.get('cbt_installed',0);
+}
+async function setupNeed(){
   const need=[];
-  if(!isStandalone())need.push('install');
+  const inst=await setupInstalled();
+  if(!inst)need.push('install');
   // on iPhone, notifications work only from the installed app
-  if(npSup()&&!npOn()&&(!setupIos()||isStandalone()))need.push('notify');
+  if(npSup()&&!npOn()&&(!setupIos()||inst))need.push('notify');
   return need;
 }
 function setupRow(k){
@@ -118,11 +125,11 @@ function setupRow(k){
   const blocked=Notification.permission==='denied';
   return `<div class="setrow"><span class="setico">${ic('bell',20)}</span><div class="grow"><b>Turn on notifications</b><div class="sm mut">Get test alerts and notices even when the app is closed.</div></div><button class="btn sm" onclick="setupDo('notify')">${blocked?'How?':'Turn on'}</button></div>`;
 }
-function setupPop(){
+async function setupPop(){
   if(SETUPSHOWN||INTEST||!AUTH||npInApp()||$('#layer').innerHTML||location.hash.replace('#','').replace('/','')!=='')return;
-  const need=setupNeed();
-  if(!need.length)return;
   SETUPSHOWN=true;
+  const need=await setupNeed();
+  if(!need.length){SETUPSHOWN=false;return}
   sheet(`<h2 class="sht">Two quick things</h2><p class="sm mut" style="margin:0 0 12px">So you never miss a test or a result. Each takes one tap.</p>
     ${need.map(setupRow).join('')}
     <div class="row" style="margin-top:14px"><button class="btn ghost block" onclick="closeModal()">Skip</button></div>`,'setup');
@@ -134,4 +141,5 @@ function setupDo(k){
 npAskMaybe=function(){clearTimeout(NPASKT);NPASKT=setTimeout(setupPop,2500)};
 // the small install bar at the bottom is replaced by the pop-up above
 showInstall=function(){};
+window.addEventListener('appinstalled',()=>LS.set('cbt_installed',1));
 ;(window.__p=window.__p||{})['app18']=2;
