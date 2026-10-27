@@ -16,7 +16,7 @@ const I=(n,c)=>`<svg class="i${c?' '+c:''}" aria-hidden="true"><use href="#i-${n
 const bigI=(n,k)=>`<div class="bigi ${k||'pri'}">${I(n)}</div>`;
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const inr=n=>'₹'+Number(n||0).toLocaleString('en-IN');
-const plural=(n,w)=>`${n} ${w}${n>1?'s':''}`;
+const plural=(n,w)=>{n=Number(n)||0;return `${n} ${w}${n>1?'s':''}`};
 let ST={settings:{},items:[]},ORD=null,IT=null,LOADED=0;   // LOADED: 0 = loading, 1 = ready, -1 = could not load
 const LSg=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(_){return d}};
 const LSs=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(_){}};
@@ -304,8 +304,8 @@ function buyBtn(x,short){
 
 /* ---------- Search: every word must match the name, short description, section, features or description ---------- */
 let Q='',QT=0,SF='',SLAST='';   // the words, the section chosen above the results ('' = all), the results shown last
-const norm=t=>String(t||'').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'');
-const hay=x=>norm([x.title,x.subtitle,x.section,x.badge,(x.features||[]).join(' '),(XD[x.id]||{}).description,x.course?CN[x.course]:''].join(' '));
+const norm=t=>String(t||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'');
+const hay=x=>norm([x.title,x.subtitle,x.section,x.badge,(x.features||[]).join(' '),(XD[x.id]||{}).description,CN[x.course]||''].join(' '));
 function find(q,L){const w=norm(q).split(/\s+/).filter(Boolean),t=norm(q);return L.filter(x=>{const h=hay(x);return w.every(v=>h.includes(v))}).sort((a,b)=>norm(b.title).includes(t)-norm(a.title).includes(t))}
 // the words found, marked in the text
 function hiLite(s,q){
@@ -324,11 +324,11 @@ function sDraw(){
   const box=$('#sres'),fl=$('#sfil');if(!box)return;
   if(LOADED===0){fl.innerHTML='';box.innerHTML='<div class="rows">'+'<div class="skel srk"></div>'.repeat(4)+'</div>';return}
   if(LOADED<0||!ST.items.length){fl.innerHTML='';box.innerHTML=emptyHtml('rocket','Nothing to search yet','Test series will show here as soon as they are added.','gold');return}
-  const c=course(),L=ST.items.filter(x=>forC(x,c)),G=groups(L);
-  if(SF&&!G.some(g=>g.k===SF))SF='';
-  fl.innerHTML=G.length>1?[['','All',L.length],...G.map(g=>[g.k,g.name||'Other',g.items.length])].map(([k,n,m])=>`<button class="chip${SF===k?' on':''}" data-sf="${esc(k)}">${esc(n)}<em>${m}</em></button>`).join(''):'';
-  const base=SF?L.filter(x=>String(x.section||'').trim().toLowerCase()===SF):L,q=Q.trim();
-  const R=q?find(q,base):G.filter(g=>!SF||g.k===SF).flatMap(g=>g.items);
+  const c=course(),L=ST.items.filter(x=>forC(x,c)),G=groups(L),gk=g=>g.k||'~';   // '~' = the series without a section ('' is "All")
+  if(SF&&!G.some(g=>gk(g)===SF))SF='';
+  fl.innerHTML=G.length>1?[['','All',L.length],...G.map(g=>[gk(g),g.name||'Other',g.items.length])].map(([k,n,m])=>`<button class="chip${SF===k?' on':''}" data-sf="${esc(k)}">${esc(n)}<em>${m}</em></button>`).join(''):'';
+  const base=SF?L.filter(x=>(String(x.section||'').trim().toLowerCase()||'~')===SF):L,q=Q.trim();
+  const R=q?find(q,base):G.filter(g=>!SF||gk(g)===SF).flatMap(g=>g.items);
   // the same results as before (another letter typed): no rising in again
   if(R.length){const ids=R.map(x=>x.id).join(),still=ids===SLAST;SLAST=ids;box.innerHTML=`<p class="resh">${q?`<b>${R.length} result${R.length>1?'s':''}</b> for “${esc(q)}”`:`<b>${R.length}</b> ${CN[c]} test series`}</p><div class="rows${still?' still':''}">${R.map((x,i)=>rowHtml(x,i,q)).join('')}</div>`;return}
   SLAST='';
@@ -430,7 +430,7 @@ function explore(id,tab){
 function xpInk(){const t=$('[data-xtab].on'),k=$('#xp .ink');if(t&&k){k.style.setProperty('--x',t.offsetLeft+'px');k.style.setProperty('--w',t.offsetWidth+'px')}}
 function xpDraw(top,anim){
   const b=$('#xbody');if(!b||!XP)return;const x=ST.items.find(i=>i.id===XP.id);if(!x)return xpClose();
-  const n=(RV[x.id]||{}).count||0,ti=XTABS.findIndex(t=>t[0]===XP.tab),dx=Math.sign(ti-XTI)*26;XTI=ti;
+  const n=Number((RV[x.id]||{}).count)||0,ti=XTABS.findIndex(t=>t[0]===XP.tab),dx=Math.sign(ti-XTI)*26;XTI=ti;
   $$('[data-xtab]').forEach(t=>{const k=t.dataset.xtab,on=k===XP.tab;t.classList.toggle('on',on);t.setAttribute('aria-selected',on);if(k==='v')t.innerHTML=n?`Reviews <em>${n}</em>`:'Reviews'});
   xpInk();
   b.innerHTML=`<div class="xin${top||anim?' go':''}" style="--dx:${dx}px">${XP.tab==='r'?xpRes(x):XP.tab==='v'?xpRv(x):xpDesc(x)}</div>`;
@@ -455,7 +455,7 @@ addEventListener('popstate',e=>{
 function xpDesc(x){
   const d=String((XD[x.id]||{}).description||'').trim(),F=x.features||[],s=secName(x);
   return `<div class="ximg${okImg(x.image)?'':' isph'}">${mediaHtml(x)}</div>
-   ${x.course||s?`<div class="xcat">${x.course?`<span class="pill pri">${CN[x.course]}</span>`:''}${s?`<span class="pill">${esc(s)}</span>`:''}</div>`:''}<h2 class="xt">${esc(x.title)}</h2>${x.subtitle?`<p class="xsub">${esc(x.subtitle)}</p>`:''}
+   ${CN[x.course]||s?`<div class="xcat">${CN[x.course]?`<span class="pill pri">${CN[x.course]}</span>`:''}${s?`<span class="pill">${esc(s)}</span>`:''}</div>`:''}<h2 class="xt">${esc(x.title)}</h2>${x.subtitle?`<p class="xsub">${esc(x.subtitle)}</p>`:''}
    <div data-rvmini="${esc(x.id)}">${rvMini(x.id)}</div>
    <div class="xprice">${priceHtml(x)}<p>${I('shield')}Pay with any UPI app · every order has its own code</p></div>
    ${d?`<h4 class="xh">About this test series</h4><div class="xdesc">${esc(d)}</div>`:''}
@@ -481,7 +481,7 @@ function xpRv(x){
   if(!r||!r.count)return emptyHtml('chat','No reviews yet','Reviews are written by students whose series is unlocked.','gold');
   const L=(r.list||[]).slice().sort(rvSort);
   return `${rvSum(r.avg,r.count,r.stars||[])}<div class="rvlist">${L.map(v=>rvItem(v)).join('')}</div>
-   ${r.count>L.length?`<p class="sm mut center mt12">Showing ${L.length} of ${r.count} reviews.</p>`:''}${RVNOTE}`;
+   ${r.count>L.length?`<p class="sm mut center mt12">Showing ${L.length} of ${Number(r.count)||0} reviews.</p>`:''}${RVNOTE}`;
 }
 
 /* ---------- Coming soon: "Notify me" saves the student's name + mobile for this series (supabase_v31_store_soon.sql);
@@ -720,10 +720,12 @@ async function loadSch(){
   SCH={};(r.items||[]).forEach(x=>SCH[x.id]=x);
   if(XP)xpDraw();
 }
+// only a PDF or a photo (the admin panel allows nothing else); anything else is not opened, so a wrong file can never
+// run as a page of the store
+const FILET=['application/pdf','image/jpeg','image/png','image/webp'];
 function dataToBlob(d){
-  const m=d.match(/^data:([^;]+);base64,(.*)$/);if(!m)return null;
-  const b=atob(m[2]),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);
-  return new Blob([u],{type:m[1]});
+  const m=String(d||'').match(/^data:([a-z]+\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=\s]*)$/);if(!m||!FILET.includes(m[1]))return null;
+  try{const b=atob(m[2].replace(/\s+/g,'')),u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return new Blob([u],{type:m[1]})}catch(_){return null}
 }
 let SCHURL=null,FILEN=0;
 // a schedule or demo test file: PDF (open / download) or photo
@@ -733,12 +735,13 @@ async function fileSheet(id,o){
   box('<div class="skel box"></div>');
   const r=await o.load();
   if(n!==FILEN||!$(`.ov [data-file="${n}"]`))return;   // closed, or another file opened meanwhile
-  if(!r.ok||!r.data)return box(emptyHtml('alert','Could not open it','Please try again.','bad'));
-  const blob=dataToBlob(r.data);if(SCHURL)URL.revokeObjectURL(SCHURL);SCHURL=blob?URL.createObjectURL(blob):r.data;
-  const pdf=r.mime==='application/pdf',fname=((o.name||'').replace(/[^\w\- ]+/g,'').trim()||'File')+(pdf?'.pdf':r.mime==='image/png'?'.png':'.jpg');
+  const blob=r.ok&&r.data?dataToBlob(r.data):null;
+  if(!blob)return box(emptyHtml('alert','Could not open it','Please try again.','bad'));
+  if(SCHURL)URL.revokeObjectURL(SCHURL);SCHURL=URL.createObjectURL(blob);
+  const pdf=blob.type==='application/pdf',fname=((o.name||'').replace(/[^\w\- ]+/g,'').trim()||'File')+(pdf?'.pdf':blob.type==='image/png'?'.png':blob.type==='image/webp'?'.webp':'.jpg');
   box(pdf?`<div class="pdfbox">${bigI(o.icon,o.k)}<b>${esc(o.name)}</b><small>PDF · ${fsize(o.size)}</small></div>`
-    :`<img class="fimg" src="${esc(r.data)}" alt="${esc(o.name)}">`,
-    `${pdf?`<a class="btn pri lg block" href="${SCHURL}" target="_blank" rel="noopener">${I('eye')}${o.open}</a>`:''}<a class="btn line lg block" href="${SCHURL}" download="${esc(fname)}">${I('dl')}Download</a>${buyBtn(x)}`);
+    :`<img class="fimg" src="${esc(r.data)}" alt="${esc(o.name)}">`,   // a checked photo (data: — what the page may show)
+    `${pdf?`<a class="btn pri lg block" href="${esc(SCHURL)}" target="_blank" rel="noopener">${I('eye')}${o.open}</a>`:''}<a class="btn line lg block" href="${esc(SCHURL)}" download="${esc(fname)}">${I('dl')}Download</a>${buyBtn(x)}`);
 }
 function schedule(id){const f=SCH[id];if(f)fileSheet(id,{icon:'cal',k:'gold',name:f.name||'Schedule',size:f.size,open:'Open schedule',load:()=>rpc('cbt_store_schedule',{p_item:id})})}
 function demo(id,n){const d=((XD[id]||{}).demos||[]).find(z=>z.slot===n);if(d&&d.size)fileSheet(id,{icon:'file',k:'vio',name:d.title||`Demo Test ${n}`,size:d.size,open:'Open demo test',load:()=>rpc('cbt_store_demo',{p_item:id,p_slot:n})})}
@@ -764,6 +767,7 @@ function rvItem(x,withTitle){
     ${x.body?`<p class="rvb">${esc(x.body)}</p>${long?'<button class="rvx" data-rvx aria-expanded="false">Read more</button>':''}`:`<p class="rvb rvno">Gave ${Number(x.rating)||0} star${x.rating>1?'s':''} · no written review</p>`}${x.reply?`<div class="rvr"><b><img src="icon-192.png" alt="">Reply from ${esc(CFG.SITE_NAME||'the team')}</b><p>${esc(x.reply)}</p></div>`:''}${withTitle&&x.title?`<button class="rvon" data-view="${esc(x.item)}">on <b>${esc(x.title)}</b>${I('cr')}</button>`:''}</article>`;
 }
 function rvSum(avg,count,S){
+  count=Number(count)||0;S=[0,1,2,3,4].map(i=>Number((S||[])[i])||0);
   return `<div class="rvsum"><div class="rvbig"><b>${Number(avg).toFixed(1)}</b>${stars(avg)}<span>${plural(count,'review')}</span></div>
     <div class="rvbars">${[5,4,3,2,1].map((n,i)=>`<div><span>${n}${I('star','fill')}</span><i><em style="width:${count?Math.round((S[i]||0)*100/count):0}%"></em></i><span>${S[i]||0}</span></div>`).join('')}</div></div>`;
 }

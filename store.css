@@ -568,7 +568,7 @@ mark{background:color-mix(in srgb,var(--pri) 26%,transparent);color:inherit;bord
 /* ---------- Profile ---------- */
 #mebox{display:flex;flex-direction:column;gap:16px}
 .pf{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,color-mix(in srgb,var(--pri-2) 16%,var(--solid)),var(--solid) 65%)}
-.pf h2{font-family:var(--font-display);font-size:25px;font-weight:600;letter-spacing:-.01em;overflow-wrap:anywhere}
+.pf h2{font-size:22px;font-weight:800;letter-spacing:-.01em;line-height:1.25;overflow-wrap:anywhere}
 .pf .mono{color:var(--mut);margin:2px 0 8px}
 .pf .av{box-shadow:0 12px 28px color-mix(in srgb,var(--pri-2) 35%,transparent)}
 .pgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
