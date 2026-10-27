@@ -35,7 +35,7 @@ async function A(action,data){
     const r=await fetch(API+'/rest/v1/rpc/cbt_admin',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_pw:PW,p_action:action,p_data:data||{}})});
     if(!r.ok)return{ok:false,error:'server'};
     const j=await r.json();
-    if(!j.ok&&['invalid','locked','not_set'].includes(j.error))gate(j.error);
+    if(!j.ok&&['invalid','locked','not_set','need_2fa','signed_out','expired'].includes(j.error))gate(j.error);
     return j;
   }catch(e){toast('No internet connection');return{ok:false,error:'network'}}
 }
@@ -44,15 +44,23 @@ async function A(action,data){
 function gate(err){
   $('#gear').style.display='none';closeModal();
   if(!cloud){$('#root').innerHTML=`<div class="card empty"><b>Not connected.</b><p class="sm">Fill in config.js with your Supabase URL and key.</p></div>`;return}
-  const msg=err==='invalid'?'Wrong password.':err==='locked'?'Too many wrong attempts. Try again in 15 minutes.':'';
+  const msg=err==='invalid'?'Wrong password.':err==='locked'?'Too many wrong attempts. Try again in 15 minutes.':err==='otp_required'?'Enter the 6-digit code from your authenticator app.':err==='otp_invalid'?'Wrong code. Use the newest code in the app.':err==='otp_locked'?'Too many wrong codes. Try again in 15 minutes.':err==='need_2fa'||err==='signed_out'||err==='expired'?'Please sign in again.':'';
+  const otp=['otp_required','otp_invalid','otp_locked'].includes(err);
   $('#root').innerHTML=`<div class="card login" style="max-width:400px;margin:6vh auto 0"><h2>Admin sign in</h2><p class="mut sm" style="margin:4px 0 0">Enter your admin password.</p>
    ${err==='not_set'?`<div class="banner"><div class="t sm"><b>Admin password is not set yet.</b><br>In Supabase open <b>SQL Editor → New query</b>, type <b>select cbt_private.set_admin_password('your-password');</b> with your own password (min 8 characters), and press Run.</div></div>`:''}
    <label class="l">Password</label><input type="password" id="pw" autocomplete="current-password" onkeydown="if(event.key==='Enter')unlock()">
+   <div id="otpw" style="display:${otp?'':'none'}"><label class="l">Code from your authenticator app</label><input id="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="11" onkeydown="if(event.key==='Enter')unlock()"></div>
    <div class="sm err" style="min-height:22px;margin-top:6px">${msg}</div>
    <button class="btn block" onclick="unlock()">Sign in</button></div>`;
 }
 async function unlock(){
-  PW=$('#pw').value;if(!PW)return;
+  const p=$('#pw').value;if(!p)return;
+  const o=$('#otp')?$('#otp').value.trim():'';
+  // a sign-in session (supabase_v35) when the database has it: needed when two-step sign-in is on
+  let l=null;
+  try{const q=await fetch(API+'/rest/v1/rpc/cbt_admin_login',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(Object.assign({p_user:'',p_pw:p,p_device:'Backup panel'},o?{p_otp:o}:{}))});l=q.ok?await q.json():null}catch(e){}
+  if(l&&!l.ok){gate(l.error);$('#pw').value=p;const f=$(['otp_required','otp_invalid','otp_locked'].includes(l.error)?'#otp':'#pw');if(f)f.focus();return}
+  PW=l&&l.ok?l.token:p;
   const r=await A('ping');
   if(r.ok){try{sessionStorage.setItem('adm_pw',PW)}catch(e){}shell()}
 }

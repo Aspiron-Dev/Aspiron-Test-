@@ -122,13 +122,18 @@ declare
   h text; sl text; lk bigint; f cbt_private.admin_fails%rowtype;
   hd json := coalesce(nullif(current_setting('request.headers', true), '')::json, '{}'::json);
   v_raw text := btrim(coalesce(hd->>'cf-connecting-ip', hd->>'x-real-ip', split_part(coalesce(hd->>'x-forwarded-for', ''), ',', 1), ''));
-  v_ip text := md5('cbt-admin|' || v_raw); v_e text;
+  v_ip text := md5('cbt-admin|' || v_raw); v_e text; v_2fa boolean;
 begin
   -- a v35 sign-in session ("as1.…") is checked by v35, never counted as a wrong password (safe to re-run this file)
   if coalesce(p_pw,'') like 'as1.%' then
     if to_regprocedure('cbt_private.admin_session_ok(text)') is null then return 'invalid'; end if;
     execute 'select cbt_private.admin_session_ok($1)' into v_e using p_pw;
     return v_e;
+  end if;
+  -- two-step sign-in on for the owner (v35): the password alone opens nothing (safe to re-run this file)
+  if coalesce(current_setting('cbt.pwlogin', true), '') <> '1' and to_regclass('cbt_private.admin_totp') is not null then
+    execute 'select exists (select 1 from cbt_private.admin_totp where acct = ''owner'' and enabled)' into v_2fa;
+    if v_2fa then return 'need_2fa'; end if;
   end if;
   select value into h from settings where key = 'admin_hash';
   if h is null then return 'not_set'; end if;

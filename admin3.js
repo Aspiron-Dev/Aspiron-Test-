@@ -227,7 +227,7 @@ async function settings(){
    <button class="btn block" onclick="changePw()">Change password</button>
    <button class="btn ghost block" style="margin-top:14px" onclick="signOutAdmin()">Sign out</button>`,true);
 }
-function signOutAdmin(){PW='';try{sessionStorage.removeItem('adm_pw')}catch(e){}closeModal();gate()}
+function signOutAdmin(){if(/^as1\./.test(PW))fetch(API+'/rest/v1/rpc/cbt_admin_logout',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify({p_pw:PW})}).catch(()=>{});PW='';try{sessionStorage.removeItem('adm_pw')}catch(e){}closeModal();gate()}
 
 /* ---------- boot ----------
    The password check starts at once, but the panel is drawn only after every admin*.js has loaded:

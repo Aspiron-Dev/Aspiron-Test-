@@ -19,7 +19,7 @@ AX.boot = async () => {
   const r = await check();
   if (r.ok) return start();
   // only a real sign-in problem forgets the session; no internet or a server hiccup keeps it for the next try
-  if (['invalid', 'signed_out', 'expired', 'disabled', 'not_set', 'locked'].includes(r.error)) { S.clear(); return login(r.error); }
+  if (['invalid', 'signed_out', 'expired', 'disabled', 'not_set', 'locked', 'need_2fa'].includes(r.error)) { S.clear(); return login(r.error); }
   return offline(r);
 };
 function splash() {
@@ -37,6 +37,7 @@ const LOST = {
   signed_out: 'You were signed out. The owner may have ended this session, or it was signed out from another device.',
   expired: 'Your sign-in expired after a week without use. Please sign in again.',
   disabled: 'This team account has been paused by the owner.',
+  need_2fa: 'Two-step sign-in is on. Sign in with your password and the code from your authenticator app.',
   invalid: 'Please sign in again.', network: 'No internet connection. Check it and try again.', locked: 'Too many wrong attempts. Try again in 15 minutes.'
 };
 function login(reason) {
@@ -51,6 +52,7 @@ function login(reason) {
     <div class="col gap16 mt16">
       <div class="fld ${mode === 'owner' ? 'hide' : ''}" id="lgu"><label for="lg-u">Username</label><div class="inp-wrap">${icon('user')}<input class="inp" id="lg-u" name="u" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="e.g. ravi.k"></div></div>
       <div class="fld"><label for="lg-p">Password</label><div class="inp-wrap">${icon('key')}<input class="inp" id="lg-p" name="p" type="password" autocomplete="current-password" placeholder="Your password" style="padding-right:46px"><button type="button" class="ibtn sm suffix" data-eye aria-label="Show password">${icon('eye', 17)}</button></div></div>
+      <div class="fld hide" id="lgo"><label for="lg-o">Code from your authenticator app</label><div class="inp-wrap">${icon('shield')}<input class="inp mono" id="lg-o" inputmode="numeric" autocomplete="one-time-code" autocapitalize="none" spellcheck="false" maxlength="11" placeholder="6-digit code"></div><div class="hint">Lost your phone? Type one of your recovery codes instead.</div></div>
       <label class="check"><input type="checkbox" id="lg-r" checked><span>Keep me signed in on this device<span class="xs mut" style="display:block">You can sign this device out any time from Team & access.</span></span></label>
       <div class="err sm" id="lg-e" role="alert" style="min-height:20px;color:var(--bad);font-weight:650"></div>
       <button class="btn pri lg block" id="lg-go" type="submit">${icon('arrowR')} Sign in</button>
@@ -62,7 +64,7 @@ function login(reason) {
   f.querySelector('#lgm').addEventListener('click', e => {
     const b = e.target.closest('[data-m]'); if (!b) return; m = b.dataset.m; AX.ls.set('cx_lmode', m);
     f.querySelectorAll('#lgm button').forEach(x => x.classList.toggle('on', x === b));
-    f.querySelector('#lgu').classList.toggle('hide', m === 'owner'); (m === 'owner' ? f.querySelector('#lg-p') : f.querySelector('#lg-u')).focus();
+    f.querySelector('#lgu').classList.toggle('hide', m === 'owner'); f.querySelector('#lgo').classList.add('hide'); f.querySelector('#lg-o').value = ''; (m === 'owner' ? f.querySelector('#lg-p') : f.querySelector('#lg-u')).focus();
   });
   setTimeout(() => (m === 'owner' ? f.querySelector('#lg-p') : f.querySelector('#lg-u')).focus(), 50);
   f.addEventListener('submit', async e => {
@@ -72,7 +74,9 @@ function login(reason) {
     if (m === 'team' && !u) { er.textContent = 'Enter your username.'; return; }
     if (!p) { er.textContent = 'Enter the password.'; return; }
     await UI.busy(f.querySelector('#lg-go'), async () => {
-      let r = await AX.api.rpc('cbt_admin_login', { p_user: u, p_pw: p, p_device: AX.u.device() }, { auth: false });
+      const o = f.querySelector('#lg-o').value.trim(), args = { p_user: u, p_pw: p, p_device: AX.u.device() };
+      if (o) args.p_otp = o;           // only sent once the server asked for it (older databases do not know it)
+      let r = await AX.api.rpc('cbt_admin_login', args, { auth: false });
       if (r.error === 'missing') {
         // the database is not updated yet (supabase_v35_admin_team.sql): the owner can still sign in the old way
         if (m === 'team') { er.textContent = 'Team accounts are not set up yet. The owner must run supabase_v35_admin_team.sql in Supabase.'; return; }
@@ -80,6 +84,14 @@ function login(reason) {
         if (!c.ok) { er.textContent = c.error === 'not_set' ? 'The admin password is not set yet. In Supabase → SQL Editor run: select cbt_private.set_admin_password(\'your-password\');' : AX.errText(c); return; }
         S.token = p; S.legacy = true; S.me = { owner: true, name: 'Owner', perms: {} }; S.save(false);
         return start();
+      }
+      if (['otp_required', 'otp_invalid', 'otp_locked'].includes(r.error)) {
+        const of = f.querySelector('#lg-o');
+        f.querySelector('#lgo').classList.remove('hide');
+        er.textContent = r.error === 'otp_required' ? 'Enter the 6-digit code from your authenticator app.'
+          : r.error === 'otp_invalid' ? 'Wrong code. Use the newest code in the app (and check the time on your phone).'
+          : 'Too many wrong codes. Try again in 15 minutes.';
+        of.value = ''; of.focus(); return;
       }
       if (!r.ok) {
         er.textContent = r.error === 'invalid' ? (m === 'team' ? 'Wrong username or password.' : 'Wrong password.')

@@ -7,6 +7,10 @@
 --    (device, browser, approximate IP, last active) and can sign out any session, or everyone.
 --  • Every change made from the panel is written to an activity log (who, what, when, done or refused).
 --  • Permissions are checked HERE in the database on every request, not only hidden in the panel.
+--  • Two-step sign-in (2FA): each account can turn on a 6-digit code from an authenticator app. Then the password alone
+--    opens nothing (not even the backup panel); 10 one-time recovery codes cover a lost phone. New passwords: 10+
+--    characters with letters and numbers. 100 wrong team passwords in an hour pause team sign-in for 15 minutes.
+--    Owner lost the phone AND the recovery codes? Supabase → SQL Editor: delete from cbt_private.admin_totp where acct = 'owner';
 --
 --  How it works: every public.cbt_admin… function is moved to cbt_private.<name>__core and a small wrapper with
 --  the same name and arguments takes its place. The wrapper notes which function/action is being called, runs
@@ -102,6 +106,126 @@ end $$;
 revoke all on function cbt_private.adm_hd(), cbt_private.adm_raw_ip(), cbt_private.adm_ip(), cbt_private.adm_sha(text), cbt_private.adm_secret(),
   cbt_private.adm_locked(text), cbt_private.adm_fail(text, boolean) from public, anon, authenticated;
 
+-- ---------- two-step sign-in (2FA): a 6-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator…) ----------
+-- One row per account: 'owner' or the team member's id. The code changes every 30 seconds (TOTP, RFC 6238) and works once.
+create table if not exists cbt_private.admin_totp (
+  acct         text primary key,
+  user_id      uuid references cbt_private.admin_users(id) on delete cascade,
+  secret       text,                                  -- base32; set once 2FA is on
+  pending      text,                                  -- during set-up, until the first code is confirmed
+  pending_at   timestamptz,
+  enabled      boolean not null default false,
+  enabled_at   timestamptz,
+  last_step    bigint not null default 0,             -- a code that was used once never works again
+  fails        int not null default 0,
+  locked_until bigint not null default 0,
+  recovery     text[] not null default '{}'           -- sha256 of the unused recovery codes
+);
+-- wrong team passwords from everywhere together (someone guessing at scale locks team sign-in for 15 minutes)
+create table if not exists cbt_private.admin_fail_log_team (at timestamptz not null default now());
+revoke all on cbt_private.admin_totp, cbt_private.admin_fail_log_team from public, anon, authenticated;
+
+-- HMAC-SHA1 and random bytes come from pgcrypto (schema "extensions" on Supabase)
+do $do$
+declare s text;
+begin
+  select n.nspname into s from pg_extension e join pg_namespace n on n.oid = e.extnamespace where e.extname = 'pgcrypto';
+  if s is null then
+    create extension pgcrypto;
+    select n.nspname into s from pg_extension e join pg_namespace n on n.oid = e.extnamespace where e.extname = 'pgcrypto';
+  end if;
+  execute format($f$create or replace function cbt_private.adm_hmac1(p_key bytea, p_msg bytea) returns bytea language sql immutable as 'select %I.hmac(p_msg, p_key, ''sha1'')'$f$, s);
+  execute format($f$create or replace function cbt_private.adm_rand(n int) returns bytea language sql volatile as 'select %I.gen_random_bytes(n)'$f$, s);
+end $do$;
+create or replace function cbt_private.adm_b32(p bytea) returns text language plpgsql immutable as $$
+declare a text := 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; o text := ''; bits int := 0; v int := 0; i int;
+begin
+  for i in 0 .. length(p) - 1 loop
+    v := (v << 8) | get_byte(p, i); bits := bits + 8;
+    while bits >= 5 loop o := o || substr(a, ((v >> (bits - 5)) & 31) + 1, 1); bits := bits - 5; end loop;
+    v := v & ((1 << bits) - 1);
+  end loop;
+  if bits > 0 then o := o || substr(a, ((v << (5 - bits)) & 31) + 1, 1); end if;
+  return o;
+end $$;
+create or replace function cbt_private.adm_b32d(p text) returns bytea language plpgsql immutable as $$
+declare a text := 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; s text := upper(regexp_replace(coalesce(p, ''), '[^A-Za-z2-7]', '', 'g'));
+  o bytea := ''::bytea; bits int := 0; v int := 0; i int;
+begin
+  for i in 1 .. length(s) loop
+    v := (v << 5) | (strpos(a, substr(s, i, 1)) - 1); bits := bits + 5;
+    if bits >= 8 then o := o || set_byte('\x00'::bytea, 0, (v >> (bits - 8)) & 255); bits := bits - 8; v := v & ((1 << bits) - 1); end if;
+  end loop;
+  return o;
+end $$;
+create or replace function cbt_private.adm_totp(p_secret text, p_step bigint) returns text language plpgsql immutable as $$
+declare hm bytea := cbt_private.adm_hmac1(cbt_private.adm_b32d(p_secret), int8send(p_step)); o int; n bigint;
+begin
+  o := get_byte(hm, 19) & 15;
+  n := ((get_byte(hm, o) & 127)::bigint << 24) | (get_byte(hm, o + 1)::bigint << 16) | (get_byte(hm, o + 2)::bigint << 8) | get_byte(hm, o + 3);
+  return lpad((n % 1000000)::text, 6, '0');
+end $$;
+-- 10 one-time recovery codes (for a lost phone), 10 characters each, without look-alike letters
+create or replace function cbt_private.adm_recovery_codes() returns text[] language plpgsql volatile set search_path = cbt_private, pg_temp as $$
+declare a text := 'abcdefghjkmnpqrstuvwxyz23456789'; b bytea; o text[] := '{}'; c text; i int; j int;
+begin
+  for i in 1 .. 10 loop
+    b := adm_rand(10); c := '';
+    for j in 0 .. 9 loop c := c || substr(a, (get_byte(b, j) % 31) + 1, 1); end loop;
+    o := o || c;
+  end loop;
+  return o;
+end $$;
+-- checks a code for one account: null = right; 'otp_invalid' | 'otp_locked'. A 6-digit code (this 30 seconds or the ones
+-- just before / after, each once) or, at sign-in, an unused recovery code (then used up). 5 wrong codes lock the account's
+-- codes for 15 minutes (only someone who already has the password gets this far); 10 wrong lock the connection.
+create or replace function cbt_private.adm_otp_check(p_acct text, p_code text, p_pending boolean default false) returns text
+language plpgsql security definer set search_path = cbt_private, pg_temp as $$
+declare r admin_totp%rowtype; t bigint := cbt_private.now_ms(); st bigint := floor(extract(epoch from clock_timestamp()) / 30)::bigint;
+  c text := lower(regexp_replace(coalesce(p_code, ''), '[\s-]', '', 'g')); k int; sec text; h text;
+begin
+  select * into r from admin_totp where acct = p_acct for update;
+  if not found then return 'otp_invalid'; end if;
+  if r.locked_until > t or adm_locked('otp') then return 'otp_locked'; end if;
+  sec := case when p_pending then r.pending else r.secret end;
+  if sec is not null and c ~ '^\d{6}$' then
+    for k in -1 .. 1 loop
+      if st + k > r.last_step and adm_totp(sec, st + k) = c then
+        update admin_totp set last_step = st + k, fails = 0 where acct = p_acct;
+        perform adm_fail('otp', true);
+        return null;
+      end if;
+    end loop;
+  elsif not p_pending and r.enabled and c ~ '^[a-z0-9]{10}$' then
+    h := adm_sha(c);
+    if h = any(r.recovery) then
+      update admin_totp set recovery = array_remove(recovery, h), fails = 0 where acct = p_acct;
+      perform set_config('cbt.recovery_used', '1', true);
+      return null;
+    end if;
+  end if;
+  update admin_totp set locked_until = case when fails + 1 >= 5 then t + 900000 else locked_until end,
+                        fails        = case when fails + 1 >= 5 then 0 else fails + 1 end where acct = p_acct;
+  perform adm_fail('otp', false);
+  return 'otp_invalid';
+end $$;
+-- a new admin password must be at least 10 characters with letters and numbers, and not an obvious one
+create or replace function cbt_private.adm_pw_weak(p text) returns boolean language sql immutable as $$
+  select length(coalesce(p, '')) < 10 or coalesce(p, '') !~ '[A-Za-z]' or coalesce(p, '') !~ '[0-9]'
+      or lower(coalesce(p, '')) ~ '(password|passw0rd|aspiron|admin|qwerty|12345678|abcdefgh)'
+$$;
+-- the account's current password (null = the owner)
+create or replace function cbt_private.adm_pw_match(p_uid uuid, p_pw text) returns boolean language plpgsql stable security definer set search_path = cbt_private, pg_temp as $$
+begin
+  if p_uid is null then
+    return exists (select 1 from settings h, settings s where h.key = 'admin_hash' and s.key = 'admin_salt' and h.value = hash_code(s.value, coalesce(p_pw, '')));
+  end if;
+  return exists (select 1 from admin_users where id = p_uid and pw_hash = hash_code(salt, coalesce(p_pw, '')));
+end $$;
+revoke all on function cbt_private.adm_hmac1(bytea, bytea), cbt_private.adm_rand(int), cbt_private.adm_b32(bytea), cbt_private.adm_b32d(text),
+  cbt_private.adm_totp(text, bigint), cbt_private.adm_recovery_codes(), cbt_private.adm_otp_check(text, text, boolean),
+  cbt_private.adm_pw_weak(text), cbt_private.adm_pw_match(uuid, text) from public, anon, authenticated;
+
 -- ---------- which permission a function + action needs ----------
 -- 'module:view' | 'module:manage' | 'any' (every signed-in member) | 'any_write' (same, but logged)
 -- | 'owner' | 'owner_read' | 'ping' | null (unknown = refused for team members)
@@ -146,6 +270,7 @@ create or replace function cbt_private.admin_need(p_fn text, p_act text) returns
     when 'cbt_admin_team'           then case when p_act = 'self_sessions' then 'any'
                                               when p_act in ('self_password', 'self_revoke') then 'any_write'
                                               when p_act = 'get' then 'owner_read' else 'owner' end
+    when 'cbt_admin_2fa'            then case when p_act = 'status' then 'any' when p_act = 'reset' then 'owner' else 'any_write' end
   end
 $$;
 revoke all on function cbt_private.admin_need(text, text) from public, anon, authenticated;
@@ -227,6 +352,10 @@ declare
   v_ip text := md5('cbt-admin|' || cbt_private.adm_raw_ip());
 begin
   if coalesce(p_pw, '') like 'as1.%' then return cbt_private.admin_session_ok(p_pw); end if;
+  -- two-step sign-in is on for the owner: the password alone opens nothing; only a sign-in (password + code) does
+  if coalesce(current_setting('cbt.pwlogin', true), '') <> '1' and exists (select 1 from admin_totp where acct = 'owner' and enabled) then
+    return 'need_2fa';
+  end if;
 
   -- (unchanged from v34) wrong passwords lock only the connection they come from
   select value into h from settings where key = 'admin_hash';
@@ -268,7 +397,7 @@ begin
            p.proargnames, (select array_agg(format_type(t, null) order by o) from unnest(p.proargtypes::oid[]) with ordinality as x(t, o)) as types
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'public' and p.proname like 'cbt\_admin%'
-       and p.proname not in ('cbt_admin_login', 'cbt_admin_me', 'cbt_admin_logout', 'cbt_admin_team')
+       and p.proname not in ('cbt_admin_login', 'cbt_admin_me', 'cbt_admin_logout', 'cbt_admin_team', 'cbt_admin_2fa')
        and p.prorettype in ('jsonb'::regtype, 'json'::regtype) and p.proretset = false
        and p.proargnames is not null and p.proargnames[1] = 'p_pw'
   loop
@@ -315,32 +444,54 @@ begin
 end $do$;
 
 -- ---------- sign in: owner (username empty + admin password) or a team member ----------
-create or replace function public.cbt_admin_login(p_user text, p_pw text, p_device text default '')
+-- p_otp: the 6-digit code from the authenticator app (or a recovery code) when two-step sign-in is on for the account;
+-- without it the answer is 'otp_required' (the panel then asks for the code)
+drop function if exists public.cbt_admin_login(text, text, text);
+create or replace function public.cbt_admin_login(p_user text, p_pw text, p_device text default '', p_otp text default '')
 returns jsonb language plpgsql security definer set search_path = cbt_private, pg_temp as $$
 declare
   e text; u admin_users%rowtype; v_sec text; v_sid uuid; t bigint := cbt_private.now_ms();
   v_name text := lower(btrim(coalesce(p_user, '')));
-  hd json := adm_hd();
+  hd json := adm_hd(); v_acct text;
 begin
   perform set_config('cbt.fn', 'cbt_admin_login', true);
   if coalesce(p_pw, '') = '' or p_pw like 'as1.%' then return jsonb_build_object('ok', false, 'error', 'invalid'); end if;
 
   if v_name = '' or v_name = 'owner' then
-    e := admin_ok(p_pw);                           -- the owner: same checks and locks as before
+    perform set_config('cbt.pwlogin', '1', true);  -- the owner: same checks and locks as before; the code is checked below
+    e := admin_ok(p_pw);
+    perform set_config('cbt.pwlogin', '', true);
     if e is not null then return jsonb_build_object('ok', false, 'error', e); end if;
   else
     -- wrong passwords lock only the connection they come from (10 tries, 15 minutes), with a counter separate from
-    -- the owner's, so nobody can lock a member (or the owner) out from elsewhere, and unknown usernames look the same
-    if adm_locked('team') then return jsonb_build_object('ok', false, 'error', 'locked'); end if;
+    -- the owner's, so nobody can lock a member (or the owner) out from elsewhere, and unknown usernames look the same.
+    -- 100 wrong team passwords in an hour from everywhere together pause team sign-in for 15 minutes.
+    if adm_locked('team') or coalesce((select value::bigint from settings where key = 'team_locked_until'), 0) > t then
+      return jsonb_build_object('ok', false, 'error', 'locked');
+    end if;
     select * into u from admin_users where username = v_name;
     if not found or u.pw_hash <> hash_code(u.salt, p_pw) then
       perform adm_fail('team', false);
+      insert into admin_fail_log_team default values;
+      delete from admin_fail_log_team where at < now() - interval '2 hours';
+      if (select count(*) from admin_fail_log_team where at > now() - interval '1 hour') >= 100 then
+        insert into settings values ('team_locked_until', (t + 900000)::text) on conflict (key) do update set value = excluded.value;
+        delete from admin_fail_log_team;
+      end if;
       return jsonb_build_object('ok', false, 'error', 'invalid');
     end if;
     perform adm_fail('team', true);
     if not u.active then return jsonb_build_object('ok', false, 'error', 'disabled'); end if;
-    update admin_users set fail_count = 0, last_login = now() where id = u.id;
   end if;
+
+  -- two-step sign-in
+  v_acct := coalesce(u.id::text, 'owner');
+  if exists (select 1 from admin_totp where acct = v_acct and enabled) then
+    if btrim(coalesce(p_otp, '')) = '' then return jsonb_build_object('ok', false, 'error', 'otp_required'); end if;
+    e := adm_otp_check(v_acct, p_otp);
+    if e is not null then return jsonb_build_object('ok', false, 'error', e); end if;
+  end if;
+  if u.id is not null then update admin_users set fail_count = 0, last_login = now() where id = u.id; end if;
 
   v_sec := adm_secret();
   insert into admin_sessions (user_id, token_hash, device, ua, ip)
@@ -348,13 +499,14 @@ begin
           left(coalesce(hd->>'user-agent', ''), 300), adm_ip())
   returning id into v_sid;
   insert into admin_audit (sid, uid, who, fn, act, detail, ip)
-  values (v_sid, u.id, coalesce(u.name, 'Owner'), 'session', 'sign_in', left(regexp_replace(coalesce(p_device, ''), '[<>"`\r\n\t]', '', 'g'), 80), adm_ip());
+  values (v_sid, u.id, coalesce(u.name, 'Owner'), 'session', 'sign_in', left(regexp_replace(coalesce(p_device, ''), '[<>"`\r\n\t]', '', 'g'), 80)
+          || case when current_setting('cbt.recovery_used', true) = '1' then ' · recovery code used' else '' end, adm_ip());
   delete from admin_sessions where (revoked_at is not null or expires_at < now()) and last_seen < now() - interval '60 days';
   return jsonb_build_object('ok', true, 'token', 'as1.' || v_sid::text || '.' || v_sec,
     'me', jsonb_build_object('id', u.id, 'name', coalesce(u.name, 'Owner'), 'username', coalesce(u.username, ''),
                              'owner', u.id is null, 'perms', coalesce(u.perms, '{}'::jsonb)));
 end $$;
-grant execute on function public.cbt_admin_login(text, text, text) to anon, authenticated;
+grant execute on function public.cbt_admin_login(text, text, text, text) to anon, authenticated;
 
 -- ---------- who am I (checks the session; the panel calls it on start and every minute) ----------
 create or replace function public.cbt_admin_me(p_pw text)
@@ -429,7 +581,7 @@ begin
     perform set_config('cbt.detail', left(v_nm || ' (' || v_un || ')', 120), true);
     if v_nm = '' then return jsonb_build_object('ok', false, 'error', 'name'); end if;
     if v_un !~ '^[a-z0-9._-]{3,30}$' or v_un = 'owner' then return jsonb_build_object('ok', false, 'error', 'username'); end if;
-    if (v_id is null or v_pw <> '') and length(v_pw) < 8 then return jsonb_build_object('ok', false, 'error', 'password'); end if;
+    if (v_id is null or v_pw <> '') and adm_pw_weak(v_pw) then return jsonb_build_object('ok', false, 'error', 'password'); end if;
     v_perms := '{}'::jsonb;
     for k, v in select * from jsonb_each_text(coalesce(d->'perms', '{}'::jsonb)) loop
       if k = any(v_mods) and v in ('view', 'manage') then v_perms := v_perms || jsonb_build_object(k, v); end if;
@@ -491,7 +643,7 @@ begin
     select value into asl from settings where key = 'admin_salt';
     if h is null or h <> hash_code(asl, coalesce(d->>'current', '')) then perform adm_fail('pw', false); return jsonb_build_object('ok', false, 'error', 'current_pw'); end if;
     perform adm_fail('pw', true);
-    if length(coalesce(d->>'new_pw', '')) < 8 then return jsonb_build_object('ok', false, 'error', 'short'); end if;
+    if adm_pw_weak(d->>'new_pw') then return jsonb_build_object('ok', false, 'error', 'short'); end if;
     perform set_admin_password(d->>'new_pw');
     update admin_sessions set revoked_at = now(), revoked_by = 'Owner (new password)'
      where user_id is null and revoked_at is null and id is distinct from v_sid;
@@ -504,7 +656,7 @@ begin
       perform adm_fail('pw', false); return jsonb_build_object('ok', false, 'error', 'current_pw');
     end if;
     perform adm_fail('pw', true);
-    if length(coalesce(d->>'new_pw', '')) < 8 then return jsonb_build_object('ok', false, 'error', 'short'); end if;
+    if adm_pw_weak(d->>'new_pw') then return jsonb_build_object('ok', false, 'error', 'short'); end if;
     sl := gen_random_uuid()::text;
     update admin_users set salt = sl, pw_hash = hash_code(sl, d->>'new_pw') where id = v_uid;
     update admin_sessions set revoked_at = now(), revoked_by = 'self (new password)'
@@ -537,12 +689,103 @@ begin
 end $$;
 grant execute on function public.cbt_admin_team(text, text, jsonb) to anon, authenticated;
 
+-- ---------- two-step sign-in for the signed-in account (owner or member); the owner can also reset a member's ----------
+create or replace function cbt_private.admin_2fa_core(p_pw text, p_action text, p_data jsonb)
+returns jsonb language plpgsql security definer set search_path = cbt_private, pg_temp as $$
+declare
+  e text; d jsonb := coalesce(p_data, '{}'::jsonb); v_uid uuid; v_sid uuid; v_acct text; r admin_totp%rowtype;
+  v_sec text; v_codes text[]; v_label text; v_id uuid; n int;
+begin
+  e := admin_ok(p_pw);
+  if e is not null then return jsonb_build_object('ok', false, 'error', e); end if;
+  v_sid := nullif(current_setting('cbt.sid', true), '')::uuid;
+  if v_sid is null then return jsonb_build_object('ok', false, 'error', 'session'); end if;   -- only from a sign-in session
+  v_uid := nullif(current_setting('cbt.uid', true), '')::uuid;
+  v_acct := coalesce(v_uid::text, 'owner');
+  select * into r from admin_totp where acct = v_acct;
+
+  if p_action = 'status' then
+    return jsonb_build_object('ok', true, 'enabled', coalesce(r.enabled, false), 'enabled_at', r.enabled_at,
+      'recovery_left', coalesce(array_length(r.recovery, 1), 0),
+      'members', case when v_uid is null then coalesce((select jsonb_object_agg(t.user_id::text, t.enabled_at) from admin_totp t
+                                                        where t.user_id is not null and t.enabled), '{}'::jsonb) end);
+
+  elsif p_action = 'start' then
+    -- needs the password, so a stolen sign-in cannot turn on a code the owner does not have
+    if coalesce(r.enabled, false) then return jsonb_build_object('ok', false, 'error', 'already_on'); end if;
+    if adm_locked('pw') then return jsonb_build_object('ok', false, 'error', 'pw_locked'); end if;
+    if not adm_pw_match(v_uid, d->>'password') then perform adm_fail('pw', false); return jsonb_build_object('ok', false, 'error', 'current_pw'); end if;
+    perform adm_fail('pw', true);
+    v_sec := adm_b32(adm_rand(20));
+    insert into admin_totp (acct, user_id, pending, pending_at) values (v_acct, v_uid, v_sec, now())
+      on conflict (acct) do update set pending = excluded.pending, pending_at = now();
+    v_label := coalesce((select username from admin_users where id = v_uid), 'owner');
+    return jsonb_build_object('ok', true, 'secret', v_sec, 'account', v_label,
+      'uri', 'otpauth://totp/Aspiron%20Control:' || v_label || '?secret=' || v_sec || '&issuer=Aspiron%20Control&digits=6&period=30');
+
+  elsif p_action = 'confirm' then
+    if r.acct is null or r.pending is null or coalesce(r.enabled, false) or r.pending_at < now() - interval '20 minutes' then
+      return jsonb_build_object('ok', false, 'error', 'setup_expired');
+    end if;
+    e := adm_otp_check(v_acct, d->>'code', true);
+    if e is not null then return jsonb_build_object('ok', false, 'error', e); end if;
+    v_codes := adm_recovery_codes();
+    update admin_totp set secret = pending, pending = null, pending_at = null, enabled = true, enabled_at = now(), fails = 0,
+           recovery = (select array_agg(adm_sha(c)) from unnest(v_codes) c) where acct = v_acct;
+    -- the account's other sign-ins were made without a code: they are signed out
+    update admin_sessions set revoked_at = now(), revoked_by = 'self (2-step sign-in on)'
+     where user_id is not distinct from v_uid and revoked_at is null and id <> v_sid;
+    get diagnostics n = row_count;
+    return jsonb_build_object('ok', true, 'codes', to_jsonb(v_codes), 'signed_out', n);
+
+  elsif p_action = 'off' then
+    if not coalesce(r.enabled, false) then return jsonb_build_object('ok', true); end if;
+    if adm_locked('pw') then return jsonb_build_object('ok', false, 'error', 'pw_locked'); end if;
+    if not adm_pw_match(v_uid, d->>'password') then perform adm_fail('pw', false); return jsonb_build_object('ok', false, 'error', 'current_pw'); end if;
+    perform adm_fail('pw', true);
+    e := adm_otp_check(v_acct, d->>'code');
+    if e is not null then return jsonb_build_object('ok', false, 'error', e); end if;
+    delete from admin_totp where acct = v_acct;
+    return jsonb_build_object('ok', true);
+
+  elsif p_action = 'recovery' then
+    if not coalesce(r.enabled, false) then return jsonb_build_object('ok', false, 'error', 'off'); end if;
+    e := adm_otp_check(v_acct, d->>'code');
+    if e is not null then return jsonb_build_object('ok', false, 'error', e); end if;
+    v_codes := adm_recovery_codes();
+    update admin_totp set recovery = (select array_agg(adm_sha(c)) from unnest(v_codes) c) where acct = v_acct;
+    return jsonb_build_object('ok', true, 'codes', to_jsonb(v_codes));
+
+  elsif p_action = 'reset' then
+    -- the owner turns off a member's two-step sign-in (lost phone); team members are refused before this point
+    if v_uid is not null then return jsonb_build_object('ok', false, 'error', 'forbidden'); end if;
+    v_id := nullif(d->>'user_id', '')::uuid;
+    select name into v_label from admin_users where id = v_id;
+    perform set_config('cbt.detail', left(coalesce(v_label, ''), 120), true);
+    delete from admin_totp where acct = v_id::text;
+    return jsonb_build_object('ok', true);
+  end if;
+  return jsonb_build_object('ok', false, 'error', 'action');
+end $$;
+revoke all on function cbt_private.admin_2fa_core(text, text, jsonb) from public, anon, authenticated;
+
+create or replace function public.cbt_admin_2fa(p_pw text, p_action text, p_data jsonb default '{}'::jsonb)
+returns jsonb language plpgsql security definer set search_path = cbt_private, pg_temp as $$
+declare r jsonb;
+begin
+  perform set_config('cbt.fn', 'cbt_admin_2fa', true); perform set_config('cbt.act', coalesce(p_action, ''), true);
+  r := cbt_private.admin_2fa_core(p_pw, p_action, p_data);
+  perform cbt_private.admin_after(r, 'cbt_admin_2fa');
+  return r;
+end $$;
+grant execute on function public.cbt_admin_2fa(text, text, jsonb) to anon, authenticated;
+
 notify pgrst, 'reload schema';
 -- what was wrapped (team members can use these, as their permissions allow); anything listed as "not wrapped" works for the owner only
 select p.proname as admin_function,
        case when pg_get_functiondef(p.oid) like '%cbt-wrap-v35%' then 'wrapped'
-            when p.proname in ('cbt_admin_login', 'cbt_admin_me', 'cbt_admin_logout', 'cbt_admin_team') then 'team (v35)'
+            when p.proname in ('cbt_admin_login', 'cbt_admin_me', 'cbt_admin_logout', 'cbt_admin_team', 'cbt_admin_2fa') then 'team (v35)'
             else 'not wrapped (owner only)' end as status
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
  where n.nspname = 'public' and p.proname like 'cbt\_admin%' order by 1;
-select 'v35 installed: admin team, sessions, permissions, activity log' as status;
+select 'v35 installed: admin team, sessions, permissions, activity log, two-step sign-in' as status;
