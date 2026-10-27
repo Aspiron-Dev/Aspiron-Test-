@@ -5,7 +5,7 @@ Static website on GitHub Pages + Supabase (database functions). No build step: u
 ## Pages
 | Page | What it is | Scripts |
 |---|---|---|
-| `index.html` | Student app (tests, results, mistakes, tracker, PYQ, reviews) | `config.js`, `app1.js` … `app17.js`, `pyq-syllabus.js` |
+| `index.html` | Student app (tests, results, mistakes, saved, library, leaderboard, planner, PYQ, notes, focus timer, reviews) | `config.js`, `app1.js` … `app19.js`, `pyq-syllabus.js`, `ui19.css` |
 | `cp-dt764twzf54s5m.html` | Admin panel (needs the private access key + admin password) | `config.js`, `parser.js`, `admin1.js` … `admin19.js`, `pyq-syllabus.js` |
 | `store.html` | Public store, in the admin console's design (menu on the left on computers, menu bar at the bottom on phones): name + mobile + course (NEET / JEE) once; pages Home (the student's course in rows by section — Full syllabus, Subject-wise …, arranged in Store setup), Search, Reviews, Help and Profile (details, course, theme, the last order); NEET / JEE switch at the top, Explore page (description, schedule, demo tests, reviews), Coming soon · Notify me, UPI payment, verify on Telegram / WhatsApp (message + payment screenshot), light / dark / auto theme | `store-theme.js`, `store.css`, `config.js`, `qrcode.js`, `store.js` `store.html?ref=CODE` is a promotion link: the visit and the orders made after it are counted in Admin → Store → Promotions. Links: `#/search`, `#/reviews`, `#/help`, `#/me` open a page, `#x=<id>` a series' Explore page |
 | `admin.html` | Decoy "404" page (the real admin page has a hidden name) | – |
@@ -18,6 +18,15 @@ Other files: `sw.js` (installable app, always loads the newest pages), `manifest
 `lib/` (exact copies of pdf.js 3.11.174, JSZip 3.10.1 and Tesseract.js 5.1.1 from npm, so the admin page runs no script from a third-party CDN;
 the OCR worker and language data still load from jsDelivr / tessdata as before),
 `supabase/functions/send-push` (phone notifications and 🔔 test-live alerts).
+
+## Student app design (`app19.js`, `ui19.css`)
+- **Menu:** computers — menu on the left; tablets — icons only; phones — 5 tabs at the bottom: **Home · Tests · Library · Ranks · Planner**. The ☰ menu on phones has every page.
+- **Tests** is one place for everything about tests, with tabs on top: **My series** (free + purchased) · **Explore & buy** · **Results** · **Mistakes** · **Saved**.
+- **Explore & buy** (`#/buy`) lists the locked premium series and the store's series. *Buy now* opens that series' page in the store when the store item has **the same name** as the test series (otherwise the store's home page). Purchases then show under My series.
+- **Library** (`#/lib`): study files of all series (notes, syllabus, schedule), PYQ analysis, mistake notebook, saved questions, notes, focus timer, study planner, exam countdown, tip of the day.
+- **Leaderboard** (`#/lb`): overall and every test — your rank, how many marks to pass the next student, podium, top 10, your rank in each test.
+- **My notes** (`#/notes`) and **Focus timer** (`#/focus`, 25 / 5 / 15 minutes or custom; keeps running while the app is used, shown at the top) are saved on the phone only.
+- Colours: only the theme's own colours are used, so every palette in Theme settings (6 colours × Light / Dark / True Black) looks as chosen. The test screen is unchanged.
 
 ## Live tests: result time and auto-save (`supabase_v30_result_time.sql`)
 - In the admin test form, a test can get **Live ends** (no new start after it) and **Result & answer key at**. The link "Fill: live till 9 PM, result 10 PM" fills both for the start day.
