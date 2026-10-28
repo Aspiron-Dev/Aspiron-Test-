@@ -7,6 +7,7 @@
      AX.cropFromPdf({title, maxW}) → Promise<dataURL | null>     (crop a diagram from the last paper PDF, or a PDF picked now)
      AX.textEditor({title, hint, value, kind:'raw'|'key'}) → Promise<string | null>   (full-screen text editor; Esc = done)
      AX.compressDataUrl(src, maxWidth, quality) → Promise<dataURL | null>   (same rules as the old compressDataUrl)
+     AX.readTextFile(file, note(text, pct)) → Promise<{text, images}>   (PDF / Word / photo / text file; used for explanations)
    ===================================================================== */
 (function () {
 'use strict';
@@ -166,6 +167,8 @@ async function readAny(f, isKey, note) {
   }
   return { text: await f.text() };
 }
+// a solutions file for the Explanations tool → {text, images, ocr?, scanned?}; Word keeps its pictures (⟦IMG:n⟧ marks)
+AX.readTextFile = async (f, note) => { const n = f.name.toLowerCase(); if (n.endsWith('.docx')) return docxRead(f); const r = await readAny(f, true, note); return Object.assign({ images: [] }, r); };
 // width-limited JPEG; target ≤ 260,000 chars (quality steps down to .45, then a 70 % redraw at .6) — same as the old panel
 function compressDataUrl(src, maxW, q) {
   return new Promise(res => {
