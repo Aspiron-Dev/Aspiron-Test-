@@ -90,6 +90,28 @@ function parse(text,keyText){
   });
   return{questions,keyFound:Object.keys(key).length};
 }
-const api={parse,parseKey,splitKey,splitOpts,sectionName};
+// explanations / solutions text -> {map:{n:text}, ans:{n:0-3}, count}
+// each starts at a line "12." / "Q12)" / "Sol. 12:" / "Explanation 12 -" …; numbers must go up by 1–3, so a list
+// "1. … 2. …" inside an explanation is kept as part of it. "(B)" or "Ans: B" right after the number is read as the answer.
+function parseExplain(t){
+  t=String(t||'').replace(/\r/g,'');
+  const re=/^\s*(?:(?:Q(?:ues(?:tion)?)?|Sol(?:ution)?|S|Exp(?:lanation)?|Hint|Ans(?:wer)?)\s*\.?\s*(?:no\.?\s*)?)?(\d{1,3})\s*[\.\):\-–]\s*(.*)$/i;
+  const blocks=[];let cur=null,last=0;
+  for(const ln of t.split('\n')){
+    const m=ln.match(re);const n=m?+m[1]:0;
+    if(m&&n>last&&(last===0?n<=3:n<=last+3)){cur={n,lines:[m[2]]};blocks.push(cur);last=n;continue}
+    if(cur)cur.lines.push(ln);
+  }
+  const map={},ans={};let count=0;
+  for(const b of blocks){
+    let x=b.lines.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+    const a=x.match(/^(?:(?:correct\s*)?(?:ans(?:wer)?|key|option)\s*(?:is)?\s*[:.\-–]?\s*\(?\s*([A-Da-d1-4])\s*\)?|\(\s*([A-Da-d1-4])\s*\))(?=[\s.,:;\-–)]|$)[\s.,:;\-–)]*/i);
+    if(a){const c=a[1]||a[2];ans[b.n]=/\d/.test(c)?+c-1:c.toLowerCase().charCodeAt(0)-97;if(!/^correct/i.test(a[0]))x=x.slice(a[0].length).trim()}
+    x=x.replace(/^(?:sol(?:ution)?|exp(?:lanation)?|hint)\s*[:.\-–]\s*/i,'').trim();
+    if(x||ans[b.n]!=null){map[b.n]=x;count++}
+  }
+  return{map,ans,count};
+}
+const api={parse,parseKey,splitKey,splitOpts,sectionName,parseExplain};
 if(typeof module!=='undefined')module.exports=api;else root.CBTParser=api;
 })(this);

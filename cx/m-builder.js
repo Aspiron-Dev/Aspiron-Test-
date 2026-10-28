@@ -124,6 +124,7 @@ AX.css('builder', `
 .kg{display:grid;grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:6px}
 .kr{display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:10px;border:1px solid var(--line);background:var(--solid-2)}
 .kr.miss{border-color:color-mix(in srgb,var(--warn) 50%,transparent)}
+.ex-prev{display:flex;flex-direction:column;gap:8px;font-size:13px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--solid-2)}
 .kr .num{width:34px;font-weight:800;font-size:12.5px;color:var(--mut);font-variant-numeric:tabular-nums}
 .kr button{width:30px;height:30px;border-radius:8px;border:1px solid var(--line-2);background:var(--solid);font-weight:750;font-size:12.5px;color:var(--tx-2)}
 .kr button.on{background:var(--ok);border-color:var(--ok);color:#fff}
@@ -366,6 +367,7 @@ function vQuestions() {
       <div class="inp-wrap search">${icon('search', 16)}<input class="inp sm" id="bq-find" type="search" placeholder="Find in questions…" value="${v.find}" autocomplete="off" aria-label="Find in questions"></div>
       ${B.ro ? '' : h`<button class="btn sm pri" data-act="qadd">${icon('plus', 15)} Add</button>
       <button class="btn sm" data-act="keymodal">${icon('key', 15)} <span>Answer key</span></button>
+      <button class="btn sm" data-act="expmodal">${icon('book', 15)} <span>Explanations</span></button>
       <button class="btn sm" data-act="secmodal">${icon('layers', 15)} <span>Sections</span></button>
       <button class="ibtn sm line" data-act="qtools" aria-label="More tools">${icon('more', 17)}</button>`}
     </div>
@@ -566,6 +568,73 @@ function keyModal() {
     onClose() { refreshQ(); }
   });
 }
+/* ---------- explanations: paste or read a solutions file, matched to questions by number ---------- */
+function explainModal() {
+  let text = '', images = [], over = false, takeAns = true;
+  const has = () => B.Q.filter(q => q.explanation || q.eimg).length;
+  const parse = () => window.CBTParser && CBTParser.parseExplain ? CBTParser.parseExplain(text) : { map: {}, ans: {}, count: 0 };
+  const clean = x => x.replace(/\s*⟦IMG:\d+⟧\s*/g, ' ').replace(/[ \t]{2,}/g, ' ').trim();
+  const sumHtml = () => {
+    const r = parse(), nums = Object.keys(r.map).map(Number).filter(n => B.Q[n - 1]);
+    const out = Object.keys(r.map).length - nums.length, fill = nums.filter(n => over || !(B.Q[n - 1].explanation || B.Q[n - 1].eimg)).length;
+    const an = Object.keys(r.ans).filter(n => B.Q[n - 1] && B.Q[n - 1].answer == null).length;
+    if (!text.trim()) return h`<div class="hint">Paste the solutions, or read them from a file. Each one starts with its question number: <span class="mono">1.</span> <span class="mono">Q1)</span> <span class="mono">Sol. 1</span> …</div>`;
+    if (!nums.length) return h`<div class="callout warn">${icon('info')}<div class="sm">No explanations found yet. Start each one on a new line with its question number, e.g. <span class="mono">1. Because …</span></div></div>`;
+    return h`<div class="callout ok">${icon('checkCircle')}<div class="sm"><b>${fmt.plural(nums.length, 'explanation')} found</b> (questions ${nums[0]}–${nums[nums.length - 1]}). ${fill} will be added${over ? '' : ' to questions that have none yet'}.${out ? ' ' + out + ' have no matching question and are skipped.' : ''}${takeAns && an ? ' ' + fmt.plural(an, 'missing answer') + ' will be filled from them too.' : ''}</div></div>
+      <div class="ex-prev mt12">${join(nums.slice(0, 4), n => h`<div><b>Q${n}</b>${r.ans[n] != null ? h` <span class="pill ok">${L[r.ans[n]]}</span>` : ''} <span class="tx2">${clean(r.map[n]).slice(0, 160) || '—'}${clean(r.map[n]).length > 160 ? '…' : ''}</span>${/⟦IMG:\d+⟧/.test(r.map[n]) ? h` <span class="pill info">picture</span>` : ''}</div>`)}${nums.length > 4 ? h`<div class="xs mut">…and ${nums.length - 4} more</div>` : ''}</div>`;
+  };
+  UI.modal({
+    title: 'Explanations', sub: 'Add the solution of every question at once. They are matched by question number.', size: 'wide',
+    body: h`<div class="row between wrap" style="margin-bottom:12px"><span class="pill ${has() === B.Q.length ? 'ok' : 'warn'}">${has()} of ${B.Q.length} have an explanation</span>
+        <button type="button" class="btn sm" data-act="exfile">${icon('upload', 15)} From a file (PDF, Word, photo, text)</button></div>
+      <div class="im-st hide" id="ex-st" style="margin-bottom:12px"></div>
+      <div class="fld"><label for="ex-t">Solutions text</label><textarea class="inp" id="ex-t" rows="10" placeholder="1. (B) Mitochondria make ATP, so …&#10;2. Ans: C — Because …&#10;3. …"></textarea></div>
+      <div class="col gap6 mt8"><label class="row gap6 sm" style="align-items:flex-start"><input type="checkbox" id="ex-over" style="margin-top:3px"><span>Replace explanations that are already there</span></label>
+        <label class="row gap6 sm" style="align-items:flex-start"><input type="checkbox" id="ex-ans" checked style="margin-top:3px"><span>Also fill a missing answer when the solution says it, e.g. 1. (B) …</span></label></div>
+      <div class="mt12" id="ex-sum">${sumHtml()}</div>`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="exapply">${icon('check', 16)} Add explanations</button>`,
+    onOpen(el, close) {
+      const ta = el.querySelector('#ex-t'), sum = () => AX.set(el.querySelector('#ex-sum'), sumHtml());
+      const st = (t, tone) => { const b = el.querySelector('#ex-st'); b.className = 'im-st ' + (tone || ''); b.textContent = t; };
+      ta.addEventListener('input', () => { text = ta.value; if (!/⟦IMG:\d+⟧/.test(text)) images = []; sum(); });
+      el.querySelector('#ex-over').addEventListener('change', e => { over = e.target.checked; sum(); });
+      el.querySelector('#ex-ans').addEventListener('change', e => { takeAns = e.target.checked; sum(); });
+      AX.act(el, {
+        async exfile() {
+          if (!AX.readTextFile) return UI.toast('The file reader did not load. Reload the page.', { tone: 'bad' });
+          const f = await AX.u.pickFile('.pdf,.docx,.txt,.md,image/*,application/pdf'); if (!f) return;
+          st('Reading ' + f.name + '…');
+          try {
+            const r = await AX.readTextFile(f, (t, p) => st(t + (p != null ? ' ' + Math.round(p * 100) + '%' : '')));
+            text = r.text || ''; images = r.images || []; ta.value = text;
+            const n = parse().count;
+            st(n ? 'Done. Found ' + fmt.plural(n, 'explanation') + '. Check below, then press Add.' + (r.ocr || r.scanned ? ' OCR can make mistakes.' : '') : 'No numbered explanations found in this file. You can fix the text below.', n ? 'ok' : 'bad');
+          } catch (err) { st('Could not read this file: ' + err.message, 'bad'); }
+          sum();
+        },
+        async exapply(b) {
+          const r = parse(); if (!r.count) return UI.toast('No explanations found in the text', { tone: 'warn' });
+          await UI.busy(b, async () => {
+            let n = 0, a = 0;
+            for (const k of Object.keys(r.map)) {
+              const q = B.Q[+k - 1]; if (!q) continue;
+              if (takeAns && r.ans[k] != null && q.answer == null) { q.answer = r.ans[k]; a++; }
+              if (!over && (q.explanation || q.eimg)) continue;
+              const raw0 = r.map[k], im = raw0.match(/⟦IMG:(\d+)⟧/), t = clean(raw0);
+              if (!t && !im) continue;
+              q.explanation = t;
+              if (im && images[+im[1]]) q.eimg = (AX.compressDataUrl ? await AX.compressDataUrl(images[+im[1]], 900) : null) || images[+im[1]];
+              n++;
+            }
+            dirty(true); close();
+            UI.toast(fmt.plural(n, 'explanation') + ' added' + (a ? ' · ' + fmt.plural(a, 'answer') + ' filled' : ''));
+          });
+        }
+      });
+    },
+    onClose() { refreshQ(); }
+  });
+}
 function secModal() {
   let S = [];
   { let cur = null; B.Q.forEach(q => { const n = q.sec || ''; if (cur && cur.name === n) cur.count++; else S.push(cur = { name: n, count: 1 }); }); if (!S.some(x => x.name)) S = []; else S = S.map(x => ({ name: x.name || 'General', count: x.count })); }
@@ -629,12 +698,17 @@ function vImport() {
       ${tile('image', 'image', 'Photo (OCR)', 'A clear photo or screenshot of the paper')}
       ${tile('json', 'db', 'Old test file', 'A .json file saved from the old panel')}
       ${tile('key', 'key', 'Answer key only', 'Paste or upload just the key')}
+      ${tile('exp', 'book', 'Explanations only', 'Solutions from text, PDF, Word or a photo')}
     </div>`}
     <div class="callout info mt16">${icon('info')}<div class="sm"><b>What works best</b><br>Each question starts with its number (<span class="mono">1.</span> or <span class="mono">Q1.</span>), options are <span class="mono">(A)…(D)</span> or <span class="mono">(1)…(4)</span>, and subject headings like <i>Physics</i> start a section. A key after the words “Answer key” is found automatically.</div></div>
     ${st.n ? h`<div class="card mt16 row wrap">${icon('list')}<div class="grow"><b>${fmt.plural(st.n, 'question')} in this test now</b><div class="xs mut">When you import you can add the new questions after these, or replace them.</div></div><button class="btn sm" data-act="step" data-s="2">See questions</button></div>` : ''}
     ${navBtns(2, 4, 'Schedule')}`;
 }
 async function doImport(src) {
+  if (src === 'exp') {
+    if (!B.Q.length) return UI.toast('Add or import the questions first, then the explanations', { tone: 'warn' });
+    return explainModal();
+  }
   if (src === 'key') {
     if (!B.Q.length) return UI.toast('Add or import the questions first, then the key', { tone: 'warn' });
     return keyModal();
@@ -838,6 +912,7 @@ const ACTS = {
   bulksec() { setSection([...B.view.sel]); },
   async bulkdel() { const n = B.view.sel.size; if (!(await UI.confirm({ title: 'Delete ' + fmt.plural(n, 'question') + '?', text: 'They are removed from this editor. You can undo right after.', yes: 'Delete', tone: 'danger' }))) return; delQ([...B.view.sel]); },
   keymodal: () => keyModal(),
+  expmodal: () => explainModal(),
   secmodal: () => secModal(),
   imp: el => doImport(el.dataset.src),
   fill() { liveFill(B.meta); dirty(); render(); UI.toast('Live till ' + fmt.dt(B.meta.closes_at) + ', result ' + fmt.time(B.meta.result_at)); },
