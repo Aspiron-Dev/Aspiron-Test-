@@ -71,14 +71,23 @@ let SOFF=0, BM=new Set(), SEC=null, FILEURL={}, opTimer=null;
 let CAT=null, T=null, P=null, timer=null, INTEST=false, palOpen=false, warned=false, RV=null, retryT=null, RET='#/', LOGINERR='';
 
 /* ---------- api ---------- */
+// When many students use the site at the same moment the server can answer "busy" (429 / 502 / 503 / 504) or drop a
+// connection. Requests that are safe to send twice are then tried again after a short random wait, so the phones
+// do not all come back at the same second.
+const RPC_RETRY=new Set(['cbt_catalog','cbt_start','cbt_save','cbt_leaderboard','cbt_overall','cbt_insights','cbt_review','cbt_mistakes',
+  'cbt_bookmarks','cbt_notice','cbt_banners','cbt_suspension','cbt_my_flags','cbt_pyq_summary','cbt_pyq_chapter','cbt_alert_list','cbt_cover','cbt_file_part']);
 async function rpc(fn,args,noAuth){
-  const body=noAuth?args:Object.assign({p_mobile:AUTH.mobile,p_code:AUTH.code,p_device:DEV},args||{});
-  const ac=new AbortController(),tmo=setTimeout(()=>ac.abort(),25000);
-  try{
-    const r=await fetch(API+'/rest/v1/rpc/'+fn,{signal:ac.signal,method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!r.ok)return{ok:false,error:'server',status:r.status};
-    return await r.json();
-  }catch(e){return{ok:false,error:'network'}}finally{clearTimeout(tmo)}
+  const body=JSON.stringify(noAuth?args:Object.assign({p_mobile:AUTH.mobile,p_code:AUTH.code,p_device:DEV},args||{}));
+  for(let n=0;;n++){
+    const ac=new AbortController(),tmo=setTimeout(()=>ac.abort(),25000);let r;
+    try{
+      const x=await fetch(API+'/rest/v1/rpc/'+fn,{signal:ac.signal,method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body});
+      r=x.ok?await x.json():{ok:false,error:'server',status:x.status};
+    }catch(e){r={ok:false,error:'network',timeout:ac.signal.aborted}}finally{clearTimeout(tmo)}
+    const busy=r&&r.ok===false&&((r.error==='server'&&[429,502,503,504].includes(r.status))||(r.error==='network'&&!r.timeout&&navigator.onLine!==false));
+    if(!busy||n>=2||!RPC_RETRY.has(fn))return r;
+    await new Promise(k=>setTimeout(k,(1500<<n)*(0.5+Math.random())));
+  }
 }
 const AUTHERR=['invalid','blocked','pending','device_limit','device'];
 function errText(r){
