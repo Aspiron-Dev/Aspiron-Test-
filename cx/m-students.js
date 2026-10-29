@@ -708,7 +708,7 @@ function mediumHtml(s, can) {
   return h`${head}<p class="xs mut" style="margin:0 0 8px">Chosen by the student on the store or in the app. A test is given in Hindi only when all its questions have Hindi; a running test never changes language.</p>
     <div class="card flat" style="padding:4px 16px">
       ${join(ser, x => h`<div class="s3-li"><span class="av sm" style="--c:${AX.u.hue(x.id)}">${icon('layers', 15)}</span><div class="grow"><b class="ell" style="display:block">${x.title}</b><div class="xs mut">${AX.lang.mode(x.id) === 'bi' ? 'English + हिंदी series' : 'English series'}</div></div>${sel(x.id, M[x.id], x.title)}</div>`)}
-      <div class="s3-li"><span class="av sm" style="--c:210">${icon('globe', 15)}</span><div class="grow"><b style="display:block">Default</b><div class="xs mut">For a series without its own choice</div></div>${sel('default', M.default, 'default')}</div></div>`;
+      <div class="s3-li"><span class="av sm" style="--c:#0ea5e9">${icon('globe', 15)}</span><div class="grow"><b style="display:block">Default</b><div class="xs mut">For a series without its own choice</div></div>${sel('default', M.default, 'default')}</div></div>`;
 }
 function wireDrawer(el) {
   el.addEventListener('change', async e => {
