@@ -3,7 +3,9 @@
    old .json test file, answer key (text or file). Everything is read on this device; parsing uses window.CBTParser (parser.js).
    Libraries load only when an import needs them: lib/pdfjs-3.11.174, lib/jszip-3.10.1, lib/tesseract-5.1.1.
    API (used by m-builder.js):
-     AX.importQuestions({source:'paste'|'pdf'|'docx'|'image'|'json', existing:n}) → Promise<{questions, mode:'append'|'replace', meta, json} | null>
+     AX.importQuestions({source:'paste'|'pdf'|'docx'|'image'|'json', existing:n, lang:'hi', en:[English texts], noKey}) → Promise<{questions, mode:'append'|'replace', meta, json} | null>
+       lang:'hi' = the हिंदी paper of a test: its own pasted text, Hindi OCR, Hindi numbering read, each question shown
+       next to the English one of the same number (en); mode 'append' then means "fill only the empty Hindi". noKey hides the key box.
      AX.cropFromPdf({title, maxW}) → Promise<dataURL | null>     (crop a diagram from the last paper PDF, or a PDF picked now)
      AX.textEditor({title, hint, value, kind:'raw'|'key'}) → Promise<string | null>   (full-screen text editor; Esc = done)
      AX.compressDataUrl(src, maxWidth, quality) → Promise<dataURL | null>   (same rules as the old compressDataUrl)
@@ -16,6 +18,9 @@ const LIB = { pdf: 'lib/pdfjs-3.11.174/pdf.min.js', worker: 'lib/pdfjs-3.11.174/
 const L = 'ABCD';
 // kept between imports in this tab, so closing the window never loses pasted text
 const IM = { raw: '', key: '', images: [], fileName: '', pdfBuf: null, pdfDoc: null, pdfDocBuf: null, lang: AX.ls.get('cx_ocr_lang', 'eng') };
+// the हिंदी paper keeps its own text (so the English paste never shows up there) and its own OCR language
+const IMH = { raw: '', key: '', images: [], fileName: '', lang: AX.ls.get('cx_ocr_lang_hi', 'eng+hin') };
+let ocrLang = null;   // set while the Hindi import is open
 AX.imp = IM;
 
 AX.css('import', `
@@ -25,6 +30,7 @@ AX.css('import', `
 .im-tile .ax-ic{width:22px;height:22px}
 @media (max-width:620px){.im-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .im-dz{padding:16px;font-size:13px}
+.im-en{margin:-2px 0 6px;padding:4px 8px;border-radius:8px;background:var(--solid-2);overflow-wrap:anywhere}
 .im-st{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:14px;background:var(--solid-2);border:1px solid var(--line)}
 .im-st.bad{background:var(--bad-soft);border-color:color-mix(in srgb,var(--bad) 35%,transparent)}
 .im-st.ok{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 35%,transparent)}
@@ -82,7 +88,7 @@ async function ocrRun(count, getCanvas, note) {
   await loadScript(LIB.tess, () => window.Tesseract);
   note('Starting OCR (the first time downloads the language data, please wait)…', 2);
   let pct = 0, page = 1;
-  const w = await Tesseract.createWorker(IM.lang || 'eng', 1, { logger: m => { if (m.status === 'recognizing text' && m.progress != null) { pct = Math.round(m.progress * 100); note(`OCR: reading page ${page} of ${count}… ${pct}%`, Math.round(((page - 1) + m.progress) * 100 / count)); } } });
+  const w = await Tesseract.createWorker(ocrLang || IM.lang || 'eng', 1, { logger: m => { if (m.status === 'recognizing text' && m.progress != null) { pct = Math.round(m.progress * 100); note(`OCR: reading page ${page} of ${count}… ${pct}%`, Math.round(((page - 1) + m.progress) * 100 / count)); } } });
   let out = '';
   try {
     for (let i = 1; i <= count; i++) {
@@ -279,7 +285,11 @@ AX.cropFromPdf = async (o = {}) => {
 AX.importQuestions = (o = {}) => new Promise(res => {
   const P = parser();
   if (!P) { UI.toast('The question reader (parser.js) did not load. Reload the page.', { tone: 'bad' }); return res(null); }
-  const K = AX.qkit;
+  const K = AX.qkit, HI = o.lang === 'hi', S = HI ? IMH : IM, EN = o.en || [];
+  // Hindi: read Devanagari numbers, "प्रश्न 1", (अ)…(द) / (क)…(घ) options; the key is never asked here
+  const prep = t => HI && P.normHi ? P.normHi(t) : t;
+  const probs = q => HI ? K.problems(q).filter(x => x !== 'No correct answer set') : K.problems(q);
+  if (HI) ocrLang = S.lang;
   let view = 'src', done = false, rev = null, mode = 'append', only = false, showAll = false, busy = false, hasPdfText = false, jsonData = null;
   const ACC = { pdf: '.pdf,application/pdf', docx: '.docx', image: 'image/*', json: '.json,application/json', any: '.pdf,.docx,.txt,.md,.json,image/*,application/pdf' };
   const srcHtml = () => h`<div class="col gap16">
@@ -287,39 +297,41 @@ AX.importQuestions = (o = {}) => new Promise(res => {
       <div class="dropzone im-dz" id="im-dz" data-act="pick" data-k="any">${icon('upload', 18)} <b>Drop a file here</b> or tap to choose · PDF, Word (.docx), text, photo or old .json file</div>
       <div id="im-st" class="im-st hide" role="status"></div>
       <div class="fld"><div class="row"><label for="im-raw" class="grow">Question paper text</label><button type="button" class="btn xs ghost" data-act="expand" data-f="raw">${icon('external', 13)} Full screen</button><button type="button" class="btn xs ghost" data-act="clear">${icon('x', 13)} Clear</button></div>
-        <textarea class="inp im-ta" id="im-raw" rows="11" spellcheck="false" placeholder="Paste the paper here, for example:\n\n1. Which of these is a scalar quantity?\n(A) Force  (B) Velocity  (C) Work  (D) Momentum\n\n2. …">${IM.raw}</textarea></div>
-      <div class="row wrap"><label class="xs mut" for="im-lang">OCR language</label><select class="inp sm" id="im-lang" style="width:auto"><option value="eng" ${IM.lang === 'eng' ? raw('selected') : ''}>English</option><option value="eng+hin" ${IM.lang === 'eng+hin' ? raw('selected') : ''}>English + Hindi</option></select>
+        <textarea class="inp im-ta" id="im-raw" rows="11" spellcheck="false" ${HI ? raw('lang="hi"') : ''} placeholder="${HI ? 'हिंदी paper यहाँ paste करें, जैसे:\n\n1. कोशिका का ऊर्जा केंद्र कौन सा है?\n(अ) केंद्रक  (ब) माइटोकॉन्ड्रिया  (स) राइबोसोम  (द) लाइसोसोम\n\n2. …' : 'Paste the paper here, for example:\n\n1. Which of these is a scalar quantity?\n(A) Force  (B) Velocity  (C) Work  (D) Momentum\n\n2. …'}">${S.raw}</textarea></div>
+      <div class="row wrap"><label class="xs mut" for="im-lang">OCR language (for photos and scans)</label><select class="inp sm" id="im-lang" style="width:auto">${HI ? h`<option value="eng+hin" ${S.lang === 'eng+hin' ? raw('selected') : ''}>Hindi + English</option><option value="hin" ${S.lang === 'hin' ? raw('selected') : ''}>Hindi only</option>` : h`<option value="eng" ${IM.lang === 'eng' ? raw('selected') : ''}>English</option><option value="eng+hin" ${IM.lang === 'eng+hin' ? raw('selected') : ''}>English + Hindi</option>`}</select>
         <button type="button" class="btn xs ${hasPdfText ? '' : 'hide'}" id="im-ocr" data-act="ocr">${icon('scan', 13)} Read this PDF with OCR instead</button></div>
-      <div class="fld"><div class="row"><label for="im-key" class="grow">Answer key <span class="faint">(only if it is separate)</span></label><button type="button" class="btn xs ghost" data-act="keyfile">${icon('upload', 13)} Key from a file</button><button type="button" class="btn xs ghost" data-act="expand" data-f="key">${icon('external', 13)} Full screen</button></div>
-        <textarea class="inp im-ta" id="im-key" rows="3" spellcheck="false" placeholder="e.g. 1. B  2. D  3. A …  or 1-2, 2-4 …">${IM.key}</textarea></div>
+      <div class="fld ${o.noKey || HI ? 'hide' : ''}"><div class="row"><label for="im-key" class="grow">Answer key <span class="faint">(only if it is separate)</span></label><button type="button" class="btn xs ghost" data-act="keyfile">${icon('upload', 13)} Key from a file</button><button type="button" class="btn xs ghost" data-act="expand" data-f="key">${icon('external', 13)} Full screen</button></div>
+        <textarea class="inp im-ta" id="im-key" rows="3" spellcheck="false" placeholder="e.g. 1. B  2. D  3. A …  or 1-2, 2-4 …">${S.key}</textarea></div>
       <div class="im-live" id="im-live"></div>
       <details class="im-help"><summary>How should the text look?</summary><ul>
         <li>Each question starts with its number and a dot or bracket: <span class="mono">1.</span> <span class="mono">1)</span> <span class="mono">Q1.</span></li>
-        <li>Options as <span class="mono">(A) (B) (C) (D)</span>, <span class="mono">A. B. C. D.</span> or <span class="mono">(1) (2) (3) (4)</span>. Options like <span class="mono">1)</span> without brackets look like new questions.</li>
+        <li>Options as <span class="mono">(A) (B) (C) (D)</span>, <span class="mono">A. B. C. D.</span>, <span class="mono">(1) (2) (3) (4)</span>${HI ? raw(', <span class="mono">(अ) (ब) (स) (द)</span> or <span class="mono">(क) (ख) (ग) (घ)</span>; Hindi numbers १ २ ३ work too') : ''}. Options like <span class="mono">1)</span> without brackets look like new questions.</li>
         <li>A heading line such as <i>Physics</i>, <i>Chemistry</i> or <i>Section A</i> starts a section (subject tab).</li>
         <li>An answer key after “Answer key” / “Answers” / “उत्तर कुंजी” with 10 or more answers is found by itself. Answers are matched by position.</li>
         <li>Assertion–Reason questions without options get the four standard options.</li></ul></details></div>`;
-  const qMini = (q, i) => { const pr = K.problems(q); return h`<div class="qcard ${pr.length ? 'bad' : ''}"><div class="qn">${i + 1}</div><div class="grow">
+  const qMini = (q, i) => { const pr = probs(q); return h`<div class="qcard ${pr.length ? 'bad' : ''}" ${HI ? raw('lang="hi"') : ''}><div class="qn">${i + 1}</div><div class="grow">
+      ${HI ? h`<div class="xs mut im-en">${EN[i] != null ? h`English ${i + 1}: ${String(EN[i] || '[image]').slice(0, 120)}` : h`<span style="color:var(--warn)">No English question ${i + 1} — this one is left out</span>`}</div>` : ''}
       <div class="bq-meta">${q.sec ? UI.pill(q.sec, 'info') : ''}${join(pr, p => UI.pill(K.short(p), 'warn'))}<span class="grow"></span><button class="ibtn sm" data-act="rmq" data-i="${i}" aria-label="Leave out question ${i + 1}" title="Leave this one out">${icon('x', 15)}</button></div>
       <div class="qt">${q.q || h`<span class="faint">${q.gap ? 'Question missing in the file' : 'No question text'}</span>`}</div>${q.img ? h`<img src="${q.img}" alt="">` : ''}
       <div class="opts">${join(q.options, (x, j) => h`<div class="op ${q.answer === j ? 'key' : ''}"><b>${L[j]}</b><span class="grow">${x || (q.oimg[j] ? '' : h`<span class="faint">empty</span>`)}${q.oimg[j] ? h`<img src="${q.oimg[j]}" alt="">` : ''}</span></div>`)}</div></div></div>`; };
   const revHtml = () => {
-    const qs = rev.questions, nb = qs.filter(K.bad).length, na = qs.filter(q => q.answer != null).length, ni = qs.reduce((a, q) => a + (q.img ? 1 : 0) + q.oimg.filter(Boolean).length + (q.eimg ? 1 : 0), 0);
-    const list = qs.map((q, i) => i).filter(i => !only || K.bad(qs[i])), cut = showAll ? list : list.slice(0, 40);
-    return h`<div class="im-kp"><div><b>${qs.length}</b><span>Found</span></div><div><b style="color:var(--ok)">${qs.length - nb}</b><span>Complete</span></div><div><b style="color:${nb ? 'var(--warn)' : 'var(--ok)'}">${nb}</b><span>To check</span></div><div><b>${na}</b><span>With answer</span></div><div><b>${ni}</b><span>Images</span></div></div>
-      ${rev.json ? h`<div class="callout info mt12">${icon('info')}<div class="sm">Old test file${rev.meta && rev.meta.title ? h` “<b>${rev.meta.title}</b>”` : ''}: its name, time and marks are filled in too.</div></div>`
+    const qs = rev.questions, nb = qs.filter(q => probs(q).length > 0).length, na = qs.filter(q => q.answer != null).length, ni = qs.reduce((a, q) => a + (q.img ? 1 : 0) + q.oimg.filter(Boolean).length + (q.eimg ? 1 : 0), 0);
+    const list = qs.map((q, i) => i).filter(i => !only || probs(qs[i]).length > 0), cut = showAll ? list : list.slice(0, 40);
+    return h`<div class="im-kp"><div><b>${qs.length}</b><span>Found</span></div><div><b style="color:var(--ok)">${qs.length - nb}</b><span>Complete</span></div><div><b style="color:${nb ? 'var(--warn)' : 'var(--ok)'}">${nb}</b><span>To check</span></div>${HI ? h`<div><b>${EN.length}</b><span>English</span></div>` : h`<div><b>${na}</b><span>With answer</span></div><div><b>${ni}</b><span>Images</span></div>`}</div>
+      ${HI ? h`<div class="callout ${qs.length === EN.length ? 'ok' : 'warn'} mt12">${icon(qs.length === EN.length ? 'checkCircle' : 'alert')}<div class="sm">${qs.length === EN.length ? h`<b>${qs.length} हिंदी questions — same as the ${EN.length} English questions.</b> Check below that each one matches the English one of the same number.` : h`<b>${qs.length} हिंदी questions found, but the English paper has ${EN.length}.</b> Question numbers must match: check the Hindi paper (a missing number or a question split in two moves all the next ones).`}</div></div>`
+        : rev.json ? h`<div class="callout info mt12">${icon('info')}<div class="sm">Old test file${rev.meta && rev.meta.title ? h` “<b>${rev.meta.title}</b>”` : ''}: its name, time and marks are filled in too.</div></div>`
         : rev.keyFound ? h`<div class="callout ok mt12">${icon('checkCircle')}<div class="sm">Answer key found: ${fmt.plural(rev.keyFound, 'answer')}.</div></div>` : h`<div class="callout warn mt12">${icon('info')}<div class="sm">No answer key found. You can add it later in Questions → Answer key.</div></div>`}
       ${rev.skipped ? h`<div class="callout warn mt12">${icon('image')}<div class="sm">${rev.skipped} extra picture(s) inside questions were left out — add them by hand.</div></div>` : ''}
-      ${o.existing ? h`<div class="row wrap mt16"><span class="sm b">This test already has ${fmt.plural(o.existing, 'question')}:</span><div class="seg" id="im-mode"><button type="button" class="${mode === 'append' ? 'on' : ''}" data-v="append">Add after them</button><button type="button" class="${mode === 'replace' ? 'on' : ''}" data-v="replace">Replace them</button></div></div>` : ''}
+      ${o.existing ? h`<div class="row wrap mt16"><span class="sm b">${HI ? fmt.plural(o.existing, 'question') + ' already have Hindi:' : 'This test already has ' + fmt.plural(o.existing, 'question') + ':'}</span><div class="seg" id="im-mode"><button type="button" class="${mode === 'append' ? 'on' : ''}" data-v="append">${HI ? 'Fill only the empty ones' : 'Add after them'}</button><button type="button" class="${mode === 'replace' ? 'on' : ''}" data-v="replace">${HI ? 'Replace all Hindi' : 'Replace them'}</button></div></div>` : ''}
       <div class="chips mt16"><button class="chip ${only ? '' : 'on'}" data-act="only" data-v="0">All<em>${qs.length}</em></button>${nb ? h`<button class="chip alert ${only ? 'on' : ''}" data-act="only" data-v="1">To check<em>${nb}</em></button>` : ''}</div>
       <div class="im-list">${list.length ? join(cut, i => qMini(qs[i], i)) : UI.empty({ icon: 'checkCircle', title: 'Nothing to check' })}</div>
       ${cut.length < list.length ? h`<div class="row mt12" style="justify-content:center"><button class="btn sm" data-act="all">Show all ${list.length}</button></div>` : ''}
-      <p class="xs mut mt12">You can fix anything later in the Questions step: tap a question to edit it.</p>`;
+      <p class="xs mut mt12">You can fix anything later in step 5 (Check & edit): tap a question to edit it.</p>`;
   };
   const m = UI.modal({
-    title: 'Import questions', sub: 'Read on this device. You check the questions before they are added.', size: 'xwide', sticky: true,
+    title: HI ? 'हिंदी paper' : 'English paper', sub: HI ? 'The Hindi questions are matched to the English ones by number. You check them before they are added.' : 'Read on this device. You check the questions before they are added.', size: 'xwide', sticky: true,
     body: srcHtml(), foot: h`<span class="sp"></span>`,
-    onClose() { if (!done) { done = true; res(null); } },
+    onClose() { ocrLang = null; if (!done) { done = true; res(null); } },
     onOpen(el, close, api) {
       const $ = s => el.querySelector(s);
       const status = (text, pct, tone) => {
@@ -329,25 +341,25 @@ AX.importQuestions = (o = {}) => new Promise(res => {
       };
       const live = () => {
         const box = $('#im-live'); if (!box) return;
-        IM.raw = $('#im-raw').value; IM.key = $('#im-key').value;
-        const c = liveCounts(IM.raw, IM.key);
-        AX.set(box, c ? h`${UI.pill(fmt.plural(c.n, 'question') + ' found', c.n ? 'pri' : 'warn')}${c.n ? UI.pill(c.full + ' with all 4 options', c.full === c.n ? 'ok' : 'warn') : ''}${c.n ? UI.pill(c.ans + ' with an answer', c.ans === c.n ? 'ok' : '') : ''}${IM.key.trim() ? UI.pill(P.parseKey(IM.key).count + ' answers in the key', 'info') : c.key ? UI.pill('Key found inside the text', 'info') : ''}`
-          : IM.raw.length > 400000 ? h`<span class="xs mut">Long text: questions are counted when you press Review.</span>` : h`<span class="xs mut">Paste or upload a paper to see the questions found.</span>`);
+        S.raw = $('#im-raw').value; S.key = $('#im-key').value;
+        const c = liveCounts(prep(S.raw), S.key);
+        AX.set(box, c ? h`${UI.pill(fmt.plural(c.n, 'question') + ' found', c.n ? 'pri' : 'warn')}${c.n ? UI.pill(c.full + ' with all 4 options', c.full === c.n ? 'ok' : 'warn') : ''}${c.n && HI && EN.length ? UI.pill('English paper: ' + EN.length, c.n === EN.length ? 'ok' : 'warn') : ''}${c.n && !HI ? UI.pill(c.ans + ' with an answer', c.ans === c.n ? 'ok' : '') : ''}${S.key.trim() ? UI.pill(P.parseKey(S.key).count + ' answers in the key', 'info') : c.key ? UI.pill('Key found inside the text', 'info') : ''}`
+          : S.raw.length > 400000 ? h`<span class="xs mut">Long text: questions are counted when you press Review.</span>` : h`<span class="xs mut">Paste or upload a paper to see the questions found.</span>`);
         foot();
       };
       const liveSoon = AX.u.debounce(live, 300);
       const foot = () => {
         if (view === 'src') {
-          const c = liveCounts(IM.raw, IM.key), n = c ? c.n : IM.raw.trim() ? 1 : 0;
+          const c = liveCounts(prep(S.raw), S.key), n = c ? c.n : S.raw.trim() ? 1 : 0;
           api.foot(h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="review" ${n && !busy ? '' : raw('disabled')}>Review ${c && c.n ? fmt.plural(c.n, 'question') : 'questions'} ${icon('arrowR', 16)}</button>`);
         } else {
           const n = rev.questions.length;
-          api.foot(h`<button class="btn ghost" data-act="back">${icon('arrowL', 16)} Back</button><span class="sp"></span><button class="btn pri" data-act="add" ${n ? '' : raw('disabled')}>${icon('check', 16)} ${mode === 'replace' ? 'Replace with ' : 'Add '}${fmt.plural(n, 'question')}</button>`);
+          api.foot(h`<button class="btn ghost" data-act="back">${icon('arrowL', 16)} Back</button><span class="sp"></span><button class="btn pri" data-act="add" ${n ? '' : raw('disabled')}>${icon('check', 16)} ${HI ? 'Add Hindi to ' + fmt.plural(Math.min(n, EN.length), 'question') : (mode === 'replace' ? 'Replace with ' : 'Add ') + fmt.plural(n, 'question')}</button>`);
         }
       };
       const wireSrc = () => {
         $('#im-raw').addEventListener('input', liveSoon); $('#im-key').addEventListener('input', liveSoon);
-        $('#im-lang').addEventListener('change', e => { IM.lang = e.target.value; AX.ls.set('cx_ocr_lang', IM.lang); });
+        $('#im-lang').addEventListener('change', e => { if (HI) { S.lang = ocrLang = e.target.value; AX.ls.set('cx_ocr_lang_hi', S.lang); } else { IM.lang = e.target.value; AX.ls.set('cx_ocr_lang', IM.lang); } });
         const dz = $('#im-dz');
         dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
         dz.addEventListener('dragleave', () => dz.classList.remove('over'));
@@ -362,12 +374,12 @@ AX.importQuestions = (o = {}) => new Promise(res => {
         status('Reading ' + f.name + '…', 0);
         try {
           const r = await readAny(f, false, (t, p) => status(t, p));
-          IM.raw = r.text; IM.images = r.images || []; IM.fileName = f.name;
+          S.raw = r.text; S.images = r.images || []; S.fileName = f.name;
           if (!el.isConnected) return;
           $('#im-raw').value = r.text;
           hasPdfText = !!(r.pdf && !r.scanned); $('#im-ocr').classList.toggle('hide', !hasPdfText);
-          const c = liveCounts(IM.raw, IM.key);
-          status(r.text.trim() ? 'Done. ' + (c ? fmt.plural(c.n, 'question') + ' found. ' : '') + (r.ocr || r.scanned ? 'OCR can make mistakes, so please check the text. ' : 'Please check the text below. ') + (IM.images.length ? IM.images.length + ' picture(s) found in the Word file.' : '') : 'No text was found in this file. If it is a scan, try a clearer photo or paste the text.', null, r.text.trim() ? 'ok' : 'bad');
+          const c = liveCounts(prep(S.raw), S.key);
+          status(r.text.trim() ? 'Done. ' + (c ? fmt.plural(c.n, 'question') + ' found. ' : '') + (r.ocr || r.scanned ? 'OCR can make mistakes, so please check the text. ' : 'Please check the text below. ') + (S.images.length ? S.images.length + ' picture(s) found in the Word file.' : '') : 'No text was found in this file. If it is a scan, try a clearer photo or paste the text.', null, r.text.trim() ? 'ok' : 'bad');
         } catch (err) { status('Could not read this file: ' + err.message, null, 'bad'); }
         finally { busy = false; live(); }
       };
@@ -381,14 +393,14 @@ AX.importQuestions = (o = {}) => new Promise(res => {
         } catch (e) { UI.toast('Could not read this file', { tone: 'bad' }); }
       };
       const buildRev = async () => {
-        IM.raw = $('#im-raw').value; IM.key = $('#im-key').value;
-        const r = P.parse(IM.raw, IM.key);
+        S.raw = $('#im-raw').value; S.key = $('#im-key').value;
+        const r = P.parse(prep(S.raw), S.key);
         const qs = r.questions.map(K.normQ);
         let skipped = 0;
-        if (IM.images.length && /⟦IMG:\d+⟧/.test(IM.raw)) {
+        if (S.images.length && /⟦IMG:\d+⟧/.test(S.raw)) {
           busy = true; foot(); status('Preparing the pictures from the Word file…', 10);
           const cache = {};
-          const get = async k => cache[k] !== undefined ? cache[k] : (cache[k] = IM.images[k] ? await compressDataUrl(IM.images[k], 900, 0.8) : null);
+          const get = async k => cache[k] !== undefined ? cache[k] : (cache[k] = S.images[k] ? await compressDataUrl(S.images[k], 900, 0.8) : null);
           const take = async txt => { const ks = []; const t = String(txt).replace(/⟦IMG:(\d+)⟧/g, (_, k) => { ks.push(+k); return ' '; }).replace(/[ \t]{2,}/g, ' ').trim(); return { t, img: ks.length ? await get(ks[0]) : null, n: ks.length }; };
           for (let i = 0; i < qs.length; i++) {
             const q = qs[i], a = await take(q.q); q.q = a.t; if (a.img) q.img = a.img; skipped += Math.max(0, a.n - 1);
@@ -399,7 +411,7 @@ AX.importQuestions = (o = {}) => new Promise(res => {
           busy = false;
         } else qs.forEach(q => { ['q', 'explanation'].forEach(k => { q[k] = q[k].replace(/⟦IMG:\d+⟧/g, ' ').replace(/[ \t]{2,}/g, ' ').trim(); }); q.options = q.options.map(x => x.replace(/⟦IMG:\d+⟧/g, ' ').replace(/[ \t]{2,}/g, ' ').trim()); });
         if (!qs.length) { status('No questions found. Each question must start with its number, like “1.” or “Q1.”.', null, 'bad'); foot(); return; }
-        rev = { questions: qs, keyFound: IM.key.trim() ? P.parseKey(IM.key).count : r.keyFound, skipped, meta: { title: IM.fileName ? IM.fileName.replace(/\.[a-z0-9]+$/i, '') : '' } };
+        rev = { questions: qs, keyFound: S.key.trim() ? P.parseKey(S.key).count : r.keyFound, skipped, meta: { title: S.fileName ? S.fileName.replace(/\.[a-z0-9]+$/i, '') : '' } };
         view = 'rev'; showAll = false; only = false; api.set(revHtml()); foot();
         el.querySelector('.m-b').scrollTop = 0;
       };
@@ -413,13 +425,13 @@ AX.importQuestions = (o = {}) => new Promise(res => {
         async keyfile() {
           const f = await AX.u.pickFile(ACC.any); if (!f) return;
           status('Reading the key…', 0);
-          try { const r = await readAny(f, true, (t, p) => status(t, p)); const v = r.text.replace(/⟦IMG:\d+⟧/g, ''); $('#im-key').value = v; IM.key = v; const n = P.parseKey(v).count; status(n ? `Done. Found ${n} answers in the key.` : 'No answers found. If this is a scan, try again with OCR or paste the key text.', null, n ? 'ok' : 'bad'); }
+          try { const r = await readAny(f, true, (t, p) => status(t, p)); const v = r.text.replace(/⟦IMG:\d+⟧/g, ''); $('#im-key').value = v; S.key = v; const n = P.parseKey(v).count; status(n ? `Done. Found ${n} answers in the key.` : 'No answers found. If this is a scan, try again with OCR or paste the key text.', null, n ? 'ok' : 'bad'); }
           catch (err) { status('Could not read this file: ' + err.message, null, 'bad'); }
           live();
         },
         async ocr() {
           if (!IM.pdfBuf || busy) return; busy = true; foot();
-          try { status('Starting OCR…', 0); const pdf = await pdfOpen(IM.pdfBuf); const t = await pdfOcr(pdf, (x, p) => status(x, p)); IM.raw = t; $('#im-raw').value = t; status('OCR finished. OCR can make mistakes, so please check the questions.', null, 'ok'); }
+          try { status('Starting OCR…', 0); const pdf = await pdfOpen(IM.pdfBuf); const t = await pdfOcr(pdf, (x, p) => status(x, p)); S.raw = t; $('#im-raw').value = t; status('OCR finished. OCR can make mistakes, so please check the questions.', null, 'ok'); }
           catch (err) { status('OCR failed: ' + err.message, null, 'bad'); }
           finally { busy = false; live(); }
         },
@@ -429,7 +441,7 @@ AX.importQuestions = (o = {}) => new Promise(res => {
             hint: f === 'raw' ? 'Fix or paste the paper here. Each question starts with its number (1. or Q1.), options as (1)…(4) or (A)…(D).' : 'One answer per number, e.g. 1. B  2. D  3. A  — or 1-2, 2-4 …', value: ta.value });
           if (v != null) { ta.value = v; live(); }
         },
-        async clear() { if ($('#im-raw').value && !(await UI.confirm({ title: 'Clear the text?', yes: 'Clear', tone: 'danger' }))) return; $('#im-raw').value = ''; $('#im-key').value = ''; IM.images = []; IM.fileName = ''; status(''); live(); },
+        async clear() { if ($('#im-raw').value && !(await UI.confirm({ title: 'Clear the text?', yes: 'Clear', tone: 'danger' }))) return; $('#im-raw').value = ''; $('#im-key').value = ''; S.images = []; S.fileName = ''; status(''); live(); },
         async review(b) { if (busy) return; await UI.busy(b, buildRev); },
         back() { jsonData = null; toSrc(); },
         only(b) { only = b.dataset.v === '1'; api.set(revHtml()); },
@@ -438,7 +450,7 @@ AX.importQuestions = (o = {}) => new Promise(res => {
         add() {
           done = true;
           res({ questions: rev.questions, mode: o.existing ? mode : 'append', meta: rev.meta || {}, json: !!rev.json });
-          if (!rev.json) { IM.raw = ''; IM.key = ''; IM.images = []; }
+          if (!rev.json) { S.raw = ''; S.key = ''; S.images = []; }
           close(true);
         }
       });

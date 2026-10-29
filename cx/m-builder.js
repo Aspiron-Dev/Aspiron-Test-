@@ -158,6 +158,8 @@ AX.css('builder', `
 .bp-done{text-align:center;padding:30px 18px}
 .bp-done .big{width:68px;height:68px;border-radius:22px;margin:0 auto 14px;display:grid;place-items:center;background:var(--grad-pri);color:var(--pri-ink);box-shadow:0 14px 34px color-mix(in srgb,var(--pri-2) 40%,transparent)}
 .bp-done .big .ax-ic{width:32px;height:32px;stroke-width:2.2}
+.kr.diff{border-color:color-mix(in srgb,var(--warn) 60%,transparent);background:var(--warn-soft)}
+.kr .kh{margin-left:auto;font-size:11px;font-weight:800;color:var(--warn);white-space:nowrap}
 .bw-two{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
 .bw-lp{display:flex;flex-direction:column}
 .bw-lh{display:flex;gap:12px;align-items:center;margin-bottom:12px}
@@ -218,7 +220,7 @@ AX.openTest = async (id, o = {}) => {
   if (d && d.meta && Array.isArray(d.Q) && !ro) {
     const use = o.draft ? true : await UI.confirm({ title: 'Continue your unsaved changes?', text: 'You changed this test on this device ' + fmt.ago(d.at) + ' and did not publish. Restore those changes?', yes: 'Restore changes', no: 'Use the published test' });
     if (!WS) return;
-    if (use) { st.key = d.key || dkey; st.meta = Object.assign(st.meta, d.meta); st.Q = d.Q.map(normQ); st.qDirty = !!d.qDirty || !id; st.hiDirty = !!d.hiDirty; st.dirty = true; st.savedAt = d.at; if (d.step && d.v === 2) st.step = d.step; }
+    if (use) { st.key = d.key || dkey; st.meta = Object.assign(st.meta, d.meta); st.Q = d.Q.map(normQ); st.qDirty = !!d.qDirty || !id; st.hiDirty = !!d.hiDirty; st.hiKey = d.hiKey || null; st.dirty = true; st.savedAt = d.at; if (d.step && d.v === 2) st.step = d.step; }
     else AX.ls.del(DK + dkey);
   }
   B = st;
@@ -280,7 +282,7 @@ window.addEventListener('beforeunload', e => { if (B && B.dirty && !B.ro) { save
 const saveSoon = AX.u.debounce(() => saveDraft(), 700);
 function saveDraft() {
   if (!B || B.ro || !B.dirty) return;
-  const d = { v: 2, key: B.key, id: B.id, meta: B.meta, Q: B.Q, qDirty: B.qDirty, hiDirty: B.hiDirty, step: B.step, at: Date.now() };
+  const d = { v: 2, key: B.key, id: B.id, meta: B.meta, Q: B.Q, qDirty: B.qDirty, hiDirty: B.hiDirty, hiKey: B.hiKey || null, step: B.step, at: Date.now() };
   try { localStorage.setItem(DK + B.key, JSON.stringify(d)); B.savedAt = d.at; B.draftFail = false; }
   catch (e) { B.draftFail = true; }
   savedText();
@@ -631,23 +633,34 @@ function editQ(i, lang) {
 const needQ = t => h`<div class="bw-h"><h2>${t}</h2></div><div class="card">${UI.empty({ icon: 'upload', title: 'Add the questions first', text: 'Put the English paper in step 2 (Questions), then come back here.',
   action: h`<button class="btn pri" data-act="step" data-s="${S_Q}">${icon('arrowL', 16)} Go to Questions</button>` })}</div>${navBtns(B.step - 1, B.step + 1, 'Skip')}`;
 const keyCount = () => B.Q.filter(q => q.answer != null).length;
-const keyRow = (q, i) => h`<div class="kr ${q.answer == null ? 'miss' : ''}" data-kr="${i}"><span class="num">${i + 1}</span>${join([0, 1, 2, 3], j => h`<button type="button" class="${q.answer === j ? 'on' : ''}" data-act="ka" data-i="${i}" data-j="${j}" ${B.ro ? raw('disabled') : ''} aria-label="Question ${i + 1} answer ${L[j]}">${L[j]}</button>`)}</div>`;
+// a key printed in the Hindi paper (B.hiKey, 0-based) is only compared: the answer of a question is one for both
+const hiDiff = () => B.hiKey ? B.Q.map((q, i) => i).filter(i => B.hiKey[i] != null && B.Q[i].answer != null && B.hiKey[i] !== B.Q[i].answer) : [];
+const keyRow = (q, i) => { const hk = B.hiKey && B.hiKey[i], df = hk != null && q.answer != null && hk !== q.answer;
+  return h`<div class="kr ${q.answer == null ? 'miss' : ''} ${df ? 'diff' : ''}" data-kr="${i}"><span class="num">${i + 1}</span>${join([0, 1, 2, 3], j => h`<button type="button" class="${q.answer === j ? 'on' : ''}" data-act="ka" data-i="${i}" data-j="${j}" ${B.ro ? raw('disabled') : ''} aria-label="Question ${i + 1} answer ${L[j]}">${L[j]}</button>`)}${df ? h`<span class="kh" title="The Hindi key says ${L[hk]}">हिं ${L[hk]}</span>` : ''}</div>`; };
 function vKey() {
   const st = stats(); if (!st.n) return needQ('Answer key');
-  const c = keyCount();
-  return h`<div class="bw-h"><h2>Answer key</h2><p>Enter the correct answers once. They work for <b>both English and हिंदी</b> — question 1 in English and question 1 in Hindi have the same answer.</p></div>
-  <div class="card"><div class="card-h">${icon('fileText')}<h3>Paste the key</h3><span class="grow"></span><span class="pill ${c === st.n ? 'ok' : 'warn'}" id="kcount">${c} of ${st.n} answered</span></div>
-    ${B.ro ? '' : h`<textarea class="inp mono" id="kt" rows="3" placeholder="1. B   2. D   3. A   4. C …   or 1-2, 2-4, 3-1 …"></textarea>
-    <div class="row wrap gap6 mt8"><span class="hint grow" id="kc">Matched by question number: 1 is the first question.</span><button class="btn sm pri" data-act="kapply">${icon('check', 15)} Apply key</button></div>`}</div>
-  <div class="card mt16"><div class="card-h">${icon('key')}<h3>${B.ro ? 'Answers' : 'Or tap the answers'}</h3></div>
-    ${B.ro ? '' : h`<p class="sm mut" style="margin:-4px 0 10px">Tap the correct letter for each question. It is saved at once. Tap again to clear.</p>`}
+  const c = keyCount(), df = hiDiff(), hn = B.hiKey ? Object.keys(B.hiKey).length : 0;
+  const box = (id, act, lbl, ph, note) => h`<div class="card bw-lp"><div class="bw-lh"><span class="bw-lg ${id === 'kth' ? 'hi' : ''}">${id === 'kth' ? 'अ' : 'A'}</span><div class="grow"><b>${lbl}</b><div class="xs mut">${note}</div></div></div>
+    ${B.ro ? '' : h`<textarea class="inp mono" id="${id}" rows="3" placeholder="${ph}"></textarea>
+    <div class="row wrap gap6 mt8"><span class="hint grow" id="${id}-c">Matched by question number.</span><button class="btn sm ${id === 'kt' ? 'pri' : ''}" data-act="${act}">${icon('check', 15)} Apply</button></div>`}</div>`;
+  return h`<div class="bw-h"><h2>Answer key</h2><p>Each question has <b>one correct answer for both English and हिंदी</b> (question 1 in English and in Hindi is the same question). Paste the English key; if the Hindi paper has its own key, paste it on the right — it is checked against the English one.</p></div>
+  <div class="bw-two">
+    ${box('kt', 'kapply', 'English answer key', '1. B   2. D   3. A   4. C …   or 1-2, 2-4, 3-1 …', 'Sets the answers')}
+    ${box('kth', 'kapplyhi', 'हिंदी answer key', '1. B  2. D …  or  1. (ब)  2. (द) …', hn ? fmt.plural(hn, 'answer') + ' from the Hindi paper' : 'Optional · only checks')}
+  </div>
+  ${df.length ? h`<div class="callout warn mt16">${icon('alert')}<div class="sm"><b>${fmt.plural(df.length, 'question')} where the Hindi key is different:</b> ${df.slice(0, 12).map(i => (i + 1) + ' (EN ' + L[B.Q[i].answer] + ' · हिं ' + L[B.hiKey[i]] + ')').join(', ')}${df.length > 12 ? ' …' : ''}. Tap the correct letter below for each (that settles it) — if many differ, the Hindi paper may have the questions in another order.</div></div>`
+    : hn ? h`<div class="callout ok mt16">${icon('checkCircle')}<div class="sm">The Hindi key matches the English key${st.na ? ' (questions without an answer were filled from it)' : ''}.</div></div>` : ''}
+  <div class="card mt16"><div class="card-h">${icon('key')}<h3>${B.ro ? 'Answers' : 'Answers · tap to change'}</h3><span class="grow"></span><span class="pill ${c === st.n ? 'ok' : 'warn'}" id="kcount">${c} of ${st.n} answered</span></div>
+    ${B.ro ? '' : h`<p class="sm mut" style="margin:-4px 0 10px">Tap the correct letter. It is saved at once; tap again to clear.</p>`}
     <div class="kg">${join(B.Q, keyRow)}</div></div>
   ${navBtns(S_Q, S_SOL, 'Next: Solutions')}`;
 }
 function wireKey() {
-  const t = WS && WS.querySelector('#kt'); if (!t) return;
-  t.addEventListener('input', () => { const r = window.CBTParser ? CBTParser.parseKey(t.value) : { count: 0 }; WS.querySelector('#kc').textContent = r.count ? r.count + ' answers found. Press Apply — they replace the answers for those numbers.' : 'No answers found yet. Use one answer per number, e.g. 1. B 2. D'; });
+  const hint = (id, txt) => { const r = window.CBTParser ? CBTParser.parseKey(id === 'kth' && CBTParser.normHi ? hiKeyText(txt) : txt) : { count: 0 }; WS.querySelector('#' + id + '-c').textContent = r.count ? r.count + ' answers found. Press Apply.' : 'No answers found yet. One per number, e.g. 1. B 2. D'; };
+  ['kt', 'kth'].forEach(id => { const t = WS && WS.querySelector('#' + id); if (t) t.addEventListener('input', () => hint(id, t.value)); });
 }
+// a Hindi key may use (अ)(ब)(स)(द) / (क)(ख)(ग)(घ) and Hindi digits
+const hiKeyText = t => CBTParser.normHi(String(t || '').replace(/(^|[\s.:\-–)(])(अ|क)(?=[\s,;)]|$)/g, '$1A').replace(/(^|[\s.:\-–)(])(ब|ख)(?=[\s,;)]|$)/g, '$1B').replace(/(^|[\s.:\-–)(])(स|ग)(?=[\s,;)]|$)/g, '$1C').replace(/(^|[\s.:\-–)(])(द|घ)(?=[\s,;)]|$)/g, '$1D'));
 function keyCnt() { const p = WS.querySelector('#kcount'); if (!p) return; const c = keyCount(); p.textContent = c + ' of ' + B.Q.length + ' answered'; p.className = 'pill ' + (c === B.Q.length ? 'ok' : 'warn'); }
 
 /* ---------- step 4: solutions — English and हिंदी side by side (optional) ---------- */
@@ -659,36 +672,39 @@ function vSol() {
     <div class="card bw-lp"><div class="bw-lh"><span class="bw-lg">A</span><div class="grow"><b>English solutions</b><div class="xs mut">${ne ? ne + ' of ' + st.n + ' questions' : 'Not added'}</div></div>${UI.pill(ne + ' / ' + st.n, ne === st.n ? 'ok' : ne ? 'warn' : '')}</div>
       <div class="bw-src"><button class="btn sm" data-act="expmodal" ${B.ro ? raw('disabled') : ''}>${icon('upload', 15)} Paste or upload solutions</button></div></div>
     <div class="card bw-lp"><div class="bw-lh"><span class="bw-lg hi">अ</span><div class="grow"><b>हिंदी solutions</b><div class="xs mut">${st.hiAny ? (nh ? nh + ' of ' + st.n + ' questions' : 'Not added — Hindi students then see the English solution') : 'Add the Hindi paper first (step 2)'}</div></div>${st.hiAny ? UI.pill(nh + ' / ' + st.n, nh === st.n ? 'ok' : nh ? 'warn' : '') : ''}</div>
-      <div class="bw-src">${st.hiAny ? h`<button class="btn sm" data-act="himodal" data-m="sol" ${B.ro ? raw('disabled') : ''}>${icon('upload', 15)} Paste or upload हिंदी solutions</button>` : h`<button class="btn sm ghost" data-act="step" data-s="${S_Q}">${icon('arrowL', 15)} Add the Hindi paper</button>`}</div></div>
+      <div class="bw-src">${st.hiAny ? h`<button class="btn sm" data-act="expmodal" data-l="hi" ${B.ro ? raw('disabled') : ''}>${icon('upload', 15)} Paste or upload हिंदी solutions</button>` : h`<button class="btn sm ghost" data-act="step" data-s="${S_Q}">${icon('arrowL', 15)} Add the Hindi paper</button>`}</div></div>
   </div>
   <div class="xs mut mt12">You can also type or fix one solution inside each question in step 5 (Check & edit).</div>
   ${navBtns(S_KEY, S_CHECK, 'Next: Check & edit')}`;
 }
 /* ---------- explanations: paste or read a solutions file, matched to questions by number ---------- */
-function explainModal() {
-  let text = '', images = [], over = false, takeAns = true;
-  const has = () => B.Q.filter(q => q.explanation || q.eimg).length;
-  const parse = () => window.CBTParser && CBTParser.parseExplain ? CBTParser.parseExplain(text) : { map: {}, ans: {}, count: 0 };
+function explainModal(lang) {
+  const HI = lang === 'hi';
+  let text = '', images = [], over = false, takeAns = false;
+  const hasOne = q => HI ? !!(q.hi && q.hi.explanation.trim()) : !!(q.explanation || q.eimg);
+  const has = () => B.Q.filter(hasOne).length;
+  const parse = () => window.CBTParser && CBTParser.parseExplain ? CBTParser.parseExplain(HI && CBTParser.normHi ? CBTParser.normHi(text) : text) : { map: {}, ans: {}, count: 0 };
   const clean = x => x.replace(/\s*⟦IMG:\d+⟧\s*/g, ' ').replace(/[ \t]{2,}/g, ' ').trim();
   const sumHtml = () => {
     const r = parse(), nums = Object.keys(r.map).map(Number).filter(n => B.Q[n - 1]);
-    const out = Object.keys(r.map).length - nums.length, fill = nums.filter(n => over || !(B.Q[n - 1].explanation || B.Q[n - 1].eimg)).length;
+    const out = Object.keys(r.map).length - nums.length, fill = nums.filter(n => over || !hasOne(B.Q[n - 1])).length;
     const an = Object.keys(r.ans).filter(n => B.Q[n - 1] && B.Q[n - 1].answer == null).length;
     if (!text.trim()) return h`<div class="hint">Paste the solutions, or read them from a file. Each one starts with its question number: <span class="mono">1.</span> <span class="mono">Q1)</span> <span class="mono">Sol. 1</span> …</div>`;
     if (!nums.length) return h`<div class="callout warn">${icon('info')}<div class="sm">No explanations found yet. Start each one on a new line with its question number, e.g. <span class="mono">1. Because …</span></div></div>`;
-    return h`<div class="callout ok">${icon('checkCircle')}<div class="sm"><b>${fmt.plural(nums.length, 'explanation')} found</b> (questions ${nums[0]}–${nums[nums.length - 1]}). ${fill} will be added${over ? '' : ' to questions that have none yet'}.${out ? ' ' + out + ' have no matching question and are skipped.' : ''}${takeAns && an ? ' ' + fmt.plural(an, 'missing answer') + ' will be filled from them too.' : ''}</div></div>
+    return h`<div class="callout ok">${icon('checkCircle')}<div class="sm"><b>${fmt.plural(nums.length, 'explanation')} found</b> (questions ${nums[0]}–${nums[nums.length - 1]}). ${fill} will be added${over ? '' : ' to questions that have none yet'}.${out ? ' ' + out + ' have no matching question and are skipped.' : ''}${!HI && takeAns && an ? ' ' + fmt.plural(an, 'missing answer') + ' will be filled from them too.' : ''}</div></div>
       <div class="ex-prev mt12">${join(nums.slice(0, 4), n => h`<div><b>Q${n}</b>${r.ans[n] != null ? h` <span class="pill ok">${L[r.ans[n]]}</span>` : ''} <span class="tx2">${clean(r.map[n]).slice(0, 160) || '—'}${clean(r.map[n]).length > 160 ? '…' : ''}</span>${/⟦IMG:\d+⟧/.test(r.map[n]) ? h` <span class="pill info">picture</span>` : ''}</div>`)}${nums.length > 4 ? h`<div class="xs mut">…and ${nums.length - 4} more</div>` : ''}</div>`;
   };
   UI.modal({
-    title: 'Explanations', sub: 'Add the solution of every question at once. They are matched by question number.', size: 'wide',
-    body: h`<div class="row between wrap" style="margin-bottom:12px"><span class="pill ${has() === B.Q.length ? 'ok' : 'warn'}">${has()} of ${B.Q.length} have an explanation</span>
+    title: HI ? 'हिंदी solutions' : 'English solutions', sub: 'Add the solution of every question at once. They are matched by question number.', size: 'wide',
+    body: h`<div class="row between wrap" style="margin-bottom:12px"><span class="pill ${has() === B.Q.length ? 'ok' : 'warn'}">${has()} of ${B.Q.length} have ${HI ? 'a Hindi' : 'a'} solution</span>
         <button type="button" class="btn sm" data-act="exfile">${icon('upload', 15)} From a file (PDF, Word, photo, text)</button></div>
       <div class="im-st hide" id="ex-st" style="margin-bottom:12px"></div>
-      <div class="fld"><label for="ex-t">Solutions text</label><textarea class="inp" id="ex-t" rows="10" placeholder="1. (B) Mitochondria make ATP, so …&#10;2. Ans: C — Because …&#10;3. …"></textarea></div>
-      <div class="col gap6 mt8"><label class="row gap6 sm" style="align-items:flex-start"><input type="checkbox" id="ex-over" style="margin-top:3px"><span>Replace explanations that are already there</span></label>
-        <label class="row gap6 sm" style="align-items:flex-start"><input type="checkbox" id="ex-ans" checked style="margin-top:3px"><span>Also fill a missing answer when the solution says it, e.g. 1. (B) …</span></label></div>
+      <div class="fld"><label for="ex-t">${HI ? 'हिंदी solutions text' : 'Solutions text'}</label><textarea class="inp" id="ex-t" rows="10" ${HI ? raw('lang="hi"') : ''} placeholder="${HI ? '1. माइटोकॉन्ड्रिया ATP बनाता है, इसलिए …&#10;2. क्योंकि …&#10;3. …' : '1. (B) Mitochondria make ATP, so …&#10;2. Ans: C — Because …&#10;3. …'}"></textarea></div>
+      <div class="col gap6 mt8"><label class="row gap6 sm" style="align-items:flex-start"><input type="checkbox" id="ex-over" style="margin-top:3px"><span>Replace solutions that are already there</span></label>
+        <label class="row gap6 sm ${HI ? 'hide' : ''}" style="align-items:flex-start"><input type="checkbox" id="ex-ans" style="margin-top:3px"><span>Also fill a missing answer when the solution says it, e.g. 1. (B) … (the answer key is in step 3)</span></label>
+        ${HI ? h`<div class="xs mut">A picture in the solution stays the English one (pictures are shared).</div>` : ''}</div>
       <div class="mt12" id="ex-sum">${sumHtml()}</div>`,
-    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="exapply">${icon('check', 16)} Add explanations</button>`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="exapply">${icon('check', 16)} Add ${HI ? 'हिंदी ' : ''}solutions</button>`,
     onOpen(el, close) {
       const ta = el.querySelector('#ex-t'), sum = () => AX.set(el.querySelector('#ex-sum'), sumHtml());
       const st = (t, tone) => { const b = el.querySelector('#ex-st'); b.className = 'im-st ' + (tone || ''); b.textContent = t; };
@@ -714,16 +730,18 @@ function explainModal() {
             let n = 0, a = 0;
             for (const k of Object.keys(r.map)) {
               const q = B.Q[+k - 1]; if (!q) continue;
-              if (takeAns && r.ans[k] != null && q.answer == null) { q.answer = r.ans[k]; a++; }
-              if (!over && (q.explanation || q.eimg)) continue;
+              if (!HI && takeAns && r.ans[k] != null && q.answer == null) { q.answer = r.ans[k]; a++; }
+              if (!over && hasOne(q)) continue;
               const raw0 = r.map[k], im = raw0.match(/⟦IMG:(\d+)⟧/), t = clean(raw0);
+              if (HI) { if (!t) continue; q.hi = q.hi || blankHi(); q.hi.explanation = t; n++; continue; }
               if (!t && !im) continue;
               q.explanation = t;
               if (im && images[+im[1]]) q.eimg = (AX.compressDataUrl ? await AX.compressDataUrl(images[+im[1]], 900) : null) || images[+im[1]];
               n++;
             }
-            dirty(true); close();
-            UI.toast(fmt.plural(n, 'explanation') + ' added' + (a ? ' · ' + fmt.plural(a, 'answer') + ' filled' : ''));
+            if (HI) dirtyHi(); else dirty(true);
+            close();
+            UI.toast(fmt.plural(n, HI ? 'हिंदी solution' : 'solution') + ' added' + (a ? ' · ' + fmt.plural(a, 'answer') + ' filled' : ''));
           });
         }
       });
@@ -731,97 +749,10 @@ function explainModal() {
     onClose() { refreshQ(); }
   });
 }
-/* ---------- Hindi: paste or read a Hindi paper / Hindi solutions, matched to the questions by number ---------- */
-// Hindi papers often number options (अ)(ब)(स)(द) or (क)(ख)(ग)(घ) and questions "प्रश्न 1." — turned into what the parser reads
-const hiNorm = t => String(t || '').replace(/\r/g, '').replace(/^(\s*)प्रश्न\s*(?:संख्या|सं\.?)?\s*(?=\d)/gm, '$1')
-  .replace(/(^|\s)\(\s*(?:अ|क)\s*\)/g, '$1(A)').replace(/(^|\s)\(\s*(?:ब|ख)\s*\)/g, '$1(B)')
-  .replace(/(^|\s)\(\s*(?:स|ग)\s*\)/g, '$1(C)').replace(/(^|\s)\(\s*(?:द|घ)\s*\)/g, '$1(D)');
+/* ---------- Hindi helpers ---------- */
 const blankHi = () => ({ q: '', options: ['', '', '', ''], explanation: '' });
 function enPaper() {
   return B.Q.map((q, i) => (i + 1) + '. ' + (q.q || '[image]') + '\n' + q.options.map((o, j) => '(' + L[j] + ') ' + (o || '[image]')).join('\n') + (q.explanation ? '\nSolution: ' + q.explanation : '')).join('\n\n');
-}
-function hiModal(start) {
-  if (!B.Q.length) return UI.toast('Add or import the English questions first, then their Hindi', { tone: 'warn' });
-  let text = '', mode = start === 'sol' ? 'sol' : 'paper', over = false;
-  const P = window.CBTParser;
-  const parse = () => {
-    if (!P || !text.trim()) return { n: 0 };
-    if (mode === 'sol') { const r = P.parseExplain(hiNorm(text)); return { n: r.count, map: r.map }; }
-    const r = P.parse(hiNorm(text), ''); return { n: r.questions.length, qs: r.questions };
-  };
-  const sumHtml = () => {
-    const r = parse(), N = B.Q.length;
-    if (!text.trim()) return h`<div class="hint">${mode === 'paper' ? 'Paste the Hindi question paper. Question 1 of the Hindi paper becomes the Hindi of question 1 here, and so on. Options can be (A)…(D), (1)…(4), (अ)…(द) or (क)…(घ).' : 'Paste the Hindi solutions. Each starts with its question number: 1. … 2. …'}</div>`;
-    if (!r.n) return h`<div class="callout warn">${icon('info')}<div class="sm">Nothing found yet. Start each ${mode === 'paper' ? 'question' : 'solution'} on a new line with its number, e.g. <span class="mono">1.</span></div></div>`;
-    if (mode === 'sol') { const nums = Object.keys(r.map).map(Number).filter(n => B.Q[n - 1]); return h`<div class="callout ok">${icon('checkCircle')}<div class="sm"><b>${fmt.plural(nums.length, 'Hindi solution')} found</b>${nums.length ? ' (questions ' + nums[0] + '–' + nums[nums.length - 1] + ')' : ''}.</div></div>`; }
-    const full = r.qs.filter(q => q.q && q.options.every(Boolean)).length;
-    return h`<div class="callout ${r.n === N ? 'ok' : 'warn'}">${icon(r.n === N ? 'checkCircle' : 'info')}<div class="sm"><b>${fmt.plural(r.n, 'Hindi question')} found</b> · this test has ${N}. ${full} have the question and all 4 options.${r.n !== N ? ' The count is different — check that the Hindi paper has the same questions in the same order.' : ''}</div></div>
-      <div class="ex-prev mt8" lang="hi">${join(r.qs.slice(0, 2), (q, i) => h`<div><b>${i + 1}.</b> ${q.q.slice(0, 160)}<div class="xs mut">${q.options.map((o, j) => '(' + L[j] + ') ' + o.slice(0, 40)).join('   ')}</div></div>`)}</div>`;
-  };
-  UI.modal({
-    title: 'Hindi version · हिंदी', sub: 'Add the Hindi text of the questions. Images and the answer key stay the same as in English.', size: 'wide',
-    body: h`<div class="row between wrap gap6" style="margin-bottom:12px"><div class="seg" id="hm-m"><button type="button" class="${mode === 'paper' ? 'on' : ''}" data-v="paper">Hindi paper</button><button type="button" class="${mode === 'sol' ? 'on' : ''}" data-v="sol">Hindi solutions</button></div>
-        <span class="pill ${stats().hiAll ? 'ok' : 'warn'}">${stats().hiDone} of ${B.Q.length} in Hindi</span></div>
-      <div class="fld"><textarea class="inp" id="hm-t" rows="10" lang="hi" placeholder="1. कोशिका का ऊर्जा केंद्र कौन सा है?\n(A) केंद्रक  (B) माइटोकॉन्ड्रिया  (C) राइबोसोम  (D) लाइसोसोम\n\n2. …"></textarea></div>
-      <div class="row wrap gap6 mt8"><button class="btn sm" data-act="hmfile">${icon('upload', 15)} Read from a file</button><button class="btn sm ghost" data-act="hmcopy">${icon('copy', 15)} Copy English paper (to translate)</button><span class="im-st xs" id="hm-st"></span></div>
-      <div id="hm-sum" class="mt12">${sumHtml()}</div>
-      <label class="row gap6 sm mt12" style="align-items:flex-start"><input type="checkbox" id="hm-over" style="margin-top:3px"><span>Replace Hindi that is already there</span></label>
-      <div class="xs mut mt8">Tip: a PDF typed in an old Hindi font (Kruti Dev, Chanakya…) is read as wrong letters. Use a Unicode PDF or Word file, or paste the text.</div>`,
-    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="hmapply">${icon('check', 16)} Add Hindi</button>`,
-    onOpen(el, close) {
-      const ta = el.querySelector('#hm-t'), sum = () => AX.set(el.querySelector('#hm-sum'), sumHtml());
-      const st = (t, tone) => { const b = el.querySelector('#hm-st'); b.className = 'im-st xs ' + (tone || ''); b.textContent = t; };
-      ta.addEventListener('input', () => { text = ta.value; sum(); });
-      el.querySelector('#hm-over').addEventListener('change', e => { over = e.target.checked; });
-      el.querySelector('#hm-m').addEventListener('click', e => {
-        const b = e.target.closest('button'); if (!b) return; mode = b.dataset.v;
-        el.querySelectorAll('#hm-m button').forEach(x => x.classList.toggle('on', x === b)); sum();
-      });
-      AX.act(el, {
-        async hmcopy() { if (await AX.u.copy(enPaper())) UI.toast('English paper copied — translate it, keep the numbers, and paste it here'); },
-        async hmfile() {
-          if (!AX.readTextFile) return UI.toast('The file reader did not load. Reload the page.', { tone: 'bad' });
-          const f = await AX.u.pickFile('.pdf,.docx,.txt,.md,image/*,application/pdf'); if (!f) return;
-          st('Reading ' + f.name + '…');
-          try {
-            const r = await AX.readTextFile(f, (t, p) => st(t + (p != null ? ' ' + Math.round(p * 100) + '%' : '')));
-            text = String(r.text || '').replace(/\s*⟦IMG:\d+⟧\s*/g, ' '); ta.value = text;
-            st(parse().n ? 'Done. Check below, then press Add Hindi.' + (r.ocr || r.scanned ? ' OCR can make mistakes.' : '') : 'Nothing numbered found in this file. You can fix the text above.', parse().n ? 'ok' : 'bad');
-          } catch (err) { st('Could not read this file: ' + err.message, 'bad'); }
-          sum();
-        },
-        hmapply() {
-          const r = parse(); if (!r.n) return UI.toast('Nothing found in the text', { tone: 'warn' });
-          let n = 0, ka = 0, kd = 0;
-          if (mode === 'sol') {
-            for (const k of Object.keys(r.map)) {
-              const q = B.Q[+k - 1], t = String(r.map[k] || '').trim(); if (!q || !t) continue;
-              const x = q.hi || blankHi(); if (!over && x.explanation.trim()) continue;
-              x.explanation = t; q.hi = x; n++;
-            }
-          } else {
-            r.qs.forEach((p, i) => {
-              const q = B.Q[i]; if (!q) return;
-              const x = q.hi || blankHi(); let ch = false;
-              if (p.q && (over || !x.q.trim())) { x.q = p.q; ch = true; }
-              p.options.forEach((o, j) => { if (o && (over || !x.options[j].trim())) { x.options[j] = o; ch = true; } });
-              if (ch) { q.hi = x; n++; }
-              // an answer key printed in the Hindi paper: fills missing answers; a different answer is only reported
-              if (p.answer != null) { if (q.answer == null) { q.answer = p.answer; ka++; } else if (q.answer !== p.answer) kd++; }
-            });
-            if (ka) dirty(true);
-          }
-          if (!n) return UI.toast('Nothing new to add (the Hindi is already there — tick “Replace” to overwrite)', { tone: 'warn' });
-          if (B.step === S_CHECK) B.lang = 'hi';
-          dirtyHi(); close();
-          UI.toast(fmt.plural(n, 'question') + ' got Hindi' + (mode === 'sol' ? ' solutions' : '') + (ka ? ' · ' + fmt.plural(ka, 'answer') + ' filled from the Hindi key' : ''));
-          if (kd) UI.toast('The Hindi paper’s answer key differs from the English one for ' + fmt.plural(kd, 'question') + '. The English answers are kept — check them in step 3.', { tone: 'warn', ms: 9000 });
-          render();
-        }
-      });
-    },
-    onClose() { refreshQ(); }
-  });
 }
 function secModal() {
   let S = [];
@@ -877,32 +808,56 @@ function findModal() {
 /* ---------- step 2: questions — English paper | हिंदी paper ---------- */
 function vPaper() {
   const st = stats(), q0 = B.Q[0], dis = B.ro ? raw('disabled') : '';
-  const src = (k, ic, t) => h`<button class="btn sm" data-act="imp" data-src="${k}" ${dis}>${icon(ic, 15)} ${t}</button>`;
+  const src = (k, ic, t, act) => h`<button class="btn sm" data-act="${act || 'imp'}" data-src="${k}" ${dis}>${icon(ic, 15)} ${t}</button>`;
+  const srcs = act => h`${src('paste', 'fileText', 'Paste text', act)}${src('pdf', 'pdf', 'PDF', act)}${src('docx', 'doc', 'Word', act)}${src('image', 'image', 'Photo', act)}${src('json', 'db', 'Old test file', act)}`;
   const h0 = B.Q.find(q => q.hi && q.hi.q);
-  return h`<div class="bw-h"><h2>Questions</h2><p>Put the <b>English paper</b> on the left. If Hindi-medium students also take this test, put the <b>हिंदी paper</b> on the right — the same questions in the same order (1, 2, 3 …). Files are read on this device; nothing is uploaded until you publish.</p></div>
+  return h`<div class="bw-h"><h2>Questions</h2><p>Only the questions and options here. Put the <b>English paper</b> on the left; if Hindi-medium students also take this test, put the <b>हिंदी paper</b> on the right — the same questions in the same order (1, 2, 3 …). The answer key comes in step 3 and the solutions in step 4.</p></div>
   <div class="bw-two">
     <div class="card bw-lp"><div class="bw-lh"><span class="bw-lg">A</span><div class="grow"><b>English paper</b><div class="xs mut">Needed</div></div>${st.n ? UI.pill(fmt.plural(st.n, 'question'), 'ok') : UI.pill('Not added', 'warn')}</div>
       ${q0 ? h`<div class="bw-prev"><b>1.</b> ${(q0.q || '[image]').slice(0, 150)}${q0.q.length > 150 ? '…' : ''}</div>` : ''}
-      <div class="bw-src">${src('paste', 'fileText', 'Paste text')}${src('pdf', 'pdf', 'PDF')}${src('docx', 'doc', 'Word')}${src('image', 'image', 'Photo')}${src('json', 'db', 'Old test file')}</div>
+      <div class="bw-src">${srcs()}</div>
       <div class="row wrap gap6 mt8">${B.ro ? '' : h`<button class="btn xs ghost" data-act="qadd">${icon('plus', 13)} Type a question</button>`}${st.n ? h`<span class="xs mut">Adding again asks: after these, or replace them.</span>` : ''}</div></div>
     <div class="card bw-lp"><div class="bw-lh"><span class="bw-lg hi">अ</span><div class="grow"><b>हिंदी paper</b><div class="xs mut">Optional · for Hindi-medium students</div></div>${st.hiAny ? UI.pill(st.hiDone + ' of ' + st.n, st.hiAll ? 'ok' : 'warn') : UI.pill('Not added')}</div>
       ${!st.n ? h`<div class="callout info">${icon('info')}<div class="sm">Add the English paper first. The Hindi is matched to it by question number.</div></div>` : h`
         ${h0 ? h`<div class="bw-prev" lang="hi"><b>${B.Q.indexOf(h0) + 1}.</b> ${h0.hi.q.slice(0, 150)}${h0.hi.q.length > 150 ? '…' : ''}</div>` : ''}
-        <div class="bw-src"><button class="btn sm" data-act="himodal" ${dis}>${icon('upload', 15)} Paste or upload हिंदी paper</button><button class="btn sm ghost" data-act="hicopy">${icon('copy', 15)} Copy English (to translate)</button></div>
+        <div class="bw-src">${srcs('imphi')}</div>
+        <div class="row wrap gap6 mt8"><button class="btn xs ghost" data-act="hicopy">${icon('copy', 13)} Copy English paper (to translate)</button>${st.hiAny ? h`<span class="xs mut">Adding again asks: fill only the empty ones, or replace.</span>` : ''}</div>
         ${st.hiAny && !st.hiAll ? h`<div class="xs mt8" style="color:var(--warn)">${fmt.plural(st.hiMiss, 'question')} still without Hindi. Until every question has Hindi, Hindi-medium students get this test in English. Fix them in step 5.</div>` : ''}`}</div>
   </div>
   <div class="callout info mt16">${icon('info')}<div class="sm"><b>What works best</b><br>Each question starts with its number (<span class="mono">1.</span> or <span class="mono">Q1.</span>), options are <span class="mono">(A)…(D)</span>, <span class="mono">(1)…(4)</span> or <span class="mono">(अ)…(द)</span>, and subject headings like <i>Physics</i> start a section. A key after the words “Answer key” is picked up too.</div></div>
   ${navBtns(S_DET, S_KEY, 'Next: Answer key')}`;
+}
+// the हिंदी paper: the same importer as English (paste, PDF, Word, photo, old file); question n gets the Hindi of n
+async function doImportHi(src) {
+  if (!B.Q.length) return UI.toast('Add the English paper first — the Hindi is matched to it by question number', { tone: 'warn' });
+  if (!AX.importQuestions) return UI.toast('The import tool did not load. Reload the page.', { tone: 'bad' });
+  const had = B.Q.filter(q => q.hi && q.hi.q.trim()).length;
+  const r = await AX.importQuestions({ source: src, lang: 'hi', noKey: true, en: B.Q.map(q => q.q), existing: had });
+  if (!r || !B) return;
+  const qs = r.questions || [], all = r.mode === 'replace' || !had, hk = {};
+  let n = 0;
+  B.Q.forEach((q, i) => {
+    const p = qs[i], x = q.hi || blankHi();
+    if (!p) { if (r.mode === 'replace' && q.hi) { x.q = ''; x.options = ['', '', '', '']; q.hi = hiEmpty(x) ? null : x; } return; }
+    let ch = false;
+    if (p.q && (all || !x.q.trim())) { x.q = p.q; ch = true; }
+    p.options.forEach((o, j) => { if (o && (all || !x.options[j].trim())) { x.options[j] = o; ch = true; } });
+    if (ch) { q.hi = x; n++; }
+    if (p.answer != null) hk[i] = p.answer;
+  });
+  if (Object.keys(hk).length) B.hiKey = hk;   // a key printed in the Hindi paper: compared with the English one in step 3
+  dirtyHi(); render();
+  UI.toast(fmt.plural(n, 'question') + ' got Hindi' + (B.hiKey && Object.keys(hk).length ? ' · the Hindi paper’s answer key is checked in step 3' : ''));
+  if (qs.length !== B.Q.length) UI.toast('The Hindi paper has ' + qs.length + ' questions, the English paper ' + B.Q.length + '. Check the numbers in step 5.', { tone: 'warn', ms: 8000 });
 }
 async function doImport(src) {
   if (src === 'exp') {
     if (!B.Q.length) return UI.toast('Add or import the questions first, then the explanations', { tone: 'warn' });
     return explainModal();
   }
-  if (src === 'hi') return hiModal();
   if (src === 'key') return go(S_KEY);
   if (!AX.importQuestions) return UI.toast('The import tool did not load. Reload the page.', { tone: 'bad' });
-  const r = await AX.importQuestions({ source: src, existing: B.Q.length });
+  const r = await AX.importQuestions({ source: src, existing: B.Q.length, noKey: true });
   if (!r || !B) return;
   const qs = (r.questions || []).map(normQ);
   if (r.mode === 'replace') B.Q = qs; else B.Q = B.Q.concat(qs);
@@ -1111,7 +1066,7 @@ const ACTS = {
   qadd: () => editQ(B.Q.length),
   qedit: el => editQ(+el.dataset.i, B.lang),
   qlang(el) { B.lang = el.dataset.l === 'hi' ? 'hi' : 'en'; if (B.view.filter === 'nohi' && B.lang === 'en' && !B.Q.some(q => q.hi)) B.view.filter = 'all'; refreshQ(); },
-  himodal: el => hiModal(el.dataset.m),
+  imphi: el => doImportHi(el.dataset.src),
   qkey(el) { if (B.ro) return; const i = +el.dataset.i, j = +el.dataset.j, q = B.Q[i]; q.answer = q.answer === j ? null : j; dirty(true); const c = WS.querySelector('#bq-' + i); if (c) { const t = document.createElement('div'); t.innerHTML = AX.html(cardHtml(i)); c.replaceWith(t.firstElementChild); } chrome(); },
   qmenu: el => qMenu(el, +el.dataset.i),
   qtools: el => qTools(el),
@@ -1125,6 +1080,8 @@ const ACTS = {
   async bulkdel() { const n = B.view.sel.size; if (!(await UI.confirm({ title: 'Delete ' + fmt.plural(n, 'question') + '?', text: 'They are removed from this editor. You can undo right after.', yes: 'Delete', tone: 'danger' }))) return; delQ([...B.view.sel]); },
   ka(el) {
     if (B.ro) return; const i = +el.dataset.i, j = +el.dataset.j; B.Q[i].answer = B.Q[i].answer === j ? null : j; dirty(true);
+    // a tapped answer on a row the Hindi key disagrees with is your decision: that row no longer counts as different
+    if (B.hiKey && B.hiKey[i] != null) { if (B.Q[i].answer != null) B.hiKey[i] = B.Q[i].answer; return render(); }
     const r = WS.querySelector('[data-kr="' + i + '"]'); if (r) { r.classList.toggle('miss', B.Q[i].answer == null); r.querySelectorAll('button').forEach((x, k) => x.classList.toggle('on', B.Q[i].answer === k)); }
     keyCnt();
   },
@@ -1134,8 +1091,17 @@ const ACTS = {
     let n = 0; Object.keys(r.map).forEach(k => { const i = +k - 1; if (B.Q[i]) { B.Q[i].answer = r.map[k]; n++; } });
     dirty(true); render(); UI.toast(fmt.plural(n, 'answer') + ' applied');
   },
+  kapplyhi() {
+    const t = WS.querySelector('#kth'); if (!t || !window.CBTParser) return;
+    const r = CBTParser.parseKey(hiKeyText(t.value)); if (!r.count) return UI.toast('No answers found in the text', { tone: 'warn' });
+    const hk = {}; let f = 0;
+    Object.keys(r.map).forEach(k => { const i = +k - 1; if (!B.Q[i]) return; hk[i] = r.map[k]; if (B.Q[i].answer == null) { B.Q[i].answer = r.map[k]; f++; } });
+    B.hiKey = hk; if (f) dirty(true);
+    render(); const d = hiDiff().length;
+    UI.toast(d ? fmt.plural(d, 'question') + (d === 1 ? ' differs' : ' differ') + ' from the English key — see the list' : 'The Hindi key matches' + (f ? ' · ' + fmt.plural(f, 'answer') + ' filled' : ''), d ? { tone: 'warn' } : {});
+  },
   async hicopy() { if (await AX.u.copy(enPaper())) UI.toast('English paper copied — translate it, keep the numbers, and paste it in “हिंदी paper”'); },
-  expmodal: () => explainModal(),
+  expmodal: el => explainModal(el.dataset.l),
   secmodal: () => secModal(),
   imp: el => doImport(el.dataset.src),
   fill() { liveFill(B.meta); dirty(); render(); UI.toast('Live till ' + fmt.dt(B.meta.closes_at) + ', result ' + fmt.time(B.meta.result_at)); },

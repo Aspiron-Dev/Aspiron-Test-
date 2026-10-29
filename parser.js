@@ -112,6 +112,19 @@ function parseExplain(t){
   }
   return{map,ans,count};
 }
-const api={parse,parseKey,splitKey,splitOpts,sectionName,parseExplain};
+// a Hindi paper → the form parse() reads: Devanagari digits १२३ → 123, "प्रश्न 1:" / "प्र. 1 -" / "1:" → "1.",
+// options (अ)(ब)(स)(द) or (क)(ख)(ग)(घ) (also "अ." "अ)") → (A)(B)(C)(D), "उत्तर कुंजी" already starts a key
+function normHi(t){
+  t=String(t||'').replace(/\r/g,'').replace(/[०-९]/g,d=>String(d.charCodeAt(0)-0x966));
+  t=t.replace(/^(\s*)(?:प्रश्न|प्र\.?)\s*(?:संख्या|सं\.?)?\s*[-–:.]?\s*(\d{1,3})\s*[:.)\-–]?\s*/gm,'$1$2. ');
+  t=t.replace(/^(\s*\d{1,3})\s*[:\-–]\s+/gm,'$1. ');
+  const O=[['अ','क','A'],['ब','ख','B'],['स','ग','C'],['द','घ','D']];
+  for(const [a,b,L] of O){
+    t=t.replace(new RegExp('(^|\\s)\\(\\s*(?:'+a+'|'+b+')\\s*\\)','g'),'$1('+L+')');
+    t=t.replace(new RegExp('(^|\\s)(?:'+a+'|'+b+')\\s*[.)](?=\\s)','g'),'$1('+L+')');
+  }
+  return t;
+}
+const api={parse,parseKey,splitKey,splitOpts,sectionName,parseExplain,normHi};
 if(typeof module!=='undefined')module.exports=api;else root.CBTParser=api;
 })(this);
