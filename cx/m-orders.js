@@ -206,6 +206,7 @@ S.note = async (code) => {
 S.openStudent = (mobile) => { if (AX.openStudent) AX.openStudent(m10(mobile)); else AX.go('students', { q: m10(mobile) }); };
 
 /* ---------- order card ---------- */
+let OLANG = {};
 function orderCard(o, D, full) {
   const sg = S.seg(o), P = SEG_PILL[sg], man = AX.can('store', 'manage'), apv = S.canApprove();
   const dup = S.dupUtr(o, D.orders), twin = sg !== 'done' && S.paidTwin(o, D.orders), msg = S.ordMsg(o);
@@ -216,7 +217,7 @@ function orderCard(o, D, full) {
     : h`<button class="btn sm ghost" data-act="undo" data-code="${o.code}">${icon('undo', 15)} Undo</button>`;
   return h`<article class="card oc s-${sg}" data-code="${o.code}">
     <header class="row top">${UI.avatar(o.name, o.mobile || o.code)}<div class="grow"><button class="oc-name ell" data-act="open" data-code="${o.code}">${o.name || 'Student'}</button><div class="xs mut ell">${fmt.mobile(m10(o.mobile))} · ${fmt.ago(o.created_at)}</div></div>${UI.pill(P[0], P[1], true)}</header>
-    <div class="oc-item"><div class="grow"><div class="xs mut">${icon('book', 13)} Series${it && !it.series_id ? h` · <span style="color:var(--warn)">not linked</span>` : ''}</div><b class="oc-t">${o.item_title || '—'}</b></div><div class="oc-amt">${fmt.inr(o.amount)}</div></div>
+    <div class="oc-item"><div class="grow"><div class="xs mut">${icon('book', 13)} Series${it && !it.series_id ? h` · <span style="color:var(--warn)">not linked</span>` : ''}</div><b class="oc-t">${o.item_title || '—'}</b>${(o.lang || OLANG[o.code]) ? h` <span class="pill ${(o.lang || OLANG[o.code]) === 'hi' ? 'vio' : ''}" title="Medium chosen at Buy — set for the student when you unlock">${icon('globe', 12)} ${(o.lang || OLANG[o.code]) === 'hi' ? 'हिंदी medium' : 'English medium'}</span>` : ''}</div><div class="oc-amt">${fmt.inr(o.amount)}</div></div>
     ${o.payer || o.utr ? h`<div class="oc-pay"><div><div class="k">Paid from</div><div class="v">${o.payer || '—'}</div></div><div><div class="k">UTR</div><div class="v row gap4"><span class="mono ell">${o.utr || '—'}</span>${o.utr ? UI.copyBtn(o.utr) : ''}</div></div></div>` : ''}
     <div class="xs mut row wrap gap6"><span class="mono">${o.code}</span>${o.paid_at ? h`<span>· details sent ${fmt.ago(o.paid_at)}</span>` : ''}${full ? h`<span>· ordered ${fmt.dt(o.created_at)}</span>` : ''}</div>
     ${dup ? h`<div class="callout bad sm">${icon('alert', 16)}<div>This UTR is also in another order — check carefully.</div></div>` : ''}
@@ -331,7 +332,8 @@ AX.mod({
       actions: h`<a class="btn ghost" href="store.html" target="_blank" rel="noopener">${icon('external', 16)} Store</a><button class="btn" data-act="csv">${icon('download', 16)} CSV</button><button class="btn" data-act="refresh">${icon('refresh', 16)} Refresh</button>` });
     const ph = document.getElementById('ax-ph');
     if (ph) AX.act(ph, { refresh: b => UI.busy(b, async () => { await S.load(true); if (ctx.alive()) paint(); }), csv: () => csv() });
-    const D0 = await S.load(true);
+    const [D0, ML] = await Promise.all([S.load(true), AX.api.call('cbt_admin_lang', 'orders')]);
+    if (ML && ML.ok) OLANG = ML.items || {};   // v41: medium chosen at Buy (English / हिंदी)
     if (!ctx.alive()) return;
     if (!D0.ok) { AX.set(ctx.el, UI.errorBox(D0, 'supabase_v13_store.sql')); AX.act(ctx.el, { retry: () => ctx.reload() }); return; }
     AX.set(ctx.el, h`<div id="oc-k"></div><div class="oc-segs mt16" id="oc-s" role="tablist" aria-label="Order status"></div>

@@ -645,7 +645,8 @@ function tabHtml(s, tab, su, M, R) {
       ${V.D.paid.length ? h`<div class="card flat" style="padding:4px 16px">${join(V.D.paid, x => { const on = (s.access || []).includes(x.id); return h`<div class="s3-li"><span class="av sm" style="--c:${AX.u.hue(x.id)}">${icon('layers', 15)}</span><div class="grow"><b class="ell" style="display:block">${x.title}</b><div class="xs mut">${x.price_label || 'Paid series'}${x.active === false ? ' · hidden' : ''}</div></div>
           <label class="sw"><input type="checkbox" data-act="dAcc" data-ser="${x.id}" ${on ? raw('checked') : ''} ${can ? '' : raw('disabled')} aria-label="Access to ${x.title}"><i></i></label></div>`; })}</div>`
         : h`<div class="card flat">${UI.empty({ icon: 'layers', title: 'No paid series yet', text: 'Create one in Test studio. Free series are open to everyone.' })}</div>`}
-      ${free.length ? h`<div class="xs mut mt12">${icon('info', 13)} Open to everyone: ${free.map(x => x.title).join(', ')}</div>` : ''}`;
+      ${free.length ? h`<div class="xs mut mt12">${icon('info', 13)} Open to everyone: ${free.map(x => x.title).join(', ')}</div>` : ''}
+      ${mediumHtml(s, can)}`;
   }
   if (tab === 'results') {
     if (!AX.can('results')) return h`<div class="card flat">${UI.empty({ tone: 'lock', icon: 'lock', title: 'Needs Results access', text: 'Ask the owner for Results access to see this student’s scores.' })}</div>`;
@@ -691,7 +692,34 @@ function resRow(x, full) {
   return h`<div class="s3-li"><span class="pill ${tone(p)}" style="min-width:52px;justify-content:center">${p}%</span><div class="grow"><b class="ell" style="display:block">${x.title}</b><div class="xs mut">${fmt.dt(x.at)} · ${x.score}/${x.max}${full ? ' · ✓' + x.correct + ' ✗' + x.wrong + ' –' + x.skipped + ' · ' + Math.round((x.used || 0) / 60) + ' min' : ''}</div></div>
     ${x.late ? UI.pill('Late', 'warn') : ''}${full && AX.openAnalytics && x.test_id ? h`<button class="ibtn sm" data-act="dAna" data-id="${x.test_id}" aria-label="Test analytics" title="Test analytics">${icon('chart', 16)}</button>` : ''}${full && AX.can('results', 'manage') ? h`<button class="ibtn sm" data-act="dResDel" data-id="${x.id}" aria-label="Delete result" title="Delete result">${icon('trash', 16)}</button>` : ''}</div>`;
 }
+// v41: the student's medium (English / हिंदी) per series; a test already running keeps its language
+function mediumHtml(s, can) {
+  if (!DR) return '';
+  if (DR.media === undefined) {
+    DR.media = null;
+    Promise.all([AX.api.call('cbt_admin_lang', 'student_get', { id: s.id }), AX.lang.load()]).then(([r]) => { if (DR && DR.id === s.id) { DR.media = r.ok ? r.media || {} : { _err: r.error || 'server' }; if (DR.tab === 'access') drawDrawer(); } });
+  }
+  const M = DR.media;
+  const ser = V.D.series.filter(x => AX.lang.mode(x.id) === 'bi' || (M && M[x.id]));
+  const head = h`<div class="section-t">${icon('globe', 15)} Medium · English / हिंदी</div>`;
+  if (!M) return h`${head}<div class="card flat tight sm mut">Loading…</div>`;
+  if (M._err) return h`${head}<div class="card flat tight sm mut">${M._err === 'missing' ? 'Run supabase_v41_medium.sql in Supabase to use Hindi medium.' : 'Could not load the medium.'}</div>`;
+  const sel = (k, v, label) => h`<select class="inp sm" style="max-width:150px" data-md="${k}" ${can ? '' : raw('disabled')} aria-label="Medium for ${label}"><option value="" ${!v ? raw('selected') : ''}>Not chosen</option><option value="en" ${v === 'en' ? raw('selected') : ''}>English</option><option value="hi" ${v === 'hi' ? raw('selected') : ''}>हिंदी</option></select>`;
+  return h`${head}<p class="xs mut" style="margin:0 0 8px">Chosen by the student on the store or in the app. A test is given in Hindi only when all its questions have Hindi; a running test never changes language.</p>
+    <div class="card flat" style="padding:4px 16px">
+      ${join(ser, x => h`<div class="s3-li"><span class="av sm" style="--c:${AX.u.hue(x.id)}">${icon('layers', 15)}</span><div class="grow"><b class="ell" style="display:block">${x.title}</b><div class="xs mut">${AX.lang.mode(x.id) === 'bi' ? 'English + हिंदी series' : 'English series'}</div></div>${sel(x.id, M[x.id], x.title)}</div>`)}
+      <div class="s3-li"><span class="av sm" style="--c:210">${icon('globe', 15)}</span><div class="grow"><b style="display:block">Default</b><div class="xs mut">For a series without its own choice</div></div>${sel('default', M.default, 'default')}</div></div>`;
+}
 function wireDrawer(el) {
+  el.addEventListener('change', async e => {
+    const t = e.target; if (!t.dataset || t.dataset.md == null || !DR) return;
+    const k = t.dataset.md, lang = t.value; t.disabled = true;
+    const r = await AX.api.call('cbt_admin_lang', 'student_set', { id: DR.id, k, lang });
+    t.disabled = false;
+    if (!r.ok) { UI.err(r); drawDrawer(); return; }
+    if (DR.media && !DR.media._err) { if (lang) DR.media[k] = lang; else delete DR.media[k]; }
+    UI.toast('Medium saved' + (lang ? ' · ' + AX.lang.NAME[lang] : ''));
+  });
   const cur = () => V.D.students.find(x => x.id === (DR && DR.id));
   let max = null;
   AX.act(el, {

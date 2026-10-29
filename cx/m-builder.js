@@ -24,8 +24,20 @@ const STEPS = [
 /* ---------- question kit (also used by m-import.js) ---------- */
 const emptyQ = () => ({ q: '', options: ['', '', '', ''], answer: null, explanation: '', sec: '', img: null, oimg: [null, null, null, null], eimg: null });
 const ansOf = a => Number.isInteger(a) && a >= 0 && a <= 3 ? a : typeof a === 'string' && /^[0-3]$/.test(a) ? Number(a) : null;
+// hi = the Hindi text of the question (v41): {q, options:[4], explanation}; images and the answer key are shared
+const normHi = h => h && typeof h === 'object' ? { q: String(h.q || ''), options: [0, 1, 2, 3].map(i => String((h.options && h.options[i]) || '')), explanation: String(h.explanation || '') } : null;
+const hiEmpty = h => !h || (!h.q.trim() && h.options.every(o => !o.trim()) && !h.explanation.trim());
 const normQ = q => ({ q: String(q.q || ''), options: [0, 1, 2, 3].map(i => String((q.options && q.options[i]) || '')), answer: ansOf(q.answer), explanation: String(q.explanation || ''),
-  sec: String(q.sec || ''), img: q.img || null, oimg: [0, 1, 2, 3].map(i => (q.oimg && q.oimg[i]) || null), eimg: q.eimg || null, gap: !!q.gap });
+  sec: String(q.sec || ''), img: q.img || null, oimg: [0, 1, 2, 3].map(i => (q.oimg && q.oimg[i]) || null), eimg: q.eimg || null, gap: !!q.gap, hi: hiEmpty(normHi(q.hi)) ? null : normHi(q.hi) });
+// what Hindi is still missing: Hindi is needed wherever the English has text (an image-only option needs none)
+function hiProblems(q) {
+  const h = q.hi || { q: '', options: ['', '', '', ''], explanation: '' }, p = [];
+  if (q.q.trim() && !h.q.trim()) p.push('Hindi question');
+  q.options.forEach((o, j) => { if (o.trim() && !h.options[j].trim()) p.push('Hindi option ' + L[j]); });
+  return p;
+}
+const hiOk = q => !hiProblems(q).length;
+const hiSolMissing = q => !!q.explanation.trim() && !(q.hi && q.hi.explanation.trim());
 function problems(q) {
   const p = [];
   if (q.gap && !q.q && !q.img) p.push('Question missing in the file');
@@ -38,7 +50,7 @@ const bad = q => problems(q).length > 0;
 const short = p => p.replace('Question ', '').replace('is empty', 'empty').replace('No correct answer set', 'no answer');
 // exactly the shape the old publish sent (the gap flag is not sent)
 const outQ = q => ({ q: q.q, options: q.options, answer: q.answer, explanation: q.explanation, sec: q.sec || '', img: q.img || null, oimg: q.oimg, eimg: q.eimg || null });
-AX.qkit = { emptyQ, normQ, problems, bad, short, outQ };
+AX.qkit = { emptyQ, normQ, problems, bad, short, outQ, hiProblems, hiOk };
 
 /* ---------- live window rules (old liveCheck / liveFill) ---------- */
 function liveError(m) {
@@ -165,7 +177,8 @@ AX.openTest = async (id, o = {}) => {
   const cat = await AX.data.catalog();
   if (!cat || !cat.ok) { unmount(); return UI.err(cat || {}); }
   const st = { id: id || null, ro, cat, key: id || ('new-' + Date.now().toString(36) + AX.u.uid().slice(0, 4)), step: o.step || (id || qi != null ? 2 : 1), Q: [], qDirty: false, dirty: false, published: false,
-    view: { page: 0, filter: 'all', sec: null, find: '', sel: new Set(), selMode: false }, results: 0, practice0: false, savedAt: null };
+    view: { page: 0, filter: 'all', sec: null, find: '', sel: new Set(), selMode: false }, results: 0, practice0: false, savedAt: null,
+    lang: 'en', hiDirty: false, hiServer: null, noLang: '' };
   if (id) {
     const r = await AX.api.admin('test_get', { id });
     if (!WS) return;
@@ -179,6 +192,14 @@ AX.openTest = async (id, o = {}) => {
     st.Q = (t.data || []).map(normQ);
     st.results = row.results || 0;
     st.published = true;
+    // v41: the Hindi text of the questions, kept next to the test
+    const hr = await AX.api.call('cbt_admin_lang', 'test_get', { id });
+    if (!WS) return;
+    if (!hr.ok) st.noLang = hr.error || 'server';
+    else if (Array.isArray(hr.hi) && hr.hi.length === st.Q.length) {
+      st.Q.forEach((q, i) => { const x = normHi(hr.hi[i]); q.hi = hiEmpty(x) ? null : x; });
+      st.hiServer = { ready: !!hr.ready, fresh: !!hr.fresh, done: hr.done || 0 };
+    } else if (hr.hi) st.hiServer = { ready: false, fresh: false, done: hr.done || 0, lost: true };
   } else {
     const sid = o.seriesId || ((cat.series || [])[0] || {}).id || '';
     const maxSort = Math.max(0, ...(cat.tests || []).filter(t => t.series_id === sid).map(t => +t.sort_order || 0));
@@ -191,7 +212,7 @@ AX.openTest = async (id, o = {}) => {
   if (d && d.meta && Array.isArray(d.Q) && !ro) {
     const use = o.draft ? true : await UI.confirm({ title: 'Continue your unsaved changes?', text: 'You changed this test on this device ' + fmt.ago(d.at) + ' and did not publish. Restore those changes?', yes: 'Restore changes', no: 'Use the published test' });
     if (!WS) return;
-    if (use) { st.key = d.key || dkey; st.meta = Object.assign(st.meta, d.meta); st.Q = d.Q.map(normQ); st.qDirty = !!d.qDirty || !id; st.dirty = true; st.savedAt = d.at; if (d.step) st.step = d.step; }
+    if (use) { st.key = d.key || dkey; st.meta = Object.assign(st.meta, d.meta); st.Q = d.Q.map(normQ); st.qDirty = !!d.qDirty || !id; st.hiDirty = !!d.hiDirty; st.dirty = true; st.savedAt = d.at; if (d.step) st.step = d.step; }
     else AX.ls.del(DK + dkey);
   }
   B = st;
@@ -253,7 +274,7 @@ window.addEventListener('beforeunload', e => { if (B && B.dirty && !B.ro) { save
 const saveSoon = AX.u.debounce(() => saveDraft(), 700);
 function saveDraft() {
   if (!B || B.ro || !B.dirty) return;
-  const d = { v: 1, key: B.key, id: B.id, meta: B.meta, Q: B.Q, qDirty: B.qDirty, step: B.step, at: Date.now() };
+  const d = { v: 1, key: B.key, id: B.id, meta: B.meta, Q: B.Q, qDirty: B.qDirty, hiDirty: B.hiDirty, step: B.step, at: Date.now() };
   try { localStorage.setItem(DK + B.key, JSON.stringify(d)); B.savedAt = d.at; B.draftFail = false; }
   catch (e) { B.draftFail = true; }
   savedText();
@@ -267,11 +288,18 @@ function dirty(q) {
   B.dirty = true; if (q) B.qDirty = true;
   saveSoon(); chrome();
 }
+// only the Hindi text changed: the English questions are not uploaded again
+function dirtyHi() {
+  if (!B || B.ro) return;
+  B.dirty = true; B.hiDirty = true;
+  saveSoon(); chrome();
+}
 
 /* ---------- chrome: top bar + rail ---------- */
 function stats() {
   const n = B.Q.length, nb = B.Q.filter(bad).length, na = B.Q.filter(q => q.answer == null).length;
-  return { n, nb, na, max: n * (+B.meta.correct || 0) };
+  const hiAny = B.Q.some(q => q.hi), hiDone = B.Q.filter(q => q.hi && hiOk(q)).length, hiMiss = hiAny ? B.Q.filter(q => !hiOk(q)).length : 0;
+  return { n, nb, na, max: n * (+B.meta.correct || 0), hiAny, hiDone, hiMiss, hiAll: hiAny && !hiMiss && n > 0, hiSol: hiAny ? B.Q.filter(hiSolMissing).length : 0 };
 }
 function schedLine(m) {
   if (m.practice) return 'Practice mode';
@@ -290,7 +318,7 @@ function chrome() {
   const sub = { 1: m.title.trim() ? m.title : 'Name, series, marks', 2: st.n ? fmt.plural(st.n, 'question') + (st.nb ? ' · ' + st.nb + ' to fix' : '') : 'No questions yet', 3: 'Text, PDF, Word, photo', 4: schedLine(m), 5: B.published && !B.dirty ? 'Published' : B.id ? 'Update when ready' : 'Not published yet' };
   AX.set(WS.querySelector('#bw-rail'), h`${join(STEPS, (x, i) => h`<button class="step ${B.step === i + 1 ? 'on' : ''} ${done[i + 1] && B.step !== i + 1 ? 'done' : ''} ${warn[i + 1] && B.step !== i + 1 && (i !== 0 || B.id) ? 'bad' : ''}" data-act="step" data-s="${i + 1}" ${B.step === i + 1 ? raw('aria-current="step"') : ''}>
       <span class="n">${done[i + 1] && B.step !== i + 1 ? icon('check', 14) : i + 1}</span><span class="st"><span>${x.t}</span><small>${sub[i + 1]}</small></span></button>`)}
-    <div class="bw-rf rail-x"><dl class="kv"><dt>Questions</dt><dd class="num">${st.n}</dd><dt>To fix</dt><dd class="num" style="color:${st.nb ? 'var(--warn)' : 'var(--ok)'}">${st.nb || 'None'}</dd><dt>Max marks</dt><dd class="num">${fmt.num(st.max)}</dd><dt>Time</dt><dd>${+m.duration || 180} min</dd></dl>
+    <div class="bw-rf rail-x"><dl class="kv"><dt>Questions</dt><dd class="num">${st.n}</dd><dt>To fix</dt><dd class="num" style="color:${st.nb ? 'var(--warn)' : 'var(--ok)'}">${st.nb || 'None'}</dd><dt>Max marks</dt><dd class="num">${fmt.num(st.max)}</dd><dt>Time</dt><dd>${+m.duration || 180} min</dd><dt>हिंदी</dt><dd class="num" style="color:${st.hiAll ? 'var(--ok)' : st.hiAny ? 'var(--warn)' : 'var(--mut)'}">${st.hiAny ? st.hiDone + ' / ' + st.n : 'Not added'}</dd></dl>
       <div class="xs faint mt12">${B.ro ? 'You can look but not change this test.' : raw('<span class="kbd">Alt 1–5</span> steps · <span class="kbd">Ctrl S</span> save draft · <span class="kbd">Esc</span> close')}</div></div>`);
   savedText();
 }
@@ -351,8 +379,9 @@ function vis() {
   const out = [];
   B.Q.forEach((q, i) => {
     if (v.filter === 'bad' && !bad(q)) return;
+    if (v.filter === 'nohi' && hiOk(q)) return;
     if (v.sec != null && (q.sec || '') !== v.sec) return;
-    if (f && !(q.q + '\n' + q.options.join('\n') + '\n' + q.explanation + '\n' + q.sec).toLowerCase().includes(f)) return;
+    if (f && !(q.q + '\n' + q.options.join('\n') + '\n' + q.explanation + '\n' + q.sec + (q.hi ? '\n' + q.hi.q + '\n' + q.hi.options.join('\n') + '\n' + q.hi.explanation : '')).toLowerCase().includes(f)) return;
     out.push(i);
   });
   return out;
@@ -368,12 +397,16 @@ function vQuestions() {
       ${B.ro ? '' : h`<button class="btn sm pri" data-act="qadd">${icon('plus', 15)} Add</button>
       <button class="btn sm" data-act="keymodal">${icon('key', 15)} <span>Answer key</span></button>
       <button class="btn sm" data-act="expmodal">${icon('book', 15)} <span>Explanations</span></button>
+      <button class="btn sm" data-act="himodal">${icon('globe', 15)} <span>हिंदी</span></button>
       <button class="btn sm" data-act="secmodal">${icon('layers', 15)} <span>Sections</span></button>
       <button class="ibtn sm line" data-act="qtools" aria-label="More tools">${icon('more', 17)}</button>`}
     </div>
+    <div class="row wrap gap6 mt12 bq-lg"><div class="seg" role="group" aria-label="Show questions in">${join([['en', 'English'], ['hi', 'हिंदी']], x => h`<button type="button" class="${B.lang === x[0] ? 'on' : ''}" data-act="qlang" data-l="${x[0]}">${x[1]}</button>`)}</div>
+      <span class="xs mut grow">${st.hiAll ? h`<b style="color:var(--ok)">Hindi ready ✓</b> — Hindi-medium students get this test in Hindi.${st.hiSol ? ' ' + fmt.plural(st.hiSol, 'solution') + ' still only in English.' : ''}` : st.hiAny ? h`<b style="color:var(--warn)">Hindi ${st.hiDone} of ${st.n}</b> — until every question has Hindi, Hindi-medium students get the whole test in English.` : 'No Hindi yet. Switch to हिंदी to type it, or use the हिंदी button to import a Hindi paper.'}</span></div>
     <div class="chips mt12">
       <button class="chip ${v.filter === 'all' && v.sec == null ? 'on' : ''}" data-act="qf" data-f="all">All<em>${st.n}</em></button>
       ${st.nb ? h`<button class="chip alert ${v.filter === 'bad' ? 'on' : ''}" data-act="qf" data-f="bad">Need attention<em>${st.nb}</em></button>` : ''}
+      ${st.hiMiss || (B.lang === 'hi' && !st.hiAll) ? h`<button class="chip alert ${v.filter === 'nohi' ? 'on' : ''}" data-act="qf" data-f="nohi">Hindi missing<em>${st.hiAny ? st.hiMiss : st.n}</em></button>` : ''}
       ${secs.length > 1 || (secs[0] && secs[0].name) ? join(secs, s => h`<button class="chip ${v.sec === s.name ? 'on' : ''}" data-act="qsec" data-sec="${s.name}">${s.name || 'No section'}<em>${s.n}</em></button>`) : ''}
     </div></div>
     <div id="bq-list"></div>
@@ -381,16 +414,32 @@ function vQuestions() {
 }
 function cardHtml(i) {
   const q = B.Q[i], pr = problems(q), v = B.view, ro = B.ro;
+  if (B.lang === 'hi') return cardHi(i);
   return h`<div class="qcard ${pr.length ? 'bad' : ''} ${v.sel.has(i) ? 'sel' : ''}" id="bq-${i}" data-i="${i}">
     ${v.selMode ? h`<input type="checkbox" class="qck" data-act="qsel" data-i="${i}" ${v.sel.has(i) ? raw('checked') : ''} aria-label="Select question ${i + 1}">` : ''}
     <div class="qn">${i + 1}</div>
     <div class="grow">
-      <div class="bq-meta">${q.sec ? UI.pill(q.sec, 'info') : ''}${join(pr, p => UI.pill(short(p), 'warn'))}
+      <div class="bq-meta">${q.sec ? UI.pill(q.sec, 'info') : ''}${join(pr, p => UI.pill(short(p), 'warn'))}${B.Q.some(x => x.hi) && !hiOk(q) ? UI.pill('No Hindi', 'warn') : ''}
         <span class="qa">${ro ? '' : h`<button class="ibtn sm" data-act="qedit" data-i="${i}" aria-label="Edit question ${i + 1}" title="Edit">${icon('edit', 16)}</button>`}<button class="ibtn sm" data-act="qmenu" data-i="${i}" aria-label="More for question ${i + 1}">${icon('moreV', 16)}</button></span></div>
       <div class="qt ${ro ? 'ro' : ''}" data-act="${ro ? '' : 'qedit'}" data-i="${i}">${q.q || (q.img ? '' : h`<span class="faint">${q.gap ? 'Question missing in the file — tap to type it' : 'No question text'}</span>`)}</div>
       ${q.img ? h`<img src="${q.img}" alt="Diagram for question ${i + 1}" loading="lazy">` : ''}
       <div class="opts">${join(q.options, (o, j) => h`<button type="button" class="op ${q.answer === j ? 'key' : ''}" data-act="qkey" data-i="${i}" data-j="${j}" ${ro ? raw('disabled') : ''} title="${ro ? '' : 'Mark ' + L[j] + ' as the correct answer'}"><b>${L[j]}</b><span class="grow">${o || (q.oimg[j] ? '' : h`<span class="faint">empty</span>`)}${q.oimg[j] ? h`<img src="${q.oimg[j]}" alt="Option ${L[j]} image" loading="lazy">` : ''}</span>${q.answer === j ? icon('checkCircle', 16) : ''}</button>`)}</div>
       ${q.explanation || q.eimg ? h`<div class="qx"><b>Explanation</b>${q.explanation}${q.eimg ? h`<img src="${q.eimg}" alt="Explanation image" loading="lazy">` : ''}</div>` : ''}
+    </div></div>`;
+}
+// the same card with the Hindi text (images and answer from the English question)
+function cardHi(i) {
+  const q = B.Q[i], hp = hiProblems(q), v = B.view, ro = B.ro, hq = q.hi || { q: '', options: ['', '', '', ''], explanation: '' };
+  return h`<div class="qcard ${hp.length ? 'bad' : ''} ${v.sel.has(i) ? 'sel' : ''}" id="bq-${i}" data-i="${i}" lang="hi">
+    ${v.selMode ? h`<input type="checkbox" class="qck" data-act="qsel" data-i="${i}" ${v.sel.has(i) ? raw('checked') : ''} aria-label="Select question ${i + 1}">` : ''}
+    <div class="qn">${i + 1}</div>
+    <div class="grow">
+      <div class="bq-meta">${q.sec ? UI.pill(q.sec, 'info') : ''}${hp.length ? UI.pill(hp.length === 1 ? hp[0].replace('Hindi ', 'Hindi: ') : 'Hindi: ' + hp.length + ' missing', 'warn') : UI.pill('हिंदी ✓', 'ok')}${hiSolMissing(q) ? UI.pill('Solution only English', '') : ''}
+        <span class="qa">${ro ? '' : h`<button class="ibtn sm" data-act="qedit" data-i="${i}" aria-label="Edit question ${i + 1}" title="Edit">${icon('edit', 16)}</button>`}<button class="ibtn sm" data-act="qmenu" data-i="${i}" aria-label="More for question ${i + 1}">${icon('moreV', 16)}</button></span></div>
+      <div class="qt ${ro ? 'ro' : ''}" data-act="${ro ? '' : 'qedit'}" data-i="${i}">${hq.q || (q.q ? h`<span class="faint">हिंदी प्रश्न नहीं है — tap to add. English: ${q.q.slice(0, 140)}${q.q.length > 140 ? '…' : ''}</span>` : '')}</div>
+      ${q.img ? h`<img src="${q.img}" alt="Diagram for question ${i + 1}" loading="lazy">` : ''}
+      <div class="opts">${join(q.options, (o, j) => h`<button type="button" class="op ${q.answer === j ? 'key' : ''}" data-act="qkey" data-i="${i}" data-j="${j}" ${ro ? raw('disabled') : ''}><b>${L[j]}</b><span class="grow">${hq.options[j] || (o ? h`<span class="faint">${o}</span>` : '')}${q.oimg[j] ? h`<img src="${q.oimg[j]}" alt="Option ${L[j]} image" loading="lazy">` : ''}</span>${q.answer === j ? icon('checkCircle', 16) : ''}</button>`)}</div>
+      ${hq.explanation || q.eimg ? h`<div class="qx"><b>हल · Solution</b>${hq.explanation}${q.eimg ? h`<img src="${q.eimg}" alt="Explanation image" loading="lazy">` : ''}</div>` : ''}
     </div></div>`;
 }
 function fillList() {
@@ -457,26 +506,45 @@ function qTools(el) {
 }
 
 /* ---------- question editor ---------- */
-function editQ(i) {
+function editQ(i, lang) {
   if (B.ro) return;
   const isNew = i >= B.Q.length;
   const w = isNew ? Object.assign(emptyQ(), { sec: (B.Q[B.Q.length - 1] || {}).sec || '' }) : normQ(JSON.parse(JSON.stringify(B.Q[i])));
+  if (!w.hi) w.hi = { q: '', options: ['', '', '', ''], explanation: '' };
   const names = secList().map(s => s.name).filter(Boolean);
-  let changed = false;
+  let changed = false, changedHi = false, tab = lang === 'hi' ? 'hi' : 'en';
   const imgCtl = (t, label) => { const v = t === 'q' ? w.img : t === 'e' ? w.eimg : w.oimg[t]; return h`<div class="bq-img">${v ? h`<img src="${v}" alt=""><button type="button" class="btn xs ghost danger" data-act="imgRm" data-t="${t}">${icon('trash', 13)} Remove image</button>` : h`<button type="button" class="btn xs ghost" data-act="imgAdd" data-t="${t}">${icon('image', 13)} ${label}</button><button type="button" class="btn xs ghost" data-act="imgCrop" data-t="${t}">${icon('scan', 13)} Crop from PDF</button>`}</div>`; };
   const optHtml = j => h`<div class="bq-opt ${w.answer === j ? 'key' : ''}" data-oj="${j}"><button type="button" class="bq-radio" data-act="ans" data-j="${j}" aria-label="Mark ${L[j]} correct" title="Mark ${L[j]} as the correct answer">${L[j]}</button>
     <div class="grow"><input class="inp" name="o${j}" value="${w.options[j]}" placeholder="Option ${L[j]}" aria-label="Option ${L[j]}"><div data-slotw="${j}">${imgCtl(j, 'Option image')}</div></div></div>`;
-  const probsHtml = () => { const p = problems(w); return p.length ? join(p, x => UI.pill(x, 'warn')) : UI.pill('Looks complete', 'ok'); };
+  const hiOptHtml = j => h`<div class="bq-opt ${w.answer === j ? 'key' : ''}" data-oj="${j}"><span class="bq-radio" aria-hidden="true">${L[j]}</span>
+    <div class="grow"><input class="inp" name="ho${j}" lang="hi" value="${w.hi.options[j]}" placeholder="${w.options[j] ? 'English: ' + w.options[j].slice(0, 90) : w.oimg[j] ? 'Image option — Hindi not needed' : 'विकल्प ' + L[j]}" aria-label="Hindi option ${L[j]}">${w.oimg[j] ? h`<div class="bq-img"><img src="${w.oimg[j]}" alt=""></div>` : ''}</div></div>`;
+  const probsHtml = () => {
+    const p = problems(w), hp = tab === 'hi' || !hiEmpty(w.hi) ? hiProblems(w) : [];
+    return p.length || hp.length ? h`${join(p, x => UI.pill(x, 'warn'))}${join(hp, x => UI.pill(x + ' missing', 'warn'))}` : UI.pill(hiEmpty(w.hi) ? 'Looks complete' : 'English + हिंदी complete', 'ok');
+  };
   const m = UI.modal({
     title: isNew ? 'New question ' + (i + 1) : 'Question ' + (i + 1), sub: isNew ? 'Type the question, the four options and tap the correct one.' : fmt.plural(B.Q.length, 'question') + ' in this test', size: 'wide', sticky: true,
     body: h`<div class="bq-ed col gap16">
+      <div class="row wrap gap6"><div class="seg" id="be-lg" role="tablist" aria-label="Language">${join([['en', 'English'], ['hi', 'हिंदी (Hindi)']], x => h`<button type="button" role="tab" data-v="${x[0]}" class="${tab === x[0] ? 'on' : ''}" aria-selected="${tab === x[0] ? 'true' : 'false'}">${x[1]}</button>`)}</div><span class="grow"></span></div>
       <div class="bq-probs" id="be-pr">${probsHtml()}</div>
+      <div id="be-hi" class="col gap16 ${tab === 'hi' ? '' : 'hide'}">
+        <div class="callout info">${icon('info')}<div class="sm">Hindi-medium students see this text. The images, the section and the correct answer are the same as in English — set them on the English tab.</div></div>
+        <div><div class="lblrow"><label for="be-hq">प्रश्न · Question in Hindi</label></div>
+          ${w.q ? h`<div class="well xs mut" style="margin-bottom:6px;white-space:pre-wrap;max-height:110px;overflow:auto">${w.q}</div>` : ''}
+          <textarea class="inp" id="be-hq" name="hq" rows="5" lang="hi" placeholder="यहाँ हिंदी में प्रश्न लिखें या paste करें">${w.hi.q}</textarea>${w.img ? h`<div class="bq-img"><img src="${w.img}" alt=""></div>` : ''}</div>
+        <div class="col gap6"><div class="lbl">विकल्प · Options in Hindi${w.answer != null ? ' · correct: ' + L[w.answer] : ''}</div>${join([0, 1, 2, 3], hiOptHtml)}</div>
+        <div><div class="lblrow"><label for="be-hx">हल · Solution in Hindi (optional)</label></div>
+          ${w.explanation ? h`<div class="well xs mut" style="margin-bottom:6px;white-space:pre-wrap;max-height:90px;overflow:auto">${w.explanation}</div>` : ''}
+          <textarea class="inp" id="be-hx" name="hx" rows="3" lang="hi" placeholder="${w.explanation ? 'Empty = Hindi students see the English solution' : 'हल यहाँ लिखें'}">${w.hi.explanation}</textarea></div>
+      </div>
+      <div id="be-en" class="col gap16 ${tab === 'hi' ? 'hide' : ''}">
       <div><div class="lblrow"><label for="be-q">Question</label><span class="grow"></span><button type="button" class="btn xs ghost" data-act="expand" data-f="q">${icon('external', 13)} Full screen</button></div>
         <textarea class="inp" id="be-q" name="q" rows="5" placeholder="Type or paste the question. You can also paste a screenshot here.">${w.q}</textarea><div data-slotw="q">${imgCtl('q', 'Add diagram')}</div></div>
       <div class="col gap6"><div class="lbl">Options · tap a letter to mark the correct answer</div>${join([0, 1, 2, 3], optHtml)}</div>
       <div class="fld"><label for="be-sec">Section / subject</label><input class="inp" id="be-sec" name="sec" value="${w.sec}" list="be-secl" placeholder="e.g. Physics (optional)" maxlength="60"><datalist id="be-secl">${join(names, n => h`<option value="${n}">`)}</datalist></div>
       <div><div class="lblrow"><label for="be-x">Explanation (optional)</label><span class="grow"></span><button type="button" class="btn xs ghost" data-act="expand" data-f="explanation">${icon('external', 13)} Full screen</button></div>
         <textarea class="inp" id="be-x" name="explanation" rows="3" placeholder="Shown with the answer key and in practice mode">${w.explanation}</textarea><div data-slotw="e">${imgCtl('e', 'Explanation image')}</div></div>
+      </div>
     </div>`,
     foot: h`${!isNew ? h`<button class="btn ghost danger" data-act="del">${icon('trash', 16)}<span class="bq-hph">Delete</span></button>` : ''}
       <button class="ibtn line" data-act="prev" ${i > 0 ? '' : raw('disabled')} aria-label="Previous question">${icon('chevL')}</button><button class="ibtn line" data-act="next" aria-label="Next question">${icon('chevR')}</button>
@@ -486,8 +554,21 @@ function editQ(i) {
       const upd = () => { AX.set(pr, probsHtml()); };
       const slot = t => { const x = el.querySelector('[data-slotw="' + t + '"]'); AX.set(x, imgCtl(t === 'q' || t === 'e' ? t : +t, t === 'q' ? 'Add diagram' : t === 'e' ? 'Explanation image' : 'Option image')); upd(); };
       const setImg = (t, v) => { if (t === 'q') w.img = v; else if (t === 'e') w.eimg = v; else w.oimg[+t] = v; changed = true; slot(t); };
+      el.querySelector('#be-lg').addEventListener('click', e => {
+        const b = e.target.closest('button'); if (!b) return; tab = b.dataset.v;
+        el.querySelectorAll('#be-lg button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-selected', x === b ? 'true' : 'false'); });
+        el.querySelector('#be-hi').classList.toggle('hide', tab !== 'hi'); el.querySelector('#be-en').classList.toggle('hide', tab === 'hi');
+        upd();
+        setTimeout(() => { if (!UI.isPhone()) el.querySelector(tab === 'hi' ? '#be-hq' : '#be-q').focus(); }, 30);
+      });
       el.addEventListener('input', e => {
-        const n = e.target.name; if (!n) return; changed = true;
+        const n = e.target.name; if (!n) return;
+        if (n === 'hq' || n === 'hx' || /^ho[0-3]$/.test(n)) {
+          changedHi = true;
+          if (n === 'hq') w.hi.q = e.target.value; else if (n === 'hx') w.hi.explanation = e.target.value; else w.hi.options[+n[2]] = e.target.value;
+          upd(); return;
+        }
+        changed = true;
         if (n === 'q' || n === 'explanation' || n === 'sec') w[n] = e.target.value;
         else if (/^o[0-3]$/.test(n)) w.options[+n[1]] = e.target.value;
         upd();
@@ -504,9 +585,10 @@ function editQ(i) {
         if (isNew) { if (!q.q.trim() && !q.img && q.options.every(o => !o.trim())) return true; B.Q.push(q); }
         else B.Q[i] = q;
         if (changed || isNew) dirty(true);
+        if (changedHi) dirtyHi();
         return true;
       };
-      const leave = async () => { if (changed && !(await UI.confirm({ title: 'Discard changes to this question?', yes: 'Discard', tone: 'danger', no: 'Keep editing' }))) return; close(true); };
+      const leave = async () => { if ((changed || changedHi) && !(await UI.confirm({ title: 'Discard changes to this question?', yes: 'Discard', tone: 'danger', no: 'Keep editing' }))) return; close(true); };
       AX.act(el, {
         ans(b) { const j = +b.dataset.j; w.answer = w.answer === j ? null : j; changed = true; el.querySelectorAll('[data-oj]').forEach(o => o.classList.toggle('key', +o.dataset.oj === w.answer)); upd(); },
         async imgAdd(b) {
@@ -523,11 +605,11 @@ function editQ(i) {
         save() { if (save()) { close(true); refreshQ(); if (isNew) setTimeout(() => jumpQ(B.Q.length - 1), 30); } },
         cancel: leave,
         del() { close(true); delQ([i]); },
-        prev() { save(); close(true); refreshQ(); editQ(i - 1); },
-        next() { save(); close(true); refreshQ(); editQ(isNew ? B.Q.length : i + 1); }
+        prev() { save(); close(true); refreshQ(); editQ(i - 1, tab); },
+        next() { save(); close(true); refreshQ(); editQ(isNew ? B.Q.length : i + 1, tab); }
       });
       el.closest('.ov').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); leave(); } });
-      setTimeout(() => { if (!UI.isPhone()) el.querySelector('#be-q').focus(); }, 80);
+      setTimeout(() => { if (!UI.isPhone()) el.querySelector(tab === 'hi' ? '#be-hq' : '#be-q').focus(); }, 80);
     }
   });
   return m;
@@ -635,6 +717,93 @@ function explainModal() {
     onClose() { refreshQ(); }
   });
 }
+/* ---------- Hindi: paste or read a Hindi paper / Hindi solutions, matched to the questions by number ---------- */
+// Hindi papers often number options (अ)(ब)(स)(द) or (क)(ख)(ग)(घ) and questions "प्रश्न 1." — turned into what the parser reads
+const hiNorm = t => String(t || '').replace(/\r/g, '').replace(/^(\s*)प्रश्न\s*(?:संख्या|सं\.?)?\s*(?=\d)/gm, '$1')
+  .replace(/(^|\s)\(\s*(?:अ|क)\s*\)/g, '$1(A)').replace(/(^|\s)\(\s*(?:ब|ख)\s*\)/g, '$1(B)')
+  .replace(/(^|\s)\(\s*(?:स|ग)\s*\)/g, '$1(C)').replace(/(^|\s)\(\s*(?:द|घ)\s*\)/g, '$1(D)');
+const blankHi = () => ({ q: '', options: ['', '', '', ''], explanation: '' });
+function enPaper() {
+  return B.Q.map((q, i) => (i + 1) + '. ' + (q.q || '[image]') + '\n' + q.options.map((o, j) => '(' + L[j] + ') ' + (o || '[image]')).join('\n') + (q.explanation ? '\nSolution: ' + q.explanation : '')).join('\n\n');
+}
+function hiModal() {
+  if (!B.Q.length) return UI.toast('Add or import the English questions first, then their Hindi', { tone: 'warn' });
+  let text = '', mode = 'paper', over = false;
+  const P = window.CBTParser;
+  const parse = () => {
+    if (!P || !text.trim()) return { n: 0 };
+    if (mode === 'sol') { const r = P.parseExplain(hiNorm(text)); return { n: r.count, map: r.map }; }
+    const r = P.parse(hiNorm(text), ''); return { n: r.questions.length, qs: r.questions };
+  };
+  const sumHtml = () => {
+    const r = parse(), N = B.Q.length;
+    if (!text.trim()) return h`<div class="hint">${mode === 'paper' ? 'Paste the Hindi question paper. Question 1 of the Hindi paper becomes the Hindi of question 1 here, and so on. Options can be (A)…(D), (1)…(4), (अ)…(द) or (क)…(घ).' : 'Paste the Hindi solutions. Each starts with its question number: 1. … 2. …'}</div>`;
+    if (!r.n) return h`<div class="callout warn">${icon('info')}<div class="sm">Nothing found yet. Start each ${mode === 'paper' ? 'question' : 'solution'} on a new line with its number, e.g. <span class="mono">1.</span></div></div>`;
+    if (mode === 'sol') { const nums = Object.keys(r.map).map(Number).filter(n => B.Q[n - 1]); return h`<div class="callout ok">${icon('checkCircle')}<div class="sm"><b>${fmt.plural(nums.length, 'Hindi solution')} found</b>${nums.length ? ' (questions ' + nums[0] + '–' + nums[nums.length - 1] + ')' : ''}.</div></div>`; }
+    const full = r.qs.filter(q => q.q && q.options.every(Boolean)).length;
+    return h`<div class="callout ${r.n === N ? 'ok' : 'warn'}">${icon(r.n === N ? 'checkCircle' : 'info')}<div class="sm"><b>${fmt.plural(r.n, 'Hindi question')} found</b> · this test has ${N}. ${full} have the question and all 4 options.${r.n !== N ? ' The count is different — check that the Hindi paper has the same questions in the same order.' : ''}</div></div>
+      <div class="ex-prev mt8" lang="hi">${join(r.qs.slice(0, 2), (q, i) => h`<div><b>${i + 1}.</b> ${q.q.slice(0, 160)}<div class="xs mut">${q.options.map((o, j) => '(' + L[j] + ') ' + o.slice(0, 40)).join('   ')}</div></div>`)}</div>`;
+  };
+  UI.modal({
+    title: 'Hindi version · हिंदी', sub: 'Add the Hindi text of the questions. Images and the answer key stay the same as in English.', size: 'wide',
+    body: h`<div class="row between wrap gap6" style="margin-bottom:12px"><div class="seg" id="hm-m"><button type="button" class="on" data-v="paper">Hindi paper</button><button type="button" data-v="sol">Hindi solutions</button></div>
+        <span class="pill ${stats().hiAll ? 'ok' : 'warn'}">${stats().hiDone} of ${B.Q.length} in Hindi</span></div>
+      <div class="fld"><textarea class="inp" id="hm-t" rows="10" lang="hi" placeholder="1. कोशिका का ऊर्जा केंद्र कौन सा है?\n(A) केंद्रक  (B) माइटोकॉन्ड्रिया  (C) राइबोसोम  (D) लाइसोसोम\n\n2. …"></textarea></div>
+      <div class="row wrap gap6 mt8"><button class="btn sm" data-act="hmfile">${icon('upload', 15)} Read from a file</button><button class="btn sm ghost" data-act="hmcopy">${icon('copy', 15)} Copy English paper (to translate)</button><span class="im-st xs" id="hm-st"></span></div>
+      <div id="hm-sum" class="mt12">${sumHtml()}</div>
+      <label class="row gap6 sm mt12" style="align-items:flex-start"><input type="checkbox" id="hm-over" style="margin-top:3px"><span>Replace Hindi that is already there</span></label>
+      <div class="xs mut mt8">Tip: a PDF typed in an old Hindi font (Kruti Dev, Chanakya…) is read as wrong letters. Use a Unicode PDF or Word file, or paste the text.</div>`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="hmapply">${icon('check', 16)} Add Hindi</button>`,
+    onOpen(el, close) {
+      const ta = el.querySelector('#hm-t'), sum = () => AX.set(el.querySelector('#hm-sum'), sumHtml());
+      const st = (t, tone) => { const b = el.querySelector('#hm-st'); b.className = 'im-st xs ' + (tone || ''); b.textContent = t; };
+      ta.addEventListener('input', () => { text = ta.value; sum(); });
+      el.querySelector('#hm-over').addEventListener('change', e => { over = e.target.checked; });
+      el.querySelector('#hm-m').addEventListener('click', e => {
+        const b = e.target.closest('button'); if (!b) return; mode = b.dataset.v;
+        el.querySelectorAll('#hm-m button').forEach(x => x.classList.toggle('on', x === b)); sum();
+      });
+      AX.act(el, {
+        async hmcopy() { if (await AX.u.copy(enPaper())) UI.toast('English paper copied — translate it, keep the numbers, and paste it here'); },
+        async hmfile() {
+          if (!AX.readTextFile) return UI.toast('The file reader did not load. Reload the page.', { tone: 'bad' });
+          const f = await AX.u.pickFile('.pdf,.docx,.txt,.md,image/*,application/pdf'); if (!f) return;
+          st('Reading ' + f.name + '…');
+          try {
+            const r = await AX.readTextFile(f, (t, p) => st(t + (p != null ? ' ' + Math.round(p * 100) + '%' : '')));
+            text = String(r.text || '').replace(/\s*⟦IMG:\d+⟧\s*/g, ' '); ta.value = text;
+            st(parse().n ? 'Done. Check below, then press Add Hindi.' + (r.ocr || r.scanned ? ' OCR can make mistakes.' : '') : 'Nothing numbered found in this file. You can fix the text above.', parse().n ? 'ok' : 'bad');
+          } catch (err) { st('Could not read this file: ' + err.message, 'bad'); }
+          sum();
+        },
+        hmapply() {
+          const r = parse(); if (!r.n) return UI.toast('Nothing found in the text', { tone: 'warn' });
+          let n = 0;
+          if (mode === 'sol') {
+            for (const k of Object.keys(r.map)) {
+              const q = B.Q[+k - 1], t = String(r.map[k] || '').trim(); if (!q || !t) continue;
+              const x = q.hi || blankHi(); if (!over && x.explanation.trim()) continue;
+              x.explanation = t; q.hi = x; n++;
+            }
+          } else {
+            r.qs.forEach((p, i) => {
+              const q = B.Q[i]; if (!q) return;
+              const x = q.hi || blankHi(); let ch = false;
+              if (p.q && (over || !x.q.trim())) { x.q = p.q; ch = true; }
+              p.options.forEach((o, j) => { if (o && (over || !x.options[j].trim())) { x.options[j] = o; ch = true; } });
+              if (ch) { q.hi = x; n++; }
+            });
+          }
+          if (!n) return UI.toast('Nothing new to add (the Hindi is already there — tick “Replace” to overwrite)', { tone: 'warn' });
+          B.lang = 'hi'; dirtyHi(); close();
+          UI.toast(fmt.plural(n, 'question') + ' got Hindi' + (mode === 'sol' ? ' solutions' : ''));
+          go(2);
+        }
+      });
+    },
+    onClose() { refreshQ(); }
+  });
+}
 function secModal() {
   let S = [];
   { let cur = null; B.Q.forEach(q => { const n = q.sec || ''; if (cur && cur.name === n) cur.count++; else S.push(cur = { name: n, count: 1 }); }); if (!S.some(x => x.name)) S = []; else S = S.map(x => ({ name: x.name || 'General', count: x.count })); }
@@ -699,6 +868,7 @@ function vImport() {
       ${tile('json', 'db', 'Old test file', 'A .json file saved from the old panel')}
       ${tile('key', 'key', 'Answer key only', 'Paste or upload just the key')}
       ${tile('exp', 'book', 'Explanations only', 'Solutions from text, PDF, Word or a photo')}
+      ${tile('hi', 'globe', 'Hindi version · हिंदी', 'Hindi text of these questions and solutions')}
     </div>`}
     <div class="callout info mt16">${icon('info')}<div class="sm"><b>What works best</b><br>Each question starts with its number (<span class="mono">1.</span> or <span class="mono">Q1.</span>), options are <span class="mono">(A)…(D)</span> or <span class="mono">(1)…(4)</span>, and subject headings like <i>Physics</i> start a section. A key after the words “Answer key” is found automatically.</div></div>
     ${st.n ? h`<div class="card mt16 row wrap">${icon('list')}<div class="grow"><b>${fmt.plural(st.n, 'question')} in this test now</b><div class="xs mut">When you import you can add the new questions after these, or replace them.</div></div><button class="btn sm" data-act="step" data-s="2">See questions</button></div>` : ''}
@@ -709,6 +879,7 @@ async function doImport(src) {
     if (!B.Q.length) return UI.toast('Add or import the questions first, then the explanations', { tone: 'warn' });
     return explainModal();
   }
+  if (src === 'hi') return hiModal();
   if (src === 'key') {
     if (!B.Q.length) return UI.toast('Add or import the questions first, then the key', { tone: 'warn' });
     return keyModal();
@@ -789,19 +960,37 @@ function vPublish() {
       ${err ? ck('bad', err, '', 4) : ck('ok', 'Schedule', schedLine(m) + (m.closes_at ? ' · live till ' + fmt.dt(m.closes_at) : '') + (m.result_at ? ' · result ' + fmt.dt(m.result_at) : ''))}
       ${liveWarn(m) ? ck('warn', 'Result comes out before late starters finish', 'You will be asked to confirm.', 4) : ''}
       ${!m.active ? ck('warn', 'Hidden from students', 'Turn on “Visible to students” in Details when ready.', 1) : ''}
+      ${hiCheck(ck, st)}
     </div>
     <div class="col gap16"><div class="card"><div class="card-h">${icon('fileText')}<h3>Summary</h3></div>
       <dl class="kv"><dt>Questions</dt><dd>${st.n}</dd><dt>Marking</dt><dd>+${m.correct} / −${m.wrong} · max ${fmt.num(st.max)}</dd><dt>Duration</dt><dd>${+m.duration || 180} min</dd>
         <dt>Opens</dt><dd>${m.opens_at ? fmt.dt(m.opens_at) : 'When published'}</dd><dt>Live ends</dt><dd>${m.closes_at ? fmt.dt(m.closes_at) : '—'}</dd><dt>Result</dt><dd>${m.result_at ? fmt.dt(m.result_at) : 'Straight after submitting'}</dd>
-        <dt>Mode</dt><dd>${m.practice ? 'Practice (instant answers)' : 'Normal test'}</dd><dt>Access</dt><dd>${[m.active ? 'Visible' : 'Hidden', m.free_preview ? 'Free preview' : '', m.lock_back ? 'No going back' : ''].filter(Boolean).join(' · ')}</dd>
+        <dt>Mode</dt><dd>${m.practice ? 'Practice (instant answers)' : 'Normal test'}</dd><dt>Medium</dt><dd>${st.hiAll ? 'English + हिंदी' : st.hiAny ? 'English (Hindi ' + st.hiDone + '/' + st.n + ')' : 'English only'}</dd><dt>Access</dt><dd>${[m.active ? 'Visible' : 'Hidden', m.free_preview ? 'Free preview' : '', m.lock_back ? 'No going back' : ''].filter(Boolean).join(' · ')}</dd>
         ${B.id ? h`<dt>Attempts</dt><dd>${B.results}</dd>` : ''}</dl></div>
       ${B.ro ? h`<div class="callout info">${icon('lock')}<div class="sm">View access only — you cannot publish.</div></div>` : h`<div class="card glass" id="bp-box">
-        ${B.id && !B.qDirty ? h`<div class="xs mut" style="margin-bottom:10px">Questions are unchanged, so only the details and schedule will be saved.</div>` : B.id && B.results ? h`<div class="callout warn" style="margin-bottom:12px">${icon('info')}<div class="xs">${fmt.plural(B.results, 'student')} already attempted it. Their scores stay. If you removed or reordered questions, old question reports may point to a different question.</div></div>` : ''}
+        ${B.id && !B.qDirty ? h`<div class="xs mut" style="margin-bottom:10px">Questions are unchanged, so only the details and schedule${B.hiDirty ? ' and the Hindi text' : ''} will be saved.</div>` : B.id && B.results ? h`<div class="callout warn" style="margin-bottom:12px">${icon('info')}<div class="xs">${fmt.plural(B.results, 'student')} already attempted it. Their scores stay. If you removed or reordered questions, old question reports may point to a different question.</div></div>` : ''}
         <button class="btn pri lg block" data-act="publish" ${blockers ? raw('disabled') : ''}>${icon('send', 18)} ${B.id ? 'Update test' : 'Publish test'}</button>
         <div id="bp-prog" class="hide mt12"><div class="progress"><i style="width:0%"></i></div><div class="xs mut mt8" id="bp-st"></div></div>
         ${blockers ? h`<div class="xs mut mt8" style="text-align:center">Fix the red items first.</div>` : ''}</div>`}
     </div></div>
   ${navBtns(4, 0)}`;
+}
+// the Hindi line of the checklist
+function hiCheck(ck, st) {
+  if (st.hiAny && B.noLang) return ck('bad', 'Hindi cannot be saved yet', B.noLang === 'missing' ? 'Run supabase_v41_medium.sql in Supabase, then publish again. The English test is saved.' : 'Could not load the Hindi part (' + B.noLang + ').');
+  if (!st.hiAny) return ck('ok', 'English only', 'Hindi-medium students also get this test in English. To add Hindi: Questions → हिंदी.');
+  if (st.hiAll) return ck('ok', 'Hindi ready · हिंदी ✓', 'Hindi-medium students get every question in Hindi.' + (st.hiSol ? ' ' + fmt.plural(st.hiSol, 'solution') + ' only in English (shown in English to them).' : ''));
+  return ck('warn', 'Hindi ' + st.hiDone + ' of ' + st.n, 'Incomplete Hindi is never shown: Hindi-medium students get the whole test in English until every question has Hindi.', 2);
+}
+// save the Hindi text next to the test (after the test itself, so it fits the questions just saved)
+async function saveHi(id, metaOnly) {
+  const any = B.Q.some(q => q.hi);
+  if (B.noLang === 'missing' && !any) return { ok: true, skip: true };
+  const need = B.hiDirty || (!metaOnly && (any || B.hiServer)) || (B.hiServer && !B.hiServer.fresh && any);
+  if (!need) return { ok: true, skip: true };
+  const r = any ? await AX.api.call('cbt_admin_lang', 'test_set', { id, data: B.Q.map(q => q.hi || blankHi()) }) : await AX.api.call('cbt_admin_lang', 'test_clear', { id });
+  if (r.ok) { B.hiDirty = false; B.noLang = ''; B.hiServer = any && !r.cleared ? { ready: !!r.ready, fresh: true, done: r.done || 0 } : null; AX.cache.drop('lang'); }
+  return r;
 }
 async function resolveFolder(sid, m) {
   if (m.folder_id && m.folder_id !== '__new') return (B.cat.folders || []).some(f => f.id === m.folder_id && f.series_id === sid) ? m.folder_id : null;
@@ -857,10 +1046,14 @@ async function publish(btn) {
       const p = await AX.api.call('cbt_admin_practice', 'set', { id: r.id, on: !!m.practice });
       if (p.ok) B.practice0 = !!m.practice; else if (m.practice) UI.toast('Practice mode needs the v5 SQL update in Supabase', { tone: 'warn', ms: 6000 });
     }
+    set(97, 'Saving the Hindi…');
+    const hr = await saveHi(r.id, metaOnly);
+    if (!hr.ok) { B.noLang = hr.error || 'server'; UI.toast('The test is saved, but the Hindi text could not be saved' + (hr.error === 'missing' ? ': run supabase_v41_medium.sql in Supabase' : ' (' + AX.errText(hr) + ')') + '. Publish again to retry.', { tone: 'bad', ms: 9000 }); }
     set(100, 'Done');
     const wasNew = !B.id;
     AX.ls.del(DK + B.key);
-    B.id = r.id; B.key = r.id; B.qDirty = false; B.dirty = false; B.published = true; B.draftFail = false;
+    B.id = r.id; B.key = r.id; B.qDirty = false; B.dirty = !hr.ok; B.published = true; B.draftFail = false;
+    if (!hr.ok) { B.hiDirty = true; saveDraft(); }
     m.folder_id = fid || ''; m.folderNew = '';
     AX.cache.drop('catalog'); AX.emit('data:changed'); AX.emit('tests:changed', { id: r.id });
     const cat = await AX.data.catalog(true); if (cat && cat.ok && B) B.cat = cat;
@@ -899,7 +1092,9 @@ const ACTS = {
   dur(el) { B.meta.duration = +el.dataset.v; dirty(); render(); },
   preset(el) { const v = el.dataset.v; if (v === 'none') B.meta.wrong = 0; else Object.assign(B.meta, { duration: 180, correct: 4, wrong: 1 }); dirty(); render(); },
   qadd: () => editQ(B.Q.length),
-  qedit: el => editQ(+el.dataset.i),
+  qedit: el => editQ(+el.dataset.i, B.lang),
+  qlang(el) { B.lang = el.dataset.l === 'hi' ? 'hi' : 'en'; if (B.view.filter === 'nohi' && B.lang === 'en' && !B.Q.some(q => q.hi)) B.view.filter = 'all'; refreshQ(); },
+  himodal: () => hiModal(),
   qkey(el) { if (B.ro) return; const i = +el.dataset.i, j = +el.dataset.j, q = B.Q[i]; q.answer = q.answer === j ? null : j; dirty(true); const c = WS.querySelector('#bq-' + i); if (c) { const t = document.createElement('div'); t.innerHTML = AX.html(cardHtml(i)); c.replaceWith(t.firstElementChild); } chrome(); },
   qmenu: el => qMenu(el, +el.dataset.i),
   qtools: el => qTools(el),

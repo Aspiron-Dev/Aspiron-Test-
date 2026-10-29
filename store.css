@@ -821,3 +821,15 @@ html.anim .secs:not(.noanim) .sech{animation:rise .55s var(--out) backwards;anim
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
 }
 @media print{.sd,.tb,.dock,#tst,#gate{display:none!important}.app{display:block}body::before{display:none}}
+
+/* v41: English + हिंदी medium */
+.lgs{display:inline-flex;align-items:center;gap:5px;margin:4px 0 2px;font-size:11.5px;font-weight:750;color:var(--pri)}
+.lgs .i{width:13px;height:13px}
+.lgx{display:flex;gap:12px;align-items:flex-start;margin:12px 0 4px;padding:12px 14px;border-radius:14px;background:var(--pri-soft);border:1px solid var(--pri-line)}
+.lgx>.i{width:20px;height:20px;color:var(--pri);flex:none;margin-top:2px}
+.lgx b{display:block;font-size:14px}.lgx span{display:block;font-size:12.5px;color:var(--tx-2);margin-top:2px}
+.lgo{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lgb{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:16px 14px;border-radius:16px;border:1.5px solid var(--line-2);background:var(--solid-2);color:var(--tx);font:inherit;text-align:left;cursor:pointer;transition:border-color var(--fast),transform var(--fast)}
+.lgb:hover{border-color:var(--pri);transform:translateY(-1px)}
+.lgb b{font-size:15px}.lgb small{font-size:12.5px;color:var(--mut)}
+.lgl{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;margin-bottom:8px;font-weight:800;font-size:17px;color:#fff;background:linear-gradient(135deg,var(--pri),var(--pri-2,#7c5cff))}
