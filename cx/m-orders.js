@@ -15,10 +15,8 @@ const DAY = 864e5;
 const m10 = m => String(m || '').replace(/\D/g, '').slice(-10);
 const firstName = n => String(n || '').trim().split(/\s+/)[0] || 'there';
 const SITE = () => CFG.SITE_NAME || 'our test series';
-const MSGLINE = '━━━━━━━━━━━━━━━━';
 const siteUrl = () => location.href.replace(/[#?].*$/, '').replace(/[^/]*\.html$/, '');
 const siteBase = () => /^https:\/\//.test(CFG.SHORT_URL || '') ? String(CFG.SHORT_URL).replace(/\/?$/, '/') : siteUrl();
-const stuLink = () => /^https:\/\//.test(CFG.SHORT_URL || '') ? CFG.SHORT_URL : siteUrl();
 const storeUrl = () => siteBase() + 'store.html';
 const ms = t => AX.fmt.ms(t) || 0;
 const SEGS = [
@@ -38,7 +36,7 @@ S.seg = o => o.status === 'paid' ? 'done' : o.status === 'rejected' ? 'rej' : (o
 S.cur = null;
 // store data + students (if allowed). Never throws.
 S.load = async (force) => {
-  const [r, st] = await Promise.all([AX.data.store(force), AX.can('students') ? AX.data.students(force) : Promise.resolve(null)]);
+  const [r, st] = await Promise.all([AX.data.store(force), AX.can('students') ? AX.data.students(force) : Promise.resolve(null), AX.amsg.load(force)]);
   if (!r || !r.ok) return r || { ok: false, error: 'server' };
   const D = { ok: true, settings: r.settings || {}, items: r.items || [], orders: r.orders || [], students: st && st.ok ? (st.students || []) : null, stErr: st && !st.ok ? st : null };
   S.cur = D;
@@ -51,23 +49,12 @@ S.requests = D => (D.students || []).filter(s => s.status === 'pending').sort((a
 S.changed = () => { ['store', 'payments', 'students'].forEach(k => AX.cache.drop(k)); AX.emit('data:changed'); AX.emit('orders:changed'); };
 
 /* ---------- message templates (exact texts that are known to work) ---------- */
-S.stuMsg = ({ name, title, order, mobile, code, keep }) => {
-  const tg = /^https:\/\/t\.me\//.test(CFG.TG_CHANNEL || '') ? CFG.TG_CHANNEL : '';
-  const c = code ? code.slice(0, 4) + '-' + code.slice(4) : '';
-  return [`Hi *${name}* 👋`, '',
-    title ? `Your payment for *"${title}"* is verified ✅` : `Your access to *${CFG.SITE_NAME || 'the test series'}* is approved ✅`,
-    ...(order ? [`🧾 Order: *${order}*`] : []),
-    MSGLINE,
-    ...(tg ? ['📢 *Join our Telegram channel*', tg, MSGLINE] : []),
-    '📱 *Open website*', stuLink(), '',
-    '🔑 *Login with*', `Mobile: *${mobile}*`, code ? `Access code: *${c}*` : keep ? 'Access code: *your current code*' : 'Access code: ______',
-    MSGLINE,
-    title ? '🔓 Your series is unlocked. All the best! 💪' : 'All the best for your preparation! 💪',
-    '_Keep your code private. It works on up to 2 phones._'].join('\n');
-};
+// the approval message: per test series (cx/amsg.js); sid = the series that is unlocked
+S.stuMsg = o => AX.amsg.make(o);
+S.sidOf = o => (((S.cur && S.cur.items) || []).find(x => x.id === o.item_id) || {}).series_id || null;
 S.ordMsg = o => {
   const f = firstName(o.name), sg = S.seg(o);
-  if (sg === 'done') return S.stuMsg({ name: o.name, title: o.item_title, order: o.code, mobile: o.mobile });
+  if (sg === 'done') return S.stuMsg({ sid: S.sidOf(o), name: o.name, title: o.item_title, order: o.code, mobile: o.mobile });
   if (sg === 'verify') return `Hi ${f} 👋\nWe have received your payment details for "${o.item_title}" (order ${o.code}).\nWe are checking it now and will send your login details shortly. 🙏`;
   if (sg === 'rej') return `Hi ${f}, we could not match your payment for "${o.item_title}" (order ${o.code}).\nPlease send the payment screenshot and the UTR number again, and we will check it at once.`;
   return `Hi ${f} 👋\nYou started buying "${o.item_title}" (${fmt.inr(o.amount)}) on ${SITE()}, but the payment is not complete yet.\nAny doubt about the series or the payment? Just reply here — we are happy to help. 😊\nComplete it here: ${storeUrl()}#p=${o.item_id || ''}\nOrder code: ${o.code}`;
@@ -94,7 +81,7 @@ S.contacted = async (code) => {
 };
 // one delegated handler for contact links (Telegram copies the message first — it cannot be prefilled)
 S.onContact = (el) => {
-  if (el.dataset.tg && el.dataset.msg) { AX.u.copy(el.dataset.msg).then(ok => { if (ok) UI.toast('Message copied — paste it in Telegram'); }); }
+  if (el.dataset.tg && el.dataset.msg) { AX.u.copy(AX.u.tgText(el.dataset.msg)).then(ok => { if (ok) UI.toast('Message copied — paste it in Telegram'); }); }
   if (el.dataset.code) S.contacted(el.dataset.code);
 };
 
@@ -119,7 +106,7 @@ S.approve = async (code) => {
   if (!D.ok) return UI.err(D);
   const o = D.orders.find(x => x.code === code);
   if (!o) return UI.toast('This order is not in the list any more. Refresh the page.', { tone: 'warn' });
-  const cat = await AX.data.catalog();
+  const [cat] = await Promise.all([AX.data.catalog(), AX.amsg.load()]);
   const it = D.items.find(x => x.id === o.item_id), sid = it && it.series_id;
   const ser = sid && cat && cat.ok ? (cat.series || []).find(s => s.id === sid) : null;
   const twin = S.paidTwin(o, D.orders);
@@ -166,7 +153,7 @@ S.approve = async (code) => {
   } else warn('Order left as “Payment done” so you can try again');
   S.changed();
   S.doneSheet({ title: unlocked ? 'Approved' : 'Partly done', name: o.name, mobile: o.mobile, code: o.code, steps, acc,
-    msg: S.stuMsg({ name: o.name, title: o.item_title, order: o.code, mobile: o.mobile, code: acc, keep: !acc }) });
+    msg: S.stuMsg({ sid, name: o.name, title: o.item_title, order: o.code, mobile: o.mobile, code: acc, keep: !acc }) });
 };
 // result sheet: steps, the new code (shown once), message + WhatsApp / Telegram / Copy
 S.doneSheet = ({ title, name, mobile, code, steps, acc, msg, sub }) => {
@@ -177,9 +164,9 @@ S.doneSheet = ({ title, name, mobile, code, steps, acc, msg, sub }) => {
       ${acc ? h`<div class="code-big mt16">${acc.slice(0, 4)}-${acc.slice(4)}</div><p class="xs mut mt8" style="text-align:center">Send this code now — for safety it is stored scrambled and cannot be shown again.</p>` : ''}
       <div class="lbl mt16" style="margin-bottom:6px">Message for the student</div>
       <div class="well oc-msg">${S.msgHtml(msg)}</div>
-      <p class="xs faint mt8">Telegram cannot fill in the message, so it is copied first — paste it in the chat that opens.</p>`,
-    foot: h`<button class="btn" data-act="copy">${icon('copy', 16)} Copy</button><a class="btn soft" href="${L.wa}" target="_blank" rel="noopener">${icon('whatsapp', 16)} WhatsApp</a><a class="btn soft" href="${L.tg}" target="_blank" rel="noopener" data-act="copy">${icon('telegram', 16)} Telegram</a><span class="sp"></span><button class="btn pri" data-close>Done</button>`,
-    onOpen(el) { AX.act(el, { copy() { AX.u.copy(msg).then(x => UI.toast(x ? 'Message copied' : 'Copy failed', x ? {} : { tone: 'bad' })); } }); }
+      <p class="xs faint mt8">Telegram cannot fill in the message, so it is copied first (with Telegram's bold, no stars) — paste it in the chat that opens.</p>`,
+    foot: h`<button class="btn" data-act="copy">${icon('copy', 16)} Copy</button><a class="btn soft" href="${L.wa}" target="_blank" rel="noopener">${icon('whatsapp', 16)} WhatsApp</a><a class="btn soft" href="${L.tg}" target="_blank" rel="noopener" data-act="tg">${icon('telegram', 16)} Telegram</a><span class="sp"></span><button class="btn pri" data-close>Done</button>`,
+    onOpen(el) { AX.act(el, { copy() { AX.u.copy(msg).then(x => UI.toast(x ? 'Message copied' : 'Copy failed', x ? {} : { tone: 'bad' })); }, tg() { AX.u.copy(AX.u.tgText(msg)).then(x => UI.toast(x ? 'Message copied — paste it in Telegram' : 'Copy failed', x ? {} : { tone: 'bad' })); } }); }
   });
 };
 S.setStatus = async (code, status, opt = {}) => {
@@ -266,7 +253,7 @@ function cardActs(root, after) {
         text: 'The payment stops counting. The series stays unlocked and the access code does not change — remove the series on the student’s page if needed.' }))) return;
       await S.setStatus(o.code, 'pending', { msg: 'Moved back to pending', undo: false }); if (after) after();
     },
-    login(el) { const o = find(el.dataset.code); if (o) AX.u.copy(S.stuMsg({ name: o.name, title: o.item_title, order: o.code, mobile: o.mobile })).then(x => UI.toast(x ? 'Login message copied — add the access code before sending' : 'Copy failed')); },
+    login(el) { const o = find(el.dataset.code); if (o) AX.u.copy(S.stuMsg({ sid: S.sidOf(o), name: o.name, title: o.item_title, order: o.code, mobile: o.mobile })).then(x => UI.toast(x ? 'Login message copied — add the access code before sending' : 'Copy failed')); },
     student: el => S.openStudent(el.dataset.m),
     note: el => S.note(el.dataset.code),
     rapprove: el => UI.busy(el, () => S.approveReq(el.dataset.id)),

@@ -144,7 +144,7 @@ function vLib(ctx) {
     </div>
     ${drafts.length ? h`<div class="card pad0 mt16"><div class="card-h" style="padding:14px 16px 4px">${icon('history')}<h3>Unpublished drafts on this device</h3><span class="grow"></span><span class="xs mut">Kept automatically</span></div><div class="list">${join(drafts, d => h`<div class="li"><span class="ts-ic gold">${icon('edit', 17)}</span><div class="grow"><div class="t ell">${d.title}</div><div class="s">${d.id ? 'Changes to a published test' : 'New test'} · ${fmt.plural(d.count, 'question')} · saved ${fmt.ago(d.at)}</div></div><button class="btn xs ghost" data-act="dropDraft" data-k="${d.key}">Discard</button><button class="btn xs soft" data-act="draft" data-k="${d.key}" data-id="${d.id || ''}">Continue</button></div>`)}</div></div>` : ''}
     <div class="ts-tool"><div class="inp-wrap search">${icon('search', 16)}<input class="inp sm" id="ts-q" type="search" placeholder="Find a series or test…" value="${CUR.q}" autocomplete="off" aria-label="Find a series or test"></div><span class="grow"></span>
-      ${m && C.series.length > 1 ? h`<button class="btn sm ghost" data-act="reorderS">${icon('sort', 15)} Reorder series</button>` : ''}</div>
+      <button class="btn sm ghost" data-act="amsgAll">${icon('msg', 15)} Approval messages</button>${m && C.series.length > 1 ? h`<button class="btn sm ghost" data-act="reorderS">${icon('sort', 15)} Reorder series</button>` : ''}</div>
     ${C.series.length ? h`<div class="ts-grid">${join(ser, card)}${m && !q ? h`<button class="ts-new" data-act="newSeries"><span class="e-ic">${icon('plus', 22)}</span>New series<span class="xs mut" style="font-weight:600">e.g. NEET Test Series 2027</span></button>` : ''}</div>
       ${!ser.length ? h`<div class="card">${UI.empty({ icon: 'search', title: 'Nothing matches', text: 'Try another name.' })}</div>` : ''}`
       : h`<div class="card">${UI.empty({ icon: 'layers', title: 'No series yet', text: 'Create your first series, for example “NEET Test Series”. Then add folders and tests to it.', action: m ? h`<button class="btn pri" data-act="newSeries">${icon('plus', 16)} Create a series</button>` : '' })}</div>`}
@@ -202,7 +202,8 @@ function vSeries(ctx) {
       <div class="ts-hb"><div class="row wrap gap6">${s.is_free ? UI.pill('Free for everyone', 'ok') : UI.pill('Paid · ' + (s.price_label || 'unlock per student'), 'gold')}${s.active === false ? UI.pill('Hidden from students', 'warn') : UI.pill('Visible to students', 'pri')}<span class="pill">Order ${s.sort_order || 0}</span></div>
         <div class="row wrap gap20"><div><div class="disp" style="font-size:26px">${T.length}</div><div class="xs mut">tests</div></div><div><div class="disp" style="font-size:26px">${F.length}</div><div class="xs mut">folders</div></div><div><div class="disp" style="font-size:26px">${fmt.num(T.reduce((a, t) => a + (t.questions || 0), 0))}</div><div class="xs mut">questions</div></div><div><div class="disp" style="font-size:26px">${fmt.num(T.reduce((a, t) => a + (t.results || 0), 0))}</div><div class="xs mut">attempts</div></div></div>
         <div class="row wrap gap6">${st.filter(x => x.k === 'live').length ? h`<span class="pill ok"><span class="live-dot"></span> ${st.filter(x => x.k === 'live').length} live now</span>` : ''}${st.filter(x => x.k === 'sched').length ? UI.pill(st.filter(x => x.k === 'sched').length + ' scheduled', 'info') : ''}${(s.files || []).length ? join(s.files, f => UI.pill(f.title + ' · ' + f.kind)) : h`<span class="xs mut">No syllabus or schedule files yet.</span>`}</div>
-        ${m ? h`<div class="row wrap gap6"><button class="btn sm" data-act="media" data-id="${s.id}">${icon('image', 15)} Cover & files</button><button class="btn sm" data-act="newFolder" data-sid="${s.id}">${icon('folder', 15)} New folder</button>${F.length > 1 ? h`<button class="btn sm ghost" data-act="reorderF" data-sid="${s.id}">${icon('sort', 15)} Reorder folders</button>` : ''}</div>` : ''}</div></div>
+        ${m ? h`<div class="row wrap gap6"><button class="btn sm" data-act="media" data-id="${s.id}">${icon('image', 15)} Cover & files</button><button class="btn sm" data-act="newFolder" data-sid="${s.id}">${icon('folder', 15)} New folder</button>${F.length > 1 ? h`<button class="btn sm ghost" data-act="reorderF" data-sid="${s.id}">${icon('sort', 15)} Reorder folders</button>` : ''}</div>` : ''}
+        <div class="row wrap gap6"><button class="btn sm" data-act="amsg" data-id="${s.id}">${icon('msg', 15)} Approval message & Telegram</button>${AX.can('messaging', 'manage') ? h`<button class="btn sm" data-act="sNotice" data-id="${s.id}">${icon('bell', 15)} Notice to this series</button><button class="btn sm" data-act="sPush" data-id="${s.id}">${icon('send', 15)} Phone notification</button>` : ''}</div></div></div>
     ${T.length > 6 ? h`<div class="ts-tool"><div class="inp-wrap search">${icon('search', 16)}<input class="inp sm" id="ts-q" type="search" placeholder="Find a test in this series…" value="${CUR.q}" autocomplete="off" aria-label="Find a test"></div></div>` : ''}
     ${!T.length && !F.length ? h`<div class="card mt16">${UI.empty({ icon: 'fileText', title: 'Nothing here yet', text: 'Add a folder (for example “Phase 1” or “Day 1”) or create the first test.', action: m ? h`<div class="row wrap" style="justify-content:center"><button class="btn pri" data-act="newTestIn" data-sid="${s.id}">${icon('plus', 16)} New test</button><button class="btn" data-act="newFolder" data-sid="${s.id}">${icon('folder', 16)} New folder</button></div>` : '' })}</div>` : ''}
     ${join(F, f => { const ft = fT(testsOf(s.id, f.id)); if (q && !ft.length) return ''; return h`<section class="card pad0 ts-fold"><div class="ts-fh"><span class="fi">${icon('folder', 17)}</span><div class="grow"><div class="row gap6 wrap"><b class="ell">${f.title}</b>${f.active === false ? UI.pill('Hidden', 'warn') : ''}</div><div class="xs mut">${fmt.plural(testsOf(s.id, f.id).length, 'test')}</div></div>
@@ -247,6 +248,10 @@ const ACTS = {
   ana: el => openAna(el.dataset.id),
   shareS: el => AX.shareSeries(el.dataset.id),
   editS: el => seriesModal(S_(el.dataset.id)),
+  amsg: el => AX.amsg.edit(el.dataset.id),
+  amsgAll: () => AX.amsg.manage(),
+  sNotice: el => AX.newNotice({ series: [el.dataset.id] }),
+  sPush: el => AX.pushTo({ series: [el.dataset.id] }),
   media: el => mediaDrawer(el.dataset.id),
   newFolder: el => folderModal(el.dataset.sid, null),
   reorderS: () => reorder('Reorder series', C.series.slice().sort(bySort).map(s => ({ id: s.id, t: s.title, s: s.sort_order })), (x, n) => AX.api.admin('series_save', { id: x.id, sort_order: n })),
@@ -270,6 +275,9 @@ function sMenu(el, s) {
     m && { label: 'New folder', icon: 'folder', fn: () => folderModal(s.id, null) },
     m && { label: 'Edit series', icon: 'edit', fn: () => seriesModal(s) },
     m && { label: 'Cover & files', icon: 'image', fn: () => mediaDrawer(s.id) },
+    { label: 'Approval message & Telegram', icon: 'msg', fn: () => AX.amsg.edit(s.id) },
+    AX.can('messaging', 'manage') && { label: 'Notice to this series', icon: 'bell', fn: () => AX.newNotice({ series: [s.id] }) },
+    AX.can('messaging', 'manage') && { label: 'Phone notification to this series', icon: 'send', fn: () => AX.pushTo({ series: [s.id] }) },
     { label: 'Share link', icon: 'link', fn: () => AX.shareSeries(s.id) },
     m && { sep: true },
     m && { label: 'Delete series', icon: 'trash', tone: 'danger', fn: () => delSeries(s) }

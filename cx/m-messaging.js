@@ -98,6 +98,9 @@ AX.mod({
 });
 AX.creates.push({ label: 'Notice', icon: 'bell', perm: ['messaging', 'manage'], run() { AX.go('messages/notices'); setTimeout(() => notice(null, null), 300); } });
 AX.creates.push({ label: 'Phone notification', icon: 'send', perm: ['messaging', 'manage'], run() { AX.go('messages/push'); } });
+// from other pages (e.g. Test studio → a series): a new notice / phone notification with the test series already chosen
+AX.newNotice = async (pre) => { if (!can()) return; await audLoad(); notice(null, null, pre); };
+AX.pushTo = async (pre) => { if (!can()) return; await audLoad(); pushForm(false, Object.assign({ title: '', body: '', url: '#/n' }, pre)); };
 
 /* ---------- notices ---------- */
 let NL = [];
@@ -168,7 +171,7 @@ function readers(n) {
           : h`<p class="sm mut">Nobody has marked it as read yet.</p>`}</div>`);
     } });
 }
-function notice(n, ctx) {
+function notice(n, ctx, pre) {
   const isNew = !n; n = n || { title: '', text: '', link: '', label: '', active: true };
   let img;          // undefined = keep, '' = remove, data URL = replace
   const m = UI.modal({ title: isNew ? 'New notice' : 'Edit notice', sub: 'Students see it under the bell; the newest also shows on their Home.', size: 'wide',
@@ -178,7 +181,7 @@ function notice(n, ctx) {
       ${AX.f.input({ name: 'link', label: 'Link (optional)', value: n.link, inputmode: 'url', placeholder: 'https://… or #/series' })}
       ${AX.f.input({ name: 'label', label: 'Button text', value: n.label, max: 40, placeholder: 'Open link' })}
       <div class="fld full"><label>Image (optional)</label><div class="row wrap"><div id="nprev" class="well grow" style="min-height:64px;display:flex;align-items:center;justify-content:center">${n.img ? h`<span class="spin"></span>` : h`<span class="sm mut">No image</span>`}</div><div class="col gap6"><button type="button" class="btn sm" data-act="pick">${icon('image', 15)} Choose image</button><button type="button" class="btn sm ghost" data-act="rm">${icon('trash', 15)} Remove</button></div></div></div>
-      ${audPicker(isNew ? [] : audOf(n.id))}
+      ${audPicker(isNew ? (pre && pre.series) || [] : audOf(n.id))}
       <div class="full col gap10">${AX.f.switch({ name: 'active', value: n.active !== false, label: 'Show to students' })}
       ${AX.f.switch({ name: 'push', value: isNew, label: 'Also send to students\' phones', hint: 'A phone notification, even if the app is closed — to the same students.' })}</div></form>`,
     foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="save">${icon('send', 16)} ${isNew ? 'Publish' : 'Save'}</button>`,
