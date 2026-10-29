@@ -35,7 +35,8 @@ async function load(force) {
   const [S, C, R, P] = await Promise.all([
     AX.data.students(force), AX.data.catalog(),
     canR ? AX.data.results() : Promise.resolve({ ok: false, error: 'forbidden' }),
-    canP ? AX.data.payments(force) : Promise.resolve({ ok: false, error: 'forbidden' })
+    canP ? AX.data.payments(force) : Promise.resolve({ ok: false, error: 'forbidden' }),
+    AX.amsg.load(force)
   ]);
   if (!S.ok) return { ok: false, r: S };
   const students = S.students || [];
