@@ -1,7 +1,8 @@
 /* =====================================================================
-   Test builder — a full-screen workspace to create or edit one test.
-   Steps: 1 Details · 2 Questions · 3 Import · 4 Schedule & access · 5 Review & publish.
-   AX.openTest(testId | null, {seriesId, folderId, step:1-5, q:questionIndex, draft:key})
+   Test builder — a full-screen workspace to create or edit one test, one simple step at a time:
+   1 Details · 2 Questions (English paper | हिंदी paper side by side) · 3 Answer key (one key for both languages)
+   · 4 Solutions (English | हिंदी) · 5 Check & edit (every question, both languages) · 6 Time & publish.
+   AX.openTest(testId | null, {seriesId, folderId, step:1-6 | 'details'|'questions'|'key'|'solutions'|'check'|'publish', q:questionIndex, draft:key})
    Server (same calls as the old admin2/admin3): cbt_admin test_get · test_stage (batches of ≤40 questions / ≤450,000 chars)
    · test_save (stage_token + count, or details only) · folder_save (new folder by name) · cbt_admin_practice set.
    Question format (the student app reads it — never change it):
@@ -15,11 +16,14 @@ const L = 'ABCD', PAGE = 20, DK = 'cx_tdraft:';
 const ms = v => { const x = AX.fmt.ms(v); return x ? Number(x) : null; };
 const STEPS = [
   { id: 'details', t: 'Details', i: 'edit' },
-  { id: 'questions', t: 'Questions', i: 'list' },
-  { id: 'import', t: 'Import', i: 'upload' },
-  { id: 'schedule', t: 'Schedule & access', i: 'calendar' },
-  { id: 'publish', t: 'Review & publish', i: 'send' }
+  { id: 'questions', t: 'Questions', i: 'upload' },
+  { id: 'key', t: 'Answer key', i: 'key' },
+  { id: 'solutions', t: 'Solutions', i: 'book' },
+  { id: 'check', t: 'Check & edit', i: 'list' },
+  { id: 'publish', t: 'Time & publish', i: 'send' }
 ];
+const S_DET = 1, S_Q = 2, S_KEY = 3, S_SOL = 4, S_CHECK = 5, S_PUB = 6, NSTEP = STEPS.length;
+const stepNo = v => { const i = STEPS.findIndex(x => x.id === v); return i >= 0 ? i + 1 : Math.max(1, Math.min(NSTEP, +v || 1)); };
 
 /* ---------- question kit (also used by m-import.js) ---------- */
 const emptyQ = () => ({ q: '', options: ['', '', '', ''], answer: null, explanation: '', sec: '', img: null, oimg: [null, null, null, null], eimg: null });
@@ -154,12 +158,14 @@ AX.css('builder', `
 .bp-done{text-align:center;padding:30px 18px}
 .bp-done .big{width:68px;height:68px;border-radius:22px;margin:0 auto 14px;display:grid;place-items:center;background:var(--grad-pri);color:var(--pri-ink);box-shadow:0 14px 34px color-mix(in srgb,var(--pri-2) 40%,transparent)}
 .bp-done .big .ax-ic{width:32px;height:32px;stroke-width:2.2}
-.bi-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
-.bi-tile{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:18px;border-radius:var(--r-lg);border:1px solid var(--line);background:var(--solid);text-align:left;color:var(--tx);transition:border-color var(--fast),transform var(--std) var(--ease)}
-.bi-tile:hover{border-color:var(--pri-line);transform:translateY(-2px)}
-.bi-tile .ic{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--pri-soft);color:var(--pri)}
-.bi-tile b{font-size:15px}
-.bi-tile span{font-size:12.5px;color:var(--mut)}
+.bw-two{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.bw-lp{display:flex;flex-direction:column}
+.bw-lh{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.bw-lg{width:40px;height:40px;flex:none;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:18px;background:var(--pri-soft);color:var(--pri)}
+.bw-lg.hi{background:var(--vio-soft,var(--pri-soft));color:var(--vio,var(--pri))}
+.bw-src{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.bw-prev{font-size:13px;color:var(--tx-2);padding:10px 12px;border-radius:10px;background:var(--solid-2);border:1px solid var(--line);margin-bottom:10px;overflow-wrap:anywhere}
+@media (max-width:760px){.bw-two{grid-template-columns:1fr}}
 @media (max-width:900px){.ws-rail .step small{display:none}.ws-top .hide-ph{display:none}.ws-main{padding-bottom:140px}}
 @media (max-width:560px){.bq-hph{display:none}.bw-h h2{font-size:22px}.bw-nav .btn{flex:1}.qcard{padding:12px;gap:10px}.qcard .qn{width:30px;height:30px}}
 `);
@@ -169,14 +175,14 @@ AX.openTest = async (id, o = {}) => {
   if (!AX.can('content')) return UI.toast('You do not have access to tests', { tone: 'warn' });
   const qi = o.question != null ? +o.question : o.q != null ? +o.q : null;
   if (B) {
-    if (id && B.id === id) { if (qi != null) focusQ(qi); else if (o.step) go(o.step); return; }
+    if (id && B.id === id) { if (qi != null) focusQ(qi); else if (o.step) go(stepNo(o.step)); return; }
     if (!(await closeWs())) return;
   }
   const ro = !AX.can('content', 'manage');
   mountShell();
   const cat = await AX.data.catalog();
   if (!cat || !cat.ok) { unmount(); return UI.err(cat || {}); }
-  const st = { id: id || null, ro, cat, key: id || ('new-' + Date.now().toString(36) + AX.u.uid().slice(0, 4)), step: o.step || (id || qi != null ? 2 : 1), Q: [], qDirty: false, dirty: false, published: false,
+  const st = { id: id || null, ro, cat, key: id || ('new-' + Date.now().toString(36) + AX.u.uid().slice(0, 4)), step: o.step ? stepNo(o.step) : (id || qi != null ? S_CHECK : S_DET), Q: [], qDirty: false, dirty: false, published: false,
     view: { page: 0, filter: 'all', sec: null, find: '', sel: new Set(), selMode: false }, results: 0, practice0: false, savedAt: null,
     lang: 'en', hiDirty: false, hiServer: null, noLang: '' };
   if (id) {
@@ -212,7 +218,7 @@ AX.openTest = async (id, o = {}) => {
   if (d && d.meta && Array.isArray(d.Q) && !ro) {
     const use = o.draft ? true : await UI.confirm({ title: 'Continue your unsaved changes?', text: 'You changed this test on this device ' + fmt.ago(d.at) + ' and did not publish. Restore those changes?', yes: 'Restore changes', no: 'Use the published test' });
     if (!WS) return;
-    if (use) { st.key = d.key || dkey; st.meta = Object.assign(st.meta, d.meta); st.Q = d.Q.map(normQ); st.qDirty = !!d.qDirty || !id; st.hiDirty = !!d.hiDirty; st.dirty = true; st.savedAt = d.at; if (d.step) st.step = d.step; }
+    if (use) { st.key = d.key || dkey; st.meta = Object.assign(st.meta, d.meta); st.Q = d.Q.map(normQ); st.qDirty = !!d.qDirty || !id; st.hiDirty = !!d.hiDirty; st.dirty = true; st.savedAt = d.at; if (d.step && d.v === 2) st.step = d.step; }
     else AX.ls.del(DK + dkey);
   }
   B = st;
@@ -266,7 +272,7 @@ document.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if (e.key === 'Escape') { e.preventDefault(); closeWs(); }
   else if ((e.ctrlKey || e.metaKey) && k === 's') { e.preventDefault(); if (!B.ro) { saveDraft(); UI.toast(B.draftFail ? 'Could not keep a draft on this device' : 'Draft saved on this device', B.draftFail ? { tone: 'warn' } : {}); } }
-  else if (e.altKey && /^[1-5]$/.test(e.key)) { e.preventDefault(); go(+e.key); }
+  else if (e.altKey && /^[1-6]$/.test(e.key)) { e.preventDefault(); go(+e.key); }
 });
 window.addEventListener('beforeunload', e => { if (B && B.dirty && !B.ro) { saveDraft(); e.preventDefault(); e.returnValue = ''; } });
 
@@ -274,7 +280,7 @@ window.addEventListener('beforeunload', e => { if (B && B.dirty && !B.ro) { save
 const saveSoon = AX.u.debounce(() => saveDraft(), 700);
 function saveDraft() {
   if (!B || B.ro || !B.dirty) return;
-  const d = { v: 1, key: B.key, id: B.id, meta: B.meta, Q: B.Q, qDirty: B.qDirty, hiDirty: B.hiDirty, step: B.step, at: Date.now() };
+  const d = { v: 2, key: B.key, id: B.id, meta: B.meta, Q: B.Q, qDirty: B.qDirty, hiDirty: B.hiDirty, step: B.step, at: Date.now() };
   try { localStorage.setItem(DK + B.key, JSON.stringify(d)); B.savedAt = d.at; B.draftFail = false; }
   catch (e) { B.draftFail = true; }
   savedText();
@@ -312,19 +318,25 @@ function chrome() {
   const f = (B.cat.folders || []).find(x => x.id === m.folder_id);
   AX.set(WS.querySelector('#bw-t'), h`${m.title || 'Untitled test'}${B.ro ? h` <span class="pill">View only</span>` : ''}`);
   WS.querySelector('#bw-s').textContent = [s ? s.title : 'No series', f ? f.title : m.folderNew || '', fmt.plural(st.n, 'question'), B.id ? (B.published && !B.dirty ? 'Published' : 'Unpublished changes') : 'New test'].filter(Boolean).join(' · ');
-  AX.set(WS.querySelector('#bw-ta'), B.ro ? '' : B.step === 5 ? '' : h`<button class="btn pri sm" data-act="step" data-s="5">${icon('send', 15)}<span>${B.id ? 'Review & update' : 'Review & publish'}</span></button>`);
-  const done = { 1: !!(m.title.trim() && m.series_id), 2: st.n > 0 && !st.nb, 3: false, 4: !liveError(m), 5: B.published && !B.dirty };
-  const warn = { 1: !(m.title.trim() && m.series_id), 2: st.n > 0 && st.nb > 0, 4: !!liveError(m) };
-  const sub = { 1: m.title.trim() ? m.title : 'Name, series, marks', 2: st.n ? fmt.plural(st.n, 'question') + (st.nb ? ' · ' + st.nb + ' to fix' : '') : 'No questions yet', 3: 'Text, PDF, Word, photo', 4: schedLine(m), 5: B.published && !B.dirty ? 'Published' : B.id ? 'Update when ready' : 'Not published yet' };
+  AX.set(WS.querySelector('#bw-ta'), B.ro ? '' : B.step === S_PUB ? '' : h`<button class="btn pri sm" data-act="step" data-s="${S_PUB}">${icon('send', 15)}<span>${B.id ? 'Update' : 'Publish'}</span></button>`);
+  const nsol = B.Q.filter(q => q.explanation || q.eimg).length, hsol = B.Q.filter(q => q.hi && q.hi.explanation.trim()).length;
+  const done = { 1: !!(m.title.trim() && m.series_id), 2: st.n > 0, 3: st.n > 0 && !st.na, 4: nsol > 0, 5: st.n > 0 && !st.nb && (!st.hiAny || st.hiAll), 6: B.published && !B.dirty };
+  const warn = { 1: !(m.title.trim() && m.series_id), 3: st.n > 0 && st.na > 0, 5: st.n > 0 && (st.nb > 0 || (st.hiAny && !st.hiAll)), 6: !!liveError(m) };
+  const sub = { 1: m.title.trim() ? m.title : 'Name, series, marks',
+    2: st.n ? 'English ' + st.n + (st.hiAny ? ' · हिंदी ' + st.hiDone : '') : 'English + हिंदी paper',
+    3: st.n ? (st.n - st.na) + ' of ' + st.n + ' answered' : 'One key for both',
+    4: nsol || hsol ? 'English ' + nsol + (hsol ? ' · हिंदी ' + hsol : '') : 'Optional',
+    5: st.n ? (st.nb ? st.nb + ' to fix' : 'All look complete') : 'No questions yet',
+    6: B.published && !B.dirty ? 'Published' : schedLine(m) };
   AX.set(WS.querySelector('#bw-rail'), h`${join(STEPS, (x, i) => h`<button class="step ${B.step === i + 1 ? 'on' : ''} ${done[i + 1] && B.step !== i + 1 ? 'done' : ''} ${warn[i + 1] && B.step !== i + 1 && (i !== 0 || B.id) ? 'bad' : ''}" data-act="step" data-s="${i + 1}" ${B.step === i + 1 ? raw('aria-current="step"') : ''}>
       <span class="n">${done[i + 1] && B.step !== i + 1 ? icon('check', 14) : i + 1}</span><span class="st"><span>${x.t}</span><small>${sub[i + 1]}</small></span></button>`)}
     <div class="bw-rf rail-x"><dl class="kv"><dt>Questions</dt><dd class="num">${st.n}</dd><dt>To fix</dt><dd class="num" style="color:${st.nb ? 'var(--warn)' : 'var(--ok)'}">${st.nb || 'None'}</dd><dt>Max marks</dt><dd class="num">${fmt.num(st.max)}</dd><dt>Time</dt><dd>${+m.duration || 180} min</dd><dt>हिंदी</dt><dd class="num" style="color:${st.hiAll ? 'var(--ok)' : st.hiAny ? 'var(--warn)' : 'var(--mut)'}">${st.hiAny ? st.hiDone + ' / ' + st.n : 'Not added'}</dd></dl>
-      <div class="xs faint mt12">${B.ro ? 'You can look but not change this test.' : raw('<span class="kbd">Alt 1–5</span> steps · <span class="kbd">Ctrl S</span> save draft · <span class="kbd">Esc</span> close')}</div></div>`);
+      <div class="xs faint mt12">${B.ro ? 'You can look but not change this test.' : raw('<span class="kbd">Alt 1–6</span> steps · <span class="kbd">Ctrl S</span> save draft · <span class="kbd">Esc</span> close')}</div></div>`);
   savedText();
 }
 function go(n) {
   if (!B) return;
-  B.step = Math.max(1, Math.min(5, n));
+  B.step = Math.max(1, Math.min(NSTEP, n));
   render();
   const mn = WS.querySelector('#bw-main'); if (mn) mn.scrollTop = 0;
   if (B.dirty) saveSoon();
@@ -332,9 +344,10 @@ function go(n) {
 function render() {
   if (!WS || !B) return;
   chrome();
-  const v = [vDetails, vQuestions, vImport, vSchedule, vPublish][B.step - 1]();
+  const v = [vDetails, vPaper, vKey, vSol, vQuestions, vFinal][B.step - 1]();
   AX.set(WS.querySelector('#bw-in'), v);
-  if (B.step === 2) fillList();
+  if (B.step === S_CHECK) fillList();
+  if (B.step === S_KEY) wireKey();
 }
 const navBtns = (back, next, nextLabel) => h`<div class="bw-nav">${back ? h`<button class="btn ghost" data-act="step" data-s="${back}">${icon('arrowL', 16)} Back</button>` : ''}<span class="sp"></span>${next ? h`<button class="btn pri" data-act="step" data-s="${next}">${nextLabel || 'Continue'} ${icon('arrowR', 16)}</button>` : ''}</div>`;
 const sw = (name, on, label, hint) => h`<label class="sw"><input type="checkbox" data-m="${name}" ${on ? raw('checked') : ''}><i></i><span>${label}${hint ? h`<span class="xs mut" style="display:block;font-weight:500">${hint}</span>` : ''}</span></label>`;
@@ -366,10 +379,10 @@ function vDetails() {
     ${sw('free_preview', m.free_preview, 'Free preview', 'Anyone can open it, even if the series is paid. Good for a demo test.')}
     ${sw('lock_back', m.lock_back, 'Lock going back', 'Students cannot return to earlier questions.')}
   </div></div></fieldset>
-  ${navBtns(0, 2, 'Questions')}`;
+  ${navBtns(0, S_Q, 'Next: Questions')}`;
 }
 
-/* ---------- step 2: questions ---------- */
+/* ---------- step 5: check & edit every question ---------- */
 function secList() {
   const out = []; B.Q.forEach(q => { const n = q.sec || ''; const x = out.find(y => y.name === n); if (x) x.n++; else out.push({ name: n, n: 1 }); });
   return out;
@@ -388,16 +401,13 @@ function vis() {
 }
 function vQuestions() {
   const st = stats(), v = B.view, secs = secList();
-  if (!st.n) return h`<div class="bw-h"><h2>Questions</h2><p>Add questions one by one, or import a whole paper from text, PDF, Word or a photo.</p></div>
+  if (!st.n) return h`<div class="bw-h"><h2>Check & edit</h2><p>No questions yet. Add the paper in step 2, or type the questions here one by one.</p></div>
     <div class="card">${UI.empty({ icon: 'list', title: 'No questions yet', text: 'Import the question paper in one go — the questions, options and answer key are found for you. Or type them in.',
-      action: B.ro ? '' : h`<div class="row wrap" style="justify-content:center"><button class="btn pri" data-act="step" data-s="3">${icon('upload', 16)} Import a paper</button><button class="btn" data-act="qadd">${icon('plus', 16)} Add a question</button></div>` })}</div>${navBtns(1, 3, 'Import')}`;
-  return h`<div class="bw-h"><h2>Questions</h2><p>${fmt.plural(st.n, 'question')} · ${st.nb ? h`<b style="color:var(--warn)">${st.nb} need attention</b>` : h`<b style="color:var(--ok)">all look complete</b>`}${st.na ? ' · ' + st.na + ' without an answer' : ''}. ${B.ro ? '' : 'Tap an option to mark it correct.'}</p></div>
+      action: B.ro ? '' : h`<div class="row wrap" style="justify-content:center"><button class="btn pri" data-act="step" data-s="${S_Q}">${icon('upload', 16)} Add the paper</button><button class="btn" data-act="qadd">${icon('plus', 16)} Add a question</button></div>` })}</div>${navBtns(S_SOL, S_PUB, 'Next: Time & publish')}`;
+  return h`<div class="bw-h"><h2>Check & edit</h2><p>Look through every question once. Tap a question to change it; switch to हिंदी to see the Hindi. ${fmt.plural(st.n, 'question')} · ${st.nb ? h`<b style="color:var(--warn)">${st.nb} need attention</b>` : h`<b style="color:var(--ok)">all look complete</b>`}${st.na ? ' · ' + st.na + ' without an answer' : ''}. ${B.ro ? '' : 'Tap an option to mark it correct.'}</p></div>
     <div class="card tight"><div class="bq-tb">
       <div class="inp-wrap search">${icon('search', 16)}<input class="inp sm" id="bq-find" type="search" placeholder="Find in questions…" value="${v.find}" autocomplete="off" aria-label="Find in questions"></div>
       ${B.ro ? '' : h`<button class="btn sm pri" data-act="qadd">${icon('plus', 15)} Add</button>
-      <button class="btn sm" data-act="keymodal">${icon('key', 15)} <span>Answer key</span></button>
-      <button class="btn sm" data-act="expmodal">${icon('book', 15)} <span>Explanations</span></button>
-      <button class="btn sm" data-act="himodal">${icon('globe', 15)} <span>हिंदी</span></button>
       <button class="btn sm" data-act="secmodal">${icon('layers', 15)} <span>Sections</span></button>
       <button class="ibtn sm line" data-act="qtools" aria-label="More tools">${icon('more', 17)}</button>`}
     </div>
@@ -410,7 +420,7 @@ function vQuestions() {
       ${secs.length > 1 || (secs[0] && secs[0].name) ? join(secs, s => h`<button class="chip ${v.sec === s.name ? 'on' : ''}" data-act="qsec" data-sec="${s.name}">${s.name || 'No section'}<em>${s.n}</em></button>`) : ''}
     </div></div>
     <div id="bq-list"></div>
-    ${navBtns(1, 4, 'Schedule')}`;
+    ${navBtns(S_SOL, S_PUB, 'Next: Time & publish')}`;
 }
 function cardHtml(i) {
   const q = B.Q[i], pr = problems(q), v = B.view, ro = B.ro;
@@ -453,13 +463,13 @@ function fillList() {
     ${v.selMode ? h`<div class="bq-bulk glass"><b class="sm">${v.sel.size} selected</b><button class="btn xs ghost" data-act="selall">Select all shown</button><span class="grow"></span>
       <button class="btn xs" data-act="bulksec" ${v.sel.size ? '' : raw('disabled')}>${icon('layers', 13)} Set section</button><button class="btn xs danger" data-act="bulkdel" ${v.sel.size ? '' : raw('disabled')}>${icon('trash', 13)} Delete</button><button class="btn xs pri" data-act="seldone">Done</button></div>` : ''}`);
 }
-function refreshQ() { if (B.step === 2) { const f = WS.querySelector('#bq-find'), had = f && document.activeElement === f; render(); if (had) { const n = WS.querySelector('#bq-find'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); } } else chrome(); }
+function refreshQ() { if (!B || !WS) return; if (B.step === S_CHECK) { const f = WS.querySelector('#bq-find'), had = f && document.activeElement === f; render(); if (had) { const n = WS.querySelector('#bq-find'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); } } else if (B.step === S_DET || B.step === S_PUB) chrome(); else render(); }
 function jumpQ(i) {
-  if (!B || i < 0 || i >= B.Q.length) { if (B && B.step !== 2) go(2); return; }
+  if (!B || i < 0 || i >= B.Q.length) { if (B && B.step !== S_CHECK) go(S_CHECK); return; }
   const v = B.view;
   if (!vis().includes(i)) { v.filter = 'all'; v.sec = null; v.find = ''; }
   v.page = Math.floor(vis().indexOf(i) / PAGE);
-  B.step = 2; render();
+  B.step = S_CHECK; render();
   const e = WS.querySelector('#bq-' + i);
   if (e) { e.scrollIntoView({ block: 'center' }); e.classList.add('flash'); setTimeout(() => e.classList.remove('flash'), 1800); }
 }
@@ -498,7 +508,7 @@ function qTools(el) {
   UI.menu(el, [
     { label: 'Find & replace', icon: 'search', fn: findModal },
     { label: B.view.selMode ? 'Stop selecting' : 'Select several', icon: 'checkCircle', fn: () => { B.view.selMode = !B.view.selMode; B.view.sel.clear(); fillList(); } },
-    { label: 'Import more questions', icon: 'upload', fn: () => go(3) },
+    { label: 'Add more questions (import)', icon: 'upload', fn: () => go(S_Q) },
     { label: 'Download as .json file', icon: 'download', fn: () => AX.u.download((B.meta.title || 'test').replace(/[^\w]+/g, '_') + '.json', JSON.stringify({ title: B.meta.title, duration: +B.meta.duration || 180, correct: +B.meta.correct, wrong: +B.meta.wrong, lockBack: !!B.meta.lock_back, questions: B.Q.map(outQ) }), 'application/json') },
     { sep: true },
     { label: 'Delete all questions', icon: 'trash', tone: 'danger', fn: async () => { if (await UI.confirm({ title: 'Delete all ' + B.Q.length + ' questions?', text: 'The questions are removed from this editor. The published test changes only when you publish.', yes: 'Delete all', tone: 'danger' })) delQ(B.Q.map((q, i) => i)); } }
@@ -616,39 +626,43 @@ function editQ(i, lang) {
 }
 
 /* ---------- answer key / sections / find & replace ---------- */
-function keyModal() {
-  let mode = 'tap';
-  const count = () => B.Q.filter(q => q.answer != null).length;
-  const tapHtml = () => h`<p class="sm mut" style="margin-bottom:10px">Tap the correct letter for each question. It is saved at once. Tap again to clear.</p>
-    <div class="kg">${join(B.Q, (q, i) => h`<div class="kr ${q.answer == null ? 'miss' : ''}" data-kr="${i}"><span class="num">${i + 1}</span>${join([0, 1, 2, 3], j => h`<button type="button" class="${q.answer === j ? 'on' : ''}" data-act="ka" data-i="${i}" data-j="${j}" aria-label="Question ${i + 1} answer ${L[j]}">${L[j]}</button>`)}</div>`)}</div>`;
-  const pasteHtml = () => h`<div class="fld"><label for="kt">Answer key</label><textarea class="inp mono" id="kt" rows="8" placeholder="1. B   2. D   3. A   4. C …   or 1-2, 2-4, 3-1 …"></textarea>
-    <div class="hint" id="kc">Answers are matched by question number: 1 is the first question in this test.</div></div>`;
-  UI.modal({
-    title: 'Answer key', sub: 'Every question in this test, by number.', size: 'wide',
-    body: h`<div class="row between wrap" style="margin-bottom:14px"><div class="seg" id="km"><button type="button" class="on" data-v="tap">Tap answers</button><button type="button" data-v="paste">Paste a key</button></div><span class="pill ${count() === B.Q.length ? 'ok' : 'warn'}" id="kcount">${count()} of ${B.Q.length} answered</span></div><div id="kb">${tapHtml()}</div>`,
-    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Done</button><button class="btn pri hide" data-act="apply" id="kap">${icon('check', 16)} Apply key</button>`,
-    onOpen(el) {
-      const cnt = () => { const c = count(), p = el.querySelector('#kcount'); p.textContent = c + ' of ' + B.Q.length + ' answered'; p.className = 'pill ' + (c === B.Q.length ? 'ok' : 'warn'); };
-      el.querySelector('#km').addEventListener('click', e => {
-        const b = e.target.closest('button'); if (!b) return; mode = b.dataset.v;
-        el.querySelectorAll('#km button').forEach(x => x.classList.toggle('on', x === b));
-        AX.set(el.querySelector('#kb'), mode === 'tap' ? tapHtml() : pasteHtml());
-        el.querySelector('#kap').classList.toggle('hide', mode === 'tap');
-        if (mode === 'paste') { const t = el.querySelector('#kt'); t.focus(); t.addEventListener('input', () => { const r = window.CBTParser ? CBTParser.parseKey(t.value) : { count: 0 }; el.querySelector('#kc').textContent = r.count ? r.count + ' answers found. They replace the current answers for those numbers.' : 'No answers found yet. Use one answer per number, e.g. 1. B 2. D'; }); }
-      });
-      AX.act(el, {
-        ka(b) { const i = +b.dataset.i, j = +b.dataset.j; B.Q[i].answer = B.Q[i].answer === j ? null : j; const r = el.querySelector('[data-kr="' + i + '"]'); r.classList.toggle('miss', B.Q[i].answer == null); r.querySelectorAll('button').forEach((x, k) => x.classList.toggle('on', B.Q[i].answer === k)); dirty(true); cnt(); },
-        apply() {
-          const t = el.querySelector('#kt'); if (!t || !window.CBTParser) return;
-          const r = CBTParser.parseKey(t.value); if (!r.count) return UI.toast('No answers found in the text', { tone: 'warn' });
-          let n = 0; Object.keys(r.map).forEach(k => { const i = +k - 1; if (B.Q[i]) { B.Q[i].answer = r.map[k]; n++; } });
-          dirty(true); cnt(); UI.toast(fmt.plural(n, 'answer') + ' applied');
-          mode = 'tap'; el.querySelectorAll('#km button').forEach(x => x.classList.toggle('on', x.dataset.v === 'tap')); AX.set(el.querySelector('#kb'), tapHtml()); el.querySelector('#kap').classList.add('hide');
-        }
-      });
-    },
-    onClose() { refreshQ(); }
-  });
+/* ---------- step 3: answer key — one key for both languages ---------- */
+// shown before the questions exist in steps 3–5
+const needQ = t => h`<div class="bw-h"><h2>${t}</h2></div><div class="card">${UI.empty({ icon: 'upload', title: 'Add the questions first', text: 'Put the English paper in step 2 (Questions), then come back here.',
+  action: h`<button class="btn pri" data-act="step" data-s="${S_Q}">${icon('arrowL', 16)} Go to Questions</button>` })}</div>${navBtns(B.step - 1, B.step + 1, 'Skip')}`;
+const keyCount = () => B.Q.filter(q => q.answer != null).length;
+const keyRow = (q, i) => h`<div class="kr ${q.answer == null ? 'miss' : ''}" data-kr="${i}"><span class="num">${i + 1}</span>${join([0, 1, 2, 3], j => h`<button type="button" class="${q.answer === j ? 'on' : ''}" data-act="ka" data-i="${i}" data-j="${j}" ${B.ro ? raw('disabled') : ''} aria-label="Question ${i + 1} answer ${L[j]}">${L[j]}</button>`)}</div>`;
+function vKey() {
+  const st = stats(); if (!st.n) return needQ('Answer key');
+  const c = keyCount();
+  return h`<div class="bw-h"><h2>Answer key</h2><p>Enter the correct answers once. They work for <b>both English and हिंदी</b> — question 1 in English and question 1 in Hindi have the same answer.</p></div>
+  <div class="card"><div class="card-h">${icon('fileText')}<h3>Paste the key</h3><span class="grow"></span><span class="pill ${c === st.n ? 'ok' : 'warn'}" id="kcount">${c} of ${st.n} answered</span></div>
+    ${B.ro ? '' : h`<textarea class="inp mono" id="kt" rows="3" placeholder="1. B   2. D   3. A   4. C …   or 1-2, 2-4, 3-1 …"></textarea>
+    <div class="row wrap gap6 mt8"><span class="hint grow" id="kc">Matched by question number: 1 is the first question.</span><button class="btn sm pri" data-act="kapply">${icon('check', 15)} Apply key</button></div>`}</div>
+  <div class="card mt16"><div class="card-h">${icon('key')}<h3>${B.ro ? 'Answers' : 'Or tap the answers'}</h3></div>
+    ${B.ro ? '' : h`<p class="sm mut" style="margin:-4px 0 10px">Tap the correct letter for each question. It is saved at once. Tap again to clear.</p>`}
+    <div class="kg">${join(B.Q, keyRow)}</div></div>
+  ${navBtns(S_Q, S_SOL, 'Next: Solutions')}`;
+}
+function wireKey() {
+  const t = WS && WS.querySelector('#kt'); if (!t) return;
+  t.addEventListener('input', () => { const r = window.CBTParser ? CBTParser.parseKey(t.value) : { count: 0 }; WS.querySelector('#kc').textContent = r.count ? r.count + ' answers found. Press Apply — they replace the answers for those numbers.' : 'No answers found yet. Use one answer per number, e.g. 1. B 2. D'; });
+}
+function keyCnt() { const p = WS.querySelector('#kcount'); if (!p) return; const c = keyCount(); p.textContent = c + ' of ' + B.Q.length + ' answered'; p.className = 'pill ' + (c === B.Q.length ? 'ok' : 'warn'); }
+
+/* ---------- step 4: solutions — English and हिंदी side by side (optional) ---------- */
+function vSol() {
+  const st = stats(); if (!st.n) return needQ('Solutions');
+  const ne = B.Q.filter(q => q.explanation || q.eimg).length, nh = B.Q.filter(q => q.hi && q.hi.explanation.trim()).length;
+  return h`<div class="bw-h"><h2>Solutions <span class="pill">Optional</span></h2><p>Students see the solutions with the answer key after the result (and at once in practice mode). Each solution starts with its question number: <span class="mono">1.</span> <span class="mono">Sol. 1</span> …</p></div>
+  <div class="bw-two">
+    <div class="card bw-lp"><div class="bw-lh"><span class="bw-lg">A</span><div class="grow"><b>English solutions</b><div class="xs mut">${ne ? ne + ' of ' + st.n + ' questions' : 'Not added'}</div></div>${UI.pill(ne + ' / ' + st.n, ne === st.n ? 'ok' : ne ? 'warn' : '')}</div>
+      <div class="bw-src"><button class="btn sm" data-act="expmodal" ${B.ro ? raw('disabled') : ''}>${icon('upload', 15)} Paste or upload solutions</button></div></div>
+    <div class="card bw-lp"><div class="bw-lh"><span class="bw-lg hi">अ</span><div class="grow"><b>हिंदी solutions</b><div class="xs mut">${st.hiAny ? (nh ? nh + ' of ' + st.n + ' questions' : 'Not added — Hindi students then see the English solution') : 'Add the Hindi paper first (step 2)'}</div></div>${st.hiAny ? UI.pill(nh + ' / ' + st.n, nh === st.n ? 'ok' : nh ? 'warn' : '') : ''}</div>
+      <div class="bw-src">${st.hiAny ? h`<button class="btn sm" data-act="himodal" data-m="sol" ${B.ro ? raw('disabled') : ''}>${icon('upload', 15)} Paste or upload हिंदी solutions</button>` : h`<button class="btn sm ghost" data-act="step" data-s="${S_Q}">${icon('arrowL', 15)} Add the Hindi paper</button>`}</div></div>
+  </div>
+  <div class="xs mut mt12">You can also type or fix one solution inside each question in step 5 (Check & edit).</div>
+  ${navBtns(S_KEY, S_CHECK, 'Next: Check & edit')}`;
 }
 /* ---------- explanations: paste or read a solutions file, matched to questions by number ---------- */
 function explainModal() {
@@ -726,9 +740,9 @@ const blankHi = () => ({ q: '', options: ['', '', '', ''], explanation: '' });
 function enPaper() {
   return B.Q.map((q, i) => (i + 1) + '. ' + (q.q || '[image]') + '\n' + q.options.map((o, j) => '(' + L[j] + ') ' + (o || '[image]')).join('\n') + (q.explanation ? '\nSolution: ' + q.explanation : '')).join('\n\n');
 }
-function hiModal() {
+function hiModal(start) {
   if (!B.Q.length) return UI.toast('Add or import the English questions first, then their Hindi', { tone: 'warn' });
-  let text = '', mode = 'paper', over = false;
+  let text = '', mode = start === 'sol' ? 'sol' : 'paper', over = false;
   const P = window.CBTParser;
   const parse = () => {
     if (!P || !text.trim()) return { n: 0 };
@@ -746,7 +760,7 @@ function hiModal() {
   };
   UI.modal({
     title: 'Hindi version · हिंदी', sub: 'Add the Hindi text of the questions. Images and the answer key stay the same as in English.', size: 'wide',
-    body: h`<div class="row between wrap gap6" style="margin-bottom:12px"><div class="seg" id="hm-m"><button type="button" class="on" data-v="paper">Hindi paper</button><button type="button" data-v="sol">Hindi solutions</button></div>
+    body: h`<div class="row between wrap gap6" style="margin-bottom:12px"><div class="seg" id="hm-m"><button type="button" class="${mode === 'paper' ? 'on' : ''}" data-v="paper">Hindi paper</button><button type="button" class="${mode === 'sol' ? 'on' : ''}" data-v="sol">Hindi solutions</button></div>
         <span class="pill ${stats().hiAll ? 'ok' : 'warn'}">${stats().hiDone} of ${B.Q.length} in Hindi</span></div>
       <div class="fld"><textarea class="inp" id="hm-t" rows="10" lang="hi" placeholder="1. कोशिका का ऊर्जा केंद्र कौन सा है?\n(A) केंद्रक  (B) माइटोकॉन्ड्रिया  (C) राइबोसोम  (D) लाइसोसोम\n\n2. …"></textarea></div>
       <div class="row wrap gap6 mt8"><button class="btn sm" data-act="hmfile">${icon('upload', 15)} Read from a file</button><button class="btn sm ghost" data-act="hmcopy">${icon('copy', 15)} Copy English paper (to translate)</button><span class="im-st xs" id="hm-st"></span></div>
@@ -778,7 +792,7 @@ function hiModal() {
         },
         hmapply() {
           const r = parse(); if (!r.n) return UI.toast('Nothing found in the text', { tone: 'warn' });
-          let n = 0;
+          let n = 0, ka = 0, kd = 0;
           if (mode === 'sol') {
             for (const k of Object.keys(r.map)) {
               const q = B.Q[+k - 1], t = String(r.map[k] || '').trim(); if (!q || !t) continue;
@@ -792,12 +806,17 @@ function hiModal() {
               if (p.q && (over || !x.q.trim())) { x.q = p.q; ch = true; }
               p.options.forEach((o, j) => { if (o && (over || !x.options[j].trim())) { x.options[j] = o; ch = true; } });
               if (ch) { q.hi = x; n++; }
+              // an answer key printed in the Hindi paper: fills missing answers; a different answer is only reported
+              if (p.answer != null) { if (q.answer == null) { q.answer = p.answer; ka++; } else if (q.answer !== p.answer) kd++; }
             });
+            if (ka) dirty(true);
           }
           if (!n) return UI.toast('Nothing new to add (the Hindi is already there — tick “Replace” to overwrite)', { tone: 'warn' });
-          B.lang = 'hi'; dirtyHi(); close();
-          UI.toast(fmt.plural(n, 'question') + ' got Hindi' + (mode === 'sol' ? ' solutions' : ''));
-          go(2);
+          if (B.step === S_CHECK) B.lang = 'hi';
+          dirtyHi(); close();
+          UI.toast(fmt.plural(n, 'question') + ' got Hindi' + (mode === 'sol' ? ' solutions' : '') + (ka ? ' · ' + fmt.plural(ka, 'answer') + ' filled from the Hindi key' : ''));
+          if (kd) UI.toast('The Hindi paper’s answer key differs from the English one for ' + fmt.plural(kd, 'question') + '. The English answers are kept — check them in step 3.', { tone: 'warn', ms: 9000 });
+          render();
         }
       });
     },
@@ -855,24 +874,25 @@ function findModal() {
   });
 }
 
-/* ---------- step 3: import ---------- */
-function vImport() {
-  const st = stats();
-  const tile = (src, ic, t, s) => h`<button class="bi-tile" data-act="imp" data-src="${src}" ${B.ro ? raw('disabled') : ''}><span class="ic">${icon(ic, 21)}</span><b>${t}</b><span>${s}</span></button>`;
-  return h`<div class="bw-h"><h2>Import questions</h2><p>Bring in a whole paper at once. Files are read on this device — nothing is uploaded until you publish. You check every question before it is added.</p></div>
-    ${B.ro ? h`<div class="callout info">${icon('lock')}<div class="sm">You have view access only.</div></div>` : h`<div class="bi-tiles">
-      ${tile('paste', 'fileText', 'Paste text', 'Copy the paper from anywhere and paste it')}
-      ${tile('pdf', 'pdf', 'PDF', 'Typed PDFs are read directly; scans with OCR')}
-      ${tile('docx', 'doc', 'Word (.docx)', 'Text and pictures are picked up')}
-      ${tile('image', 'image', 'Photo (OCR)', 'A clear photo or screenshot of the paper')}
-      ${tile('json', 'db', 'Old test file', 'A .json file saved from the old panel')}
-      ${tile('key', 'key', 'Answer key only', 'Paste or upload just the key')}
-      ${tile('exp', 'book', 'Explanations only', 'Solutions from text, PDF, Word or a photo')}
-      ${tile('hi', 'globe', 'Hindi version · हिंदी', 'Hindi text of these questions and solutions')}
-    </div>`}
-    <div class="callout info mt16">${icon('info')}<div class="sm"><b>What works best</b><br>Each question starts with its number (<span class="mono">1.</span> or <span class="mono">Q1.</span>), options are <span class="mono">(A)…(D)</span> or <span class="mono">(1)…(4)</span>, and subject headings like <i>Physics</i> start a section. A key after the words “Answer key” is found automatically.</div></div>
-    ${st.n ? h`<div class="card mt16 row wrap">${icon('list')}<div class="grow"><b>${fmt.plural(st.n, 'question')} in this test now</b><div class="xs mut">When you import you can add the new questions after these, or replace them.</div></div><button class="btn sm" data-act="step" data-s="2">See questions</button></div>` : ''}
-    ${navBtns(2, 4, 'Schedule')}`;
+/* ---------- step 2: questions — English paper | हिंदी paper ---------- */
+function vPaper() {
+  const st = stats(), q0 = B.Q[0], dis = B.ro ? raw('disabled') : '';
+  const src = (k, ic, t) => h`<button class="btn sm" data-act="imp" data-src="${k}" ${dis}>${icon(ic, 15)} ${t}</button>`;
+  const h0 = B.Q.find(q => q.hi && q.hi.q);
+  return h`<div class="bw-h"><h2>Questions</h2><p>Put the <b>English paper</b> on the left. If Hindi-medium students also take this test, put the <b>हिंदी paper</b> on the right — the same questions in the same order (1, 2, 3 …). Files are read on this device; nothing is uploaded until you publish.</p></div>
+  <div class="bw-two">
+    <div class="card bw-lp"><div class="bw-lh"><span class="bw-lg">A</span><div class="grow"><b>English paper</b><div class="xs mut">Needed</div></div>${st.n ? UI.pill(fmt.plural(st.n, 'question'), 'ok') : UI.pill('Not added', 'warn')}</div>
+      ${q0 ? h`<div class="bw-prev"><b>1.</b> ${(q0.q || '[image]').slice(0, 150)}${q0.q.length > 150 ? '…' : ''}</div>` : ''}
+      <div class="bw-src">${src('paste', 'fileText', 'Paste text')}${src('pdf', 'pdf', 'PDF')}${src('docx', 'doc', 'Word')}${src('image', 'image', 'Photo')}${src('json', 'db', 'Old test file')}</div>
+      <div class="row wrap gap6 mt8">${B.ro ? '' : h`<button class="btn xs ghost" data-act="qadd">${icon('plus', 13)} Type a question</button>`}${st.n ? h`<span class="xs mut">Adding again asks: after these, or replace them.</span>` : ''}</div></div>
+    <div class="card bw-lp"><div class="bw-lh"><span class="bw-lg hi">अ</span><div class="grow"><b>हिंदी paper</b><div class="xs mut">Optional · for Hindi-medium students</div></div>${st.hiAny ? UI.pill(st.hiDone + ' of ' + st.n, st.hiAll ? 'ok' : 'warn') : UI.pill('Not added')}</div>
+      ${!st.n ? h`<div class="callout info">${icon('info')}<div class="sm">Add the English paper first. The Hindi is matched to it by question number.</div></div>` : h`
+        ${h0 ? h`<div class="bw-prev" lang="hi"><b>${B.Q.indexOf(h0) + 1}.</b> ${h0.hi.q.slice(0, 150)}${h0.hi.q.length > 150 ? '…' : ''}</div>` : ''}
+        <div class="bw-src"><button class="btn sm" data-act="himodal" ${dis}>${icon('upload', 15)} Paste or upload हिंदी paper</button><button class="btn sm ghost" data-act="hicopy">${icon('copy', 15)} Copy English (to translate)</button></div>
+        ${st.hiAny && !st.hiAll ? h`<div class="xs mt8" style="color:var(--warn)">${fmt.plural(st.hiMiss, 'question')} still without Hindi. Until every question has Hindi, Hindi-medium students get this test in English. Fix them in step 5.</div>` : ''}`}</div>
+  </div>
+  <div class="callout info mt16">${icon('info')}<div class="sm"><b>What works best</b><br>Each question starts with its number (<span class="mono">1.</span> or <span class="mono">Q1.</span>), options are <span class="mono">(A)…(D)</span>, <span class="mono">(1)…(4)</span> or <span class="mono">(अ)…(द)</span>, and subject headings like <i>Physics</i> start a section. A key after the words “Answer key” is picked up too.</div></div>
+  ${navBtns(S_DET, S_KEY, 'Next: Answer key')}`;
 }
 async function doImport(src) {
   if (src === 'exp') {
@@ -880,10 +900,7 @@ async function doImport(src) {
     return explainModal();
   }
   if (src === 'hi') return hiModal();
-  if (src === 'key') {
-    if (!B.Q.length) return UI.toast('Add or import the questions first, then the key', { tone: 'warn' });
-    return keyModal();
-  }
+  if (src === 'key') return go(S_KEY);
   if (!AX.importQuestions) return UI.toast('The import tool did not load. Reload the page.', { tone: 'bad' });
   const r = await AX.importQuestions({ source: src, existing: B.Q.length });
   if (!r || !B) return;
@@ -894,8 +911,8 @@ async function doImport(src) {
   if (r.json) { if (j.duration) B.meta.duration = j.duration; if (j.correct != null) B.meta.correct = j.correct; if (j.wrong != null) B.meta.wrong = j.wrong; if (j.lockBack != null) B.meta.lock_back = !!j.lockBack; }
   B.view = Object.assign(B.view, { filter: 'all', sec: null, find: '', page: 0 });
   dirty(true);
-  UI.toast(fmt.plural(qs.length, 'question') + (r.mode === 'replace' ? ' imported (replaced the old ones)' : ' added'));
-  if (r.mode !== 'replace' && B.Q.length > qs.length) { go(2); jumpQ(B.Q.length - qs.length); } else go(2);
+  UI.toast(fmt.plural(qs.length, 'question') + (r.mode === 'replace' ? ' imported (replaced the old ones)' : ' added') + '. Add the हिंदी paper too, or press Next.');
+  go(S_Q);
 }
 
 /* ---------- step 4: schedule & access ---------- */
@@ -912,7 +929,7 @@ function phases(m) {
 }
 function vSchedule() {
   const m = B.meta, err = liveError(m), warn = liveWarn(m);
-  return h`<div class="bw-h"><h2>Schedule & access</h2><p>Decide when students can start, when a live test closes, and when results and the answer key appear. Times are as per this device.</p></div>
+  return h`<div class="bw-h"><h2>Time & publish</h2><p>Choose when students can start and when the result comes (or leave it open any time), check the list, then publish. Times are as per this device.</p></div>
   <fieldset class="bw-fs" ${B.ro ? raw('disabled') : ''}>
   <div class="card"><div class="card-h">${icon('calendar')}<h3>Times</h3><span class="grow"></span>${m.opens_at || m.closes_at || m.result_at ? h`<button type="button" class="btn xs ghost" data-act="clrTimes">${icon('x', 13)} Clear all</button>` : ''}</div>
     <div class="bw-chips" style="margin:0 0 14px"><button type="button" data-act="fill">${icon('zap', 13)} Live till 9 PM, result 10 PM</button><button type="button" data-act="openNow">Open now · no live window</button>${m.closes_at && !m.result_at ? h`<button type="button" data-act="res1h">Result 1 h after live ends</button>` : ''}</div>
@@ -931,10 +948,11 @@ function vSchedule() {
     <div class="bs-tl">${join(phases(m), p => h`<div class="bs-ph ${p.on ? 'on' : ''}"><span class="bd">${icon(p.ic)}</span><div class="grow"><div class="row wrap gap6"><b>${p.t}</b>${p.on ? UI.pill('Now', 'pri') : ''}</div><div class="when">${p.when}</div><div class="sm tx2">${p.d}</div></div></div>`)}</div>
     <div class="xs mut mt8">${m.active ? 'Visible to students' : 'Hidden from students (turn on “Visible to students” in Details)'}${m.free_preview ? ' · Free preview: open even if the series is paid' : ''}${m.lock_back ? ' · Going back is locked' : ''}</div>
   </div>
-  ${navBtns(3, 5, 'Review & publish')}`;
+`;
 }
 
-/* ---------- step 5: review & publish ---------- */
+/* ---------- step 6: time & publish ---------- */
+function vFinal() { return B.justPublished ? vPublish() : h`${vSchedule()}<div class="mt24"></div>${vPublish()}`; }
 function vPublish() {
   const m = B.meta, st = stats(), s = series(m.series_id), err = liveError(m);
   const f = (B.cat.folders || []).find(x => x.id === m.folder_id);
@@ -948,17 +966,16 @@ function vPublish() {
   const ck = (tone, t, d, s2) => h`<div class="bp-ck"><span class="ci ${tone}">${icon(tone === 'ok' ? 'check' : tone === 'warn' ? 'info' : 'alert', 15)}</span><div class="grow"><b>${t}</b>${d ? h`<div class="xs mut">${d}</div>` : ''}</div>${s2 ? h`<button class="btn xs ghost" data-act="step" data-s="${s2}">Fix</button>` : ''}</div>`;
   const missing = B.Q.filter(q => q.answer == null).length, other = B.Q.filter(q => bad(q) && q.answer != null).length + B.Q.filter(q => q.answer == null && problems(q).length > 1).length;
   const blockers = !m.title.trim() || !m.series_id || !st.n || !!err || (m.folder_id === '__new' && !m.folderNew.trim());
-  return h`<div class="bw-h"><h2>Review & ${B.id ? 'update' : 'publish'}</h2><p>${B.id ? 'Check the summary, then update. Students see the change at once.' : 'Check the summary, then publish. Students see the test at once (or at the opening time).'}</p></div>
-  <div class="grid g2" style="align-items:start">
+  return h`<div class="grid g2" style="align-items:start">
     <div class="card"><div class="card-h">${icon('shieldCheck')}<h3>Checklist</h3></div>
       ${m.title.trim() ? ck('ok', 'Test name', m.title) : ck('bad', 'Add a test name', 'Students see this name', 1)}
       ${m.series_id ? ck('ok', 'Series', (s ? s.title : '') + (f ? ' · ' + f.title : m.folder_id === '__new' ? ' · new folder “' + (m.folderNew || '') + '”' : '')) : ck('bad', 'Choose a series', 'Create one in Test studio first', 1)}
       ${m.folder_id === '__new' && !m.folderNew.trim() ? ck('bad', 'Name the new folder', '', 1) : ''}
-      ${st.n ? ck('ok', fmt.plural(st.n, 'question'), secs.some(x => x.name) ? secs.map(x => (x.name || 'No section') + ' ' + x.n).join(' · ') : 'No sections') : ck('bad', 'Add at least one question', '', 2)}
-      ${st.n ? (missing ? ck('warn', missing + ' without a correct answer', 'They are counted as wrong for nobody — fix them before students attempt.', 2) : ck('ok', 'Every question has an answer')) : ''}
-      ${st.n && st.nb - missing > 0 ? ck('warn', (st.nb - missing) + ' with an empty option or text', 'You can still publish.', 2) : ''}
-      ${err ? ck('bad', err, '', 4) : ck('ok', 'Schedule', schedLine(m) + (m.closes_at ? ' · live till ' + fmt.dt(m.closes_at) : '') + (m.result_at ? ' · result ' + fmt.dt(m.result_at) : ''))}
-      ${liveWarn(m) ? ck('warn', 'Result comes out before late starters finish', 'You will be asked to confirm.', 4) : ''}
+      ${st.n ? ck('ok', fmt.plural(st.n, 'question'), secs.some(x => x.name) ? secs.map(x => (x.name || 'No section') + ' ' + x.n).join(' · ') : 'No sections') : ck('bad', 'Add at least one question', '', S_Q)}
+      ${st.n ? (missing ? ck('warn', missing + ' without a correct answer', 'They are counted as wrong for nobody — fix them before students attempt.', S_KEY) : ck('ok', 'Every question has an answer')) : ''}
+      ${st.n && st.nb - missing > 0 ? ck('warn', (st.nb - missing) + ' with an empty option or text', 'You can still publish.', S_CHECK) : ''}
+      ${err ? ck('bad', err, '') : ck('ok', 'Schedule', schedLine(m) + (m.closes_at ? ' · live till ' + fmt.dt(m.closes_at) : '') + (m.result_at ? ' · result ' + fmt.dt(m.result_at) : ''))}
+      ${liveWarn(m) ? ck('warn', 'Result comes out before late starters finish', 'You will be asked to confirm.') : ''}
       ${!m.active ? ck('warn', 'Hidden from students', 'Turn on “Visible to students” in Details when ready.', 1) : ''}
       ${hiCheck(ck, st)}
     </div>
@@ -973,14 +990,14 @@ function vPublish() {
         <div id="bp-prog" class="hide mt12"><div class="progress"><i style="width:0%"></i></div><div class="xs mut mt8" id="bp-st"></div></div>
         ${blockers ? h`<div class="xs mut mt8" style="text-align:center">Fix the red items first.</div>` : ''}</div>`}
     </div></div>
-  ${navBtns(4, 0)}`;
+  ${navBtns(S_CHECK, 0)}`;
 }
 // the Hindi line of the checklist
 function hiCheck(ck, st) {
   if (st.hiAny && B.noLang) return ck('bad', 'Hindi cannot be saved yet', B.noLang === 'missing' ? 'Run supabase_v41_medium.sql in Supabase, then publish again. The English test is saved.' : 'Could not load the Hindi part (' + B.noLang + ').');
   if (!st.hiAny) return ck('ok', 'English only', 'Hindi-medium students also get this test in English. To add Hindi: Questions → हिंदी.');
   if (st.hiAll) return ck('ok', 'Hindi ready · हिंदी ✓', 'Hindi-medium students get every question in Hindi.' + (st.hiSol ? ' ' + fmt.plural(st.hiSol, 'solution') + ' only in English (shown in English to them).' : ''));
-  return ck('warn', 'Hindi ' + st.hiDone + ' of ' + st.n, 'Incomplete Hindi is never shown: Hindi-medium students get the whole test in English until every question has Hindi.', 2);
+  return ck('warn', 'Hindi ' + st.hiDone + ' of ' + st.n, 'Incomplete Hindi is never shown: Hindi-medium students get the whole test in English until every question has Hindi.', S_CHECK);
 }
 // save the Hindi text next to the test (after the test itself, so it fits the questions just saved)
 async function saveHi(id, metaOnly) {
@@ -1085,7 +1102,7 @@ function onField(e) {
   else if (k === 'folder_id') { render(); if (el.value === '__new') setTimeout(() => { const x = WS.querySelector('#bd-fnew'); if (x) x.focus(); }, 30); }
   else if (k === 'correct' || k === 'duration') { const p = WS.querySelector('.card-h .pill.num'); if (p) p.textContent = 'Max ' + fmt.num(stats().max) + ' marks'; WS.querySelectorAll('[data-act=dur]').forEach(b => b.classList.toggle('on', +b.dataset.v === +B.meta.duration)); }
 }
-const findSoon = AX.u.debounce(() => { if (B && B.step === 2) fillList(); }, 200);
+const findSoon = AX.u.debounce(() => { if (B && B.step === S_CHECK) fillList(); }, 200);
 const ACTS = {
   close: () => closeWs(),
   step: el => go(+el.dataset.s),
@@ -1094,7 +1111,7 @@ const ACTS = {
   qadd: () => editQ(B.Q.length),
   qedit: el => editQ(+el.dataset.i, B.lang),
   qlang(el) { B.lang = el.dataset.l === 'hi' ? 'hi' : 'en'; if (B.view.filter === 'nohi' && B.lang === 'en' && !B.Q.some(q => q.hi)) B.view.filter = 'all'; refreshQ(); },
-  himodal: () => hiModal(),
+  himodal: el => hiModal(el.dataset.m),
   qkey(el) { if (B.ro) return; const i = +el.dataset.i, j = +el.dataset.j, q = B.Q[i]; q.answer = q.answer === j ? null : j; dirty(true); const c = WS.querySelector('#bq-' + i); if (c) { const t = document.createElement('div'); t.innerHTML = AX.html(cardHtml(i)); c.replaceWith(t.firstElementChild); } chrome(); },
   qmenu: el => qMenu(el, +el.dataset.i),
   qtools: el => qTools(el),
@@ -1106,7 +1123,18 @@ const ACTS = {
   seldone() { B.view.selMode = false; B.view.sel.clear(); fillList(); },
   bulksec() { setSection([...B.view.sel]); },
   async bulkdel() { const n = B.view.sel.size; if (!(await UI.confirm({ title: 'Delete ' + fmt.plural(n, 'question') + '?', text: 'They are removed from this editor. You can undo right after.', yes: 'Delete', tone: 'danger' }))) return; delQ([...B.view.sel]); },
-  keymodal: () => keyModal(),
+  ka(el) {
+    if (B.ro) return; const i = +el.dataset.i, j = +el.dataset.j; B.Q[i].answer = B.Q[i].answer === j ? null : j; dirty(true);
+    const r = WS.querySelector('[data-kr="' + i + '"]'); if (r) { r.classList.toggle('miss', B.Q[i].answer == null); r.querySelectorAll('button').forEach((x, k) => x.classList.toggle('on', B.Q[i].answer === k)); }
+    keyCnt();
+  },
+  kapply() {
+    const t = WS.querySelector('#kt'); if (!t || !window.CBTParser) return;
+    const r = CBTParser.parseKey(t.value); if (!r.count) return UI.toast('No answers found in the text', { tone: 'warn' });
+    let n = 0; Object.keys(r.map).forEach(k => { const i = +k - 1; if (B.Q[i]) { B.Q[i].answer = r.map[k]; n++; } });
+    dirty(true); render(); UI.toast(fmt.plural(n, 'answer') + ' applied');
+  },
+  async hicopy() { if (await AX.u.copy(enPaper())) UI.toast('English paper copied — translate it, keep the numbers, and paste it in “हिंदी paper”'); },
   expmodal: () => explainModal(),
   secmodal: () => secModal(),
   imp: el => doImport(el.dataset.src),
@@ -1117,7 +1145,7 @@ const ACTS = {
   publish: el => publish(el),
   pubShare() { if (AX.shareTest) AX.shareTest(B.id); },
   pubAna() { const id = B.id; unmount(); if (AX.openAnalytics) AX.openAnalytics(id); else AX.go('results'); },
-  pubEdit() { B.justPublished = null; go(2); },
+  pubEdit() { B.justPublished = null; go(S_CHECK); },
   pubNew() { const sid = B.meta.series_id, fid = B.meta.folder_id; unmount(); AX.openTest(null, { seriesId: sid, folderId: fid }); },
   pubDone() { unmount(); }
 };

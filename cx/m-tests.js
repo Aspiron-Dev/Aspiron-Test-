@@ -273,7 +273,7 @@ const ACTS = {
   newTestIn: el => AX.openTest(null, { seriesId: el.dataset.sid, folderId: el.dataset.fid || '' }),
   openS: el => AX.go('tests/s/' + el.dataset.id),
   openT: el => AX.openTest(el.dataset.id),
-  editT: el => AX.openTest(el.dataset.id, { step: 2 }),
+  editT: el => AX.openTest(el.dataset.id, { step: 'check' }),
   ana: el => openAna(el.dataset.id),
   shareS: el => AX.shareSeries(el.dataset.id),
   editS: el => seriesModal(S_(el.dataset.id)),
@@ -329,9 +329,9 @@ function fMenu(el, f) {
 function tMenu(el, t) {
   const m = canM(), p = C.practice.has(String(t.id));
   UI.menu(el, [{ head: t.title },
-    { label: m ? 'Edit questions' : 'View questions', icon: m ? 'edit' : 'eye', fn: () => AX.openTest(t.id, { step: 2 }) },
-    m && { label: 'Details & marking', icon: 'settings', fn: () => AX.openTest(t.id, { step: 1 }) },
-    m && { label: 'Schedule & access', icon: 'calendar', fn: () => AX.openTest(t.id, { step: 4 }) },
+    { label: m ? 'Edit questions' : 'View questions', icon: m ? 'edit' : 'eye', fn: () => AX.openTest(t.id, { step: 'check' }) },
+    m && { label: 'Details & marking', icon: 'settings', fn: () => AX.openTest(t.id, { step: 'details' }) },
+    m && { label: 'Time & publish', icon: 'calendar', fn: () => AX.openTest(t.id, { step: 'publish' }) },
     AX.can('results') && { label: 'Analytics', icon: 'chart', fn: () => openAna(t.id) },
     { label: 'Share link', icon: 'link', fn: () => AX.shareTest(t.id) },
     m && { sep: true },
@@ -350,7 +350,7 @@ function metaSave(t, patch) {
     title: t.title, duration: t.duration, correct: t.correct, wrong: t.wrong, sort_order: +t.sort_order || 0, lock_back: !!t.lock_back, free_preview: !!t.free_preview, active: t.active !== false }, patch || {}));
 }
 async function setPractice(t, on) {
-  if (on && t.result_at) return UI.toast('Practice tests show answers at once: clear the result time or turn practice off', { tone: 'bad', ms: 6000, action: { label: 'Edit schedule', fn: () => AX.openTest(t.id, { step: 4 }) } });
+  if (on && t.result_at) return UI.toast('Practice tests show answers at once: clear the result time or turn practice off', { tone: 'bad', ms: 6000, action: { label: 'Edit schedule', fn: () => AX.openTest(t.id, { step: 'publish' }) } });
   const r = await AX.api.call('cbt_admin_practice', 'set', { id: t.id, on });
   if (!r.ok) return on ? UI.toast('Practice mode needs the v5 SQL update in Supabase', { tone: 'bad' }) : UI.err(r);
   changed(on ? 'Practice mode on: answers show after each question' : 'Practice mode off');
