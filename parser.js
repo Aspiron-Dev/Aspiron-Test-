@@ -98,9 +98,11 @@ function parseExplain(t){
   const re=/^\s*(?:(?:Q(?:ues(?:tion)?)?|Sol(?:ution)?|S|Exp(?:lanation)?|Hint|Ans(?:wer)?)\s*\.?\s*(?:no\.?\s*)?)?(\d{1,3})\s*[\.\):\-–]\s*(.*)$/i;
   // "Q12 (b) …" / "Sol 12 …": with a Q / Sol word in front the number needs no "." after it
   const re2=/^\s*(?:Q(?:ues(?:tion)?)?|Sol(?:ution)?)\s*\.?\s*(?:no\.?\s*)?(\d{1,3})\s+(\S.*)$/i;
+  // "12 (b) …": a number followed straight by the option letter in brackets
+  const re3=/^\s*(\d{1,3})\s+(\(\s*[A-Da-d1-4]\s*\).*)$/;
   const blocks=[];let cur=null,last=0;
   for(const ln of t.split('\n')){
-    const m=ln.match(re)||ln.match(re2);const n=m?+m[1]:0;
+    const m=ln.match(re)||ln.match(re2)||ln.match(re3);const n=m?+m[1]:0;
     // a "Q" / "Sol" word in front is a sure heading, so a few skipped solutions do not stop the rest
     const gap=/^\s*(?:Q|Sol)/i.test(ln)?20:3;
     if(m&&n>last&&(last===0?n<=gap:n<=last+gap)){cur={n,lines:[m[2]]};blocks.push(cur);last=n;continue}
