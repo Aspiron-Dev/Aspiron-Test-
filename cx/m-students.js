@@ -179,7 +179,7 @@ button.sx-ac.on:hover{background:var(--bad-soft);color:var(--bad)}
   .sx-bulk select.inp{order:2;grid-column:1/-1;max-width:none;width:100%}
   .sx-bulk>[data-act=bulk]{order:3}
   .sx-bulk>[data-act=copyNums],.sx-bulk>[data-act=selCsv]{order:4}
-  .sx-rq .ops{margin-left:0;width:100%}.sx-rq .ops .btn{flex:1}
+  .sx-rq .ops{margin-left:0;width:100%;flex-wrap:wrap}.sx-rq .ops .btn{flex:1}.sx-rq .ops [data-act=approve]{flex-basis:100%}
   .s3-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));padding:4px 6px 0;margin:-18px -20px 16px}
   .s3-tabs button{flex-direction:column;gap:2px;height:52px;padding:0 2px;font-size:10.5px}
   .s3-tabs button em{display:none}
@@ -236,7 +236,7 @@ AX.on('data:changed', AX.u.debounce(async () => {
   const r = await load(true);
   if (!r.ok) return;
   if (page && V.ctx.alive()) { head(V.ctx); if (V.tab === 'requests') drawRequests(); else drawDirectory(true); }
-  if (DR) drawDrawer();
+  if (DR) { drawDrawer(); loadInfo(); }
 }, 200));
 
 function head(ctx) {
@@ -279,6 +279,10 @@ function wire(ctx) {
     // requests
     approve: b => approve(b.dataset.id, b),
     reject: b => reject([b.dataset.id]),
+    rdel: b => reject([b.dataset.id], 'delete'),
+    rdelMany: () => reject([...V.rsel], 'delete'),
+    allow: b => allowNum(b.dataset.m, b),
+    showBlocked: () => { V.showBl = !V.showBl; drawRequests(); },
     rsel: b => { b.checked ? V.rsel.add(b.dataset.id) : V.rsel.delete(b.dataset.id); drawRequests(); },
     rselAll: b => { pending().forEach(s => b.checked ? V.rsel.add(s.id) : V.rsel.delete(s.id)); drawRequests(); },
     approveMany: b => approveMany(b.dataset.all ? pending().map(s => s.id) : [...V.rsel], b),
@@ -429,14 +433,37 @@ async function drawRequests() {
   if (!document.getElementById('sx-body')) return;
   const hasOrder = s => orders && orders.some(o => o.mobile === s.mobile);
   const allOn = L.length && L.every(s => V.rsel.has(s.id));
-  AX.set(body, h`<div id="sx-reqs">${L.length ? h`<div class="callout info" style="margin-bottom:14px">${icon('info')}<div class="sm">These students asked for access on the website. <b>Approve</b> gives them an access code to send on WhatsApp or Telegram. <b>Reject</b> removes the request; they can ask again.</div></div>
+  AX.set(body, h`<div id="sx-reqs">${L.length ? h`<div class="callout info" style="margin-bottom:14px">${icon('info')}<div class="sm">These students asked for access on the website. <b>Approve</b> gives them an access code to send on WhatsApp or Telegram. <b>Delete</b> removes the request (they can ask again). <b>Reject</b> removes it and stops that number from asking again.</div></div>
       ${can ? h`<div class="sx-lh"><input type="checkbox" data-act="rselAll" ${allOn ? raw('checked') : ''} aria-label="Select all requests"><span>${fmt.plural(L.length, 'request')}</span><span class="grow"></span>
-        ${V.rsel.size ? h`<button class="btn sm danger" data-act="rejectMany">${icon('x', 15)} Reject ${V.rsel.size}</button><button class="btn sm pri" data-act="approveMany" data-busy="Approving…">${icon('check', 15)} Approve ${V.rsel.size}</button>` : L.length > 1 ? h`<button class="btn sm soft" data-act="approveMany" data-all="1" data-busy="Approving…">${icon('check', 15)} Approve all ${L.length}</button>` : ''}</div>` : ''}
+        ${V.rsel.size ? h`<button class="btn sm ghost" data-act="rdelMany">${icon('trash', 15)} Delete ${V.rsel.size}</button><button class="btn sm danger" data-act="rejectMany">${icon('ban', 15)} Reject ${V.rsel.size}</button><button class="btn sm pri" data-act="approveMany" data-busy="Approving…">${icon('check', 15)} Approve ${V.rsel.size}</button>` : L.length > 1 ? h`<button class="btn sm soft" data-act="approveMany" data-all="1" data-busy="Approving…">${icon('check', 15)} Approve all ${L.length}</button>` : ''}</div>` : ''}
       <div class="card pad0">${join(L, s => h`<div class="sx-rq">${can ? h`<input type="checkbox" data-act="rsel" data-id="${s.id}" ${V.rsel.has(s.id) ? raw('checked') : ''} aria-label="Select ${nameOf(s)}">` : ''}
         ${UI.avatar(nameOf(s), s.id)}<div class="grow" style="min-width:150px"><div class="row gap6 wrap"><b>${nameOf(s)}</b>${hasOrder(s) ? UI.pill('Has a store order', 'info') : ''}</div><div class="xs mut"><span class="mono">${fmt.mobile(s.mobile)}</span> · requested ${fmt.ago(s.created)}</div></div>
         <div class="ops"><a class="btn sm ghost" href="${AX.u.wa(s.mobile, 'Hi ' + first(s) + ', ')}" target="_blank" rel="noopener" aria-label="WhatsApp">${icon('whatsapp', 15)}</a><button class="btn sm ghost" data-act="open" data-id="${s.id}">${icon('user', 15)} Profile</button>
-          ${can ? h`<button class="btn sm danger" data-act="reject" data-id="${s.id}">Reject</button><button class="btn sm pri" data-act="approve" data-id="${s.id}" data-busy="">${icon('check', 15)} Approve & get code</button>` : ''}</div></div>`)}</div>`
-    : h`<div class="card">${UI.empty({ icon: 'checkCircle', title: 'No access requests', text: 'When a student asks for access on the website, they show up here. You can also add a student yourself.', action: can ? h`<button class="btn pri sm" data-act="add">${icon('userPlus', 15)} Add student</button>` : '' })}</div>`}</div>`);
+          ${can ? h`<button class="btn sm ghost" data-act="rdel" data-id="${s.id}" title="Remove from the list (they can ask again)">${icon('trash', 15)} Delete</button><button class="btn sm danger" data-act="reject" data-id="${s.id}" title="Remove and stop this number from asking again">${icon('ban', 15)} Reject</button><button class="btn sm pri" data-act="approve" data-id="${s.id}" data-busy="">${icon('check', 15)} Approve & get code</button>` : ''}</div></div>`)}</div>`
+    : h`<div class="card">${UI.empty({ icon: 'checkCircle', title: 'No access requests', text: 'When a student asks for access on the website, they show up here. You can also add a student yourself.', action: can ? h`<button class="btn pri sm" data-act="add">${icon('userPlus', 15)} Add student</button>` : '' })}</div>`}
+    ${blockedHtml(can)}</div>`);
+  if (V.blocked === undefined) {
+    V.blocked = null;
+    AX.api.call('cbt_admin_edit', 'req_blocked').then(r => { V.blocked = r.ok ? r.blocked || [] : { _err: r.error }; if (document.getElementById('sx-reqs')) drawRequests(); });
+  }
+}
+// numbers whose request was rejected (v44): they cannot ask again until allowed
+function blockedHtml(can) {
+  const B = V.blocked;
+  if (!B || B._err) return B && B._err === 'missing' ? h`<p class="xs mut mt12">${icon('info', 13)} Run <b>supabase_v44_edit_details.sql</b> so that Reject stops a number from asking again.</p>` : '';
+  if (!B.length) return '';
+  return h`<div class="row mt16"><button class="btn sm ghost" data-act="showBlocked">${icon(V.showBl ? 'chevD' : 'chevR', 15)} Rejected numbers (${B.length})</button></div>
+    ${V.showBl ? h`<p class="xs mut" style="margin:6px 0 8px">These numbers cannot send a new request. Allow again to let them ask.</p><div class="card pad0">${join(B, x => h`<div class="sx-rq">${UI.avatar(x.name || x.mobile, x.mobile)}<div class="grow" style="min-width:150px"><b>${x.name || 'Unknown'}</b><div class="xs mut"><span class="mono">${fmt.mobile(x.mobile)}</span> · rejected ${fmt.ago(x.at)}${x.note ? ' · ' + x.note : ''}</div></div>
+      ${can ? h`<div class="ops"><button class="btn sm" data-act="allow" data-m="${x.mobile}" data-busy="">${icon('undo', 15)} Allow again</button></div>` : ''}</div>`)}</div>` : ''}`;
+}
+async function allowNum(mobile, btn) {
+  await UI.busy(btn, async () => {
+    const r = await AX.api.call('cbt_admin_edit', 'req_allow', { mobile });
+    if (!r.ok) return UI.err(r);
+    if (Array.isArray(V.blocked)) V.blocked = V.blocked.filter(x => x.mobile !== mobile);
+    UI.toast(fmt.mobile(mobile) + ' can ask for access again');
+    drawRequests();
+  });
 }
 async function approve(id, btn) {
   const go = async () => {
@@ -447,17 +474,30 @@ async function approve(id, btn) {
   };
   return btn ? UI.busy(btn, go) : go();
 }
-async function reject(ids) {
-  ids = ids.filter(Boolean); if (!ids.length) return;
+// mode 'reject' (default): remove + stop the number from asking again (v44) · 'delete': only remove
+async function reject(ids, mode) {
+  ids = (ids || []).filter(Boolean); if (!ids.length) return;
+  if (!V.D) { const r = await load(false); if (!r.ok) return UI.err(r.r); }
+  const stop = mode !== 'delete';
   const one = ids.length === 1 && V.D.students.find(s => s.id === ids[0]);
-  const ok = await UI.confirm({ title: one ? 'Reject the request from ' + nameOf(one) + '?' : 'Reject ' + ids.length + ' requests?', text: 'The request is removed. They can ask again from the website.', yes: 'Reject', tone: 'danger' });
+  const who = one ? 'the request from ' + nameOf(one) : ids.length + ' requests';
+  const ok = await UI.confirm(stop
+    ? { title: 'Reject ' + who + '?', text: 'The request is removed and ' + (one ? 'this number' : 'these numbers') + ' cannot ask again. You can allow it again under “Rejected numbers”.', yes: 'Reject', tone: 'danger' }
+    : { title: 'Delete ' + who + '?', text: 'The request is removed from the list. They can still ask again from the website — use Reject to stop that.', yes: 'Delete', tone: 'danger' });
   if (!ok) return;
-  let n = 0;
-  for (const id of ids) { const r = await AX.api.admin('student_delete', { id }); if (r.ok) { n++; V.rsel.delete(id); } else if (ids.length === 1) UI.err(r); }
-  if (n) UI.toast(n === 1 ? 'Request removed' : n + ' requests removed');
+  let n = 0, miss = false;
+  for (const id of ids) {
+    let r = stop && !miss ? await AX.api.call('cbt_admin_edit', 'req_reject', { id }) : { ok: false, error: 'missing' };
+    if (!r.ok && r.error === 'missing') { if (stop) miss = true; r = await AX.api.admin('student_delete', { id }); }
+    if (r.ok) { n++; V.rsel.delete(id); } else if (ids.length === 1) UI.err(r);
+  }
+  if (n) UI.toast(stop && !miss ? (n === 1 ? 'Request rejected · this number cannot ask again' : n + ' requests rejected') : (n === 1 ? 'Request deleted' : n + ' requests deleted'));
+  if (miss) UI.toast('Run supabase_v44_edit_details.sql so that Reject stops a number from asking again.', { tone: 'warn' });
+  V.blocked = undefined;
   if (DR && ids.includes(DR.id)) DR.api.close();
   changed();
 }
+AX.rejectRequest = reject;
 async function approveMany(ids, btn) {
   ids = ids.filter(Boolean); if (!ids.length) return;
   const ok = await UI.confirm({ title: 'Approve ' + fmt.plural(ids.length, 'request') + '?', text: 'Each student gets an access code. You will see all the codes next, with a button to send each one.', yes: 'Approve all' });
@@ -597,9 +637,19 @@ async function openStudent(x, tab) {
   });
   if (onPage && !location.hash.includes(s.id)) history.replaceState(null, '', '#/students/' + s.id);
   drawDrawer();
+  loadInfo();
   if (AX.can('integrity')) cheat().then(r => { if (DR && r.ok) { DR.cheat = r; drawDrawer(); } });
 }
 AX.openStudent = (x, tab) => openStudent(x, tab);
+// v44: email, mobile number history and corrected store orders of the open student
+async function loadInfo() {
+  if (!DR) return;
+  const id = DR.id, r = await AX.api.call('cbt_admin_edit', 'info', { id });
+  if (!DR || DR.id !== id) return;
+  DR.info = r.ok ? r : { _err: r.error || 'server' };
+  drawDrawer();
+}
+const infoOk = () => DR && DR.info && !DR.info._err;
 
 function statusPill(s, su) {
   return su ? UI.pill('Suspended', 'bad', true) : s.status === 'blocked' ? UI.pill('Blocked', 'bad', true) : s.status === 'pending' ? UI.pill('Access request', 'gold', true) : seenCls(s) === 'live' ? h`<span class="pill ok"><span class="live-dot"></span> Online now</span>` : UI.pill('Active', 'ok', true);
@@ -616,10 +666,12 @@ function drawDrawer() {
         <a class="ibtn sm line" href="${AX.u.wa(s.mobile, 'Hi ' + first(s) + ', ')}" target="_blank" rel="noopener" aria-label="WhatsApp" title="WhatsApp">${icon('whatsapp', 15)}</a>
         <a class="ibtn sm line" href="${AX.u.tg(s.mobile)}" target="_blank" rel="noopener" aria-label="Telegram" title="Telegram">${icon('telegram', 15)}</a>
         <button class="ibtn sm line" data-copy="${s.mobile}" aria-label="Copy number" title="Copy number">${icon('copy', 15)}</button></div>
+      ${infoOk() && DR.info.changes.length ? h`<div class="xs mt8" style="color:var(--gold)">${icon('refresh', 12)} Number changed ${fmt.ago(DR.info.changes[0].at)} · old: <span class="mono">${fmt.mobile(DR.info.changes[0].old)}</span></div>` : ''}
+      ${infoOk() && DR.info.email ? h`<div class="xs mut mt4">${icon('inbox', 12)} ${DR.info.email}</div>` : ''}
       <div class="xs mut mt8">Joined ${fmt.date(s.created)} · ${seenTxt(s)} · ${s.devices || 0}/${s.max_devices || 2} phones</div></div></div>`);
   const counts = { results: R.length || '', payments: M ? M.n || '' : '' };
   AX.set(el.querySelector('#s3-body'), h`<nav class="s3-tabs" role="tablist">${join(TABS, ([k, l, ic]) => h`<button type="button" role="tab" class="${DR.tab === k ? 'on' : ''}" data-act="tab" data-v="${k}" aria-selected="${DR.tab === k ? 'true' : 'false'}">${icon(ic, 16)}<span>${l}</span>${counts[k] ? h`<em>${counts[k]}</em>` : ''}</button>`)}</nav>
-    ${s.status === 'pending' ? h`<div class="callout gold" style="margin-bottom:16px">${icon('userPlus')}<div class="grow"><b>Access request</b><div class="sm">Requested ${fmt.ago(s.created)}. Approve to create their access code.</div>${AX.can('students', 'manage') ? h`<div class="row mt8"><button class="btn sm pri" data-act="dApprove" data-busy="">${icon('check', 15)} Approve & get code</button><button class="btn sm danger" data-act="dReject">Reject</button></div>` : ''}</div></div>` : ''}
+    ${s.status === 'pending' ? h`<div class="callout gold" style="margin-bottom:16px">${icon('userPlus')}<div class="grow"><b>Access request</b><div class="sm">Requested ${fmt.ago(s.created)}. Approve to create their access code.</div>${AX.can('students', 'manage') ? h`<div class="row mt8"><button class="btn sm pri" data-act="dApprove" data-busy="">${icon('check', 15)} Approve & get code</button><button class="btn sm ghost" data-act="dDelReq">${icon('trash', 15)} Delete</button><button class="btn sm danger" data-act="dReject">${icon('ban', 15)} Reject</button></div>` : ''}</div></div>` : ''}
     <div id="s3-tab">${tabHtml(s, DR.tab, su, M, R)}</div>`);
 }
 function tabHtml(s, tab, su, M, R) {
@@ -661,7 +713,7 @@ function tabHtml(s, tab, su, M, R) {
     const pm = AX.can('payments', 'manage'), L = [...M.sto.map(o => ({ k: 'store', o, at: AX.money.dayMs(o.at) })), ...M.man.map(x => ({ k: Number(x.amount) === 0 || x.method === 'free' ? 'free' : 'man', x, at: AX.money.dayMs(x.paid_on) }))].sort((a, b) => b.at - a.at);
     return h`<div class="row wrap" style="margin-bottom:12px"><div class="grow"><div class="xs mut">Total paid</div><div class="s3-amt" style="font-size:28px">${M.total ? fmt.inr(M.total) : M.n ? 'Free' : '₹0'}</div></div>${pm ? h`<button class="btn pri sm" data-act="dPay">${icon('plus', 15)} Add payment</button>` : ''}</div>
       ${L.length ? h`<div class="card flat" style="padding:4px 16px">${join(L, r => r.k === 'store'
-          ? h`<div class="s3-li"><div class="grow"><div class="row gap6 wrap">${AX.money.chip(r)}<b class="ell">${r.o.item_title || 'Store order'}</b></div><div class="xs mut mt4">${fmt.date(r.at)} · <button class="btn xs ghost mono" style="height:20px;padding:0 4px" data-act="dOrder" data-code="${r.o.code}">${r.o.code}</button></div></div><span class="s3-amt">${fmt.inr(r.o.amount)}</span></div>`
+          ? h`<div class="s3-li"><div class="grow"><div class="row gap6 wrap">${AX.money.chip(r)}<b class="ell">${r.o.item_title || 'Store order'}</b></div><div class="xs mut mt4">${fmt.date(r.at)} · <button class="btn xs ghost mono" style="height:20px;padding:0 4px" data-act="dOrder" data-code="${r.o.code}">${r.o.code}</button>${ordFix(r.o.code) ? h` · <span style="color:var(--gold)">was ${fmt.inr(ordFix(r.o.code).amount_was)}${ordFix(r.o.code).amount_note ? ' · ' + ordFix(r.o.code).amount_note : ''}</span>` : ''}</div></div><span class="s3-amt">${fmt.inr(r.o.amount)}</span>${AX.can('store', 'manage') ? h`<button class="ibtn sm" data-act="dOrdAmt" data-code="${r.o.code}" aria-label="Correct the amount" title="Correct the amount">${icon('edit', 16)}</button>` : ''}</div>`
           : h`<div class="s3-li"><div class="grow"><div class="row gap6 wrap">${AX.money.chip(r)}<b>${AX.money.PSHORT[r.x.method] || r.x.method}</b></div><div class="xs mut mt4">${fmt.date(r.at)}${r.x.note ? ' · ' + r.x.note : ''}</div></div><span class="s3-amt">${Number(r.x.amount) ? fmt.inr(r.x.amount) : 'Free'}</span>${pm ? h`<button class="ibtn sm" data-act="dPayEdit" data-id="${r.x.id}" aria-label="Edit payment">${icon('edit', 16)}</button>` : ''}</div>`)}</div>`
         : h`<div class="card flat">${UI.empty({ icon: 'wallet', title: 'No payment recorded', text: 'Joined before the store? Add what they paid.', action: pm ? h`<button class="btn sm" data-act="dPay">${icon('plus', 15)} Add payment</button>` : '' })}</div>`}`;
   }
@@ -675,7 +727,14 @@ function tabHtml(s, tab, su, M, R) {
         <p class="xs faint mt12">The code message tells students it works on up to 2 phones.</p></div>`;
   }
   // account
-  return h`${can ? h`<form class="card flat" id="s3-name" onsubmit="return false"><div class="card-h">${icon('user', 16)}<h3>Details</h3></div><div class="row top wrap"><div class="grow" style="min-width:200px">${AX.f.input({ name: 'name', label: 'Full name', value: nameOf(s), max: 60 })}</div><button class="btn" style="margin-top:24px" data-act="dName" data-busy="Saving…">${icon('check', 16)} Save</button></div></form>` : ''}
+  const I = infoOk() ? DR.info : null, v44 = !(DR.info && DR.info._err === 'missing');
+  return h`${can ? h`<form class="card flat" id="s3-name" onsubmit="return false"><div class="card-h">${icon('user', 16)}<h3>Details</h3></div>
+      <div class="form-grid">${AX.f.input({ name: 'name', label: 'Full name', value: nameOf(s), max: 60 })}
+        ${v44 ? AX.f.input({ name: 'mobile', label: 'Mobile number', type: 'tel', inputmode: 'numeric', value: s.mobile, max: 16 }) : ''}
+        ${v44 ? AX.f.input({ name: 'email', label: 'Email (optional)', type: 'email', value: I ? I.email : '', placeholder: I ? 'name@example.com' : 'Loading…', max: 120, disabled: !I }) : ''}</div>
+      <p class="xs mut mt8">${v44 ? 'A new mobile number changes everywhere at once — app, store orders, payments, notifications. Their phones stay signed in and the access code stays the same.' : 'Run supabase_v44_edit_details.sql to change the mobile number and email here.'}</p>
+      <div class="row mt12"><span class="grow"></span><button class="btn pri" data-act="dName" data-busy="Saving…">${icon('check', 16)} Save details</button></div></form>` : ''}
+    ${I && I.changes.length ? h`<div class="card flat mt16"><div class="card-h">${icon('refresh', 16)}<h3>Mobile number history</h3></div>${join(I.changes, c => h`<div class="s3-li"><div class="grow"><div class="mono sm"><span class="mut" style="text-decoration:line-through">${fmt.mobile(c.old)}</span> → <b>${fmt.mobile(c.new)}</b></div><div class="xs mut">${fmt.dt(c.at)} · changed by ${c.by === 'student' ? 'the student (app)' : 'admin'}</div></div><button class="ibtn sm" data-copy="${c.old}" aria-label="Copy old number" title="Copy old number">${icon('copy', 15)}</button></div>`)}</div>` : ''}
     <div class="card flat mt16"><div class="card-h">${icon('key', 16)}<h3>Access code</h3></div>
       <p class="sm mut">Codes are stored scrambled, so the current one cannot be shown. A new code signs ${first(s)} out of all phones.</p>
       <div class="row wrap mt12">${can ? h`<button class="btn" data-act="dCode">${icon('key', 16)} ${s.status === 'pending' ? 'Approve & get code' : 'New access code'}</button>` : ''}<button class="btn ghost" data-act="dMsg">${icon('whatsapp', 16)} Send login message (current code)</button></div></div>
@@ -687,6 +746,7 @@ function tabHtml(s, tab, su, M, R) {
         : h`<p class="sm mut">Block the app with a notice and a Support button (e.g. for cheating).</p>${AX.can('integrity', 'manage') ? h`<div class="row mt12"><button class="btn danger" data-act="dSusp">${icon('shield', 16)} Suspend…</button></div>` : ''}`}</div>` : ''}
     ${can ? h`<div class="card flat mt16 s3-dz"><div class="card-h" style="color:var(--bad)">${icon('trash', 16)}<h3>Delete student</h3></div><p class="sm mut">Deletes ${nameOf(s)} permanently. Their results are deleted too. Payments stay in the ledger.</p><div class="row mt12"><button class="btn danger solid" data-act="dDel">${icon('trash', 16)} Delete permanently</button></div></div>` : ''}`;
 }
+const ordFix = code => infoOk() ? (DR.info.orders || []).find(o => o.code === code) : null;
 function resRow(x, full) {
   const p = pct(x);
   return h`<div class="s3-li"><span class="pill ${tone(p)}" style="min-width:52px;justify-content:center">${p}%</span><div class="grow"><b class="ell" style="display:block">${x.title}</b><div class="xs mut">${fmt.dt(x.at)} · ${x.score}/${x.max}${full ? ' · ✓' + x.correct + ' ✗' + x.wrong + ' –' + x.skipped + ' · ' + Math.round((x.used || 0) / 60) + ' min' : ''}</div></div>
@@ -726,6 +786,8 @@ function wireDrawer(el) {
     tab(b) { DR.tab = b.dataset.v; max = null; drawDrawer(); el.querySelector('.m-b').scrollTop = 0; },
     dApprove: b => approve(DR.id, b),
     dReject: () => reject([DR.id]),
+    dDelReq: () => reject([DR.id], 'delete'),
+    dOrdAmt: b => AX.editOrderAmount && AX.editOrderAmount(b.dataset.code),
     dAcc: b => { b.checked = !b.checked; toggleAccess(DR.id, b.dataset.ser); },
     dPay: () => AX.addPayment && AX.addPayment({ studentId: DR.id }),
     dPayEdit: b => AX.addPayment && AX.addPayment({ paymentId: b.dataset.id }),
@@ -749,9 +811,31 @@ function wireDrawer(el) {
     },
     async dName(b) {
       const s = cur(), f = el.querySelector('#s3-name'); AX.f.clearErrors(f);
-      const name = String(AX.f.read(f).name || '').trim().replace(/\s+/g, ' ');
+      const d = AX.f.read(f), name = String(d.name || '').trim().replace(/\s+/g, ' ');
       if (name.length < 2) return AX.f.error(f, 'name', 'Enter a name');
-      await UI.busy(b, async () => { const r = await act('student_update', { id: s.id, name, max_devices: s.max_devices || 2 }); if (r.ok) { s.name = name; UI.toast('Saved'); drawDrawer(); changed(); } });
+      if (d.mobile == null) {   // v44 not installed: name only, as before
+        return UI.busy(b, async () => { const r = await act('student_update', { id: s.id, name, max_devices: s.max_devices || 2 }); if (r.ok) { s.name = name; UI.toast('Saved'); drawDrawer(); changed(); } });
+      }
+      const mobile = String(d.mobile || '').replace(/\D/g, '').slice(-10), email = String(d.email || '').trim();
+      if (!/^[6-9]\d{9}$/.test(mobile)) return AX.f.error(f, 'mobile', 'Enter a valid 10-digit mobile number.');
+      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return AX.f.error(f, 'email', 'Enter a valid email, or leave it empty.');
+      const other = mobile !== s.mobile && V.D.students.find(x => x.mobile === mobile && x.id !== s.id);
+      if (other && other.status !== 'pending') return AX.f.error(f, 'mobile', 'This number belongs to ' + nameOf(other) + '. Delete or change that account first.');
+      if (mobile !== s.mobile && !(await UI.confirm({ title: 'Change the mobile number?', text: fmt.mobile(s.mobile) + ' → ' + fmt.mobile(mobile) + '. It changes everywhere: sign-in, store orders, payments and notifications. The old number is kept in the history.' + (other ? ' The waiting access request from this number is removed.' : ''), yes: 'Change number' }))) return;
+      await UI.busy(b, async () => {
+        const r = await AX.api.call('cbt_admin_edit', 'student_save', Object.assign({ id: s.id, name, mobile }, infoOk() ? { email } : {}));
+        if (!r.ok) {
+          if (r.error === 'taken') return AX.f.error(f, 'mobile', 'This number already has another account.');
+          if (r.error === 'mobile') return AX.f.error(f, 'mobile', 'Enter a valid 10-digit mobile number.');
+          if (r.error === 'email') return AX.f.error(f, 'email', 'Enter a valid email, or leave it empty.');
+          if (r.error === 'name') return AX.f.error(f, 'name', 'Enter a name');
+          return UI.err(r);
+        }
+        const moved = r.mobile && r.mobile !== s.mobile;
+        s.name = r.name || name; if (r.mobile) s.mobile = r.mobile;
+        UI.toast(moved ? 'Saved · new number ' + fmt.mobile(s.mobile) : 'Saved', moved ? { action: { label: 'Send message', fn: () => msgSheet(s) } } : {});
+        changed(['payments', 'store']); loadInfo();
+      });
     },
     dCode: () => newCode(cur()),
     dMsg: () => msgSheet(cur()),

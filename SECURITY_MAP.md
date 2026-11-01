@@ -28,8 +28,8 @@ Legend: **[T]** = a test was run on a local copy of the database (production bas
 ## 3. API surface (RPC functions callable with the publishable key)
 | Group | Functions | Check inside |
 |---|---|---|
-| **No login** | `cbt_store`, `cbt_store_explore`, `cbt_store_demo`, `cbt_store_schedule(s)`, `cbt_store_reviews`, `cbt_store_langs`, `cbt_banners`, `cbt_store_order(_lang)`, `cbt_store_paid`, `cbt_store_notify`, `cbt_promo_click`, `cbt_promo_attach`, `cbt_request_access`, `cbt_push_rotate`, `cbt_admin_login`, `cbt_logout` | Per-IP / per-mobile limits; order code + mobile for order changes; 20 wrong codes/h per connection |
-| **Student** (mobile + code/token + device) | `cbt_login`, `cbt_catalog`, `cbt_start`, `cbt_save`, `cbt_submit`, `cbt_review`, `cbt_mistakes`, `cbt_bookmark(s)`, `cbt_report`, `cbt_leaderboard`, `cbt_overall`, `cbt_insights`, `cbt_file_part`, `cbt_cover`, `cbt_notice(_img)`, `cbt_ann_read`, `cbt_lang`, `cbt_pyq_summary`, `cbt_pyq_chapter`, `cbt_alert_list/set`, `cbt_push_save/has`, `cbt_devices`, `cbt_device_swap/ping`, `cbt_suspension`, `cbt_my_flags`, `cbt_review_save/mine/delete` | `cbt_private.auth` (8 wrong codes → 15 min lock, device limit, token check) |
+| **No login** | `cbt_store`, `cbt_store_explore`, `cbt_store_demo`, `cbt_store_schedule(s)`, `cbt_store_reviews`, `cbt_store_langs`, `cbt_banners`, `cbt_store_order(_lang)`, `cbt_store_paid`, `cbt_store_notify`, `cbt_promo_click`, `cbt_promo_attach`, `cbt_request_access`, `cbt_push_rotate`, `cbt_admin_login`, `cbt_logout`, `cbt_moved` (token only: a phone whose number the admin changed finds its new number) | Per-IP / per-mobile limits; order code + mobile for order changes; 20 wrong codes/h per connection |
+| **Student** (mobile + code/token + device) | `cbt_login`, `cbt_catalog`, `cbt_start`, `cbt_save`, `cbt_submit`, `cbt_review`, `cbt_mistakes`, `cbt_bookmark(s)`, `cbt_report`, `cbt_leaderboard`, `cbt_overall`, `cbt_insights`, `cbt_file_part`, `cbt_cover`, `cbt_notice(_img)`, `cbt_ann_read`, `cbt_lang`, `cbt_pyq_summary`, `cbt_pyq_chapter`, `cbt_alert_list/set`, `cbt_push_save/has`, `cbt_devices`, `cbt_me` (own name / email / mobile; mobile 2× per 30 days), `cbt_device_swap/ping`, `cbt_suspension`, `cbt_my_flags`, `cbt_review_save/mine/delete` | `cbt_private.auth` (8 wrong codes → 15 min lock, device limit, token check) |
 | **Admin** (session or owner password) | `cbt_admin`, `cbt_admin2`, `cbt_admin3`, `cbt_admin_*` (store, orders, payments, promos, banners, ann, pyq, reviews, cheat, team, 2fa, me, …) | `cbt_private.admin_ok` → session + per-module permission (`admin_need`); every change written to `admin_audit` |
 | **Server only** | `cbt_push_targets` (service role, from `send-push`), `cbt_private.autosubmit` (cron) | Not granted to anon |
 
@@ -50,6 +50,8 @@ All `public` tables: **RLS on, no policies, no grants to anon/authenticated** **
 | public.cbt_store_orders | Orders | ⚠ mobile, payer, utr, ip hash | store page, admin |
 | public.cbt_store_notify, cbt_store_tries | Waiting lists, wrong-code counter | ⚠ mobile, ip hash | store page |
 | public.cbt_payments | Payments added by admin | – | admin |
+| cbt_private.mobile_changes | Every mobile number change (old → new, by admin / student) | – | admin (info) |
+| cbt_private.request_blocks | Rejected access-request numbers (cannot ask again) | – | admin |
 | public.cbt_promo_links, payouts, clicks | Promotion links | ip hash | admin, store page |
 | public.cbt_reviews, cbt_review_settings | Reviews | ⚠ mobile, photo | student, admin |
 | public.cbt_push_subs, cbt_test_alerts | Phone notifications | ⚠ mobile, push endpoint | student, cron |

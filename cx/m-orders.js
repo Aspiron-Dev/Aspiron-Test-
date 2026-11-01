@@ -188,11 +188,36 @@ S.approveReq = async (id) => {
     msg: S.stuMsg({ name: r.name, mobile: r.mobile, code: r.code }), sub: (r.name || '') + ' · ' + fmt.mobile(r.mobile || '') + ' · give the paid series from an order or the student’s page' });
 };
 S.rejectReq = async (s) => {
+  if (AX.rejectRequest) return AX.rejectRequest([s.id]);   // Students: Reject stops the number from asking again (v44)
   if (!(await UI.confirm({ title: 'Reject ' + (s.name || 'this request') + '?', text: 'The request is removed. They can ask again from the website.', yes: 'Reject request', tone: 'danger' }))) return;
   const r = await AX.api.admin('student_delete', { id: s.id });
   if (!r.ok) return UI.err(r);
   UI.toast('Request removed'); S.changed();
 };
+
+/* ---------- correct an order's amount (v44): e.g. ₹399 in the order, ₹250 really paid ---------- */
+S.editAmount = async (code) => {
+  if (!AX.can('store', 'manage')) return UI.toast('Needs full access to Store & orders.', { tone: 'warn' });
+  const D = S.cur && S.cur.orders.some(x => x.code === code) ? S.cur : await S.load(false);
+  const o = D && D.ok && D.orders.find(x => x.code === code);
+  if (!o) return UI.toast('Order ' + code + ' was not found.', { tone: 'warn' });
+  UI.modal({ title: 'Correct the amount', sub: (o.item_title || 'Order') + ' · ' + o.code + ' · ' + (o.name || ''), size: 'narrow',
+    body: h`<form id="oa" class="col gap16" onsubmit="return false">${AX.f.input({ name: 'amount', label: 'Amount really paid (₹)', type: 'tel', inputmode: 'numeric', value: o.amount, max: 8 })}
+      ${AX.f.input({ name: 'note', label: 'Note (optional)', value: o.amount_note || '', placeholder: 'e.g. paid ₹250 on UPI, discount', max: 200 })}
+      <p class="xs mut">${o.amount_was != null ? 'First amount: ' + fmt.inr(o.amount_was) + '. ' : ''}Totals in Payments, Students and Promotions use the new amount at once. The first amount is kept and shown crossed out.</p></form>`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="go" data-busy="Saving…">${icon('check', 16)} Save amount</button>`,
+    onOpen(el, close) { AX.act(el, { async go(b) {
+      const f = el.querySelector('#oa'); AX.f.clearErrors(f);
+      const d = AX.f.read(f), amt = String(d.amount || '').replace(/\D/g, '');
+      if (!amt || Number(amt) > 1000000) return AX.f.error(f, 'amount', 'Enter the amount in rupees (0 to 10,00,000).');
+      await UI.busy(b, async () => {
+        const r = await AX.api.call('cbt_admin_edit', 'order_edit', { code: o.code, amount: Number(amt), note: String(d.note || '').trim() });
+        if (!r.ok) return r.error === 'amount' ? AX.f.error(f, 'amount', 'Enter a valid amount.') : UI.err(r, 'supabase_v44_edit_details.sql');
+        close(); UI.toast('Amount saved · ' + fmt.inr(Number(amt))); S.changed();
+      });
+    } }); } });
+};
+AX.editOrderAmount = code => S.editAmount(code);
 
 /* ---------- note ---------- */
 S.note = async (code) => {
@@ -217,7 +242,7 @@ function orderCard(o, D, full) {
     : h`<button class="btn sm ghost" data-act="undo" data-code="${o.code}">${icon('undo', 15)} Undo</button>`;
   return h`<article class="card oc s-${sg}" data-code="${o.code}">
     <header class="row top">${UI.avatar(o.name, o.mobile || o.code)}<div class="grow"><button class="oc-name ell" data-act="open" data-code="${o.code}">${o.name || 'Student'}</button><div class="xs mut ell">${fmt.mobile(m10(o.mobile))} · ${fmt.ago(o.created_at)}</div></div>${UI.pill(P[0], P[1], true)}</header>
-    <div class="oc-item"><div class="grow"><div class="xs mut">${icon('book', 13)} Series${it && !it.series_id ? h` · <span style="color:var(--warn)">not linked</span>` : ''}</div><b class="oc-t">${o.item_title || '—'}</b>${(o.lang || OLANG[o.code]) ? h` <span class="pill ${(o.lang || OLANG[o.code]) === 'hi' ? 'vio' : ''}" title="Medium chosen at Buy — set for the student when you unlock">${icon('globe', 12)} ${(o.lang || OLANG[o.code]) === 'hi' ? 'हिंदी medium' : 'English medium'}</span>` : ''}</div><div class="oc-amt">${fmt.inr(o.amount)}</div></div>
+    <div class="oc-item"><div class="grow"><div class="xs mut">${icon('book', 13)} Series${it && !it.series_id ? h` · <span style="color:var(--warn)">not linked</span>` : ''}</div><b class="oc-t">${o.item_title || '—'}</b>${(o.lang || OLANG[o.code]) ? h` <span class="pill ${(o.lang || OLANG[o.code]) === 'hi' ? 'vio' : ''}" title="Medium chosen at Buy — set for the student when you unlock">${icon('globe', 12)} ${(o.lang || OLANG[o.code]) === 'hi' ? 'हिंदी medium' : 'English medium'}</span>` : ''}</div><div class="oc-amt">${fmt.inr(o.amount)}${o.amount_was != null ? h`<div class="xs mut" style="font-weight:600;text-decoration:line-through" title="${o.amount_note || 'Amount corrected'}">${fmt.inr(o.amount_was)}</div>` : ''}${man ? h`<button class="btn xs ghost" data-act="amt" data-code="${o.code}" title="Correct the amount">${icon('edit', 13)} Amount</button>` : ''}</div></div>
     ${o.payer || o.utr ? h`<div class="oc-pay"><div><div class="k">Paid from</div><div class="v">${o.payer || '—'}</div></div><div><div class="k">UTR</div><div class="v row gap4"><span class="mono ell">${o.utr || '—'}</span>${o.utr ? UI.copyBtn(o.utr) : ''}</div></div></div>` : ''}
     <div class="xs mut row wrap gap6"><span class="mono">${o.code}</span>${o.paid_at ? h`<span>· details sent ${fmt.ago(o.paid_at)}</span>` : ''}${full ? h`<span>· ordered ${fmt.dt(o.created_at)}</span>` : ''}</div>
     ${dup ? h`<div class="callout bad sm">${icon('alert', 16)}<div>This UTR is also in another order — check carefully.</div></div>` : ''}
@@ -257,6 +282,7 @@ function cardActs(root, after) {
     login(el) { const o = find(el.dataset.code); if (o) AX.u.copy(S.stuMsg({ sid: S.sidOf(o), name: o.name, title: o.item_title, order: o.code, mobile: o.mobile })).then(x => UI.toast(x ? 'Login message copied — add the access code before sending' : 'Copy failed')); },
     student: el => S.openStudent(el.dataset.m),
     note: el => S.note(el.dataset.code),
+    amt: el => S.editAmount(el.dataset.code),
     rapprove: el => UI.busy(el, () => S.approveReq(el.dataset.id)),
     rreject(el) { const s = (S.cur.students || []).find(x => x.id === el.dataset.id); if (s) S.rejectReq(s); }
   });

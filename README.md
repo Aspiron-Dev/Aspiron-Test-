@@ -42,6 +42,13 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Notice / phone notification to one series:** the same series page has **Notice to this series** and **Phone notification** — the series is already chosen, and only its students see it (uses v36).
 - **Setup:** run `supabase_v40_series_msg.sql` once, then `supabase_v35_admin_team.sql` again. Until then every series uses the built-in message and the `config.js` link.
 
+## Edit a student's details, number changes, rejected requests, order amount (`supabase_v44_edit_details.sql`, `app20.js`)
+- **Admin → Students → a student → Account → Details:** name, **mobile number** and **email**. A new number moves everywhere at once (sign-in, store orders, payments, phone notifications, 🔔 test alerts, reviews, Notify me). The access code stays the same and the student's phones stay signed in (the app finds its new number by itself). The header shows "Number changed · old: …" and Account → **Mobile number history** lists every old → new number, when and by whom.
+- **Student app → Profile → Account details (saved online):** the student changes their own name and email, and their mobile number with **Change** (typed twice; at most 2 changes in 30 days; a number that already has an account is refused). The admin sees the change in the history.
+- **Wrong store amount** (e.g. order made for ₹399 but ₹250 was paid): Students → student → Payments → ✏️ on the Store row, or Orders → the order → **Amount**. The new amount counts everywhere at once; the first amount is kept and shown as "was ₹399" with your note.
+- **Access requests:** **Delete** removes a request (they can ask again). **Reject** removes it and stops that number from asking again (the website says the request was not accepted). **Rejected numbers** at the bottom of the requests page → **Allow again**.
+- **Setup:** run `supabase_v44_edit_details.sql`, then `supabase_v35_admin_team.sql` again. Re-run v44 after re-running v34 or v42. Until then the panel and app work as before (name only).
+
 ## Live test end time, rank cut-off and limits (`supabase_v43_test_rules.sql`)
 - A live test attempt ends at **Live ends** at the latest: started at 8:58 with Live ends 9:00 → auto-submitted at 9:00. No new attempt until the result time; after it, re-attempts are open, but the test rank and the overall rank count only first attempts submitted by Live ends (+2 minutes).
 - Per student per hour: 30 new attempts, 120 opened reviews, 60 PYQ chapters (stops bulk copying of the question bank); a sign-in token works only with its own phone.
