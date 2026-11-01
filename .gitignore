@@ -1,6 +1,7 @@
 # Secrets and keys: never commit these (the Supabase publishable key in config.js is public by design)
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 *.p8
