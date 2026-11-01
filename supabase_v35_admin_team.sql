@@ -876,6 +876,19 @@ begin
     else v_sp := f.sp || ', pg_temp'; end if;
     execute format('alter function %s set search_path = %s', f.oid::regprocedure, v_sp);
   end loop;
+  -- The app never uses Supabase Auth, so the "authenticated" role needs nothing: every public cbt_* function keeps
+  -- (as an explicit grant) exactly the anon access it has now, and loses PUBLIC / authenticated access. Trigger
+  -- functions are never called directly: nobody outside keeps them. (Security Advisor: "Public can execute …")
+  for f in
+    select p.oid, p.prorettype = 'trigger'::regtype trg, has_function_privilege('anon', p.oid, 'EXECUTE') anon_ok
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.proname like 'cbt\_%' and p.prokind = 'f'
+       and not exists (select 1 from pg_depend dp where dp.objid = p.oid and dp.deptype = 'e')
+  loop
+    if f.anon_ok and not f.trg then execute format('grant execute on function %s to anon', f.oid::regprocedure); end if;
+    execute format('revoke execute on function %s from public, authenticated', f.oid::regprocedure);
+    if f.trg then execute format('revoke execute on function %s from anon', f.oid::regprocedure); end if;
+  end loop;
   -- G5: the other functions (not SECURITY DEFINER) get a fixed search path too (Security Advisor: "search path mutable")
   for f in
     select p.oid from pg_proc p join pg_namespace n on n.oid = p.pronamespace

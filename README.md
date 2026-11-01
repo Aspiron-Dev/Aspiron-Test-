@@ -58,6 +58,7 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 ## Checklist C + D fixes (`supabase_v45_checklist_cd.sql`)
 - The access-request form gives the same answer for every number; a student changing their own number cannot take a number with someone else's store order, "Notify me", rejected request or recent previous owner; push subscriptions only for the real push services.
 - In `supabase_v35_admin_team.sql`: Team & access → **Require two-step sign-in for the team**; a password reset in the SQL Editor signs the owner out everywhere.
+- Also in v35 (runs last): the `authenticated` role (Supabase Auth, not used here) can run no `cbt_*` function, and trigger functions cannot be called directly; the website's `anon` access is kept function by function.
 - App: banner links only http/https or `#/`; a file opens in "View" only if its first bytes are a real PDF/photo. Admin: new passwords are checked against leaked-password lists.
 - **Setup:** run `supabase_v45_checklist_cd.sql` (after v44), then `supabase_v35_admin_team.sql` again, then redeploy `send-push`.
 
