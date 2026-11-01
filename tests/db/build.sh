@@ -14,7 +14,7 @@ ORDER="v9_banners v10_push v11_pyq v12_test_alerts v13_store v17_store_fix v18_s
  v32_store_layout v33_live_one_attempt v34_attack_fixes v35_admin_team v36_notice_audience v35_admin_team
  v38_store_cleanup v39_scale v40_series_msg v35_admin_team v41_medium v35_admin_team
  v25_cheat_leaderboard v30_result_time v33_live_one_attempt v34_attack_fixes v39_scale v41_medium
- v42_audit_fixes v43_test_rules v44_edit_details v45_checklist_cd v46_order_trash v47_alerts_results v35_admin_team"
+ v42_audit_fixes v43_test_rules v44_edit_details v45_checklist_cd v46_order_trash v47_alerts_results v48_review_low v35_admin_team"
 P tests/db/00_supabase_stubs.sql
 P tests/db/01_mock_schema.sql
 P tests/db/02_base_functions.sql

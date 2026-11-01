@@ -82,7 +82,7 @@ async function rpc(fn,args,noAuth){
     const ac=new AbortController(),tmo=setTimeout(()=>ac.abort(),25000);let r;
     try{
       const x=await fetch(API+'/rest/v1/rpc/'+fn,{signal:ac.signal,method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body});
-      r=x.ok?await x.json():{ok:false,error:'server',status:x.status};
+      r=x.ok?await x.json():x.status===429?(await x.json().catch(()=>null))||{ok:false,error:'server',status:429}:{ok:false,error:'server',status:x.status};
     }catch(e){r={ok:false,error:'network',timeout:ac.signal.aborted}}finally{clearTimeout(tmo)}
     const busy=r&&r.ok===false&&((r.error==='server'&&[429,502,503,504].includes(r.status))||(r.error==='network'&&!r.timeout&&navigator.onLine!==false));
     if(!busy||n>=2||!RPC_RETRY.has(fn))return r;

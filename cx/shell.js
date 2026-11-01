@@ -275,7 +275,7 @@ function route() {
   AX.set(body, UI.skeleton(5));
   Promise.resolve().then(() => m.render(ctx)).catch(err => {
     console.error(err);
-    if (n === ROUTE_N) AX.set(body, h`<div class="card">${UI.empty({ tone: 'bad', icon: 'alert', title: 'This page hit a problem', text: String(err && err.message || err), action: h`<button class="btn sm" onclick="location.reload()">${icon('refresh', 15)} Reload</button>` })}</div>`);
+    if (n === ROUTE_N) AX.set(body, h`<div class="card">${UI.empty({ tone: 'bad', icon: 'alert', title: 'This page hit a problem', text: String(err && err.message || err), action: h`<button class="btn sm" data-reload>${icon('refresh', 15)} Reload</button>` })}</div>`);
   });
 }
 AX.route = route;

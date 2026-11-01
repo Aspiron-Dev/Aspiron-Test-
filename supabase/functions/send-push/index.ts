@@ -6,6 +6,8 @@
 //   VAPID_PRIVATE  – the private key (never put this in GitHub)
 //   VAPID_SUBJECT  – optional but recommended, e.g. mailto:you@yourmail.com (a real address; Apple can refuse example.com)
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase automatically.
+//   SB_SECRET_KEY  – optional (R7): a new "sb_secret_…" key (Settings → API Keys). When set it is used instead of the
+//                    legacy service_role key, so the legacy keys can be turned off. Check: mode "info" → secret_key: true.
 // Deploy with "Verify JWT" OFF (the site calls it with the public key only; the admin password is checked here).
 //
 // Body: { pw, title, body, url?, tag?, series?, after?, limit? }   (pw = an admin panel sign-in session "as1.…", checked with cbt_admin 'ping')
@@ -50,9 +52,12 @@ async function handle(req: Request): Promise<Response> {
 
   const pub = Deno.env.get("VAPID_PUBLIC") || "", priv = Deno.env.get("VAPID_PRIVATE") || "";
   if (b.mode === "info") return json({ ok: true, v: 2, vapid: !!(pub && priv), key_ok: typeof b.vapid === "string" ? b.vapid === pub : null,
-    secrets: { VAPID_PUBLIC: !!pub, VAPID_PRIVATE: !!priv, VAPID_SUBJECT: !!Deno.env.get("VAPID_SUBJECT") } });
+    secrets: { VAPID_PUBLIC: !!pub, VAPID_PRIVATE: !!priv, VAPID_SUBJECT: !!Deno.env.get("VAPID_SUBJECT") },
+    secret_key: (Deno.env.get("SB_SECRET_KEY") || "").startsWith("sb_secret_") });
 
-  const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+  // R7: the new secret key when it is set, else the legacy service_role key
+  const sk = Deno.env.get("SB_SECRET_KEY") || "";
+  const db = createClient(Deno.env.get("SUPABASE_URL")!, sk.startsWith("sb_secret_") ? sk : Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 
   if (b.mode === "due") return dueAlerts(db, pub, priv, Number(b.w) || 1);
 

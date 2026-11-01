@@ -49,6 +49,16 @@ After any rotation: call once with the old key/password and confirm it is refuse
 The built-in limits answer "busy" / "locked" by themselves. Check Supabase → Reports for errors; if it continues,
 Supabase → Database → Network restrictions is **not** the tool (it would stop GitHub backups) — contact Supabase support.
 
+## 7. Turning off the legacy Supabase keys (R7) — once, when you have 10 minutes
+1. Supabase → Settings → **API Keys** → Secret keys: copy a secret key (`sb_secret_…`; create one if there is none).
+2. Edge Functions → **Secrets** → add `SB_SECRET_KEY` = that key. Edge Functions → send-push → deploy the newest
+   `supabase/functions/send-push/index.ts` (from GitHub).
+3. Admin → Messaging → send yourself a test notification. It must arrive.
+4. Settings → API Keys → **Legacy API keys** → Disable. Send a test notification again, open the app once (sign in,
+   start a practice test). If anything fails: enable the legacy keys again (same page) and tell the developer.
+5. The website and the "test is live" alerts use the publishable key (`sb_publishable_…`), so they are not affected.
+A leaked secret key later: create a new one, put it in `SB_SECRET_KEY`, redeploy, then delete the old key.
+
 ## Contacts and accounts (fill in, keep offline)
 Supabase owner e-mail · GitHub owner · domain registrar (when bought) · who in the team can act.
 

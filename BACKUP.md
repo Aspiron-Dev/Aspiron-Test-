@@ -45,3 +45,14 @@ On a computer with PostgreSQL 17 tools and gpg (or ask Claude to do it in a sess
 - The secrets can only be used by the workflow; GitHub hides them in logs. Only people with admin access to this
   repository can change them: keep that list short and keep two-step sign-in on for the GitHub account.
 - If the database password or the backup password ever leaks, change it in Supabase / in the secret.
+
+## Read-only login for the backup (recommended, R11)
+The secret `SUPABASE_DB_URL` is the full `postgres` login. A read-only login can only read (for the backup) and run
+the hourly alert check:
+1. Open `supabase_backup_role.sql`, copy it into Supabase → SQL Editor, replace `PUT-A-LONG-PASSWORD-HERE` with a new
+   password (24+ letters and digits, not the database password), Run. Do not save that password anywhere online.
+2. GitHub → Settings → Secrets and variables → Actions → **New secret** `SUPABASE_BACKUP_DB_URL` = your
+   `SUPABASE_DB_URL` text with the user part changed to `cbt_backup.klvvhbqkhbdzysgpykpr` and the new password.
+3. Actions → **Database backup** → Run workflow, and Actions → **Security alerts** → Run workflow: both green.
+4. Then delete the secret `SUPABASE_DB_URL`. (Restoring needs the full login: take it from Supabase → Connect then.)
+

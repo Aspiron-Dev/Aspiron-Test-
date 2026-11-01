@@ -94,7 +94,7 @@ A.edit = async (sid) => {
   UI.modal({
     title: isDef ? 'Default approval message' : 'Approval message', size: 'xwide',
     sub: isDef ? 'Used for every series that has no message of its own.' : ser.title + ' — sent when you approve a payment for this series. Only these students get it.',
-    body: h`${notReady()}<form id="am" class="col gap16" onsubmit="return false">
+    body: h`${notReady()}<form id="am" class="col gap16">
       ${AX.f.input({ name: 'tg', label: 'Telegram channel link' + (isDef ? ' (default)' : ' for this series'), value: r0 ? r0.tg : '', max: 200, inputmode: 'url', disabled: !m,
         placeholder: isDef ? (cfgTg() || 'https://t.me/…') : (defTg ? 'Empty = default: ' + defTg : 'https://t.me/…'),
         hint: isDef ? 'Used when a series has no link of its own. Empty = the link in config.js' + (cfgTg() ? ' (' + cfgTg() + ')' : '') + '.' : 'Put this series’ own channel here (e.g. the Biology channel for the Biology series). Empty = the default link.' })}

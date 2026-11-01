@@ -327,7 +327,7 @@ AX.addPayment = async (o = {}) => {
   UI.modal({
     title: p ? 'Edit payment' : 'Add payment', sub: p ? 'Store orders cannot be edited here; this one was added by hand.' : 'For money a student paid you directly — for example before the store existed.',
     icon: h`<span class="pill gold" style="height:28px;width:28px;padding:0;justify-content:center">${icon('wallet', 15)}</span>`,
-    body: h`<form id="pf" class="col gap16" autocomplete="off" onsubmit="return false">
+    body: h`<form id="pf" class="col gap16" autocomplete="off">
       <div class="fld"><label>Student</label><div id="pf-sel">${selHtml(sel)}</div><div class="err" data-err="student"></div></div>
       <div class="fld"><label for="f-amount">Amount ₹</label><input class="inp" id="f-amount" name="amount" type="number" min="0" step="1" inputmode="numeric" placeholder="e.g. 250" value="${p ? p.amount : ''}">
         <div class="px-quick">${join([250, 199, 299, 499], v => h`<button type="button" class="btn xs" data-act="amt" data-v="${v}">₹${v}</button>`)}<button type="button" class="btn xs" data-act="amt" data-v="0">Free (₹0)</button></div><div class="err" data-err="amount"></div></div>
