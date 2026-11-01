@@ -219,6 +219,20 @@ S.editAmount = async (code) => {
 };
 AX.editOrderAmount = code => S.editAmount(code);
 
+/* ---------- delete an order for good (v44), whatever its status ---------- */
+S.deleteOrder = async (code) => {
+  if (!AX.can('store', 'manage')) return UI.toast('Needs full access to Store & orders.', { tone: 'warn' });
+  const o = S.cur && S.cur.orders.find(x => x.code === code); if (!o) return;
+  const paid = o.status === 'paid';
+  if (!(await UI.confirm({ title: 'Delete order ' + o.code + '?', tone: 'danger', yes: 'Delete order',
+    text: (o.name || 'Student') + ' · ' + (o.item_title || '') + ' · ' + fmt.inr(o.amount) + '. The order is removed for good.' + (paid ? ' Its payment stops counting in Payments and totals. The series stays unlocked — remove it on the student’s page if needed.' : '') }))) return;
+  const r = await AX.api.call('cbt_admin_edit', 'order_delete', { code: o.code });
+  if (!r.ok) return UI.err(r.error === 'action' ? { ok: false, error: 'missing' } : r, 'supabase_v44_edit_details.sql');
+  S.cur.orders = S.cur.orders.filter(x => x.code !== o.code);
+  UI.toast('Order ' + o.code + ' deleted'); S.changed();
+};
+AX.deleteOrder = code => S.deleteOrder(code);
+
 /* ---------- note ---------- */
 S.note = async (code) => {
   const o = S.cur && S.cur.orders.find(x => x.code === code); if (!o) return;
@@ -248,7 +262,7 @@ function orderCard(o, D, full) {
     ${dup ? h`<div class="callout bad sm">${icon('alert', 16)}<div>This UTR is also in another order — check carefully.</div></div>` : ''}
     ${twin ? h`<div class="callout warn sm">${icon('info', 16)}<div>Already approved for this series in order <b class="mono">${twin.code}</b>. Approving again counts the money twice.</div></div>` : ''}
     ${o.contact_n || o.note ? h`<div class="oc-fol">${o.contact_n ? h`<div class="row gap6">${icon('phone', 14)}<span>Contacted ${o.contact_n}× · last ${fmt.ago(o.contacted_at)}</span></div>` : ''}${o.note ? h`<div class="row top gap6">${icon('edit', 14)}<span class="oc-note">${o.note}</span></div>` : ''}</div>` : ''}
-    <footer class="oc-f"><div class="oc-con">${S.contactBar(o.mobile, msg, o.code)}${man ? h`<button class="ibtn line" data-act="note" data-code="${o.code}" title="Note" aria-label="Note">${icon('edit', 17)}</button>` : ''}</div><div class="oc-act">${acts}</div></footer>
+    <footer class="oc-f"><div class="oc-con">${S.contactBar(o.mobile, msg, o.code)}${man ? h`<button class="ibtn line" data-act="note" data-code="${o.code}" title="Note" aria-label="Note">${icon('edit', 17)}</button><button class="ibtn line" data-act="odel" data-code="${o.code}" title="Delete this order" aria-label="Delete this order" style="color:var(--bad)">${icon('trash', 17)}</button>` : ''}</div><div class="oc-act">${acts}</div></footer>
   </article>`;
 }
 function reqCard(s, D) {
@@ -256,7 +270,7 @@ function reqCard(s, D) {
   return h`<article class="card oc s-req">
     <header class="row top">${UI.avatar(s.name, s.mobile)}<div class="grow"><b class="ell" style="display:block;font-size:15px">${s.name || 'Student'}</b><div class="xs mut">${fmt.mobile(m10(s.mobile))} · asked ${fmt.ago(s.created)}</div></div>${UI.pill('Access request', 'info', true)}</header>
     ${o ? h`<div class="callout info sm">${icon('cart', 16)}<div>Also has a store order: <b>${o.item_title}</b> · ${fmt.inr(o.amount)} · ${o.status === 'paid' ? 'approved' : (o.payer || o.utr) ? 'payment done' : 'not paid'} <a href="#" data-act="open" data-code="${o.code}">Open</a></div></div>` : h`<p class="sm mut">New student from the website. Approve to make their access code, then give the paid series from an order or their page.</p>`}
-    <footer class="oc-f"><div class="oc-con">${S.contactBar(s.mobile, S.reqMsg(s), '')}</div><div class="oc-act">${man ? h`<button class="btn sm ghost" data-act="rreject" data-id="${s.id}">${icon('x', 15)} Reject</button><button class="btn sm pri" data-act="rapprove" data-id="${s.id}" data-busy="Approving…">${icon('key', 15)} Approve & get code</button>` : ''}</div></footer>
+    <footer class="oc-f"><div class="oc-con">${S.contactBar(s.mobile, S.reqMsg(s), '')}</div><div class="oc-act">${man ? h`<button class="btn sm ghost" data-act="rdel" data-id="${s.id}" title="Remove the request (they can ask again)">${icon('trash', 15)} Delete</button><button class="btn sm ghost" data-act="rreject" data-id="${s.id}" title="Remove and stop this number from asking again">${icon('ban', 15)} Reject</button><button class="btn sm pri" data-act="rapprove" data-id="${s.id}" data-busy="Approving…">${icon('key', 15)} Approve & get code</button>` : ''}</div></footer>
   </article>`;
 }
 // actions shared by the list and the order drawer
@@ -283,6 +297,8 @@ function cardActs(root, after) {
     student: el => S.openStudent(el.dataset.m),
     note: el => S.note(el.dataset.code),
     amt: el => S.editAmount(el.dataset.code),
+    odel: el => S.deleteOrder(el.dataset.code),
+    rdel(el) { const s = (S.cur.students || []).find(x => x.id === el.dataset.id); if (!s) return; if (AX.rejectRequest) return AX.rejectRequest([s.id], 'delete'); S.rejectReq(s); },
     rapprove: el => UI.busy(el, () => S.approveReq(el.dataset.id)),
     rreject(el) { const s = (S.cur.students || []).find(x => x.id === el.dataset.id); if (s) S.rejectReq(s); }
   });

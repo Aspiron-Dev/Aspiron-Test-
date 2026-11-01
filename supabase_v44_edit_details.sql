@@ -10,6 +10,7 @@
 --    "Delete" only removes the request. Admin → Students → Access requests → Rejected numbers → Allow again.
 --  • Store orders: the admin can correct an order's amount (e.g. ₹399 → ₹250 that was really paid), with a note.
 --    The first amount is kept and shown as "was ₹399".
+--  • Store orders: any order (to verify, not paid, approved, rejected) can be deleted for good.
 --  Run in Supabase → SQL Editor after v43, then run supabase_v35_admin_team.sql again. Safe to run again.
 --  Re-run this file after re-running v34 or v42 (they replace cbt_request_access).
 -- =====================================================================
@@ -99,6 +100,7 @@ revoke all on function cbt_private.clean_email(text) from public, anon, authenti
 --  req_blocked                              → the rejected numbers
 --  req_allow   {mobile}                     → the number can ask again
 --  order_edit  {code, amount, note}         → corrects a store order's amount
+--  order_delete {code}                      → deletes a store order for good (any status); access already given stays
 create or replace function public.cbt_admin_edit(p_pw text, p_action text, p_data jsonb default '{}'::jsonb)
 returns jsonb language plpgsql security definer set search_path = cbt_private, public, pg_temp as $$
 declare a jsonb; d jsonb := coalesce(p_data, '{}'::jsonb); s record; v_sid uuid; v_e text; v_nm text; v_em text;
@@ -170,6 +172,13 @@ begin
            amount_note = left(btrim(regexp_replace(coalesce(d->>'note', ''), '[<>\r\t]', '', 'g')), 200)
      where code = v_code;
     return jsonb_build_object('ok', true, 'amount', v_amt);
+  end if;
+
+  if p_action = 'order_delete' then
+    v_code := upper(btrim(coalesce(d->>'code', '')));
+    delete from public.cbt_store_orders where code = v_code;
+    if not found then return jsonb_build_object('ok', false, 'error', 'order'); end if;
+    return jsonb_build_object('ok', true);
   end if;
 
   return jsonb_build_object('ok', false, 'error', 'action');
