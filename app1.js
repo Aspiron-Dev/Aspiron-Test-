@@ -215,8 +215,8 @@ async function doRequest(){
   const r=await rpc('cbt_request_access',{p_name:n,p_mobile:m},true);
   if(!r.ok){$('#er').textContent=r.error==='blocked'?'Your access has been blocked. Please contact the admin.':r.error==='busy'?'Too many pending requests right now. Please try again later.':errText(r);b.disabled=false;b.textContent='Send request';return}
   const wa=waLink(`Hi, I am ${n} (${m}). I have requested access to ${CFG.SITE_NAME||'the test series'}.`);
-  const msg=r.status==='approved'?`<h2>You are already approved</h2><p class="mut">Go back and sign in with your access code. If you lost your code, ask the admin for a new one.</p>`
-    :`<h2>Request sent ✓</h2><p class="mut">The admin will review your request. After approval you will receive an access code on your mobile. Then come back here and sign in.</p>`;
+  // the server gives the same answer for every number (it never says whether a number already has an account)
+  const msg=`<h2>Request received ✓</h2><p class="mut">If this number is new, the admin will review your request and send you an access code. If you already have an account, go back and sign in with your code; lost it? Message the admin for a new one.</p>`;
   $('#rq').innerHTML=`<div class="logo" style="background:var(--ok)">${ic('check',26)}</div>${msg}
     ${wa?`<a class="btn soft block" style="margin:8px 0;text-decoration:none" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Message the admin</a>`:''}
     <button class="btn block" onclick="login()">Back to sign in</button>`;

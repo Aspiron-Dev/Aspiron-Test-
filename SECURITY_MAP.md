@@ -1,6 +1,6 @@
 # Security map — Aspiron CBT
 
-Snapshot of `main` (2026-11-01, after v42, v43 and v35.3). Documentation only: nothing here changes how the app works.
+Snapshot of `main` (2026-11-01, after v42, v43, v44, v45 and v35.3). Documentation only: nothing here changes how the app works.
 Legend: **[T]** = a test was run on a local copy of the database (production base export + every repo SQL file, fake data only) or in Chromium · **[C]** = code read only · **[P]** = needs a look at production (no access from here).
 
 ---
@@ -128,6 +128,38 @@ None. The code never uses Supabase Storage **[C]** (no `storage/v1` call). PDFs,
 | 21 | Backups on | **PASS** | `db-backup.yml` run #8 succeeded with 1 artifact (owner's screenshot, 2026-11-01). Free plan: no Supabase backups/PITR. |
 | 22 | Security Advisor warnings fixed | **NEEDS REVIEW** [P] | Every function now has a fixed search path and every private table has RLS (v35.3) [T]. Expected left: "RLS enabled, no policy" (INFO, intended: no direct table access). Needs a screenshot from production. |
 
+### C. Auth & admin
+| # | Check | Status | Evidence |
+|---|---|---|---|
+| 23 | Server-side authentication on every protected function | **PASS** [T] | All 37 student RPCs with a wrong code → none answers ok (only `cbt_logout`, which does nothing without a valid token). 96 admin calls with bad credentials → all refused. |
+| 24 | User id from the verified session, never from the request | **PASS** [T] | Student id comes from `cbt_private.auth`, admin/member from the `as1.` session; no RPC takes a student id. v45: test alerts and push subscriptions store the verified 10-digit number, not the raw text sent. |
+| 25 | Admin actions checked on the server | **PASS** [T] | Per-module permission in `admin_session_ok`/`admin_need` (v35); a view-only member gets `forbidden` for delete, payments, store, file times. |
+| 26 | MFA for admin accounts | **PASS** [T] | Owner: TOTP on. Team: the owner can now **require** it (Team & access → "Require two-step sign-in"); until then a member gets `need_2fa_setup` for everything but setting it up (v35.3). |
+| 27 | Generic login / sign-up errors | **PASS** [T] | Unknown mobile and wrong code → same `invalid`; unknown team username and wrong password → same `invalid`. v45: the access-request form answers `received` for new, existing and rejected numbers alike. (`pending`/`locked` are still shown at sign-in so a waiting student knows why.) |
+| 28 | Password hashing; no passwords in logs or answers | **PASS** [T] | Admin/team: bcrypt (v35.3). Student codes: salted sha256 (32-bit codes), phones keep tokens instead. Audit log stores names, never passwords. |
+| 29 | Password policy, weak/breached passwords blocked | **PASS** [T] | 10+ chars, letters + numbers, obvious words blocked (server, `adm_pw_weak`). New admin/team passwords are also checked against haveibeenpwned (k-anonymity: only 5 hex chars of the SHA-1 leave the browser; `cx/m-team.js`). |
+| 30 | Reset / magic / verification links | **N/A** | No e-mail links exist: owner resets via SQL Editor (`set_admin_password`), members via the owner, students get a new code from the admin. |
+| 31 | Links built from APP_URL, not Host header | **N/A** | Static site, no server building links; messages use `config.js` `SHORT_URL`. |
+| 32 | Redirect allowlist / no open redirect | **PASS** [C] | No redirect parameter is read anywhere; navigation is hash routes inside the app. |
+| 33 | Session cookies HttpOnly/Secure/SameSite | **N/A** | No cookies. Admin sessions expire after 7 days unused (30 days max); student tokens after 180 days unused. |
+| 34 | Logout and password change end sessions | **PASS** [T] | Admin logout revokes the session; owner/member password change signs out other sessions; `set_admin_password` (SQL Editor reset) now signs the owner out everywhere (v35.3). Student sign-out revokes the token; a new code from the admin ends all tokens. |
+| 35 | No sensitive token in localStorage (or risk understood) | **PASS** (risk accepted) | Student token and "keep me signed in" admin session are in localStorage (needed without cookies/server). Mitigations: escaped output everywhere, tokens revocable, expiring, bound to the phone id (students), 2FA for admins. |
+| 36 | No seed/test/debug/demo routes in production | **PASS** [C] | Only the 5 pages listed; no test page, no debug endpoint (`send-push` `mode:"info"` returns only true/false for secrets being set). |
+
+### D. Input & frontend
+| # | Check | Status | Evidence |
+|---|---|---|---|
+| 37 | Server-side validation (type, length, range, enum) | **PASS** [C] | Every student/public RPC trims and limits lengths, checks formats (mobile, UTR, e-mail, push endpoint), ranges (rating 1–5, qidx) and enums (report kind, language); unknown JSON keys are ignored (never stored). |
+| 38 | Mass assignment (role, score) | **PASS** [T] | `{"score":999}` ignored; no RPC writes a client object to a table; member permissions are filtered to known modules/levels. |
+| 39 | XSS (questions, names, comments, innerHTML) | **PASS** [T] | Student app `esc()`, admin console `AX.h` (auto-escape); names/notes stripped of `<>"\`` on the server. |
+| 40 | User links only http/https | **PASS** [T] | Notices `safeUrl` (http/https), banners now http/https or an app page `#/…` only (`app8.js`, was able to take `javascript:`). |
+| 41 | SQL injection | **PASS** [T] | All RPC parameters are bound; dynamic SQL only via `format(%I, %L)`; `' or 1=1--` attempts fail. |
+| 42 | CSRF / state-changing GET | **N/A** | No cookies; every call is a POST RPC. |
+| 43 | File upload: type by bytes, size, no SVG/HTML | **PASS** [T] | Admin uploads: PDF, PNG, JPEG, WebP only (no SVG); photos re-encoded; review photos `data:image/(jpeg|png|webp)` ≤30 KB. Student app now checks a file's first bytes: only a real PDF/photo can be viewed, anything else is a download only. Store files: type allowlist. Files live in the DB (no public bucket). |
+| 44 | Bulk question upload, formula injection | **PASS** [C] | Admin-only import (PDF/Word/text via pdf.js/JSZip, eval off). CSV exports prefix `= + - @` (`cx/core.js:296`). |
+| 45 | SSRF | **PASS** [T] | The only server-side fetch is `send-push` → push endpoints, now limited to Google/Mozilla/Apple/Microsoft push hosts in the DB (v45) and in the function. |
+| 46 | No console.log / debug / secrets in comments | **PASS** [T] | No `console.log`/`debug` in app code; history scan found no secrets. |
+
 ## 9. Findings
 | # | Sev | Finding | Fix idea | Verify |
 |---|---|---|---|---|
@@ -139,6 +171,8 @@ None. The code never uses Supabase Storage **[C]** (no `storage/v1` call). PDFs,
 | G6 | Low · open | The backup secret is the full `postgres` login: if GitHub secrets leak, the whole DB can be changed. | A read-only role `backup_ro` (SELECT + USAGE only) for `SUPABASE_DB_URL`. | Backup still green; `backup_ro` cannot update. |
 | G7 | Info · limited by G1 | Practice tests send answers at start, and any submit returns that test's key, so keys can be shared between students. | Product rule; limit with G1. | – |
 | G8 | Info · **fixed v35.3** | `cbt_private` tables have RLS off (safe today because the schema is not exposed). | `alter table … enable row level security` on all of them (owner functions keep working). | Advisor / query shows RLS on. |
+| G9 | Medium · **fixed v45** | A student could change their own mobile number (v44) to a buyer's number before the order was approved, so the purchase would land on their account. | A student cannot take a number that has a store order, "Notify me", rejected request or another student's previous number (90 days). | Change to a buyer's number → `taken`. |
+| G10 | Low · **fixed** | Banner links accepted `javascript:`; a file uploaded as HTML/SVG could run script when a student pressed "View"; push endpoints could point at any server (SSRF). | http/https or `#/` links only; first-byte check before viewing; push host allowlist (v45 + `send-push`). | Browser + DB tests. |
 
 ## 10. Needs a look in production (read-only)
 1. Supabase → **Advisors → Security Advisor**: screenshot of the list (B22).

@@ -189,6 +189,7 @@ AX.errText = (r, what) => {
     disabled: 'This team account is paused by the owner.', not_set: 'The admin password is not set yet.',
     need_2fa: 'Two-step sign-in is on: sign in with your password and code.', current_pw: 'The password is wrong.',
     otp_invalid: 'Wrong code. Use the newest code in your authenticator app.', otp_locked: 'Too many wrong codes. Try again in 15 minutes.',
+    need_2fa_setup: 'The owner requires two-step sign-in. Turn it on in Settings → Two-step sign-in first.',
     session: 'Sign out and sign in again first.', setup_expired: 'The set-up took too long. Please start again.',
     pw_locked: 'Too many wrong passwords. Try again in 15 minutes.',
     bad_request: 'The server rejected this request' + (r && r.detail ? ': ' + r.detail : '.')

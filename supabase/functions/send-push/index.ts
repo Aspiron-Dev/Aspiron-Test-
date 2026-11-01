@@ -29,6 +29,8 @@ const cors = {
 const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 
 const PAGE_MAX = 200;    // phones per call at most
+// only the real push services get a request; any other saved address is skipped (no requests to other servers)
+const PUSH_HOST = /^https:\/\/(fcm\.googleapis\.com|android\.googleapis\.com|updates\.push\.services\.mozilla\.com|web\.push\.apple\.com|[a-z0-9.-]+\.push\.apple\.com|[a-z0-9.-]+\.notify\.windows\.com)\//i;
 const DUE_ALERTS = 100;  // "LIVE now" alerts per worker per minute
 const AT_ONCE = 25;      // notifications in flight at the same time
 
@@ -79,7 +81,7 @@ async function handle(req: Request): Promise<Response> {
   for (;;) {
     const page = await targets(db, series, after, limit);
     if (page.error) return json({ ok: false, error: page.error, detail: page.detail }, 500);
-    const list = page.rows;
+    const list = page.rows.filter((s) => PUSH_HOST.test(s.endpoint));
     total += list.length;
     await sendMany(list.map((s) => ({ s, payload, ttl: 86400 })), st);
     if (list.length) after = list[list.length - 1].endpoint;
@@ -202,7 +204,8 @@ async function dueAlerts(db: DB, pub: string, priv: string, worker: number) {
   if (!due.length) return json({ ok: true, alerts: 0, sent: 0 });
 
   const mobiles = [...new Set(due.map((d) => d.mobile))];
-  const { data: subs } = await db.from("cbt_push_subs").select("endpoint,mobile,p256dh,auth").in("mobile", mobiles);
+  const { data: all } = await db.from("cbt_push_subs").select("endpoint,mobile,p256dh,auth").in("mobile", mobiles);
+  const subs = ((all || []) as Sub[]).filter((s) => PUSH_HOST.test(s.endpoint));
 
   const st: Stats = { sent: 0, removed: 0, failed: 0, codes: {}, sample: [], dead: [], why: new Set() };
   // per alert: delivered to at least one phone? / only passing problems?
