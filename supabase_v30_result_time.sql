@@ -23,12 +23,12 @@ alter table cbt_private.tests add column if not exists result_at bigint;
 -- true while a test's score and answer key are held back
 create or replace function cbt_private.res_hidden(p_test uuid)
 returns boolean language sql stable security definer set search_path = cbt_private, pg_temp as $$
-  select exists(select 1 from tests t where t.id = p_test and not t.practice and t.result_at is not null and t.result_at > now_ms())
+  select exists(select 1 from tests t where t.id = p_test and not t.practice and coalesce(t.result_at, t.closes_at) > now_ms())   -- v47: or "Live ends"
 $$;
 -- same check for a test id given as text (mistake rows); true = may be shown
 create or replace function cbt_private.res_visible(p_test text)
 returns boolean language sql stable security definer set search_path = cbt_private, pg_temp as $$
-  select not exists(select 1 from tests t where t.id::text = p_test and not t.practice and t.result_at is not null and t.result_at > now_ms())
+  select not exists(select 1 from tests t where t.id::text = p_test and not t.practice and coalesce(t.result_at, t.closes_at) > now_ms())   -- v47: or "Live ends"
 $$;
 -- what a student gets back for a held-back result: saved, but no score and no answer key
 create or replace function cbt_private.hidden_result(r cbt_private.results)

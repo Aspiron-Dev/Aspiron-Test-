@@ -95,6 +95,14 @@ async function rpcRoute(route) {
     ok(await page.$('#tb_students') !== null, tag + ' backup panel opens with a recovery code');
     await page.goto(BASE + 'cp-dt764twzf54s5m.html#/team/members'); await page.waitForTimeout(1500);
     ok(/2-step on/.test(await page.textContent('#ax-page')), tag + ' team page shows owner 2-step on');
+    // R3: security alerts (the recovery code and the wrong code above), shown safely, and the bell counts them
+    await q(`select cbt_private.sec_event('team_changed','high','<img src=x onerror="window.__x=1">','<b>x</b>')`);
+    await page.goto(BASE + 'cp-dt764twzf54s5m.html#/team/alerts'); await page.waitForTimeout(1500);
+    const al = await page.textContent('#ax-page');
+    ok(/Recovery code used/.test(al) && /Wrong two-step code/.test(al), tag + ' security alerts list the recovery code and wrong code');
+    ok(!(await page.evaluate(() => window.__x)) && await page.$('#ax-page img[src=x]') === null, tag + ' alert text is shown as text, not HTML');
+    await page.click('[data-act=seen]'); await page.waitForTimeout(1200);
+    ok((await q(`select count(*)::int n from cbt_private.security_events where level = 'high' and not seen`))[0].n === 0, tag + ' mark as seen works');
     ok(!errs.length, tag + ' no page errors ' + errs.join(' | '));
     await ctx.close();
   }

@@ -17,7 +17,7 @@ const ROLES = [
 ];
 // readable names for the activity log
 const ACT = {
-  'session:sign_in': 'Signed in', 'session:sign_out': 'Signed out',
+  'session:sign_in': 'Signed in', 'session:sign_out': 'Signed out', 'cbt_admin_security:seen': 'Marked security alerts as seen',
   'cbt_admin:student_add': 'Added a student', 'cbt_admin:student_approve': 'Approved an access request', 'cbt_admin:student_code': 'Made a new access code',
   'cbt_admin:student_block': 'Blocked / unblocked a student', 'cbt_admin:student_devices_reset': 'Reset devices', 'cbt_admin:student_update': 'Edited a student',
   'cbt_admin:student_delete': 'Deleted a student', 'cbt_admin:grant': 'Changed series access', 'cbt_admin:series_save': 'Saved a series', 'cbt_admin:series_delete': 'Deleted a series',
@@ -66,11 +66,12 @@ AX.mod({
     if (!AX.isOwner()) return renderSelf(ctx);
     const tab = ctx.parts[0] || 'members';
     ctx.head({ title: 'Team & access', sub: 'Give each person only the access they need. Every change is checked by the database and written to the activity log.',
-      tabs: [{ id: 'members', title: 'Members', icon: 'users' }, { id: 'sessions', title: 'Where signed in', icon: 'device' }, { id: 'activity', title: 'Activity log', icon: 'history' }, { id: 'security', title: 'Password', icon: 'key' }], tab,
+      tabs: [{ id: 'members', title: 'Members', icon: 'users' }, { id: 'sessions', title: 'Where signed in', icon: 'device' }, { id: 'activity', title: 'Activity log', icon: 'history' }, { id: 'alerts', title: 'Security alerts', icon: 'shield' }, { id: 'security', title: 'Password', icon: 'key' }], tab,
       actions: tab === 'members' ? h`<button class="btn pri" data-act="add">${icon('userPlus', 17)} Add member</button>` : tab === 'sessions' ? h`<button class="btn danger" data-act="outAll">${icon('logout', 16)} Sign out everyone else</button>` : '' });
     const ph = document.getElementById('ax-ph');
     if (ph && !ph.__w) { ph.__w = 1; AX.act(ph, { add: () => editMember(null, ctx), outAll: () => revokeAll(ctx) }); }
     if (tab === 'security') return security(ctx);
+    if (tab === 'alerts') return alerts(ctx);
     AX.set(ctx.el, UI.skeleton(4));
     const r = await load(true);
     if (!ctx.alive()) return;
@@ -79,7 +80,13 @@ AX.mod({
     if (tab === 'activity') return activity(ctx);
     members(ctx);
   },
-  attention() { return []; },
+  // owner only: serious security alerts not opened yet (supabase_v47_alerts_results.sql)
+  async attention() {
+    if (!AX.isOwner() || AX.session.legacy) return [];
+    const r = await AX.api.call('cbt_admin_security', 'count');
+    const n = r.ok ? r.unseen || 0 : 0;
+    return n ? [{ title: 'Security alerts', sub: 'Wrong passwords, lock-outs, team or 2FA changes', count: n, go: '#/team/alerts', icon: 'shield', tone: 'bad', badge: true }] : [];
+  },
   search(q) {
     if (!AX.isOwner() || AX.session.legacy) return [];
     return T.users.filter(u => (u.name + ' ' + u.username).toLowerCase().includes(q)).map(u => ({ g: 'Team', title: u.name, sub: '@' + u.username, icon: 'team', go: '#/team/members' }));
@@ -307,6 +314,32 @@ function activity(ctx) {
     async more(b) { await UI.busy(b, async () => { const r = await AX.api.call('cbt_admin_team', 'get', { before: T.audit[T.audit.length - 1].id }); if (r.ok) { const old = r.audit || []; T.more = old.length >= 300; T.audit = T.audit.concat(old.filter(a => !T.audit.some(x => x.id === a.id))); activity(ctx); } }); }
   });
   AX.act(ctx.el, { who: el => AX.go('team/activity', Object.assign({ f }, el.value ? { who: el.value } : {})) }, 'change');
+}
+
+/* ---------- security alerts (owner) ---------- */
+const SEC = {
+  owner_wrong_password: 'Wrong owner password', team_wrong_password: 'Wrong team password', wrong_2fa: 'Wrong two-step code',
+  sign_in_locked: 'Sign-in locked (10 wrong tries)', sign_in_paused: 'Sign-in paused (100 wrong passwords in an hour)',
+  '2fa_locked': 'Two-step code locked', '2fa_off': 'Two-step sign-in turned off', recovery_code_used: 'Recovery code used',
+  team_changed: 'Team member added / changed / removed', owner_password_changed: 'Owner password changed',
+  new_place_sign_in: 'Sign-in from a new place', member_access_or_money: 'Member gave access / changed orders or payments',
+  refused: 'Refused (no permission)', student_locked: 'Student locked out (wrong codes)', busy: 'Student sent too many requests'
+};
+const secName = k => k.startsWith('many:') ? 'Many: ' + (SEC[k.slice(5)] || k.slice(5)).toLowerCase() : SEC[k] || k;
+async function alerts(ctx) {
+  const days = +(ctx.q.d || 7);
+  AX.set(ctx.el, UI.skeleton(4));
+  const r = await AX.api.call('cbt_admin_security', 'get', { days });
+  if (!ctx.alive()) return;
+  if (!r.ok) { AX.set(ctx.el, UI.errorBox(r, 'supabase_v47_alerts_results.sql')); AX.act(ctx.el, { retry: () => ctx.reload() }); return; }
+  const L = r.events || [], C = Object.entries(r.counts || {}).sort((a, b) => b[1] - a[1]);
+  AX.set(ctx.el, h`<div class="callout ${r.unseen ? 'bad' : 'info'}">${icon(r.unseen ? 'alert' : 'shieldCheck')}<div class="sm">${r.unseen ? h`<b>${fmt.plural(r.unseen, 'new alert')}.</b> Check each one. Not you? Sign everyone else out (Where signed in), change the password and see SECURITY_RUNBOOK.md.` : 'No new alerts.'} Serious alerts also send you a GitHub e-mail ("Security alerts" check failed).</div></div>
+    <div class="row wrap gap16" style="margin:16px 0"><div class="chips">${join([[1, '24 hours'], [7, '7 days'], [30, '30 days']], ([k, l]) => h`<a class="chip ${days === k ? 'on' : ''}" href="${AX.link('team/alerts', { d: k })}">${l}</a>`)}</div>
+      <span class="grow"></span>${r.unseen ? h`<button class="btn sm" data-act="seen">${icon('check', 15)} Mark all as seen</button>` : ''}</div>
+    ${C.length ? h`<div class="card pad0 list">${join(C, ([k, n]) => h`<div class="li"><div class="grow"><div class="t">${secName(k)}</div></div><span class="pill ${k.startsWith('many:') || ['sign_in_locked', 'sign_in_paused', '2fa_locked', '2fa_off', 'recovery_code_used', 'team_changed', 'owner_password_changed'].includes(k) ? 'bad' : ''}">${n}</span></div>`)}</div>` : ''}
+    <div class="card mt16">${L.length ? h`<div class="timeline">${join(L, a => h`<div class="tl-i ${a.level === 'high' ? 'bad' : a.level === 'info' ? 'mut' : 'gold'}"><div class="row wrap gap6"><b>${secName(a.kind)}</b>${a.who ? h`<span class="tx2">${a.who}</span>` : ''}${a.detail ? h`<span class="pill">${a.detail}</span>` : ''}${a.level === 'high' && !a.seen ? UI.pill('New', 'bad') : ''}</div><div class="xs mut">${fmt.day(a.at)} ${fmt.time(a.at)}${a.ip ? ' · ' + a.ip : ''}</div></div>`)}</div>`
+      : UI.empty({ icon: 'shieldCheck', title: 'Nothing in this period', text: 'Wrong passwords, lock-outs, refused actions and team changes show up here.' })}</div>`);
+  AX.act(ctx.el, { async seen(b) { await UI.busy(b, async () => { const x = await AX.api.call('cbt_admin_security', 'seen'); if (!x.ok) return UI.err(x); UI.toast('Marked as seen'); AX.emit('data:changed'); ctx.reload(); }); } });
 }
 
 /* ---------- owner password ---------- */
