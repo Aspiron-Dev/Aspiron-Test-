@@ -117,6 +117,8 @@ async function draw(skel, keepFocus) {
   if (!ctx.alive()) return;
   if (!cat || !cat.ok) { ctx.head({ title: 'Test studio' }); AX.set(ctx.el, UI.errorBox(cat || {})); return; }
   C = cat; if (!C.practice) C.practice = new Set();
+  await AX.lang.load();   // medium of each series + Hindi of each test (v41); an error only hides the badges
+  if (!ctx.alive()) return;
   const f = document.getElementById('ts-q'), had = keepFocus && f && document.activeElement === f, pos = had ? f.selectionStart : 0;
   if (CUR.view === 'series') vSeries(ctx); else if (CUR.view === 'all') vAll(ctx); else vLib(ctx);
   if (had) { const n = document.getElementById('ts-q'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} } }
@@ -144,7 +146,7 @@ function vLib(ctx) {
     </div>
     ${drafts.length ? h`<div class="card pad0 mt16"><div class="card-h" style="padding:14px 16px 4px">${icon('history')}<h3>Unpublished drafts on this device</h3><span class="grow"></span><span class="xs mut">Kept automatically</span></div><div class="list">${join(drafts, d => h`<div class="li"><span class="ts-ic gold">${icon('edit', 17)}</span><div class="grow"><div class="t ell">${d.title}</div><div class="s">${d.id ? 'Changes to a published test' : 'New test'} · ${fmt.plural(d.count, 'question')} · saved ${fmt.ago(d.at)}</div></div><button class="btn xs ghost" data-act="dropDraft" data-k="${d.key}">Discard</button><button class="btn xs soft" data-act="draft" data-k="${d.key}" data-id="${d.id || ''}">Continue</button></div>`)}</div></div>` : ''}
     <div class="ts-tool"><div class="inp-wrap search">${icon('search', 16)}<input class="inp sm" id="ts-q" type="search" placeholder="Find a series or test…" value="${CUR.q}" autocomplete="off" aria-label="Find a series or test"></div><span class="grow"></span>
-      ${m && C.series.length > 1 ? h`<button class="btn sm ghost" data-act="reorderS">${icon('sort', 15)} Reorder series</button>` : ''}</div>
+      <button class="btn sm ghost" data-act="amsgAll">${icon('msg', 15)} Approval messages</button>${m && C.series.length > 1 ? h`<button class="btn sm ghost" data-act="reorderS">${icon('sort', 15)} Reorder series</button>` : ''}</div>
     ${C.series.length ? h`<div class="ts-grid">${join(ser, card)}${m && !q ? h`<button class="ts-new" data-act="newSeries"><span class="e-ic">${icon('plus', 22)}</span>New series<span class="xs mut" style="font-weight:600">e.g. NEET Test Series 2027</span></button>` : ''}</div>
       ${!ser.length ? h`<div class="card">${UI.empty({ icon: 'search', title: 'Nothing matches', text: 'Try another name.' })}</div>` : ''}`
       : h`<div class="card">${UI.empty({ icon: 'layers', title: 'No series yet', text: 'Create your first series, for example “NEET Test Series”. Then add folders and tests to it.', action: m ? h`<button class="btn pri" data-act="newSeries">${icon('plus', 16)} Create a series</button>` : '' })}</div>`}
@@ -157,7 +159,7 @@ function card(s) {
     ${cover(s)}
     <div class="ts-sb"><div class="ts-t">${s.title}</div>${s.description ? h`<div class="xs mut ell">${s.description}</div>` : ''}
       <div class="ts-cnt">${fmt.plural(F.length, 'folder')} · ${fmt.plural(T.length, 'test')} · ${fmt.num(T.reduce((a, t) => a + (t.questions || 0), 0))} questions</div>
-      <div class="row gap6 wrap">${live ? h`<span class="pill ok"><span class="live-dot"></span> ${live} live</span>` : ''}${sch ? UI.pill(sch + ' scheduled', 'info') : ''}${dr ? UI.pill(dr + ' draft' + (dr > 1 ? 's' : '')) : ''}${pr ? UI.pill(pr + ' to fix', 'warn') : ''}${(s.files || []).length ? UI.pill(fmt.plural(s.files.length, 'file'), '') : ''}</div></div>
+      <div class="row gap6 wrap">${live ? h`<span class="pill ok"><span class="live-dot"></span> ${live} live</span>` : ''}${sch ? UI.pill(sch + ' scheduled', 'info') : ''}${dr ? UI.pill(dr + ' draft' + (dr > 1 ? 's' : '')) : ''}${pr ? UI.pill(pr + ' to fix', 'warn') : ''}${(s.files || []).length ? UI.pill(fmt.plural(s.files.length, 'file'), '') : ''}${AX.lang.mode(s.id) === 'bi' ? UI.pill('English + हिंदी', 'vio') : ''}</div></div>
     <div class="ts-sf">${canM() ? h`<button class="btn xs soft" data-act="newTestIn" data-sid="${s.id}">${icon('plus', 13)} Test</button>` : ''}<span class="grow"></span><span class="xs mut">Open ${icon('chevR', 13)}</span>
       <button class="ibtn sm" data-act="sMenu" data-id="${s.id}" aria-label="More for ${s.title}">${icon('moreV', 16)}</button></div></article>`;
 }
@@ -202,7 +204,9 @@ function vSeries(ctx) {
       <div class="ts-hb"><div class="row wrap gap6">${s.is_free ? UI.pill('Free for everyone', 'ok') : UI.pill('Paid · ' + (s.price_label || 'unlock per student'), 'gold')}${s.active === false ? UI.pill('Hidden from students', 'warn') : UI.pill('Visible to students', 'pri')}<span class="pill">Order ${s.sort_order || 0}</span></div>
         <div class="row wrap gap20"><div><div class="disp" style="font-size:26px">${T.length}</div><div class="xs mut">tests</div></div><div><div class="disp" style="font-size:26px">${F.length}</div><div class="xs mut">folders</div></div><div><div class="disp" style="font-size:26px">${fmt.num(T.reduce((a, t) => a + (t.questions || 0), 0))}</div><div class="xs mut">questions</div></div><div><div class="disp" style="font-size:26px">${fmt.num(T.reduce((a, t) => a + (t.results || 0), 0))}</div><div class="xs mut">attempts</div></div></div>
         <div class="row wrap gap6">${st.filter(x => x.k === 'live').length ? h`<span class="pill ok"><span class="live-dot"></span> ${st.filter(x => x.k === 'live').length} live now</span>` : ''}${st.filter(x => x.k === 'sched').length ? UI.pill(st.filter(x => x.k === 'sched').length + ' scheduled', 'info') : ''}${(s.files || []).length ? join(s.files, f => UI.pill(f.title + ' · ' + f.kind)) : h`<span class="xs mut">No syllabus or schedule files yet.</span>`}</div>
-        ${m ? h`<div class="row wrap gap6"><button class="btn sm" data-act="media" data-id="${s.id}">${icon('image', 15)} Cover & files</button><button class="btn sm" data-act="newFolder" data-sid="${s.id}">${icon('folder', 15)} New folder</button>${F.length > 1 ? h`<button class="btn sm ghost" data-act="reorderF" data-sid="${s.id}">${icon('sort', 15)} Reorder folders</button>` : ''}</div>` : ''}</div></div>
+        ${m ? h`<div class="row wrap gap6"><button class="btn sm" data-act="media" data-id="${s.id}">${icon('image', 15)} Cover & files</button><button class="btn sm" data-act="newFolder" data-sid="${s.id}">${icon('folder', 15)} New folder</button>${F.length > 1 ? h`<button class="btn sm ghost" data-act="reorderF" data-sid="${s.id}">${icon('sort', 15)} Reorder folders</button>` : ''}</div>` : ''}
+        ${medLine(s, T)}
+        <div class="row wrap gap6"><button class="btn sm" data-act="amsg" data-id="${s.id}">${icon('msg', 15)} Approval message & Telegram</button>${AX.can('messaging', 'manage') ? h`<button class="btn sm" data-act="sNotice" data-id="${s.id}">${icon('bell', 15)} Notice to this series</button><button class="btn sm" data-act="sPush" data-id="${s.id}">${icon('send', 15)} Phone notification</button>` : ''}</div></div></div>
     ${T.length > 6 ? h`<div class="ts-tool"><div class="inp-wrap search">${icon('search', 16)}<input class="inp sm" id="ts-q" type="search" placeholder="Find a test in this series…" value="${CUR.q}" autocomplete="off" aria-label="Find a test"></div></div>` : ''}
     ${!T.length && !F.length ? h`<div class="card mt16">${UI.empty({ icon: 'fileText', title: 'Nothing here yet', text: 'Add a folder (for example “Phase 1” or “Day 1”) or create the first test.', action: m ? h`<div class="row wrap" style="justify-content:center"><button class="btn pri" data-act="newTestIn" data-sid="${s.id}">${icon('plus', 16)} New test</button><button class="btn" data-act="newFolder" data-sid="${s.id}">${icon('folder', 16)} New folder</button></div>` : '' })}</div>` : ''}
     ${join(F, f => { const ft = fT(testsOf(s.id, f.id)); if (q && !ft.length) return ''; return h`<section class="card pad0 ts-fold"><div class="ts-fh"><span class="fi">${icon('folder', 17)}</span><div class="grow"><div class="row gap6 wrap"><b class="ell">${f.title}</b>${f.active === false ? UI.pill('Hidden', 'warn') : ''}</div><div class="xs mut">${fmt.plural(testsOf(s.id, f.id).length, 'test')}</div></div>
@@ -211,12 +215,38 @@ function vSeries(ctx) {
     ${root.length && fT(root).length ? h`<section class="card pad0 ts-fold"><div class="ts-fh"><span class="fi" style="background:var(--pri-soft);color:var(--pri)">${icon('fileText', 17)}</span><div class="grow"><b>${F.length ? 'Not in a folder' : 'Tests'}</b><div class="xs mut">${fmt.plural(root.length, 'test')}</div></div>${m && root.length > 1 ? h`<button class="btn xs ghost" data-act="reorderT" data-sid="${s.id}" data-fid="">${icon('sort', 13)} Reorder</button>` : ''}</div>
       <div class="list">${join(fT(root), t => testRow(t))}</div></section>` : ''}`);
 }
+// the series' medium and how many of its tests have Hindi
+function medLine(s, T) {
+  const bi = AX.lang.mode(s.id) === 'bi', L = AX.lang.last(), ready = T.filter(t => AX.lang.state(t.id) === 'ready').length;
+  const todo = T.filter(t => t.active !== false && AX.lang.state(t.id) !== 'ready').length;
+  if (!L.ok) return L.error === 'missing' ? h`<div class="xs mut">${icon('globe', 13)} Hindi medium: run <span class="mono">supabase_v41_medium.sql</span> in Supabase to turn it on.</div>` : '';
+  return h`<div class="ts-med row wrap gap6"><span class="pill ${bi ? 'vio' : ''}">${icon('globe', 13)} ${bi ? 'English + हिंदी medium' : 'English medium only'}</span>
+    <span class="xs mut">${bi || ready ? ready + ' of ' + fmt.plural(T.length, 'test') + ' ready in Hindi' + (bi && todo ? ' · ' + todo + ' still English only (Hindi students get them in English)' : '') : 'Students all get English.'}</span>
+    ${canM() ? h`<button class="btn xs ghost" data-act="sMedium" data-id="${s.id}">${icon('edit', 13)} Change</button>` : ''}</div>`;
+}
+async function mediumModal(s) {
+  let mode = AX.lang.mode(s.id);
+  const opt = (v, t, d) => h`<label class="ts-mo ${mode === v ? 'on' : ''}"><input type="radio" name="md" value="${v}" ${mode === v ? raw('checked') : ''}><span><b>${t}</b><span class="xs mut">${d}</span></span></label>`;
+  UI.modal({
+    title: 'Medium · ' + s.title, sub: 'Which languages this series is sold and given in.', size: 'narrow',
+    body: h`<div class="col gap6">${opt('en', 'English only', 'Every student gets the tests in English. The store does not ask for a medium.')}
+      ${opt('bi', 'English + हिंदी (one series, two mediums)', 'The store asks “English or हिंदी” at Buy. Each student gets the tests in their medium; add the Hindi text of each test in the test builder (Questions → हिंदी).')}</div>
+      <div class="callout info mt12">${icon('info')}<div class="xs">A test without complete Hindi is given in English to everyone. The medium of a running test never changes.</div></div>`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="mdSave">${icon('check', 16)} Save</button>`,
+    onOpen(el, close) {
+      el.addEventListener('change', e => { if (e.target.name === 'md') { mode = e.target.value; el.querySelectorAll('.ts-mo').forEach(x => x.classList.toggle('on', x.querySelector('input').checked)); } });
+      AX.act(el, { async mdSave(b) { await UI.busy(b, async () => { const r = await AX.lang.setSeries(s.id, mode); if (!r.ok) return UI.err(r); close(); UI.toast('Medium saved'); draw(false); }); } });
+    }
+  });
+}
+AX.css('tests-medium', `.ts-mo{display:flex;gap:10px;align-items:flex-start;padding:12px;border-radius:14px;border:1px solid var(--line);background:var(--solid-2);cursor:pointer}
+.ts-mo.on{border-color:var(--pri);background:var(--pri-soft)}.ts-mo input{margin-top:3px;accent-color:var(--pri-2)}.ts-mo>span{display:flex;flex-direction:column;gap:2px}`);
 function testRow(t, wide) {
   const s = status(t, C.practice), m = canM(), p = C.practice.has(String(t.id));
   const ser = wide ? C.series.find(x => x.id === t.series_id) : null, fo = wide ? C.folders.find(f => f.id === t.folder_id) : null;
   return h`<div class="li ts-tr" data-act="openT" data-id="${t.id}">
     <span class="ts-ic ${s.tone}">${icon(s.icon, 18)}</span>
-    <div class="grow"><div class="row gap6 wrap"><b class="ell" style="max-width:100%">${t.title}</b>${stPill(s)}${p && s.k !== 'practice' ? UI.pill('Practice', 'vio') : ''}${t.free_preview ? UI.pill('Free preview', 'pri') : ''}${t.problems ? UI.pill(t.problems + ' to fix', 'warn') : ''}${t.reports ? UI.pill(fmt.plural(t.reports, 'report'), 'bad') : ''}</div>
+    <div class="grow"><div class="row gap6 wrap"><b class="ell" style="max-width:100%">${t.title}</b>${stPill(s)}${p && s.k !== 'practice' ? UI.pill('Practice', 'vio') : ''}${t.free_preview ? UI.pill('Free preview', 'pri') : ''}${AX.lang.pill(t.id)}${t.problems ? UI.pill(t.problems + ' to fix', 'warn') : ''}${t.reports ? UI.pill(fmt.plural(t.reports, 'report'), 'bad') : ''}</div>
       <div class="ts-meta">${ser ? ser.title + (fo ? ' · ' + fo.title : '') + ' · ' : ''}${fmt.plural(t.questions || 0, 'question')} · ${t.duration} min · +${t.correct} / −${t.wrong} · ${fmt.plural(t.results || 0, 'attempt')} · ${s.sub}</div></div>
     <div class="ts-ta">${AX.can('results') ? h`<button class="ibtn sm wide" data-act="ana" data-id="${t.id}" aria-label="Analytics" title="Analytics">${icon('chart', 16)}</button>` : ''}${m ? h`<button class="btn xs wide" data-act="editT" data-id="${t.id}">${icon('edit', 13)} Edit</button>` : ''}<button class="ibtn sm" data-act="tMenu" data-id="${t.id}" aria-label="More for ${t.title}">${icon('moreV', 16)}</button></div></div>`;
 }
@@ -243,10 +273,15 @@ const ACTS = {
   newTestIn: el => AX.openTest(null, { seriesId: el.dataset.sid, folderId: el.dataset.fid || '' }),
   openS: el => AX.go('tests/s/' + el.dataset.id),
   openT: el => AX.openTest(el.dataset.id),
-  editT: el => AX.openTest(el.dataset.id, { step: 2 }),
+  editT: el => AX.openTest(el.dataset.id, { step: 'check' }),
   ana: el => openAna(el.dataset.id),
   shareS: el => AX.shareSeries(el.dataset.id),
   editS: el => seriesModal(S_(el.dataset.id)),
+  amsg: el => AX.amsg.edit(el.dataset.id),
+  sMedium: el => mediumModal(S_(el.dataset.id)),
+  amsgAll: () => AX.amsg.manage(),
+  sNotice: el => AX.newNotice({ series: [el.dataset.id] }),
+  sPush: el => AX.pushTo({ series: [el.dataset.id] }),
   media: el => mediaDrawer(el.dataset.id),
   newFolder: el => folderModal(el.dataset.sid, null),
   reorderS: () => reorder('Reorder series', C.series.slice().sort(bySort).map(s => ({ id: s.id, t: s.title, s: s.sort_order })), (x, n) => AX.api.admin('series_save', { id: x.id, sort_order: n })),
@@ -270,6 +305,10 @@ function sMenu(el, s) {
     m && { label: 'New folder', icon: 'folder', fn: () => folderModal(s.id, null) },
     m && { label: 'Edit series', icon: 'edit', fn: () => seriesModal(s) },
     m && { label: 'Cover & files', icon: 'image', fn: () => mediaDrawer(s.id) },
+    m && { label: 'Medium (English / हिंदी)', icon: 'globe', fn: () => mediumModal(s) },
+    { label: 'Approval message & Telegram', icon: 'msg', fn: () => AX.amsg.edit(s.id) },
+    AX.can('messaging', 'manage') && { label: 'Notice to this series', icon: 'bell', fn: () => AX.newNotice({ series: [s.id] }) },
+    AX.can('messaging', 'manage') && { label: 'Phone notification to this series', icon: 'send', fn: () => AX.pushTo({ series: [s.id] }) },
     { label: 'Share link', icon: 'link', fn: () => AX.shareSeries(s.id) },
     m && { sep: true },
     m && { label: 'Delete series', icon: 'trash', tone: 'danger', fn: () => delSeries(s) }
@@ -290,9 +329,9 @@ function fMenu(el, f) {
 function tMenu(el, t) {
   const m = canM(), p = C.practice.has(String(t.id));
   UI.menu(el, [{ head: t.title },
-    { label: m ? 'Edit questions' : 'View questions', icon: m ? 'edit' : 'eye', fn: () => AX.openTest(t.id, { step: 2 }) },
-    m && { label: 'Details & marking', icon: 'settings', fn: () => AX.openTest(t.id, { step: 1 }) },
-    m && { label: 'Schedule & access', icon: 'calendar', fn: () => AX.openTest(t.id, { step: 4 }) },
+    { label: m ? 'Edit questions' : 'View questions', icon: m ? 'edit' : 'eye', fn: () => AX.openTest(t.id, { step: 'check' }) },
+    m && { label: 'Details & marking', icon: 'settings', fn: () => AX.openTest(t.id, { step: 'details' }) },
+    m && { label: 'Time & publish', icon: 'calendar', fn: () => AX.openTest(t.id, { step: 'publish' }) },
     AX.can('results') && { label: 'Analytics', icon: 'chart', fn: () => openAna(t.id) },
     { label: 'Share link', icon: 'link', fn: () => AX.shareTest(t.id) },
     m && { sep: true },
@@ -311,7 +350,7 @@ function metaSave(t, patch) {
     title: t.title, duration: t.duration, correct: t.correct, wrong: t.wrong, sort_order: +t.sort_order || 0, lock_back: !!t.lock_back, free_preview: !!t.free_preview, active: t.active !== false }, patch || {}));
 }
 async function setPractice(t, on) {
-  if (on && t.result_at) return UI.toast('Practice tests show answers at once: clear the result time or turn practice off', { tone: 'bad', ms: 6000, action: { label: 'Edit schedule', fn: () => AX.openTest(t.id, { step: 4 }) } });
+  if (on && t.result_at) return UI.toast('Practice tests show answers at once: clear the result time or turn practice off', { tone: 'bad', ms: 6000, action: { label: 'Edit schedule', fn: () => AX.openTest(t.id, { step: 'publish' }) } });
   const r = await AX.api.call('cbt_admin_practice', 'set', { id: t.id, on });
   if (!r.ok) return on ? UI.toast('Practice mode needs the v5 SQL update in Supabase', { tone: 'bad' }) : UI.err(r);
   changed(on ? 'Practice mode on: answers show after each question' : 'Practice mode off');

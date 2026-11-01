@@ -23,22 +23,8 @@ const seenTxt = s => !s.last_seen ? 'Never opened' : seenCls(s) === 'live' ? 'On
 const fmtCode = c => String(c || '').slice(0, 4) + '-' + String(c || '').slice(4);
 const siteUrl = () => location.href.replace(/[#?].*$/, '').replace(/[^/]*\.html$/, '');
 const stuLink = () => /^https:\/\//.test(CFG.SHORT_URL || '') ? CFG.SHORT_URL : siteUrl();
-const MSGLINE = '━━━━━━━━━━━━━━━━';
-// the message sent to a student with their login — exact text of the old panel (WhatsApp: *bold*, _italic_)
-function stuMsg({ name, title, order, mobile, code, keep }) {
-  const tg = /^https:\/\/t\.me\//.test(CFG.TG_CHANNEL || '') ? CFG.TG_CHANNEL : '';
-  const c = code ? code.slice(0, 4) + '-' + code.slice(4) : '';
-  return [`Hi *${name}* 👋`, '',
-    title ? `Your payment for *"${title}"* is verified ✅` : `Your access to *${CFG.SITE_NAME || 'the test series'}* is approved ✅`,
-    ...(order ? [`🧾 Order: *${order}*`] : []),
-    MSGLINE,
-    ...(tg ? ['📢 *Join our Telegram channel*', tg, MSGLINE] : []),
-    '📱 *Open website*', stuLink(), '',
-    '🔑 *Login with*', `Mobile: *${mobile}*`, code ? `Access code: *${c}*` : keep ? 'Access code: *your current code*' : 'Access code: ______',
-    MSGLINE,
-    title ? '🔓 Your series is unlocked. All the best! 💪' : 'All the best for your preparation! 💪',
-    '_Keep your code private. It works on up to 2 phones._'].join('\n');
-}
+// the message sent to a student with their login (cx/amsg.js: per test series when a series is unlocked)
+const stuMsg = o => AX.amsg.make(o);
 AX.stuMsg = stuMsg;
 const msgHtml = m => raw(AX.esc(m).replace(/\*([^*\n]+)\*/g, '<b>$1</b>').replace(/(^|\s)_([^_\n]+)_(?=\s|$)/g, '$1<i>$2</i>'));
 const remindMsg = s => `Hi ${first(s)}, a new test is waiting for you. Open ${stuLink()} and attempt it today. All the best! 💪`;
@@ -49,7 +35,8 @@ async function load(force) {
   const [S, C, R, P] = await Promise.all([
     AX.data.students(force), AX.data.catalog(),
     canR ? AX.data.results() : Promise.resolve({ ok: false, error: 'forbidden' }),
-    canP ? AX.data.payments(force) : Promise.resolve({ ok: false, error: 'forbidden' })
+    canP ? AX.data.payments(force) : Promise.resolve({ ok: false, error: 'forbidden' }),
+    AX.amsg.load(force)
   ]);
   if (!S.ok) return { ok: false, r: S };
   const students = S.students || [];
@@ -379,6 +366,15 @@ function drawList() {
       ${can && V.D.paid.length ? h`<select class="inp sm" id="sx-bs" aria-label="Series">${join(V.D.paid, x => h`<option value="${x.id}">${x.title}</option>`)}</select><button class="btn sm pri" data-act="bulk" data-on="1" data-busy="Working…">${icon('unlock', 15)} Give access</button><button class="btn sm" data-act="bulk" data-on="0" data-busy="Working…">${icon('lock', 15)} Remove</button>` : ''}
       <button class="btn sm ghost" data-act="copyNums">${icon('copy', 15)} Copy numbers</button><button class="btn sm ghost" data-act="selCsv">${icon('download', 15)} CSV</button><button class="btn sm ghost" data-act="clear">${icon('x', 15)} Clear</button></div>` : ''}`);
 }
+// the login message with the current code; with a series: that series' approval message and Telegram link
+async function msgSheet(s, sid) {
+  await AX.amsg.load();
+  const ser = sid && V.D ? V.D.series.find(x => x.id === sid) : null;
+  const msg = stuMsg({ sid, name: nameOf(s), title: ser ? ser.title : '', mobile: s.mobile, keep: true });
+  UI.modal({ title: ser ? 'Message for ' + ser.title : 'Login message', sub: 'Uses their current code — they already know it.', size: 'narrow', body: h`<div class="well s3-msg">${msgHtml(msg)}</div>`,
+    foot: h`<a class="btn soft" href="${AX.u.wa(s.mobile, msg)}" target="_blank" rel="noopener">${icon('whatsapp', 16)} WhatsApp</a><a class="btn" href="${AX.u.tg(s.mobile)}" target="_blank" rel="noopener" data-act="tg">${icon('telegram', 16)} Telegram</a><button class="btn" data-act="cp">${icon('copy', 16)} Copy</button><span class="sp"></span><button class="btn pri" data-close>Done</button>`,
+    onOpen(m) { AX.act(m, { async cp() { if (await AX.u.copy(msg)) UI.toast('Message copied'); }, tg() { AX.u.copy(AX.u.tgText(msg)); UI.toast('Message copied — paste it in Telegram'); } }); } });
+}
 async function toggleAccess(id, ser, btn) {
   if (!AX.can('students', 'manage')) return;
   const s = V.D.students.find(x => x.id === id); if (!s) return;
@@ -389,7 +385,7 @@ async function toggleAccess(id, ser, btn) {
   if (!r.ok) return;
   s.access = on ? [...new Set([...(s.access || []), ser])] : (s.access || []).filter(x => x !== ser);
   const t = (V.D.series.find(x => x.id === ser) || {}).title || 'series';
-  UI.toast(on ? 'Access to ' + t + ' given to ' + first(s) : 'Access to ' + t + ' removed');
+  UI.toast(on ? 'Access to ' + t + ' given to ' + first(s) : 'Access to ' + t + ' removed', on ? { action: { label: 'Send message', fn: () => msgSheet(s, ser) } } : {});
   if (document.getElementById('sx-list')) drawList();
   if (DR && DR.id === id) drawDrawer();
   changed();
@@ -491,7 +487,7 @@ function showCode(name, mobile, code, title) {
       <p class="xs mut mt8">Telegram: the message is copied first — paste it in the chat that opens.</p>`,
     foot: h`<a class="btn soft" href="${AX.u.wa(mobile, msg)}" target="_blank" rel="noopener">${icon('whatsapp', 16)} WhatsApp</a><a class="btn" href="${AX.u.tg(mobile)}" target="_blank" rel="noopener" data-act="tg">${icon('telegram', 16)} Telegram</a><button class="btn" data-act="copy">${icon('copy', 16)} Copy message</button><span class="sp"></span><button class="btn pri" data-close>Done</button>`,
     sticky: true,
-    onOpen(el) { AX.act(el, { async copy() { if (await AX.u.copy(msg)) UI.toast('Message copied'); }, tg() { AX.u.copy(msg); UI.toast('Message copied — paste it in Telegram'); } }); }
+    onOpen(el) { AX.act(el, { async copy() { if (await AX.u.copy(msg)) UI.toast('Message copied'); }, tg() { AX.u.copy(AX.u.tgText(msg)); UI.toast('Message copied — paste it in Telegram'); } }); }
   });
 }
 function codesModal(title, rows) {
@@ -649,7 +645,8 @@ function tabHtml(s, tab, su, M, R) {
       ${V.D.paid.length ? h`<div class="card flat" style="padding:4px 16px">${join(V.D.paid, x => { const on = (s.access || []).includes(x.id); return h`<div class="s3-li"><span class="av sm" style="--c:${AX.u.hue(x.id)}">${icon('layers', 15)}</span><div class="grow"><b class="ell" style="display:block">${x.title}</b><div class="xs mut">${x.price_label || 'Paid series'}${x.active === false ? ' · hidden' : ''}</div></div>
           <label class="sw"><input type="checkbox" data-act="dAcc" data-ser="${x.id}" ${on ? raw('checked') : ''} ${can ? '' : raw('disabled')} aria-label="Access to ${x.title}"><i></i></label></div>`; })}</div>`
         : h`<div class="card flat">${UI.empty({ icon: 'layers', title: 'No paid series yet', text: 'Create one in Test studio. Free series are open to everyone.' })}</div>`}
-      ${free.length ? h`<div class="xs mut mt12">${icon('info', 13)} Open to everyone: ${free.map(x => x.title).join(', ')}</div>` : ''}`;
+      ${free.length ? h`<div class="xs mut mt12">${icon('info', 13)} Open to everyone: ${free.map(x => x.title).join(', ')}</div>` : ''}
+      ${mediumHtml(s, can)}`;
   }
   if (tab === 'results') {
     if (!AX.can('results')) return h`<div class="card flat">${UI.empty({ tone: 'lock', icon: 'lock', title: 'Needs Results access', text: 'Ask the owner for Results access to see this student’s scores.' })}</div>`;
@@ -695,7 +692,34 @@ function resRow(x, full) {
   return h`<div class="s3-li"><span class="pill ${tone(p)}" style="min-width:52px;justify-content:center">${p}%</span><div class="grow"><b class="ell" style="display:block">${x.title}</b><div class="xs mut">${fmt.dt(x.at)} · ${x.score}/${x.max}${full ? ' · ✓' + x.correct + ' ✗' + x.wrong + ' –' + x.skipped + ' · ' + Math.round((x.used || 0) / 60) + ' min' : ''}</div></div>
     ${x.late ? UI.pill('Late', 'warn') : ''}${full && AX.openAnalytics && x.test_id ? h`<button class="ibtn sm" data-act="dAna" data-id="${x.test_id}" aria-label="Test analytics" title="Test analytics">${icon('chart', 16)}</button>` : ''}${full && AX.can('results', 'manage') ? h`<button class="ibtn sm" data-act="dResDel" data-id="${x.id}" aria-label="Delete result" title="Delete result">${icon('trash', 16)}</button>` : ''}</div>`;
 }
+// v41: the student's medium (English / हिंदी) per series; a test already running keeps its language
+function mediumHtml(s, can) {
+  if (!DR) return '';
+  if (DR.media === undefined) {
+    DR.media = null;
+    Promise.all([AX.api.call('cbt_admin_lang', 'student_get', { id: s.id }), AX.lang.load()]).then(([r]) => { if (DR && DR.id === s.id) { DR.media = r.ok ? r.media || {} : { _err: r.error || 'server' }; if (DR.tab === 'access') drawDrawer(); } });
+  }
+  const M = DR.media;
+  const ser = V.D.series.filter(x => AX.lang.mode(x.id) === 'bi' || (M && M[x.id]));
+  const head = h`<div class="section-t">${icon('globe', 15)} Medium · English / हिंदी</div>`;
+  if (!M) return h`${head}<div class="card flat tight sm mut">Loading…</div>`;
+  if (M._err) return h`${head}<div class="card flat tight sm mut">${M._err === 'missing' ? 'Run supabase_v41_medium.sql in Supabase to use Hindi medium.' : 'Could not load the medium.'}</div>`;
+  const sel = (k, v, label) => h`<select class="inp sm" style="max-width:150px" data-md="${k}" ${can ? '' : raw('disabled')} aria-label="Medium for ${label}"><option value="" ${!v ? raw('selected') : ''}>Not chosen</option><option value="en" ${v === 'en' ? raw('selected') : ''}>English</option><option value="hi" ${v === 'hi' ? raw('selected') : ''}>हिंदी</option></select>`;
+  return h`${head}<p class="xs mut" style="margin:0 0 8px">Chosen by the student on the store or in the app. A test is given in Hindi only when all its questions have Hindi; a running test never changes language.</p>
+    <div class="card flat" style="padding:4px 16px">
+      ${join(ser, x => h`<div class="s3-li"><span class="av sm" style="--c:${AX.u.hue(x.id)}">${icon('layers', 15)}</span><div class="grow"><b class="ell" style="display:block">${x.title}</b><div class="xs mut">${AX.lang.mode(x.id) === 'bi' ? 'English + हिंदी series' : 'English series'}</div></div>${sel(x.id, M[x.id], x.title)}</div>`)}
+      <div class="s3-li"><span class="av sm" style="--c:#0ea5e9">${icon('globe', 15)}</span><div class="grow"><b style="display:block">Default</b><div class="xs mut">For a series without its own choice</div></div>${sel('default', M.default, 'default')}</div></div>`;
+}
 function wireDrawer(el) {
+  el.addEventListener('change', async e => {
+    const t = e.target; if (!t.dataset || t.dataset.md == null || !DR) return;
+    const k = t.dataset.md, lang = t.value; t.disabled = true;
+    const r = await AX.api.call('cbt_admin_lang', 'student_set', { id: DR.id, k, lang });
+    t.disabled = false;
+    if (!r.ok) { UI.err(r); drawDrawer(); return; }
+    if (DR.media && !DR.media._err) { if (lang) DR.media[k] = lang; else delete DR.media[k]; }
+    UI.toast('Medium saved' + (lang ? ' · ' + AX.lang.NAME[lang] : ''));
+  });
   const cur = () => V.D.students.find(x => x.id === (DR && DR.id));
   let max = null;
   AX.act(el, {
@@ -730,10 +754,7 @@ function wireDrawer(el) {
       await UI.busy(b, async () => { const r = await act('student_update', { id: s.id, name, max_devices: s.max_devices || 2 }); if (r.ok) { s.name = name; UI.toast('Saved'); drawDrawer(); changed(); } });
     },
     dCode: () => newCode(cur()),
-    dMsg: () => { const s = cur(); const msg = stuMsg({ name: nameOf(s), mobile: s.mobile, keep: true });
-      UI.modal({ title: 'Login message', sub: 'Uses their current code — they already know it.', size: 'narrow', body: h`<div class="well s3-msg">${msgHtml(msg)}</div>`,
-        foot: h`<a class="btn soft" href="${AX.u.wa(s.mobile, msg)}" target="_blank" rel="noopener">${icon('whatsapp', 16)} WhatsApp</a><a class="btn" href="${AX.u.tg(s.mobile)}" target="_blank" rel="noopener" data-act="tg">${icon('telegram', 16)} Telegram</a><button class="btn" data-act="cp">${icon('copy', 16)} Copy</button><span class="sp"></span><button class="btn pri" data-close>Done</button>`,
-        onOpen(m) { AX.act(m, { async cp() { if (await AX.u.copy(msg)) UI.toast('Message copied'); }, tg() { AX.u.copy(msg); UI.toast('Message copied — paste it in Telegram'); } }); } }); },
+    dMsg: () => msgSheet(cur()),
     async dBlock(b) {
       const s = cur(), block = s.status !== 'blocked';
       if (block && !(await UI.confirm({ title: 'Block ' + nameOf(s) + '?', text: 'They cannot sign in until you unblock them. Their results and access stay.', yes: 'Block', tone: 'danger' }))) return;

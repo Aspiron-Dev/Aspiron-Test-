@@ -580,5 +580,5 @@ async function npCheck(){
   }catch(e){}
 }
 {const _al=annLoad;annLoad=async function(f){const r=await _al(f);npCheck();return r}}
-setInterval(()=>{if(AUTH&&!INTEST)annLoad(true)},60000);
+setInterval(()=>{if(AUTH&&!INTEST&&!document.hidden)annLoad(true)},600000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&AUTH)annLoad(true)});

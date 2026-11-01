@@ -148,10 +148,15 @@ async function finish(auto){
   const it={tid:P.tid,cid:P.cid,ans:P.ans,times:P.times||{},title:(T&&T.title)||P.title,ts:Date.now()};
   addPend(it);LS.del(progKey(P.tid));LS.del(tdKey(P.tid));
   INTEST=false;P=null;T=null;document.body.classList.remove('intest');
+  // time over: every student's phone submits in the same second, so each waits a random 0-5 s (the answers are
+  // already saved on the phone and the server allows 2 minutes after the end time, so it still counts as on time)
+  if(auto){loading('Submitting your answers…');await new Promise(k=>setTimeout(k,Math.random()*5000))}
   await sendPending(it);
 }
 let CURPEND=null;
 const subAns=it=>Object.assign({},it.ans,{_t:it.times||{}});
+// next try after a failed submit: 5 s, 10 s, 20 s … up to 60 s, each a little random so phones spread out
+const retryIn=it=>{it.tries=(it.tries||0)+1;return Math.min(60000,5000*2**(it.tries-1))*(0.6+Math.random()*0.8)};
 async function sendPending(it){
   CURPEND=it;clearTimeout(retryT);loading('Submitting your answers…');
   const r=await rpc('cbt_submit',{p_test:it.tid,p_answers:subAns(it),p_client_id:it.cid});
@@ -165,7 +170,7 @@ async function sendPending(it){
     setApp(`<div class="wrap"><div class="card empty">${ic('wifi',32)}<h3 style="margin:10px 0 4px">No connection</h3>
       <p class="sm">Your answers are saved on this phone. We will keep trying to submit them. Please stay on this page.</p>
       <button class="btn" onclick="sendPending(CURPEND)">Try again now</button></div></div>`);
-    retryT=setTimeout(()=>sendPending(it),8000);return;
+    retryT=setTimeout(()=>sendPending(it),retryIn(it));return;
   }
   if(r.error==='locked'){   // account locked for a while: never drop the answers, try again in a minute
     setApp(`<div class="wrap"><div class="card empty">${ic('lock',32)}<h3 style="margin:10px 0 4px">Please wait a few minutes</h3>
@@ -206,7 +211,9 @@ function showHeld(title,at){
 /* ---------- auto-save: while a test runs its answers are also saved online, so the server can submit them when time ends ---------- */
 let SYNCT=null,SYNCED='';
 const syncSig=()=>P.tid+JSON.stringify(P.ans||{});
-function syncSoon(){if(!INTEST||!P||SYNCT)return;SYNCT=setTimeout(()=>{SYNCT=null;syncNow()},4000)}
+// at most one save every 10-15 s per phone (the phone itself keeps every answer at once; this copy is only for a student who
+// never comes back, and the page also sends one when it is closed or hidden)
+function syncSoon(){if(!INTEST||!P||SYNCT)return;SYNCT=setTimeout(()=>{SYNCT=null;syncNow()},10000+Math.random()*5000)}
 async function syncNow(){
   if(!INTEST||!P||!AUTH)return;
   const sig=syncSig();if(sig===SYNCED)return;

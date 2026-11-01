@@ -17,7 +17,7 @@ const bigI=(n,k)=>`<div class="bigi ${k||'pri'}">${I(n)}</div>`;
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const inr=n=>'₹'+Number(n||0).toLocaleString('en-IN');
 const plural=(n,w)=>{n=Number(n)||0;return `${n} ${w}${n>1?'s':''}`};
-let ST={settings:{},items:[]},ORD=null,IT=null,LOADED=0;   // LOADED: 0 = loading, 1 = ready, -1 = could not load
+let ST={settings:{},items:[]},ORD=null,IT=null,LOADED=0,LANGS=new Set();   // LANGS: items sold in English + हिंदी (v41)   // LOADED: 0 = loading, 1 = ready, -1 = could not load
 const LSg=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(_){return d}};
 const LSs=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(_){}};
 const LSd=k=>{try{localStorage.removeItem(k)}catch(_){}};
@@ -187,7 +187,8 @@ function under(st,hash){try{history.replaceState(null,'',location.pathname+locat
 
 async function load(){
   const nm=CFG.SITE_NAME||'CBT Test Series';$$('[data-sname]').forEach(e=>e.textContent=nm);
-  const r=await rpc('cbt_store');
+  const [r,lg]=await Promise.all([rpc('cbt_store'),rpc('cbt_store_langs')]);
+  if(lg&&lg.ok)LANGS=new Set((lg.items||[]).map(String));
   if(!r.ok){
     LOADED=-1;$('#kpis').hidden=true;
     $('#list').innerHTML=emptyHtml(r.error==='network'?'alert':'rocket',r.error==='network'?'No internet':'Store is opening soon',r.error==='network'?'Check your connection and refresh.':'Please check back in a little while.',r.error==='network'?'bad':'gold');
@@ -291,7 +292,7 @@ function priceHtml(x,short){
 function cardHtml(x,i){
   const off=offPct(x),ph=!okImg(x.image),bdg=x.badge||(x.buy_on===false?'Coming soon':'');
   return `<article class="sc" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,7)}"><div class="sc-m${ph?' isph':''}" data-view="${esc(x.id)}">${bdg?`<span class="tag${x.buy_on===false&&!x.badge?' soon':''}">${esc(bdg)}</span>`:''}${off?`<span class="tag off">${off}% off</span>`:''}${mediaHtml(x)}</div>
-   <div class="sc-b"><h3 class="sc-t${ph?' sr':''}">${esc(x.title)}</h3><div class="rlw" data-rline="${esc(x.id)}">${rLine(x.id)}</div>${x.subtitle?`<p class="sc-s">${esc(x.subtitle)}</p>`:''}
+   <div class="sc-b"><h3 class="sc-t${ph?' sr':''}">${esc(x.title)}</h3>${LANGS.has(x.id)?`<div class="lgs">${I('globe')}English + हिंदी medium</div>`:''}<div class="rlw" data-rline="${esc(x.id)}">${rLine(x.id)}</div>${x.subtitle?`<p class="sc-s">${esc(x.subtitle)}</p>`:''}
    ${priceHtml(x,1)}
    <div class="sc-a"><button class="btn line" data-explore="${esc(x.id)}">${I('compass')}Explore</button>${buyBtn(x,1)}</div></div></article>`;
 }
@@ -456,6 +457,7 @@ function xpDesc(x){
   const d=String((XD[x.id]||{}).description||'').trim(),F=x.features||[],s=secName(x);
   return `<div class="ximg${okImg(x.image)?'':' isph'}">${mediaHtml(x)}</div>
    ${CN[x.course]||s?`<div class="xcat">${CN[x.course]?`<span class="pill pri">${CN[x.course]}</span>`:''}${s?`<span class="pill">${esc(s)}</span>`:''}</div>`:''}<h2 class="xt">${esc(x.title)}</h2>${x.subtitle?`<p class="xsub">${esc(x.subtitle)}</p>`:''}
+   ${LANGS.has(x.id)?`<div class="lgx">${I('globe')}<div><b>Available in English and हिंदी</b><span>Choose your medium when you buy — every test comes in that language. · खरीदते समय माध्यम चुनें, हर टेस्ट उसी भाषा में मिलेगा।</span></div></div>`:''}
    <div data-rvmini="${esc(x.id)}">${rvMini(x.id)}</div>
    <div class="xprice">${priceHtml(x)}<p>${I('shield')}Pay with any UPI app · every order has its own code</p></div>
    ${d?`<h4 class="xh">About this test series</h4><div class="xdesc">${esc(d)}</div>`:''}
@@ -538,23 +540,34 @@ function attachRef(order,mobile){
   const r=LSg('store_ref',null);
   if(order&&r&&REF_OK.test(r.c)&&Date.now()-r.at<30*864e5)rpc('cbt_promo_attach',{p_order:order,p_code:r.c,p_mobile:mobile||''});
 }
-async function buy(id){
+// a series sold in English + हिंदी: the medium is asked first and kept with the order (the tests come in it)
+function langSheet(id){
+  const x=ST.items.find(i=>i.id===id);if(!x)return;
+  ovSet(modal({t:x.title,s:'Choose your medium · अपना माध्यम चुनें',cls:'narrow',
+   body:`<div class="lgo"><button class="lgb" data-lang="en" data-lid="${esc(id)}"><span class="lgl">A</span><b>English medium</b><small>All tests in English</small></button>
+    <button class="lgb" data-lang="hi" data-lid="${esc(id)}"><span class="lgl">अ</span><b>हिंदी माध्यम</b><small>सभी टेस्ट हिंदी में</small></button></div>
+    <p class="sm mut center mt12">One price for both. You can change the medium later in the app.</p>`}));
+}
+async function buy(id,lang){
   IT=ST.items.find(i=>i.id===id);if(!IT)return;
   if(IT.buy_on===false)return soonSheet(id);
-  const me=ME();if(!me)return meSheet(()=>buy(id));
+  const me=ME();if(!me)return meSheet(()=>buy(id,lang));
+  const bi=LANGS.has(id);
+  if(bi&&!lang)return langSheet(id);
   const last=LSg('store_ord',null);
-  // same series + same number ordered in the last 24 h → continue that order instead of making a new code
-  if(last&&last.item===id&&last.mobile===me.mobile&&Date.now()-last.at<864e5){attachRef(last.code,last.mobile);ORD=last;return payStep()}
+  // same series + same number (+ same medium) ordered in the last 24 h → continue that order instead of making a new code
+  if(last&&last.item===id&&last.mobile===me.mobile&&Date.now()-last.at<864e5&&(!bi||last.lang===lang)){attachRef(last.code,last.mobile);ORD=last;return payStep()}
   const n=++BUYN;
   sheet(1,`<div class="ld"><span class="spin"></span><span>Getting your payment details…</span></div><div class="skel qrsk"></div>`);
-  const r=await rpc('cbt_store_order',{p_item:IT.id,p_name:me.name,p_mobile:me.mobile});
+  let r=bi?await rpc('cbt_store_order_lang',{p_item:IT.id,p_name:me.name,p_mobile:me.mobile,p_lang:lang}):null;
+  if(!r||r.error==='missing')r=await rpc('cbt_store_order',{p_item:IT.id,p_name:me.name,p_mobile:me.mobile});
   if(n!==BUYN||!$('.ov'))return;   // closed or another series tapped meanwhile
   if(!r.ok){
     const t=r.error==='busy'?'Too many tries. Please wait a while and try again.':r.error==='network'?'No internet. Please try again.':r.error==='item'?'This series is not available right now.':r.error==='mobile'||r.error==='name'?'Please check your name and mobile number.':'Something went wrong. Please try again.';
     return sheet(1,`${bigI('alert','bad')}<p class="center lg b">${t}</p>
      <p class="for">For ${esc(me.name)} · ${esc(me.mobile)} · <a href="#" data-redo>change</a></p>`,`<button class="btn pri lg block" data-buy="${esc(id)}">${I('next')}Try again</button>`);
   }
-  ORD={item:IT.id,code:r.code,amount:r.amount,title:r.title,name:me.name,mobile:me.mobile,at:Date.now()};LSs('store_ord',ORD);attachRef(r.code,me.mobile);
+  ORD={item:IT.id,code:r.code,amount:r.amount,title:r.title,name:me.name,mobile:me.mobile,at:Date.now(),lang:bi?lang:''};LSs('store_ord',ORD);attachRef(r.code,me.mobile);
   payStep();
 }
 const upiLink=()=>{const s=ST.settings,e=encodeURIComponent;return `upi://pay?pa=${s.upi}&pn=${e(s.payee||'')}&am=${ORD.amount}&cu=INR&tn=${e(ORD.code)}`};
@@ -602,7 +615,7 @@ async function saveQr(){
   setTimeout(()=>{const b=$('[data-step=paid]');if(b)b.classList.add('nudge')},800);
 }
 // message for the support chat (Telegram / WhatsApp); the student sends the payment screenshot with it
-function tgText(){return `Payment done ✅\nOrder code: ${ORD.code}\nSeries: ${ORD.title}\nAmount: ${inr(ORD.amount)}\nStudent name: ${ORD.name}\nMobile: ${ORD.mobile}\nPaid from account of: ${ORD.payer||'-'}\nUTR / Transaction ID: ${ORD.utr||'-'}\n📎 Payment screenshot attached`}
+function tgText(){return `Payment done ✅\nOrder code: ${ORD.code}\nSeries: ${ORD.title}${ORD.lang?`\nMedium: ${ORD.lang==='hi'?'Hindi (हिंदी)':'English'}`:''}\nAmount: ${inr(ORD.amount)}\nStudent name: ${ORD.name}\nMobile: ${ORD.mobile}\nPaid from account of: ${ORD.payer||'-'}\nUTR / Transaction ID: ${ORD.utr||'-'}\n📎 Payment screenshot attached`}
 /* step 2: who paid (account holder name) + UTR, saved with the order */
 function paidStep(){
   sheet(2,`${bigI('receipt','ok')}<h3 class="center">Payment details</h3>
@@ -653,7 +666,7 @@ function vStep(){
   const tg=tgUser(),wa=waUrl(''),msg=tgText(),v=x=>x?esc(x):'<i class="nil">—</i>';
   sheet(3,`<div class="sum">
    <div class="sumh"><div class="grow"><b>Summary</b><span>Please check your details once</span></div><button class="btn sm line" data-edit>${I('edit')}Edit</button></div>
-   <dl><div><dt>Series name</dt><dd>${esc(ORD.title)}</dd></div><div><dt>Amount</dt><dd>${inr(ORD.amount)}</dd></div></dl>
+   <dl><div><dt>Series name</dt><dd>${esc(ORD.title)}</dd></div>${ORD.lang?`<div><dt>Medium</dt><dd>${ORD.lang==='hi'?'हिंदी':'English'}</dd></div>`:''}<div><dt>Amount</dt><dd>${inr(ORD.amount)}</dd></div></dl>
    <dl><div><dt>Student name</dt><dd>${esc(ORD.name)}</dd></div><div><dt>Mobile no.</dt><dd>${esc(ORD.mobile)}</dd></div></dl>
    <dl><div><dt>Order code</dt><dd class="code">${esc(ORD.code)}</dd></div><div><dt>Paid from account of</dt><dd>${v(ORD.payer)}</dd></div><div><dt>UTR / Transaction ID</dt><dd class="code">${v(ORD.utr)}</dd></div></dl>
    <p class="sumok">${I('ok')}Payment done</p></div>
@@ -681,7 +694,8 @@ async function editSave(){
   const b=$('#esave');b.disabled=true;b.innerHTML='<span class="spin"></span>Saving…';er.textContent='';
   const fail=t=>{if($('#esave')){b.disabled=false;b.innerHTML=`${I('check')}Save`;er.textContent=t}};
   if(n!==ORD.name||m!==ORD.mobile){
-    const r=await rpc('cbt_store_order',{p_item:ORD.item,p_name:n,p_mobile:m});
+    let r=ORD.lang?await rpc('cbt_store_order_lang',{p_item:ORD.item,p_name:n,p_mobile:m,p_lang:ORD.lang}):null;
+    if(!r||r.error==='missing')r=await rpc('cbt_store_order',{p_item:ORD.item,p_name:n,p_mobile:m});
     if(!r.ok)return fail(r.error==='busy'?'Too many tries. Please wait a while and try again.':r.error==='network'?'No internet. Please try again.':'Could not save. Please try again.');
     meSave(n,m);
     Object.assign(ORD,{code:r.code,amount:r.amount,title:r.title,name:n,mobile:m,at:Date.now()});attachRef(r.code,m);
@@ -702,7 +716,7 @@ function meDraw(){
   box.innerHTML=`<div class="card pf"><span class="av lg">${esc(m.name[0].toUpperCase())}</span><div class="grow"><h2>${esc(m.name)}</h2><p class="mono">${esc(m.mobile)}</p><span class="pill pri">${I(c==='jee'?'atom':'steth')}${CN[c]}</span></div><button class="btn line sm" data-me>${I('edit')}Edit</button></div>
    ${o?`<div class="card ord"><div class="card-h"><span class="hic gold">${I('receipt')}</span><div class="grow"><h3>Your order</h3><p class="sub">Made ${ago(o.at)} · continue within 24 hours</p></div></div>
      <div class="ordb"><div class="grow"><b>${esc(o.title)}</b><span>${inr(o.amount)} · Order code <b class="code">${esc(o.code)}</b></span></div>
-     ${o.payer?`<button class="btn pri" data-ordv>${I('shield')}Verify payment</button>`:`<button class="btn pri" data-buy="${esc(o.item)}">${I('card')}Continue payment</button>`}</div></div>`:''}
+     ${o.payer?`<button class="btn pri" data-ordv>${I('shield')}Verify payment</button>`:(o.lang?`<button class="btn pri" data-lid="${esc(o.item)}" data-lang="${esc(o.lang)}">${I('card')}Continue payment</button>`:`<button class="btn pri" data-buy="${esc(o.item)}">${I('card')}Continue payment</button>`)}</div></div>`:''}
    <div class="pgrid">
     <div class="card"><div class="card-h"><span class="hic">${I('target')}</span><div class="grow"><h3 id="pcl">Your course</h3><p class="sub">You see the test series of this course.</p></div></div>${crsHtml(c,'course','pcl')}</div>
     <div class="card"><div class="card-h"><span class="hic vio">${I('auto')}</span><div class="grow"><h3 id="ptl">Theme</h3><p class="sub">Auto follows your phone's setting.</p></div></div>
@@ -836,6 +850,7 @@ document.addEventListener('click',e=>{
   else if('me' in d)meSheet();
   else if('mesave' in d)meSaveGo();
   else if(d.buy){closeSheet();buy(d.buy)}
+  else if(d.lang&&d.lid){closeSheet();buy(d.lid,d.lang)}
   else if('ordv' in d){const o=lastOrd();if(o){ORD=o;IT=ST.items.find(i=>i.id===o.item);vStep()}}
   else if(d.explore)explore(d.explore);
   else if(d.soon)soonSheet(d.soon);
@@ -852,7 +867,7 @@ document.addEventListener('click',e=>{
   else if('rvx' in d){const c=t.closest('.rv');if(c){const o=c.classList.toggle('open');t.textContent=o?'Show less':'Read more';t.setAttribute('aria-expanded',o)}}
   else if(d.share)share(d.share,!!t.closest('.xp'));
   else if('close' in d)closeSheet();
-  else if('redo' in d){e.preventDefault();const id=IT.id;meSheet(()=>{LSd('store_ord');closeSheet();buy(id)})}
+  else if('redo' in d){e.preventDefault();const id=IT.id,lg=ORD&&ORD.lang||undefined;meSheet(()=>{LSd('store_ord');closeSheet();buy(id,lg)})}
   else if(d.copy)copy(d.copy,d.what);
   else if('saveqr' in d)saveQr();
   else if('verify' in d){try{navigator.clipboard.writeText(tgText())}catch(_){}}
