@@ -1,6 +1,6 @@
 # Security map — Aspiron CBT
 
-Snapshot of `main` (2026-11-01, after v42, v43, v44, v45 and v35.3). Documentation only: nothing here changes how the app works.
+Snapshot of `main` (2026-11-02, after v42–v45 and v35.3; checklists A–G). Documentation only: nothing here changes how the app works.
 Legend: **[T]** = a test was run on a local copy of the database (production base export + every repo SQL file, fake data only) or in Chromium · **[C]** = code read only · **[P]** = needs a look at production (no access from here).
 
 ---
@@ -160,6 +160,41 @@ None. The code never uses Supabase Storage **[C]** (no `storage/v1` call). PDFs,
 | 45 | SSRF | **PASS** [T] | The only server-side fetch is `send-push` → push endpoints, now limited to Google/Mozilla/Apple/Microsoft push hosts in the DB (v45) and in the function. |
 | 46 | No console.log / debug / secrets in comments | **PASS** [T] | No `console.log`/`debug` in app code; history scan found no secrets. |
 
+### E. Secrets & repository
+| # | Check | Status | Evidence |
+|---|---|---|---|
+| 47 | No secret in the frontend files | **PASS** [T] | `scripts/check-exposed.sh --local` and gitleaks: only public values (publishable key, VAPID public key). |
+| 48 | Env variables: no secret with a public prefix, `.env` ignored, `.env.example`, no insecure fallback | **PASS** [C] | No `.env` anywhere (history included); `.gitignore` covers `.env*`, keys, dumps; `.env.example` lists the secret **names** only. Secrets live in Supabase / GitHub dashboards. |
+| 49 | Full history scan (gitleaks), all branches | **PASS** [T] | gitleaks 8.21.2 over 16 branches / all commits: 14 hits, all public by design (publishable key, VAPID public key, PYQ question ids); real secrets **0**. With `.gitleaks.toml`: "no leaks found". |
+| 50 | Rotate leaked keys | **N/A** | No key has leaked. If one ever does: make a new key in Supabase → put it where it is used (Edge Function secret / GitHub secret / `config.js` for the publishable key) → deploy → delete the old key → call once with the old key and expect 401. |
+| 51 | Exposed files (.env, .git, backups, dumps, .DS_Store, .map) | **PASS** [C] · live check weekly | None in the repository; no `.nojekyll`, so GitHub Pages does not serve dot-folders; no `.map` files (Tesseract's map reference points to a missing file). `security.yml` asks the live site every Monday. |
+| 52 | `scripts/check-exposed.sh` | **PASS** [T] | `--local` (repository) and live-site modes; exit code 1 on any finding; never prints secret values. |
+| 53 | Pre-commit scan + GitHub secret scanning + push protection | **PASS** repo · **[P]** settings | `.githooks/pre-commit` (gitleaks if installed, else patterns; turn on with `git config core.hooksPath .githooks`); `security.yml` runs gitleaks on every push/PR. **GitHub → Settings → Code security → Secret scanning + Push protection: turn ON** (free for public repos). |
+| 54 | No answer key / question bank / admin logic in the public repo | **NEEDS REVIEW** | Tests, questions and answer keys live only in the database. In the repo: SQL code (admin logic — security does not depend on hiding it) and `pyq-data/` (old AIPMT papers with answers, public papers). A private repo needs a paid GitHub plan for Pages. |
+
+### F. Dependencies
+| # | Check | Status | Evidence |
+|---|---|---|---|
+| 55 | npm audit / Critical-High updates | **PASS** [T] | No npm packages in the site. `lib/` = exact npm copies (sha256 match): pdf.js 3.11.174 (CVE-2024-4367 closed with `isEvalSupported:false`), JSZip 3.10.1, Tesseract 5.1.1. Edge Function: `web-push@3.6.7`, `@supabase/supabase-js@2.118.0` (now pinned; was `@2`). |
+| 56 | Fake/hallucinated packages, lockfile | **PASS** [T] | All 5 packages exist on npm with these exact versions; no lockfile needed for a static site (vendored copies), the Edge Function pins exact versions. |
+| 57 | Unused packages, dead files/routes | **PASS** [T] | Every page/script/lib file is referenced; `admin.html` is the deliberate decoy. The old admin panel (`cp-…-old.html`, `admin*.js`) is a working backup — remove it when no longer needed. |
+| 58 | SRI on CDN scripts | **PASS** [C] (n/a) | No CDN `<script>` tags: libraries are served from `lib/`. Left from CDNs: Google Fonts CSS (SRI not possible) and Tesseract's OCR worker/language data loaded by the library inside a worker. |
+| 59 | Dependabot / Renovate | **PASS** | `.github/dependabot.yml` (GitHub Actions, weekly). |
+
+### G. Network & deploy
+| # | Check | Status | Evidence |
+|---|---|---|---|
+| 60 | HTTP → HTTPS | **PASS** [P] | `*.github.io` is on the browsers' HSTS preload list; `check-exposed.sh` checks the redirect weekly. Keep **Settings → Pages → Enforce HTTPS** on. |
+| 61 | HSTS, no mixed content | **PASS** [C] | HSTS preloaded for github.io; every resource is https/self; `upgrade-insecure-requests` in every page's CSP. |
+| 62 | Security headers | **PASS** (what Pages allows) · **NEEDS REVIEW** with a domain | CSP (meta) on every page incl. the decoy, `Referrer-Policy` (meta), frame-busting script (clickjacking). GitHub Pages cannot send `frame-ancestors`, `X-Content-Type-Options`, `Permissions-Policy`: add them when a custom domain is put behind Cloudflare (see §11). |
+| 63 | Rate limiting (login, sign-up, OTP, reset, submit, search) | **PASS** [T] | Student code 8 tries/15 min; admin 10/15 min per connection + 100/h shared; OTP 5 per account; access requests 5/h per connection; new attempts 30/h, reviews 120/h, PYQ 60/h per student; store 8 orders/h per connection, 20 wrong codes/h. Answers are `{"error":"busy"/"locked","wait":…}` with HTTP 200 (PostgREST RPC), not 429. |
+| 64 | CORS exact allowlist | **PASS** Edge Function · **[P]** PostgREST | `send-push` now answers only `https://aspiron-dev.github.io` (secret `ALLOWED_ORIGINS` for more). Supabase's REST API sends `*` and cannot be changed; harmless because nothing uses cookies. |
+| 65 | Generic errors, no stack trace / SQL / path | **PASS** [T] | RPCs answer short error codes; `send-push` crash text stays in its logs. Admin console shows a database message only to signed-in admins. |
+| 66 | Debug mode off | **PASS** [C] | Static site; no debug flag or console logging. |
+| 67 | Source maps, /docs, /swagger, /graphql | **PASS** site · **NEEDS REVIEW** Supabase | No source maps served. Supabase's REST root lists the API (functions) to anyone with the publishable key — the same names are in this public repo; check Supabase → Settings → API for an option to turn the OpenAPI listing off. GraphQL: turn off `pg_graphql` if it is enabled (not used). |
+| 68 | Preview/staging behind a password | **N/A** | No preview or staging deployments. |
+| 69 | Domain: registrar MFA, lock, DNS | **N/A** (no domain yet) | When buying one: registrar 2-step login + transfer lock; DNS `CNAME` to GitHub Pages or Cloudflare; then add it to `ALLOWED_ORIGINS`. |
+
 ## 9. Findings
 | # | Sev | Finding | Fix idea | Verify |
 |---|---|---|---|---|
@@ -179,3 +214,6 @@ None. The code never uses Supabase Storage **[C]** (no `storage/v1` call). PDFs,
 2. Supabase → **Database → Settings**: "Enforce SSL" and "Network restrictions" (B20).
 3. SQL Editor: `select id, public from storage.buckets;` (B16) and `select schemaname, viewname from pg_views where schemaname in ('public','cbt_private');` (B15).
 4. GitHub and Supabase accounts: 2-step login on; repository collaborators with write access.
+
+## 11. Headers to add when a custom domain goes behind Cloudflare
+`Strict-Transport-Security: max-age=31536000; includeSubDomains` · `X-Content-Type-Options: nosniff` · `Content-Security-Policy: frame-ancestors 'none'` (start as `Content-Security-Policy-Report-Only` for a week) · `Referrer-Policy: strict-origin-when-cross-origin` · `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()` · and add the domain to the Edge Function secret `ALLOWED_ORIGINS`.

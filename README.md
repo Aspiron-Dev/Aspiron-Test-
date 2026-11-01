@@ -49,6 +49,11 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Access requests:** **Delete** removes a request (they can ask again). **Reject** removes it and stops that number from asking again (the website says the request was not accepted). **Rejected numbers** at the bottom of the requests page → **Allow again**.
 - **Setup:** run `supabase_v44_edit_details.sql`, then `supabase_v35_admin_team.sql` again. Re-run v44 after re-running v34 or v42. Until then the panel and app work as before (name only).
 
+## Security checks (repository)
+- `scripts/check-exposed.sh --local` scans the repository; `scripts/check-exposed.sh` asks the live site for files that must not be served. `.github/workflows/security.yml` runs gitleaks (whole history) on every push and the live check every Monday.
+- Pre-commit hook against committing secrets: `git config core.hooksPath .githooks` (uses gitleaks if installed). `.env.example` lists the secret names; the values live only in Supabase / GitHub settings.
+- `send-push` answers browsers only from `https://aspiron-dev.github.io` (Edge Function secret `ALLOWED_ORIGINS`, comma separated, for a future domain). Full map: `SECURITY_MAP.md`.
+
 ## Checklist C + D fixes (`supabase_v45_checklist_cd.sql`)
 - The access-request form gives the same answer for every number; a student changing their own number cannot take a number with someone else's store order, "Notify me", rejected request or recent previous owner; push subscriptions only for the real push services.
 - In `supabase_v35_admin_team.sql`: Team & access → **Require two-step sign-in for the team**; a password reset in the SQL Editor signs the owner out everywhere.
