@@ -195,6 +195,27 @@ None. The code never uses Supabase Storage **[C]** (no `storage/v1` call). PDFs,
 | 68 | Preview/staging behind a password | **N/A** | No preview or staging deployments. |
 | 69 | Domain: registrar MFA, lock, DNS | **N/A** (no domain yet) | When buying one: registrar 2-step login + transfer lock; DNS `CNAME` to GitHub Pages or Cloudflare; then add it to `ALLOWED_ORIGINS`. |
 
+### H–K. Monitoring, privacy, AI, final (details and evidence: `SECURITY_REPORT.md`, `SECURITY_REVIEW.md`)
+| # | Check | Status |
+|---|---|---|
+| 70 | Security logging | **Partial** — admin actions, refused calls, sign-ins, permission / 2FA changes in `admin_audit`; failed sign-ins and lock-outs only as counters (R3) |
+| 71 | No secrets in logs | **PASS** [C] |
+| 72 | Alerts (brute force, 5xx, new admin) | **FAIL** — none (R3) |
+| 73 | MFA on owner accounts | **Manual** — owner's checklist in `SECURITY_REPORT.md` |
+| 74 | Access review, old keys | **Partial** — Team & access review by owner; legacy Supabase keys to check (R7) |
+| 75 | Spending alerts | **PASS** — Free plan, spend cap, no card, nothing paid |
+| 76 | Data minimised, no analytics | **Partial** — no trackers; IP hashes reversible (R4) |
+| 77 | Export / delete / privacy notice (DPDP) | **FAIL** (R2) |
+| 78 | SPF/DKIM/DMARC | **N/A** — the app sends no e-mail |
+| 79 | Backup restore test, RESTORE.md | **PASS** — `restore-drill.yml` monthly + `RESTORE.md` |
+| 80 | SECURITY_RUNBOOK.md | **PASS** |
+| 81–82 | AI feature | **N/A** — none |
+| 83 | Attacker review | **PASS** — `SECURITY_REVIEW.md` (R1–R13) |
+| 84 | Fixes after go-ahead | **Waiting** for the owner |
+| 85 | Break-it tests in CI | **PASS** — `tests/` + `tests.yml` (45 DB checks + browser), open findings shown separately |
+| 86 | Final report | **PASS** — `SECURITY_REPORT.md` |
+| 87 | Live G checks after deploy, tests every push | **PASS** — `security.yml` (after every change to main + weekly), `tests.yml` (every push) |
+
 ## 9. Findings
 | # | Sev | Finding | Fix idea | Verify |
 |---|---|---|---|---|
