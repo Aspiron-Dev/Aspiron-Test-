@@ -128,7 +128,7 @@ declare
   h text; sl text; lk bigint; f cbt_private.admin_fails%rowtype;
   hd json := coalesce(nullif(current_setting('request.headers', true), '')::json, '{}'::json);
   v_raw text := btrim(coalesce(hd->>'cf-connecting-ip', hd->>'x-real-ip', split_part(coalesce(hd->>'x-forwarded-for', ''), ',', 1), ''));
-  v_ip text := md5('cbt-admin|' || v_raw); v_e text; v_2fa boolean;
+  v_ip text := md5('cbt-admin|' || v_raw); v_e text; v_2fa boolean; v_okpw boolean;
 begin
   -- a v35 sign-in session ("as1.…") is checked by v35, never counted as a wrong password (safe to re-run this file)
   if coalesce(p_pw,'') like 'as1.%' then
@@ -154,7 +154,13 @@ begin
   end if;
   select * into f from admin_fails where ip = v_ip;
   if found and f.locked_until > t then return 'locked'; end if;
-  if h <> hash_code(sl, coalesce(p_pw,'')) then
+  -- v35 keeps the password with bcrypt: check it the same way (safe to re-run this file)
+  if to_regprocedure('cbt_private.adm_pw_ok(text,text,text)') is not null then
+    execute 'select cbt_private.adm_pw_ok($1, $2, $3)' into v_okpw using sl, h, coalesce(p_pw,'');
+  else
+    v_okpw := h = hash_code(sl, coalesce(p_pw,''));
+  end if;
+  if not v_okpw then
     insert into admin_fails as a (ip, fails) values (v_ip, 1)
       on conflict (ip) do update set
         locked_until = case when a.fails + 1 >= 10 then t + 900000 else a.locked_until end,

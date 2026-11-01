@@ -50,6 +50,7 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - Admin (in `supabase_v35_admin_team.sql`): a connection that signed in correctly in the last 60 days is not stopped by the shared lock. `send-push` accepts only an admin sign-in session (redeploy it).
 - All pages refuse to show inside another site's frame; pdf.js runs with `isEvalSupported: false`.
 - **Setup:** run `supabase_v42_audit_fixes.sql`, then `supabase_v35_admin_team.sql` again, then redeploy `supabase/functions/send-push` (Verify JWT off).
+- Also in `supabase_v35_admin_team.sql` (v35.3): admin and team passwords are kept with bcrypt (an old password changes to bcrypt at its next correct sign-in); every admin request starts with clean permission notes; no `cbt_private` function can be run from outside and every SECURITY DEFINER function has `pg_temp` last in its search path. `send-push` no longer returns internal error text.
 
 ## English + हिंदी medium in the same series (`supabase_v41_medium.sql`, `app19.js`, `cx/lang.js`)
 One test series, one store item, one price — each student gets the tests in their own medium.
