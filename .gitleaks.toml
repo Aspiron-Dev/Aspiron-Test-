@@ -10,6 +10,6 @@ regexes = [
   '''VAPID_PUBLIC: "[A-Za-z0-9_-]+"''',   # web-push public key
   '''rkey":"[^"]*''',                    # PYQ question ids (pyq-data/*.json)
   '''YOUR-DB-PASSWORD''',                  # placeholder in BACKUP.md
-  '''OwnerPass2026x|Tr7k-9mQz-pLx[0-9]|aspiron123''',  # fake passwords of the throw-away test database (tests/)
+  '''OwnerPass2026x|Tr7k-9mQz-pLx[0-9]|Qw8v-Lm3x-Zp7k|aspiron123''',  # fake passwords of the throw-away test database (tests/)
 ]
 paths = ['''^lib/''']                      # exact copies of npm packages
