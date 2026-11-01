@@ -19,13 +19,15 @@
 // Body: { mode: "info", vapid? } → { v: 2, vapid: secrets set?, key_ok: does `vapid` match VAPID_PUBLIC? } (no password; no secrets returned)
 
 import webpush from "npm:web-push@3.6.7";
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 
 const cors = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+// browsers may call this function only from these sites (secret ALLOWED_ORIGINS, comma separated, e.g. when a custom
+// domain is added). The minute job calls it from the database, where CORS does not apply.
+const ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "https://aspiron-dev.github.io").split(",").map((s) => s.trim().replace(/\/+$/, "")).filter(Boolean);
 const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 
 const PAGE_MAX = 200;    // phones per call at most
@@ -94,13 +96,20 @@ async function handle(req: Request): Promise<Response> {
 }
 
 Deno.serve(async (req) => {
+  let res: Response;
   try {
-    return await handle(req);
+    res = await handle(req);
   } catch (e) {
     const msg = String((e as Error)?.message || e).slice(0, 300);
     console.error("send-push crashed:", msg);
-    return json({ ok: false, error: "crash" }, 500);   // the reason stays in the function's Logs, not in the answer
+    res = json({ ok: false, error: "crash" }, 500);   // the reason stays in the function's Logs, not in the answer
   }
+  // CORS: only an allowed site gets the Allow-Origin header (no wildcard, no echo of any other origin)
+  const origin = req.headers.get("origin") || "";
+  const h = new Headers(res.headers);
+  h.set("Vary", "Origin");
+  if (ORIGINS.includes(origin)) h.set("Access-Control-Allow-Origin", origin);
+  return new Response(res.body, { status: res.status, headers: h });
 });
 
 // the VAPID keys are two secrets; say which one is missing (in the Logs tab and in the admin "Check setup" answer)

@@ -1,0 +1,14 @@
+# gitleaks settings: the default rules, minus values that are public by design.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public by design"
+regexTarget = "match"
+regexes = [
+  '''sb_publishable_[A-Za-z0-9_-]+''',   # Supabase publishable key (config.js, cron job SQL)
+  '''VAPID_PUBLIC: "[A-Za-z0-9_-]+"''',   # web-push public key
+  '''rkey":"[^"]*''',                    # PYQ question ids (pyq-data/*.json)
+  '''YOUR-DB-PASSWORD''',                  # placeholder in BACKUP.md
+]
+paths = ['''^lib/''']                      # exact copies of npm packages
