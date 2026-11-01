@@ -50,7 +50,7 @@ jobs:
           umask 077
           B=/usr/lib/postgresql/17/bin
           W=$(mktemp -d); trap 'rm -rf "$W" "${{ runner.temp }}/bk"' EXIT
-          f=$(find "${{ runner.temp }}/bk" -name '*.dump.gpg' | head -1)
+          f=$(find "${{ runner.temp }}/bk" -type f -name '*.dump.gpg' | head -1)
           [ -n "$f" ] || { echo "::error::No .dump.gpg in the artifact"; exit 1; }
           printf '%s' "$PASS" > "$W/p"
           gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-file "$W/p" -d -o "$W/db.dump" "$f" || { echo "::error::Could not unlock the backup (wrong BACKUP_PASSWORD?)"; exit 1; }
