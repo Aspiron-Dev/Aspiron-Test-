@@ -32,7 +32,7 @@ jobs:
         continue-on-error: true
         run: psql -X -f tests/db/open_findings.sql
   browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04          # Playwright 1.56 supports Ubuntu 24.04 (ubuntu-latest is now 26.04)
     timeout-minutes: 20
     services:
       postgres:
