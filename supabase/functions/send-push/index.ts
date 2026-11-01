@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
   } catch (e) {
     const msg = String((e as Error)?.message || e).slice(0, 300);
     console.error("send-push crashed:", msg);
-    return json({ ok: false, error: "crash", detail: msg }, 500);
+    return json({ ok: false, error: "crash" }, 500);   // the reason stays in the function's Logs, not in the answer
   }
 });
 

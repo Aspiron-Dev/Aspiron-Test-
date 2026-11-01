@@ -138,8 +138,43 @@ begin
     select n.nspname into s from pg_extension e join pg_namespace n on n.oid = e.extnamespace where e.extname = 'pgcrypto';
   end if;
   execute format($f$create or replace function cbt_private.adm_hmac1(p_key bytea, p_msg bytea) returns bytea language sql immutable as 'select %I.hmac(p_msg, p_key, ''sha1'')'$f$, s);
+  -- bcrypt for admin and team passwords (slow on purpose, so a copied database cannot be guessed quickly)
+  execute format($f$create or replace function cbt_private.adm_pw_new(p text) returns text language sql volatile as 'select %I.crypt(coalesce(p, ''''), %I.gen_salt(''bf'', 10))'$f$, s, s);
+  execute format($f$create or replace function cbt_private.adm_crypt(p text, h text) returns text language sql immutable as 'select %I.crypt(coalesce(p, ''''), h)'$f$, s);
   execute format($f$create or replace function cbt_private.adm_rand(n int) returns bytea language sql volatile as 'select %I.gen_random_bytes(n)'$f$, s);
 end $do$;
+-- a stored password: bcrypt ("$2…") or, from before v35.3, salted sha256 (changed to bcrypt at the next correct sign-in)
+create or replace function cbt_private.adm_pw_ok(p_salt text, p_hash text, p_pw text) returns boolean language sql stable
+  set search_path = cbt_private, pg_temp as $$
+  select case when p_hash is null then false
+              when p_hash like '$2%' then cbt_private.adm_crypt(p_pw, p_hash) = p_hash
+              else p_hash = cbt_private.hash_code(p_salt, coalesce(p_pw, '')) end
+$$;
+-- the admin password (owner), now stored with bcrypt
+create or replace function cbt_private.set_admin_password(p text) returns text language plpgsql security definer
+  set search_path = cbt_private, pg_temp as $$
+declare sl text;
+begin
+  if p is null or p like 'PUT-YOUR%' or p = 'your-admin-password' then
+    raise exception 'Type your own admin password between the quotes (minimum 8 characters).';
+  end if;
+  if length(p) < 8 then raise exception 'Admin password must be at least 8 characters.'; end if;
+  sl := gen_random_uuid()::text;
+  insert into settings values ('admin_salt', sl)             on conflict (key) do update set value = excluded.value;
+  insert into settings values ('admin_hash', adm_pw_new(p))  on conflict (key) do update set value = excluded.value;
+  insert into settings values ('admin_fail','0')             on conflict (key) do update set value = excluded.value;
+  insert into settings values ('admin_locked_until','0')     on conflict (key) do update set value = excluded.value;
+  return 'Admin password saved.';
+end $$;
+-- F13: the per-request notes (which function, who, which permission) start empty for every outer call
+create or replace function cbt_private.adm_ctx_clear() returns void language plpgsql as $$
+declare k text;
+begin
+  foreach k in array array['cbt.fn','cbt.act','cbt.detail','cbt.sid','cbt.uid','cbt.who','cbt.need','cbt.denied','cbt.logged',
+                           'cbt.recovery_used','cbt.pwlogin','cbt.depth'] loop
+    perform set_config(k, '', true);
+  end loop;
+end $$;
 create or replace function cbt_private.adm_b32(p bytea) returns text language plpgsql immutable as $$
 declare a text := 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; o text := ''; bits int := 0; v int := 0; i int;
 begin
@@ -221,10 +256,12 @@ $$;
 create or replace function cbt_private.adm_pw_match(p_uid uuid, p_pw text) returns boolean language plpgsql stable security definer set search_path = cbt_private, pg_temp as $$
 begin
   if p_uid is null then
-    return exists (select 1 from settings h, settings s where h.key = 'admin_hash' and s.key = 'admin_salt' and h.value = hash_code(s.value, coalesce(p_pw, '')));
+    return exists (select 1 from settings h left join settings s on s.key = 'admin_salt' where h.key = 'admin_hash' and adm_pw_ok(s.value, h.value, p_pw));
   end if;
-  return exists (select 1 from admin_users where id = p_uid and pw_hash = hash_code(salt, coalesce(p_pw, '')));
+  return exists (select 1 from admin_users where id = p_uid and adm_pw_ok(salt, pw_hash, p_pw));
 end $$;
+revoke all on function cbt_private.adm_pw_new(text), cbt_private.adm_crypt(text, text), cbt_private.adm_pw_ok(text, text, text),
+  cbt_private.set_admin_password(text), cbt_private.adm_ctx_clear() from public, anon, authenticated;
 revoke all on function cbt_private.adm_hmac1(bytea, bytea), cbt_private.adm_rand(int), cbt_private.adm_b32(bytea), cbt_private.adm_b32d(text),
   cbt_private.adm_totp(text, bigint), cbt_private.adm_recovery_codes(), cbt_private.adm_otp_check(text, text, boolean),
   cbt_private.adm_pw_weak(text), cbt_private.adm_pw_match(uuid, text) from public, anon, authenticated;
@@ -372,7 +409,7 @@ begin
   if coalesce(lk,0) > t and not exists (select 1 from admin_known where ip = v_ip and at > now() - interval '60 days') then return 'locked'; end if;
   select * into f from admin_fails where ip = v_ip;
   if found and f.locked_until > t then return 'locked'; end if;
-  if h <> hash_code(sl, coalesce(p_pw,'')) then
+  if not adm_pw_ok(sl, h, p_pw) then
     insert into admin_fails as a (ip, fails) values (v_ip, 1)
       on conflict (ip) do update set
         locked_until = case when a.fails + 1 >= 10 then t + 900000 else a.locked_until end,
@@ -388,6 +425,7 @@ begin
   end if;
   update admin_fails set fails = 0 where ip = v_ip;
   insert into admin_known (ip) values (v_ip) on conflict (ip) do update set at = now();
+  if h not like '$2%' then update settings set value = adm_pw_new(p_pw) where key = 'admin_hash'; end if;
   perform set_config('cbt.who', 'Owner (password)', true);
   perform set_config('cbt.need', coalesce(cbt_private.admin_need(coalesce(current_setting('cbt.fn', true), ''),
                                                                   coalesce(current_setting('cbt.act', true), '')), ''), true);
@@ -409,7 +447,7 @@ begin
        and p.prorettype in ('jsonb'::regtype, 'json'::regtype) and p.proretset = false
        and p.proargnames is not null and p.proargnames[1] = 'p_pw'
   loop
-    if pg_get_functiondef(f.oid) like '%cbt-wrap-v35.2%' then continue; end if;
+    if pg_get_functiondef(f.oid) like '%cbt-wrap-v35.3%' then continue; end if;
     if pg_get_functiondef(f.oid) like '%cbt-wrap-v35%' then
       -- an older wrapper: the real function is already in cbt_private; only the wrapper is made again
       execute format('drop function public.%I(%s)', f.proname, f.idargs);
@@ -435,15 +473,18 @@ begin
     select string_agg(format('%I => %I', a, a), ', ') into v_call from unnest(f.proargnames) a;
     execute format($f$
       create function public.%I(%s) returns %s language plpgsql security definer set search_path = cbt_private, pg_temp as $w$
-      declare r %s;
+      declare r %s; d int := coalesce(nullif(current_setting('cbt.depth', true), ''), '0')::int;
       begin
-        -- cbt-wrap-v35.2: note what is being called (only the first, outer call counts), run the real function, log changes
-        if coalesce(current_setting('cbt.fn', true), '') = '' then
+        -- cbt-wrap-v35.3: note what is being called (only the first, outer call counts), run the real function, log changes
+        if d = 0 then
+          perform cbt_private.adm_ctx_clear();
           perform set_config('cbt.fn', %L, true);
           perform set_config('cbt.act', %s, true);
           perform set_config('cbt.detail', left(%s, 120), true);
         end if;
+        perform set_config('cbt.depth', (d + 1)::text, true);
         r := cbt_private.%I(%s);
+        perform set_config('cbt.depth', d::text, true);
         perform cbt_private.admin_after(r::jsonb, %L);
         return r;
       end $w$ $f$, f.proname, f.args, f.ret, f.ret, f.proname, v_act, v_det, f.proname || '__core', v_call, f.proname);
@@ -462,6 +503,7 @@ declare
   v_name text := lower(btrim(coalesce(p_user, '')));
   hd json := adm_hd(); v_acct text;
 begin
+  perform cbt_private.adm_ctx_clear();
   perform set_config('cbt.fn', 'cbt_admin_login', true);
   if coalesce(p_pw, '') = '' or p_pw like 'as1.%' then return jsonb_build_object('ok', false, 'error', 'invalid'); end if;
 
@@ -479,7 +521,7 @@ begin
       return jsonb_build_object('ok', false, 'error', 'locked');
     end if;
     select * into u from admin_users where username = v_name;
-    if not found or u.pw_hash <> hash_code(u.salt, p_pw) then
+    if not found or not adm_pw_ok(u.salt, u.pw_hash, p_pw) then
       perform adm_fail('team', false);
       insert into admin_fail_log_team default values;
       delete from admin_fail_log_team where at < now() - interval '2 hours';
@@ -490,6 +532,7 @@ begin
       return jsonb_build_object('ok', false, 'error', 'invalid');
     end if;
     perform adm_fail('team', true);
+    if u.pw_hash not like '$2%' then update admin_users set pw_hash = adm_pw_new(p_pw) where id = u.id; end if;
     insert into admin_known (ip) values (md5('cbt-team|' || adm_raw_ip())) on conflict (ip) do update set at = now();
     if not u.active then return jsonb_build_object('ok', false, 'error', 'disabled'); end if;
   end if;
@@ -523,6 +566,7 @@ create or replace function public.cbt_admin_me(p_pw text)
 returns jsonb language plpgsql security definer set search_path = cbt_private, pg_temp as $$
 declare e text; u admin_users%rowtype; v_uid uuid;
 begin
+  perform cbt_private.adm_ctx_clear();
   perform set_config('cbt.fn', 'cbt_admin_me', true); perform set_config('cbt.act', 'me', true);
   e := admin_ok(p_pw);
   if e is not null then return jsonb_build_object('ok', false, 'error', e); end if;
@@ -602,7 +646,7 @@ begin
     if v_id is null then
       sl := gen_random_uuid()::text;
       insert into admin_users (name, username, salt, pw_hash, perms, active, note)
-      values (v_nm, v_un, sl, hash_code(sl, v_pw), v_perms, coalesce((d->>'active')::boolean, true), left(coalesce(d->>'note', ''), 200))
+      values (v_nm, v_un, sl, adm_pw_new(v_pw), v_perms, coalesce((d->>'active')::boolean, true), left(coalesce(d->>'note', ''), 200))
       returning id into v_id;
     else
       update admin_users set name = v_nm, username = v_un, perms = v_perms, active = coalesce((d->>'active')::boolean, active),
@@ -610,7 +654,7 @@ begin
       if not found then return jsonb_build_object('ok', false, 'error', 'user'); end if;
       if v_pw <> '' then
         sl := gen_random_uuid()::text;
-        update admin_users set salt = sl, pw_hash = hash_code(sl, v_pw), fail_count = 0, locked_until = 0 where id = v_id;
+        update admin_users set salt = sl, pw_hash = adm_pw_new(v_pw), fail_count = 0, locked_until = 0 where id = v_id;
         -- a new password signs the member out everywhere
         update admin_sessions set revoked_at = now(), revoked_by = 'Owner (new password)' where user_id = v_id and revoked_at is null;
       end if;
@@ -651,7 +695,7 @@ begin
     if adm_locked('pw') then return jsonb_build_object('ok', false, 'error', 'locked'); end if;
     select value into h from settings where key = 'admin_hash';
     select value into asl from settings where key = 'admin_salt';
-    if h is null or h <> hash_code(asl, coalesce(d->>'current', '')) then perform adm_fail('pw', false); return jsonb_build_object('ok', false, 'error', 'current_pw'); end if;
+    if h is null or not adm_pw_ok(asl, h, d->>'current') then perform adm_fail('pw', false); return jsonb_build_object('ok', false, 'error', 'current_pw'); end if;
     perform adm_fail('pw', true);
     if adm_pw_weak(d->>'new_pw') then return jsonb_build_object('ok', false, 'error', 'short'); end if;
     perform set_admin_password(d->>'new_pw');
@@ -662,13 +706,13 @@ begin
   elsif p_action = 'self_password' then
     if v_uid is null then return jsonb_build_object('ok', false, 'error', 'owner'); end if;
     if adm_locked('pw') then return jsonb_build_object('ok', false, 'error', 'locked'); end if;
-    if not exists (select 1 from admin_users where id = v_uid and pw_hash = hash_code(salt, coalesce(d->>'current', ''))) then
+    if not exists (select 1 from admin_users where id = v_uid and adm_pw_ok(salt, pw_hash, d->>'current')) then
       perform adm_fail('pw', false); return jsonb_build_object('ok', false, 'error', 'current_pw');
     end if;
     perform adm_fail('pw', true);
     if adm_pw_weak(d->>'new_pw') then return jsonb_build_object('ok', false, 'error', 'short'); end if;
     sl := gen_random_uuid()::text;
-    update admin_users set salt = sl, pw_hash = hash_code(sl, d->>'new_pw') where id = v_uid;
+    update admin_users set salt = sl, pw_hash = adm_pw_new(d->>'new_pw') where id = v_uid;
     update admin_sessions set revoked_at = now(), revoked_by = 'self (new password)'
      where user_id = v_uid and revoked_at is null and id is distinct from v_sid;
     return jsonb_build_object('ok', true);
@@ -692,6 +736,7 @@ create or replace function public.cbt_admin_team(p_pw text, p_action text, p_dat
 returns jsonb language plpgsql security definer set search_path = cbt_private, pg_temp as $$
 declare r jsonb;
 begin
+  perform cbt_private.adm_ctx_clear();
   perform set_config('cbt.fn', 'cbt_admin_team', true); perform set_config('cbt.act', coalesce(p_action, ''), true);
   r := cbt_private.admin_team_core(p_pw, p_action, p_data);
   perform cbt_private.admin_after(r, 'cbt_admin_team');
@@ -783,12 +828,32 @@ create or replace function public.cbt_admin_2fa(p_pw text, p_action text, p_data
 returns jsonb language plpgsql security definer set search_path = cbt_private, pg_temp as $$
 declare r jsonb;
 begin
+  perform cbt_private.adm_ctx_clear();
   perform set_config('cbt.fn', 'cbt_admin_2fa', true); perform set_config('cbt.act', coalesce(p_action, ''), true);
   r := cbt_private.admin_2fa_core(p_pw, p_action, p_data);
   perform cbt_private.admin_after(r, 'cbt_admin_2fa');
   return r;
 end $$;
 grant execute on function public.cbt_admin_2fa(text, text, jsonb) to anon, authenticated;
+
+-- ---------- F14: nothing in cbt_private can be run from outside, and every SECURITY DEFINER function has pg_temp last ----------
+revoke all on all functions in schema cbt_private from public, anon, authenticated;
+alter default privileges in schema cbt_private revoke execute on functions from public, anon, authenticated;
+do $do$
+declare f record; v_sp text;
+begin
+  for f in
+    select p.oid, (select substr(c, 13) from unnest(p.proconfig) c where c like 'search_path=%') sp
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname in ('public', 'cbt_private') and p.prosecdef and p.prokind = 'f'
+       and not exists (select 1 from pg_depend dp where dp.objid = p.oid and dp.deptype = 'e')
+  loop
+    if f.sp is null then v_sp := 'cbt_private, public, pg_temp';
+    elsif f.sp ~* '(^|,\s*)"?pg_temp"?\s*$' then continue;
+    else v_sp := f.sp || ', pg_temp'; end if;
+    execute format('alter function %s set search_path = %s', f.oid::regprocedure, v_sp);
+  end loop;
+end $do$;
 
 notify pgrst, 'reload schema';
 -- what was wrapped (team members can use these, as their permissions allow); anything listed as "not wrapped" works for the owner only
