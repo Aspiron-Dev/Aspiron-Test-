@@ -47,7 +47,7 @@ All `public` tables: **RLS on, no policies, no grants to anon/authenticated** **
 | cbt_private.settings | Admin password hash, locks, misc | ⚠ admin_hash, admin_salt | admin |
 | cbt_private.admin_users, admin_sessions, admin_totp, admin_audit, admin_fails, admin_fail_log(_team), admin_known, access_requests | Admin team, sessions, 2FA, logs, locks | ⚠ pw_hash, token_hash, TOTP secret, recovery hashes, IP hashes | admin sign-in |
 | public.cbt_store_items, settings, covers, demos, files, audit | Store catalogue | – | admin |
-| public.cbt_store_orders | Orders | ⚠ mobile, payer, utr, ip hash | store page, admin |
+| public.cbt_store_orders | Orders (deleted ones kept in `cbt_private.order_trash`, v46) | ⚠ mobile, payer, utr, ip hash | store page, admin |
 | public.cbt_store_notify, cbt_store_tries | Waiting lists, wrong-code counter | ⚠ mobile, ip hash | store page |
 | public.cbt_payments | Payments added by admin | – | admin |
 | cbt_private.mobile_changes | Every mobile number change (old → new, by admin / student) | – | admin (info) |
@@ -208,6 +208,7 @@ None. The code never uses Supabase Storage **[C]** (no `storage/v1` call). PDFs,
 | G8 | Info · **fixed v35.3** | `cbt_private` tables have RLS off (safe today because the schema is not exposed). | `alter table … enable row level security` on all of them (owner functions keep working). | Advisor / query shows RLS on. |
 | G9 | Medium · **fixed v45** | A student could change their own mobile number (v44) to a buyer's number before the order was approved, so the purchase would land on their account. | A student cannot take a number that has a store order, "Notify me", rejected request or another student's previous number (90 days). | Change to a buyer's number → `taken`. |
 | G10 | Low · **fixed** | Banner links accepted `javascript:`; a file uploaded as HTML/SVG could run script when a student pressed "View"; push endpoints could point at any server (SSRF). | http/https or `#/` links only; first-byte check before viewing; push host allowlist (v45 + `send-push`). | Browser + DB tests. |
+| G11 | Low · **fixed v46** | PR #102 lets an admin/member with Store "Full" access delete any order, even a paid one; only its code stayed in the activity log, so a deleted payment left no record. Permission check itself is correct (tested: no login → `invalid`, Store view → `forbidden`, Store full → deleted and logged). | Trigger keeps a full copy of every deleted order and who deleted it in `cbt_private.order_trash` (owner-only, restorable). | Delete → row in `order_trash` with name, amount, UTR, who; restore with the SQL in v46. |
 
 ## 10. Needs a look in production (read-only)
 1. Supabase → **Advisors → Security Advisor**: screenshot of the list (B22).
