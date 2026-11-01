@@ -315,8 +315,8 @@ select pg_temp.chk('18d R5 practice + "Live ends" ahead: no answer key at submit
 reset role;
 
 -- R6: a team member giving free access shows on the owner's bell
-select public.cbt_admin_team(:'ow2','user_save','{"name":"Support","username":"support1","password":"Qw8v-Lm3x-Zp7k","perms":{"students":"manage"}}')->>'ok';
-select public.cbt_admin_login('support1','Qw8v-Lm3x-Zp7k','S')->>'token' as st6 \gset
+select public.cbt_admin_team(:'ow2','user_save','{"name":"Support","username":"support1","password":"Tr7k-9mQz-pLx3","perms":{"students":"manage"}}')->>'ok';
+select public.cbt_admin_login('support1','Tr7k-9mQz-pLx3','S')->>'token' as st6 \gset
 update cbt_private.security_events set seen = true;
 select public.cbt_admin(:'st6','grant','{"student_id":"bbbbbbbb-0000-0000-0000-00000000000a","series_id":"11111111-1111-1111-1111-111111111111","on":true}')->>'ok';
 select pg_temp.chk('18e R6 a member giving access raises a bell alert for the owner',
