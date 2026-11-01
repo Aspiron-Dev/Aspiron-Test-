@@ -32,7 +32,7 @@ jobs:
           id=$(gh api "repos/${{ github.repository }}/actions/workflows/db-backup.yml/runs?status=success&per_page=1" --jq '.workflow_runs[0].id')
           [ -n "$id" ] && [ "$id" != "null" ] || { echo "::error::No successful backup run found"; exit 1; }
           echo "RUN_ID=$id" >> "$GITHUB_ENV"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           run-id: ${{ env.RUN_ID }}
           github-token: ${{ github.token }}
