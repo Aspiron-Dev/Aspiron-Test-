@@ -1,5 +1,5 @@
-# Secret scan of every push and pull request (whole history, all branches), and a weekly check of the live website
-# for files that must not be served. Uses gitleaks (pinned version, checksum checked) and scripts/check-exposed.sh.
+# Secret scan of every push and pull request (whole history, all branches), and a check of the live website for files
+# that must not be served: after every change to main, every Monday and on demand. Uses gitleaks (pinned version, checksum checked) and scripts/check-exposed.sh.
 name: Security checks
 on:
   push: {}
@@ -30,10 +30,14 @@ jobs:
       - name: Repository files
         run: bash scripts/check-exposed.sh --local
   live:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # weekly, on demand, and after every change to main (GitHub Pages needs a minute or two to publish it)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+      - name: Wait for GitHub Pages to publish
+        if: github.event_name == 'push'
+        run: sleep 150
       - name: Live website
         run: bash scripts/check-exposed.sh

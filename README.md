@@ -50,6 +50,10 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Access requests:** **Delete** removes a request (they can ask again). **Reject** removes it and stops that number from asking again (the website says the request was not accepted). **Rejected numbers** at the bottom of the requests page → **Allow again**.
 - **Setup:** run `supabase_v44_edit_details.sql`, then `supabase_v35_admin_team.sql` again. Re-run v44 after re-running v34 or v42. Until then the panel and app work as before (name only).
 
+## Security documents
+`SECURITY_REPORT.md` (summary, status, top risks, manual checklist) · `SECURITY_REVIEW.md` (attacker review, open findings)
+· `SECURITY_MAP.md` (map + every check) · `SECURITY_RUNBOOK.md` (what to do in an incident) · `RESTORE.md` (backups) · `tests/` (break-it tests).
+
 ## Security checks (repository)
 - `scripts/check-exposed.sh --local` scans the repository; `scripts/check-exposed.sh` asks the live site for files that must not be served. `.github/workflows/security.yml` runs gitleaks (whole history) on every push and the live check every Monday.
 - Pre-commit hook against committing secrets: `git config core.hooksPath .githooks` (uses gitleaks if installed). `.env.example` lists the secret names; the values live only in Supabase / GitHub settings.

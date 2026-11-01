@@ -1,0 +1,59 @@
+# "Break it" security tests on every push and pull request (SECURITY_REPORT.md, item 85).
+# Each job builds a THROW-AWAY PostgreSQL in the runner from tests/db (Supabase stand-ins, mock tables, the exported
+# base functions, every supabase_v*.sql file, fake data) — the real database is never touched and no secret is used.
+name: Security tests
+on:
+  push: {}
+  pull_request: {}
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: throwaway-test-db }
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 20
+    env: { PGHOST: localhost, PGUSER: postgres, PGPASSWORD: throwaway-test-db, PGDATABASE: breakit }
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the test database
+        run: |
+          command -v psql >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client; }
+          PGDATABASE=postgres createdb breakit
+          bash tests/db/build.sh
+      - name: Break-it tests (must all pass)
+        run: psql -v ON_ERROR_STOP=1 -X -f tests/db/break_it.sql
+      - name: Open findings (shown, not blocking — see SECURITY_REVIEW.md)
+        continue-on-error: true
+        run: psql -X -f tests/db/open_findings.sql
+  browser:
+    runs-on: ubuntu-24.04          # Playwright 1.56 supports Ubuntu 24.04 (ubuntu-latest is now 26.04)
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: throwaway-test-db }
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 20
+    env: { PGHOST: localhost, PGUSER: postgres, PGPASSWORD: throwaway-test-db, PGDATABASE: e2e }
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the test database
+        run: |
+          command -v psql >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client; }
+          PGDATABASE=postgres createdb e2e
+          bash tests/db/build.sh
+      - name: Install the browser test tools (pinned in tests/e2e/package-lock.json)
+        working-directory: tests/e2e
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+      - name: Student app + store
+        run: node tests/e2e/student.js
+      - name: Admin console
+        run: node tests/e2e/admin.js
