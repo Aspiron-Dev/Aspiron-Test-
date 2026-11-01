@@ -6,7 +6,7 @@
 /* ---------- messages ---------- */
 {const _et=errText;errText=function(r){switch(r&&r.error){
   case 'rejected':return 'Your request was not accepted. Please contact the admin.';
-  case 'taken':return 'This mobile number already has another account. Please contact the admin.';
+  case 'taken':return 'This mobile number cannot be used for your account. Please contact the admin.';
   case 'mobile_limit':return 'You can change your mobile number only 2 times in 30 days. Please contact the admin.';
   case 'mobile':return 'Please enter a valid 10-digit mobile number.';
   case 'email':return 'Please enter a valid email, or leave it empty.';

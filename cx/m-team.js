@@ -51,7 +51,7 @@ const isOnline = s => s.active && Date.now() - Date.parse(s.last_seen) < 180000;
 async function load(force) {
   if (!force && T.at && Date.now() - T.at < 15000) return { ok: true };
   const [r, z] = await Promise.all([AX.api.call('cbt_admin_team', 'get'), AX.api.call('cbt_admin_2fa', 'status')]);
-  if (r.ok) { T.users = r.users || []; T.sessions = r.sessions || []; T.audit = r.audit || []; T.current = r.current; T.at = Date.now(); T.tfa = (z.ok && z.members) || {}; T.tfaOwner = !!(z.ok && z.enabled); }
+  if (r.ok) { T.users = r.users || []; T.sessions = r.sessions || []; T.audit = r.audit || []; T.current = r.current; T.at = Date.now(); T.tfa = (z.ok && z.members) || {}; T.tfaOwner = !!(z.ok && z.enabled); T.req2fa = !!r.team_2fa_required; }
   return r;
 }
 
@@ -99,6 +99,7 @@ function members(ctx) {
     </div>
     <div class="section-t">Owner</div>
     <div class="card row" style="gap:14px">${UI.avatar('Owner', 'owner', 'lg')}<div class="grow"><div class="row gap6"><b class="lg">You</b>${UI.pill('Owner', 'gold')}${T.tfaOwner ? UI.pill('2-step on', 'ok') : h`<a class="pill warn" href="#/settings">2-step off · turn on</a>`}</div><div class="sm mut">Full access to everything, including this page. Signed in on ${fmt.plural(act.filter(s => !s.user_id).length, 'device')}.</div></div><a class="btn sm" href="#/team/sessions">${icon('device', 15)} Devices</a></div>
+    <div class="card row wrap mt12" style="gap:12px"><div class="grow"><b>Require two-step sign-in for the team</b><div class="xs mut">Until a member turns it on (Settings → Two-step sign-in) they can only do that. ${T.users.filter(u => (T.tfa || {})[u.id]).length} of ${T.users.length} members have it on.</div></div>${AX.f.switch({ name: 't2fa', value: !!T.req2fa, label: T.req2fa ? 'Required' : 'Optional' })}</div>
     <div class="section-t">Team members</div>
     ${T.users.length ? h`<div class="grid g2">${join(T.users, u => {
       const ss = T.sessions.filter(s => s.user_id === u.id && s.active);
@@ -109,6 +110,14 @@ function members(ctx) {
         <div class="divider"></div>
         <div class="row xs mut wrap"><span>${icon('clock', 13)} Last sign-in ${u.last_login ? fmt.ago(u.last_login) : 'never'}</span><span>·</span><span>${fmt.plural(ss.length, 'device')}</span><span class="grow"></span><button class="btn xs" data-act="edit" data-id="${u.id}">${icon('edit', 13)} Edit access</button></div></div>`;
     })}</div>` : h`<div class="card">${UI.empty({ icon: 'team', title: 'No team members yet', text: 'Add a person, give them a username and password, and choose exactly what they can see or change. You stay the only owner.', action: h`<button class="btn pri" data-act="add">${icon('userPlus', 17)} Add first member</button>` })}</div>`}`);
+  const sw = ctx.el.querySelector('[name=t2fa]');
+  if (sw) sw.addEventListener('change', async e => {
+    const on = e.target.checked;
+    if (on && !T.tfaOwner) { e.target.checked = false; return UI.toast('Turn on two-step sign-in for yourself first (Settings).', { tone: 'warn' }); }
+    const r = await AX.api.call('cbt_admin_team', 'team_2fa', { on });
+    if (!r.ok) { e.target.checked = !on; return UI.err(r); }
+    T.req2fa = on; UI.toast(on ? 'Two-step sign-in is now required for the team' : 'Two-step sign-in is optional for the team'); T.at = 0; ctx.reload();
+  });
   AX.act(ctx.el, {
     add: () => editMember(null, ctx),
     edit: el => editMember(T.users.find(u => u.id === el.dataset.id), ctx),
@@ -129,6 +138,20 @@ function genPw() { const a = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ234
 // same rule as the database (adm_pw_weak): 10+ characters, letters and numbers, not an obvious word
 const weak = p => p.length < 10 || !/[A-Za-z]/.test(p) || !/\d/.test(p) || /password|passw0rd|aspiron|admin|qwerty|12345678|abcdefgh/i.test(p);
 const WEAK = 'At least 10 characters with letters and numbers (not “aspiron”, “admin”, “password”…)';
+const BREACHED = 'This password has appeared in a data leak. Please choose another one.';
+// true = the password is in the haveibeenpwned.com list of leaked passwords; only the first 5 characters of its
+// SHA-1 are sent, never the password. If the check cannot run (offline), it does not block.
+async function breached(p) {
+  try {
+    const hb = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(p));
+    const hx = [...new Uint8Array(hb)].map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 5000);
+    const r = await fetch('https://api.pwnedpasswords.com/range/' + hx.slice(0, 5), { signal: ac.signal, headers: { 'Add-Padding': 'true' } });
+    clearTimeout(tm);
+    if (!r.ok) return false;
+    return (await r.text()).split('\n').some(l => { const [suf, n] = l.trim().split(':'); return suf === hx.slice(5) && +n > 0; });
+  } catch (e) { return false; }
+}
 async function resetTfa(u, ctx) {
   if (!(await UI.confirm({ title: 'Reset two-step sign-in for ' + u.name + '?', text: 'Do this only if they lost their phone. They can then sign in with the password alone and should turn two-step sign-in on again in Settings.', yes: 'Reset', tone: 'danger' }))) return;
   const r = await AX.api.call('cbt_admin_2fa', 'reset', { user_id: u.id });
@@ -172,6 +195,7 @@ function editMember(u, ctx) {
           if (d.name.length < 2) return AX.f.error(f, 'name', 'Enter the full name');
           if (!/^[a-z0-9._-]{3,30}$/.test(d.username) || d.username === 'owner') return AX.f.error(f, 'username', '3–30 letters, numbers, dot, dash or underscore');
           if ((isNew || d.password) && weak(String(d.password))) return AX.f.error(f, 'password', WEAK);
+          if ((isNew || d.password) && await breached(String(d.password))) return AX.f.error(f, 'password', BREACHED);
           if (!Object.keys(perms).length && !(await UI.confirm({ title: 'No access selected', text: 'This member will be able to sign in but will not see any section. Save anyway?', yes: 'Save anyway' }))) return;
           await UI.busy(btn, async () => {
             const r = await AX.api.call('cbt_admin_team', 'user_save', { id: isNew ? null : u.id, name: d.name, username: d.username, password: d.password || '', perms, note: d.note || '', active: isNew ? true : !!d.active });
@@ -302,6 +326,7 @@ function security(ctx) {
   AX.act(f, { async save(btn) {
     AX.f.clearErrors(f); const d = AX.f.read(f);
     if (!d.current) return AX.f.error(f, 'current', 'Enter your current password');
+    if (!weak(d.new_pw) && score(d.new_pw) >= 3 && await breached(d.new_pw)) return AX.f.error(f, 'new_pw', BREACHED);
     if (weak(d.new_pw) || score(d.new_pw) < 3) return AX.f.error(f, 'new_pw', 'Use at least 10 characters with letters, numbers and a symbol');
     if (d.new_pw !== d.again) return AX.f.error(f, 'again', 'The two passwords are different');
     await UI.busy(btn, async () => {
@@ -333,6 +358,7 @@ async function renderSelf(ctx) {
     async pw(btn) {
       const f = ctx.el.querySelector('#sp'); AX.f.clearErrors(f); const d = AX.f.read(f);
       if (weak(d.new_pw)) return AX.f.error(f, 'new_pw', WEAK);
+      if (await breached(d.new_pw)) return AX.f.error(f, 'new_pw', BREACHED);
       if (d.new_pw !== d.again) return AX.f.error(f, 'again', 'The two passwords are different');
       await UI.busy(btn, async () => { const x = await AX.api.call('cbt_admin_team', 'self_password', { current: d.current, new_pw: d.new_pw }); if (!x.ok) return x.error === 'current_pw' ? AX.f.error(f, 'current', 'The current password is wrong') : x.error === 'short' ? AX.f.error(f, 'new_pw', WEAK) : UI.err(x); f.reset(); UI.toast('Password changed. Other devices were signed out.'); });
     }

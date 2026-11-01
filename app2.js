@@ -110,14 +110,17 @@ async function openFile(id){
   }
   try{
     const bin=atob(parts.join(''));const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
-    FILEURL[id]={url:URL.createObjectURL(new Blob([u],{type:mime})),name};
+    // only a real PDF or photo (checked by its first bytes) is shown; anything else is only offered as a download
+    const sig=Array.from(u.slice(0,12)).map(c=>c.toString(16).padStart(2,'0')).join('');
+    const real=/^25504446/.test(sig)?'application/pdf':/^89504e47/.test(sig)?'image/png':/^ffd8ff/.test(sig)?'image/jpeg':/^52494646.{8}57454250/.test(sig)?'image/webp':/^47494638/.test(sig)?'image/gif':'';
+    FILEURL[id]={url:URL.createObjectURL(new Blob([u],{type:real||'application/octet-stream'})),name,view:!!real};
   }catch(e){closeModal();toast('This file is damaged.');return}
   showFile(id);
 }
 function showFile(id){
   const f=FILEURL[id];
   modal(`<div class="logo" style="background:var(--ok)">${ic('check',24)}</div><h2>File ready</h2><p class="mut" style="margin:6px 0 14px">${esc(f.name)}</p>
-   <div class="row"><a class="btn" style="flex:1;text-decoration:none" href="${f.url}" target="_blank" rel="noopener">${ic('eye')} View</a><a class="btn soft" style="flex:1;text-decoration:none" href="${f.url}" download="${esc(f.name)}">${ic('download')} Save</a></div>
+   <div class="row">${f.view?`<a class="btn" style="flex:1;text-decoration:none" href="${f.url}" target="_blank" rel="noopener">${ic('eye')} View</a>`:''}<a class="btn soft" style="flex:1;text-decoration:none" href="${f.url}" download="${esc(f.name)}">${ic('download')} Save</a></div>
    <button class="btn ghost block" style="margin-top:10px" onclick="closeModal()">Close</button>`);
 }
 function viewSeries(id){

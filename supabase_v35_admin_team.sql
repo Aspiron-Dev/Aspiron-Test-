@@ -164,6 +164,11 @@ begin
   insert into settings values ('admin_hash', adm_pw_new(p))  on conflict (key) do update set value = excluded.value;
   insert into settings values ('admin_fail','0')             on conflict (key) do update set value = excluded.value;
   insert into settings values ('admin_locked_until','0')     on conflict (key) do update set value = excluded.value;
+  -- a new owner password signs the owner out everywhere (except the panel session that is changing it, if any)
+  if to_regclass('cbt_private.admin_sessions') is not null then
+    update admin_sessions set revoked_at = now(), revoked_by = 'Owner (new password)'
+     where user_id is null and revoked_at is null and id is distinct from nullif(current_setting('cbt.sid', true), '')::uuid;
+  end if;
   return 'Admin password saved.';
 end $$;
 -- F13: the per-request notes (which function, who, which permission) start empty for every outer call
@@ -356,6 +361,13 @@ begin
   if r.user_id is not null then
     if v_need is null or v_need in ('owner', 'owner_read', 'ping') then
       perform set_config('cbt.denied', '1', true); return 'forbidden';
+    end if;
+    -- the owner can require two-step sign-in for the team: until a member turns it on, only "who am I", sign-out
+    -- and the two-step set-up itself work
+    if v_fn not in ('cbt_admin_me', 'cbt_admin_2fa', 'cbt_admin_logout')
+       and coalesce((select value from settings where key = 'team_2fa_required'), '') = '1'
+       and not exists (select 1 from admin_totp where acct = r.user_id::text and enabled) then
+      return 'need_2fa_setup';
     end if;
     if v_need not in ('any', 'any_write') then
       v_mod := split_part(v_need, ':', 1); v_lvl := split_part(v_need, ':', 2);
@@ -614,6 +626,7 @@ begin
 
   if p_action = 'get' then
     return jsonb_build_object('ok', true, 'current', v_sid,
+      'team_2fa_required', coalesce((select value from settings where key = 'team_2fa_required'), '') = '1',
       'users', coalesce((select jsonb_agg(jsonb_build_object('id', u.id, 'name', u.name, 'username', u.username, 'perms', u.perms,
                    'active', u.active, 'note', u.note, 'created_at', u.created_at, 'last_login', u.last_login,
                    'online', exists (select 1 from admin_sessions s where s.user_id = u.id and s.revoked_at is null
@@ -666,6 +679,13 @@ begin
       end if;
     end if;
     return jsonb_build_object('ok', true, 'id', v_id);
+
+  elsif p_action = 'team_2fa' then
+    -- owner: require two-step sign-in for every team member (on / off)
+    insert into settings values ('team_2fa_required', case when coalesce((d->>'on')::boolean, false) then '1' else '0' end)
+      on conflict (key) do update set value = excluded.value;
+    perform set_config('cbt.detail', case when coalesce((d->>'on')::boolean, false) then 'on' else 'off' end, true);
+    return jsonb_build_object('ok', true);
 
   elsif p_action = 'user_delete' then
     v_id := nullif(d->>'id', '')::uuid;

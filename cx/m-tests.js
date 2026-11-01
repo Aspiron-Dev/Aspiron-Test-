@@ -621,7 +621,7 @@ function mediaDrawer(sid) {
           if (!(await UI.confirm({ title: 'Delete this file?', text: 'Students will no longer see it on the series page.', yes: 'Delete', tone: 'danger' }))) return;
           await UI.busy(b, async () => { const r = await AX.api.admin('file_delete', { id: b.dataset.id }); if (!r.ok) return UI.err(r); UI.toast('File deleted'); await refresh(); });
         },
-        async fPick() { const f = await AX.u.pickFile('application/pdf,image/*'); if (!f) return; const t = el.querySelector('#mf-t').value; file = f; redraw(); el.querySelector('#mf-t').value = t || f.name.replace(/\.[a-z0-9]+$/i, ''); },
+        async fPick() { const f = await AX.u.pickFile('application/pdf,image/png,image/jpeg,image/webp'); if (!f) return; const t = el.querySelector('#mf-t').value; file = f; redraw(); el.querySelector('#mf-t').value = t || f.name.replace(/\.[a-z0-9]+$/i, ''); },
         async fUp(b) {
           if (busy) return;
           const er = el.querySelector('#mf-e'), set = (p, t) => { el.querySelector('#mf-p').classList.remove('hide'); el.querySelector('#mf-p i').style.width = p + '%'; el.querySelector('#mf-s').textContent = t; };
