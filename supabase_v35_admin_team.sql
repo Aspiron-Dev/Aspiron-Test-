@@ -123,6 +123,9 @@ create table if not exists cbt_private.admin_totp (
 );
 -- wrong team passwords from everywhere together (someone guessing at scale locks team sign-in for 15 minutes)
 create table if not exists cbt_private.admin_fail_log_team (at timestamptz not null default now());
+-- connections that signed in correctly in the last 60 days: the shared lock (someone guessing from many places) skips them
+create table if not exists cbt_private.admin_known (ip text primary key, at timestamptz not null default now());
+revoke all on cbt_private.admin_known from public, anon, authenticated;
 revoke all on cbt_private.admin_totp, cbt_private.admin_fail_log_team from public, anon, authenticated;
 
 -- HMAC-SHA1 and random bytes come from pgcrypto (schema "extensions" on Supabase)
@@ -366,7 +369,7 @@ begin
   if h is null then return 'not_set'; end if;
   select value into sl from settings where key = 'admin_salt';
   select value::bigint into lk from settings where key = 'admin_locked_until';
-  if coalesce(lk,0) > t then return 'locked'; end if;
+  if coalesce(lk,0) > t and not exists (select 1 from admin_known where ip = v_ip and at > now() - interval '60 days') then return 'locked'; end if;
   select * into f from admin_fails where ip = v_ip;
   if found and f.locked_until > t then return 'locked'; end if;
   if h <> hash_code(sl, coalesce(p_pw,'')) then
@@ -384,6 +387,7 @@ begin
     return 'invalid';
   end if;
   update admin_fails set fails = 0 where ip = v_ip;
+  insert into admin_known (ip) values (v_ip) on conflict (ip) do update set at = now();
   perform set_config('cbt.who', 'Owner (password)', true);
   perform set_config('cbt.need', coalesce(cbt_private.admin_need(coalesce(current_setting('cbt.fn', true), ''),
                                                                   coalesce(current_setting('cbt.act', true), '')), ''), true);
@@ -470,7 +474,8 @@ begin
     -- wrong passwords lock only the connection they come from (10 tries, 15 minutes), with a counter separate from
     -- the owner's, so nobody can lock a member (or the owner) out from elsewhere, and unknown usernames look the same.
     -- 100 wrong team passwords in an hour from everywhere together pause team sign-in for 15 minutes.
-    if adm_locked('team') or coalesce((select value::bigint from settings where key = 'team_locked_until'), 0) > t then
+    if adm_locked('team') or (coalesce((select value::bigint from settings where key = 'team_locked_until'), 0) > t
+        and not exists (select 1 from admin_known where ip = md5('cbt-team|' || adm_raw_ip()) and at > now() - interval '60 days')) then
       return jsonb_build_object('ok', false, 'error', 'locked');
     end if;
     select * into u from admin_users where username = v_name;
@@ -485,6 +490,7 @@ begin
       return jsonb_build_object('ok', false, 'error', 'invalid');
     end if;
     perform adm_fail('team', true);
+    insert into admin_known (ip) values (md5('cbt-team|' || adm_raw_ip())) on conflict (ip) do update set at = now();
     if not u.active then return jsonb_build_object('ok', false, 'error', 'disabled'); end if;
   end if;
 

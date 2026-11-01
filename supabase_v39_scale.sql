@@ -62,12 +62,18 @@ declare
   m text := cbt_private.norm_mobile(p_mobile);
   c text := cbt_private.norm_code(p_code);
   t bigint := cbt_private.now_ms();
+  v_tok boolean := false;
 begin
   select * into s from students where mobile = m;
   if not found then
     return jsonb_build_object('ok',false,'error','invalid');
   end if;
-  if s.locked_until > t then
+  -- a sign-in token from cbt_login (supabase_v42): the phone keeps this instead of the access code
+  if coalesce(p_code, '') like 'st1.%' then
+    v_tok := cbt_private.st_ok(s.id, s.code_hash, p_code);
+    if not v_tok then return jsonb_build_object('ok',false,'error','invalid'); end if;
+  end if;
+  if s.locked_until > t and not v_tok then
     -- A lock is often caused by someone else typing wrong codes for this number. The student's own phone
     -- (already registered on the account) with the right code keeps working; at most 30 tries per lock.
     if not (p_device is not null and p_device = any(s.devices) and s.lock_fails < 30) then
@@ -81,7 +87,7 @@ begin
   if s.status = 'pending' then
     return jsonb_build_object('ok',false,'error','pending');
   end if;
-  if s.code_hash is null or s.code_hash <> hash_code(s.salt, c) then
+  if not v_tok and (s.code_hash is null or s.code_hash <> hash_code(s.salt, c)) then
     -- counted in the update itself, so wrong codes sent at the same moment are all counted
     update students set
       locked_until = case when fail_count + 1 >= 8 then t + 900000 else locked_until end,
