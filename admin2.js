@@ -141,7 +141,7 @@ function loadScript(src,test){
 }
 async function pdfOpen(buf){
   if(!window.pdfjsLib)throw new Error('PDF reader could not load. Check your internet and reload.');
-  return pdfjsLib.getDocument({data:buf.slice(0)}).promise;
+  return pdfjsLib.getDocument({data:buf.slice(0),isEvalSupported:false}).promise;
 }
 async function pdfText(pdf,spaced,note){
   let out='';

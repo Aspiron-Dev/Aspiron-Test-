@@ -47,6 +47,7 @@ async function devSwap(key){
   DEVC=null;
   if(login){
     AUTH={mobile:m,code:c,name:r.name};LS.set('cbt_auth',AUTH);LS.set('cbt_dping',Date.now());updateHeader();CAT=null;
+    try{await upgradeAuth()}catch(e){}
     try{await flushPending()}catch(e){}
     location.hash='#/';route();toast('✓ Signed in on this phone');
   }else toast('✓ That phone is signed out');

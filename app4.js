@@ -58,6 +58,7 @@ async function init(){
   if(!cloud)return login();
   if(!AUTH)return login();
   skelPage();
+  await upgradeAuth();
   await flushPending();
   // a test is still running on this device -> go straight back into it
   const rid=runningTest();

@@ -89,6 +89,13 @@ async function rpc(fn,args,noAuth){
     await new Promise(k=>setTimeout(k,(1500<<n)*(0.5+Math.random())));
   }
 }
+// The phone keeps a sign-in token (supabase_v42), not the access code. A code kept by an older version is swapped once.
+const isTok=c=>/^st1\./.test(c||'');
+async function upgradeAuth(){
+  if(!AUTH||isTok(AUTH.code))return;
+  const r=await rpc('cbt_login',{p_mobile:AUTH.mobile,p_code:AUTH.code,p_device:DEV},true);
+  if(r&&r.ok&&isTok(r.token)&&AUTH){AUTH.code=r.token;LS.set('cbt_auth',AUTH)}
+}
 const AUTHERR=['invalid','blocked','pending','device_limit','device'];
 function errText(r){
   switch(r&&r.error){
@@ -184,7 +191,7 @@ async function doLogin(){
     if(r.error==='device_limit'&&typeof devPick==='function'&&await devPick(m,c,true))return;
     if(r.error==='device_limit'&&!$('#devhelp'))$('#er').insertAdjacentHTML('afterend',`<button id="devhelp" class="btn soft block" style="margin-bottom:10px" onclick="supportSheet('Hi, please reset the devices on my account. Mobile: ${m}')">📱 Ask for device reset</button>`);
     return}
-  AUTH={mobile:m,code:c,name:r.name};LS.set('cbt_auth',AUTH);LS.del('cbt_dping');updateHeader();CAT=null;
+  AUTH={mobile:m,code:isTok(r.token)?r.token:c,name:r.name};LS.set('cbt_auth',AUTH);LS.del('cbt_dping');updateHeader();CAT=null;
   await flushPending();
   location.hash='#/';route();
 }
@@ -217,7 +224,10 @@ function signOut(){
   modal(`<h2>Sign out?</h2><p class="mut">You will need your access code to sign in again. Tests in progress stay saved on this device.</p>
   <div class="row"><button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn danger" style="flex:1" onclick="doSignOut()">Sign out</button></div>`);
 }
-function doSignOut(){closeModal();MKC=null;BMC=null;PREF=0;AUTH=null;ANN=null;LS.del('cbt_auth');CAT=null;login()}
+function doSignOut(){
+  // the token stops working on the server a few seconds later (the phone first turns its notifications off with it)
+  if(AUTH&&isTok(AUTH.code)){const a={p_mobile:AUTH.mobile,p_code:AUTH.code,p_device:DEV};setTimeout(()=>rpc('cbt_logout',a,true),5000)}
+  closeModal();MKC=null;BMC=null;PREF=0;AUTH=null;ANN=null;LS.del('cbt_auth');CAT=null;login()}
 
 /* ---------- catalog / routing ---------- */
 let CATAT=0;

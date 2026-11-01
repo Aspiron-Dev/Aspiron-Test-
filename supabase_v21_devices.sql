@@ -35,12 +35,18 @@ revoke all on public.cbt_device_swaps from anon, authenticated;
 create or replace function cbt_private.check_code(p_mobile text, p_code text)
 returns jsonb language plpgsql security definer set search_path = cbt_private, pg_temp as $$
 declare s cbt_private.students%rowtype; m text := cbt_private.norm_mobile(p_mobile); c text := cbt_private.norm_code(p_code); t bigint := cbt_private.now_ms();
+        v_tok boolean := false;
 begin
   select * into s from students where mobile = m for update;
   if not found then return jsonb_build_object('ok', false, 'error', 'invalid'); end if;
-  if s.locked_until > t then return jsonb_build_object('ok', false, 'error', 'locked', 'wait', ceil((s.locked_until - t) / 60000.0)::int); end if;
+  -- a sign-in token from cbt_login (supabase_v42): the phone keeps this instead of the access code
+  if coalesce(p_code, '') like 'st1.%' then
+    v_tok := cbt_private.st_ok(s.id, s.code_hash, p_code);
+    if not v_tok then return jsonb_build_object('ok',false,'error','invalid'); end if;
+  end if;
+  if s.locked_until > t and not v_tok then return jsonb_build_object('ok', false, 'error', 'locked', 'wait', ceil((s.locked_until - t) / 60000.0)::int); end if;
   if s.status = 'pending' then return jsonb_build_object('ok', false, 'error', 'pending'); end if;
-  if s.code_hash is null or s.code_hash <> hash_code(s.salt, c) then
+  if not v_tok and (s.code_hash is null or s.code_hash <> hash_code(s.salt, c)) then
     update students set
       locked_until = case when fail_count + 1 >= 8 then t + 900000 else locked_until end,
       fail_count   = case when fail_count + 1 >= 8 then 0 else fail_count + 1 end

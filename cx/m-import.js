@@ -67,7 +67,7 @@ async function pdfOpen(buf) {
   try { await loadScript(LIB.pdf, () => window.pdfjsLib); } catch (e) { throw new Error('PDF reader could not load. Check your internet and reload.'); }
   if (!window.pdfjsLib) throw new Error('PDF reader could not load. Check your internet and reload.');
   pdfjsLib.GlobalWorkerOptions.workerSrc = LIB.worker;
-  return pdfjsLib.getDocument({ data: buf.slice(0) }).promise;
+  return pdfjsLib.getDocument({ data: buf.slice(0), isEvalSupported: false }).promise;
 }
 async function pdfText(pdf, spaced, note) {
   let out = '';

@@ -1,6 +1,8 @@
-# Daily encrypted backup of the Supabase database to Google Drive (free: GitHub Actions + rclone).
-# Needs 3 repository secrets (Settings → Secrets and variables → Actions): SUPABASE_DB_URL, BACKUP_PASSWORD, RCLONE_CONFIG.
-# Setup and restore steps: BACKUP.md. The backup never touches this repository; it is encrypted before it leaves the runner.
+# Daily encrypted backup of the Supabase database (free: GitHub Actions).
+# Needs 2 repository secrets (Settings → Secrets and variables → Actions): SUPABASE_DB_URL, BACKUP_PASSWORD.
+# The backup is locked with BACKUP_PASSWORD (AES-256) before it leaves the runner and is kept here as a workflow
+# artifact for 90 days (Actions → Database backup → a run → Artifacts). Optional 3rd secret RCLONE_CONFIG: also copy it
+# to Google Drive. Setup (phone is enough) and restore: BACKUP.md. The backup is never committed to this repository.
 name: Database backup
 on:
   schedule:
@@ -13,36 +15,55 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      HAS_DRIVE: ${{ secrets.RCLONE_CONFIG != '' }}
     steps:
       - name: Check secrets
-        env: { A: '${{ secrets.SUPABASE_DB_URL }}', B: '${{ secrets.BACKUP_PASSWORD }}', C: '${{ secrets.RCLONE_CONFIG }}' }
+        env: { A: '${{ secrets.SUPABASE_DB_URL }}', B: '${{ secrets.BACKUP_PASSWORD }}' }
         run: |
-          [ -n "$A" ] && [ -n "$B" ] && [ -n "$C" ] || { echo "::error::Add the 3 secrets first (see BACKUP.md)"; exit 1; }
+          [ -n "$A" ] && [ -n "$B" ] || { echo "::error::Add the 2 secrets SUPABASE_DB_URL and BACKUP_PASSWORD first (see BACKUP.md)"; exit 1; }
           [ ${#B} -ge 16 ] || { echo "::error::BACKUP_PASSWORD must be at least 16 characters"; exit 1; }
-      - name: Install pg_dump 17 and rclone
+      - name: Install pg_dump 17
         run: |
           sudo install -d /usr/share/postgresql-common/pgdg
           sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
-          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17 rclone >/dev/null
-      - name: Dump, encrypt, upload
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17 >/dev/null
+      - name: Dump and encrypt
         env:
           DB: ${{ secrets.SUPABASE_DB_URL }}
           PASS: ${{ secrets.BACKUP_PASSWORD }}
-          RCLONE_CONFIG_TEXT: ${{ secrets.RCLONE_CONFIG }}
         run: |
           set -euo pipefail
           umask 077
           W=$(mktemp -d); trap 'rm -rf "$W"' EXIT
-          printf '%s\n' "$RCLONE_CONFIG_TEXT" > "$W/rclone.conf"
+          OUT="$RUNNER_TEMP/out"; mkdir -p "$OUT"
           F="aspiron-db-$(date -u +%Y-%m-%d_%H%M).dump"
           # whole database (public + cbt_private: students, codes, tests, results, orders, payments, team), custom format
           /usr/lib/postgresql/17/bin/pg_dump "$DB" --no-owner -n public -n cbt_private -Fc -f "$W/$F"
           SZ=$(stat -c%s "$W/$F"); [ "$SZ" -gt 10000 ] || { echo "::error::Backup looks empty ($SZ bytes)"; exit 1; }
           printf '%s' "$PASS" > "$W/p"
-          gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-file "$W/p" --symmetric --cipher-algo AES256 -o "$W/$F.gpg" "$W/$F"
-          rm -f "$W/$F" "$W/p"
-          rclone --config "$W/rclone.conf" copy "$W/$F.gpg" gdrive:Aspiron-Backups --quiet
+          # only the locked copy leaves this step; the plain dump and the password file are deleted with $W
+          gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-file "$W/p" --symmetric --cipher-algo AES256 -o "$OUT/$F.gpg" "$W/$F"
+          echo "FILE=$OUT/$F.gpg" >> "$GITHUB_ENV"
+          echo "NAME=$F.gpg" >> "$GITHUB_ENV"
+          echo "Locked backup $F.gpg ($(stat -c%s "$OUT/$F.gpg") bytes)"
+      - name: Keep the locked backup here (90 days)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}
+          path: ${{ env.FILE }}
+          retention-days: 90
+          compression-level: 0
+          if-no-files-found: error
+      - name: Copy to Google Drive (optional)
+        env: { RCLONE_CONFIG_TEXT: '${{ secrets.RCLONE_CONFIG }}' }
+        if: env.HAS_DRIVE == 'true'
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -qq rclone >/dev/null
+          W=$(mktemp -d); trap 'rm -rf "$W"' EXIT
+          umask 077; printf '%s\n' "$RCLONE_CONFIG_TEXT" > "$W/rclone.conf"
+          rclone --config "$W/rclone.conf" copy "$FILE" gdrive:Aspiron-Backups --quiet
           # keep 90 days of daily backups
           rclone --config "$W/rclone.conf" delete gdrive:Aspiron-Backups --min-age 90d --quiet || true
-          echo "Uploaded $F.gpg ($(stat -c%s "$W/$F.gpg") bytes)"

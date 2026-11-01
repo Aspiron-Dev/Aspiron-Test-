@@ -8,7 +8,7 @@
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase automatically.
 // Deploy with "Verify JWT" OFF (the site calls it with the public key only; the admin password is checked here).
 //
-// Body: { pw, title, body, url?, tag?, series?, after?, limit? }   (pw = admin password / session, checked with cbt_admin 'ping')
+// Body: { pw, title, body, url?, tag?, series?, after?, limit? }   (pw = an admin panel sign-in session "as1.…", checked with cbt_admin 'ping')
 //   series = test series ids → only students of those series (supabase_v36_notice_audience.sql); empty = everyone.
 //   limit  = phones per call. The admin panel sends `limit` and calls again with `after` = the returned `next` until `done`,
 //            so a big list never runs past the function's time limit (that used to stop sending part-way).
@@ -52,8 +52,11 @@ async function handle(req: Request): Promise<Response> {
 
   if (b.mode === "due") return dueAlerts(db, pub, priv, Number(b.w) || 1);
 
-  // admin password check (same password / session as the admin panel)
-  const { data: auth, error: aerr } = await db.rpc("cbt_admin", { p_pw: String(b.pw || ""), p_action: "ping", p_data: {} });
+  // admin check: only a sign-in session of the admin panel ("as1.…"). A bare password is refused here, so nobody can
+  // guess passwords through this function (every guess would count against this function's own address)
+  const pw = String(b.pw || "");
+  if (!/^as1\.[0-9a-f-]{36}\.[0-9a-f]{64}$/.test(pw)) return json({ ok: false, error: "invalid" }, 401);
+  const { data: auth, error: aerr } = await db.rpc("cbt_admin", { p_pw: pw, p_action: "ping", p_data: {} });
   if (aerr || !auth || !(auth as { ok?: boolean }).ok) return json({ ok: false, error: (auth as { error?: string })?.error || "invalid" }, 401);
 
   if (!pub || !priv) return vapidMissing();
