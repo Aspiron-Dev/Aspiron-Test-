@@ -105,6 +105,7 @@ function errText(r){
     case 'locked':return `Too many wrong attempts. Please try again in ${r.wait||15} minutes.`;
     case 'device_limit':return 'This code is already in use on 2 devices. Sign in on one of those phones, or ask us to reset your devices.';
     case 'device':return 'You were signed out because your devices were reset. Please sign in again.';
+    case 'busy':return 'Too many requests in a short time. Please wait a few minutes and try again.';
     case 'network':return 'No internet connection. Please check and try again.';
     default:return 'Something went wrong. Please try again.';
   }
