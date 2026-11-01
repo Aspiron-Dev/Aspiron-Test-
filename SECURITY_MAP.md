@@ -141,7 +141,7 @@ None. The code never uses Supabase Storage **[C]** (no `storage/v1` call). PDFs,
 | 30 | Reset / magic / verification links | **N/A** | No e-mail links exist: owner resets via SQL Editor (`set_admin_password`), members via the owner, students get a new code from the admin. |
 | 31 | Links built from APP_URL, not Host header | **N/A** | Static site, no server building links; messages use `config.js` `SHORT_URL`. |
 | 32 | Redirect allowlist / no open redirect | **PASS** [C] | No redirect parameter is read anywhere; navigation is hash routes inside the app. |
-| 33 | Session cookies HttpOnly/Secure/SameSite | **N/A** | No cookies. Admin sessions expire after 7 days unused (30 days max); student tokens after 180 days unused. |
+| 33 | Session cookies HttpOnly/Secure/SameSite | **N/A** | No cookies. Admin sessions expire after 30 days unused (180 days max); student tokens after 180 days unused. |
 | 34 | Logout and password change end sessions | **PASS** [T] | Admin logout revokes the session; owner/member password change signs out other sessions; `set_admin_password` (SQL Editor reset) now signs the owner out everywhere (v35.3). Student sign-out revokes the token; a new code from the admin ends all tokens. |
 | 35 | No sensitive token in localStorage (or risk understood) | **PASS** (risk accepted) | Student token and "keep me signed in" admin session are in localStorage (needed without cookies/server). Mitigations: escaped output everywhere, tokens revocable, expiring, bound to the phone id (students), 2FA for admins. |
 | 36 | No seed/test/debug/demo routes in production | **PASS** [C] | Only the 5 pages listed; no test page, no debug endpoint (`send-push` `mode:"info"` returns only true/false for secrets being set). |

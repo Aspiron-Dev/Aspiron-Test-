@@ -274,7 +274,7 @@ function sessions(ctx) {
     <div class="grow"><div class="row gap6 wrap"><b>${s.device || 'Unknown device'}</b>${s.id === T.current ? UI.pill('This device', 'pri') : ''}${isOnline(s) ? h`<span class="pill ok"><span class="live-dot"></span> Active now</span>` : ''}</div>
       <div class="xs mut">${s.who}${s.user_id ? '' : ' (owner)'} · ${s.ip ? 'IP ' + s.ip + ' · ' : ''}signed in ${fmt.ago(s.created_at)}${s.active ? ' · last active ' + fmt.ago(s.last_seen) : ' · ended ' + fmt.ago(s.revoked_at || s.expires_at) + (s.revoked_by ? ' by ' + s.revoked_by : ' (expired)')}</div></div>
     ${s.active && s.id !== T.current ? h`<button class="btn sm danger" data-act="out" data-id="${s.id}">${icon('logout', 14)} Sign out</button>` : ''}</div>`;
-  AX.set(ctx.el, h`<div class="callout info">${icon('info')}<div class="sm">This is every place the admin console is signed in. If you see a device you do not recognise, sign it out and change that person's password. A session also ends by itself after 7 days without use.</div></div>
+  AX.set(ctx.el, h`<div class="callout info">${icon('info')}<div class="sm">This is every place the admin console is signed in. If you see a device you do not recognise, sign it out and change that person's password. A session also ends by itself after 30 days without use (180 days at most).</div></div>
     <div class="section-t">Signed in now · ${act.length}</div>
     <div class="card pad0 list">${act.length ? join(act, row) : UI.empty({ icon: 'device', title: 'No other sessions' })}</div>
     ${ended.length ? h`<div class="section-t">Recently ended</div><div class="card pad0 list" style="opacity:.8">${join(ended, row)}</div>` : ''}`);

@@ -35,7 +35,7 @@ async function check() {
 /* ---------- sign in ---------- */
 const LOST = {
   signed_out: 'You were signed out. The owner may have ended this session, or it was signed out from another device.',
-  expired: 'Your sign-in expired after a week without use. Please sign in again.',
+  expired: 'Your sign-in expired after 30 days without use. Please sign in again.',
   disabled: 'This team account has been paused by the owner.',
   need_2fa: 'Two-step sign-in is on. Sign in with your password and the code from your authenticator app.',
   invalid: 'Please sign in again.', network: 'No internet connection. Check it and try again.', locked: 'Too many wrong attempts. Try again in 15 minutes.'
@@ -100,7 +100,10 @@ function login(reason) {
           : AX.errText(r);
         f.querySelector('#lg-p').select(); return;
       }
-      S.token = r.token; S.legacy = false; S.me = r.me; S.save(f.querySelector('#lg-r').checked);
+      const keep = f.querySelector('#lg-r').checked;
+      S.token = r.token; S.legacy = false; S.me = r.me; S.save(keep);
+      // "Keep me signed in" = no 15-minute auto sign-out on this device (it can be turned on again in Settings)
+      AX.ls.set('cx_autolock', !keep); AX.ls.set('cx_al2', 1);
       start();
     });
   });
@@ -191,6 +194,8 @@ AX.redrawNav = drawNav;
 /* ---------- privacy screen + auto sign-out after 15 minutes without use ---------- */
 let LAST = Date.now();
 ['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach(ev => addEventListener(ev, () => { LAST = Date.now(); }, { passive: true, capture: true }));
+// once: forget an auto sign-out switch saved by an older version, so a device that keeps the sign-in is not signed out
+if (!AX.ls.get('cx_al2', null)) { AX.ls.del('cx_autolock'); AX.ls.set('cx_al2', 1); }
 AX.autoLock = {
   get() { const v = AX.ls.get('cx_autolock', null); return v == null ? (S.legacy || !AX.ls.get('cx_tok', null)) : !!v; },
   set(v) { AX.ls.set('cx_autolock', !!v); }
