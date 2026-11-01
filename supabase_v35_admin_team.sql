@@ -315,6 +315,7 @@ create or replace function cbt_private.admin_need(p_fn text, p_act text) returns
                                               when p_act in ('self_password', 'self_revoke') then 'any_write'
                                               when p_act = 'get' then 'owner_read' else 'owner' end
     when 'cbt_admin_2fa'            then case when p_act = 'status' then 'any' when p_act = 'reset' then 'owner' else 'any_write' end
+    when 'cbt_admin_files'          then case when p_act = 'get' then 'content:view' else 'content:manage' end   -- v43
   end
 $$;
 revoke all on function cbt_private.admin_need(text, text) from public, anon, authenticated;
@@ -853,6 +854,30 @@ begin
     else v_sp := f.sp || ', pg_temp'; end if;
     execute format('alter function %s set search_path = %s', f.oid::regprocedure, v_sp);
   end loop;
+  -- G5: the other functions (not SECURITY DEFINER) get a fixed search path too (Security Advisor: "search path mutable")
+  for f in
+    select p.oid from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname in ('public', 'cbt_private') and not p.prosecdef and p.prokind = 'f'
+       and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) c where c like 'search_path=%')
+       and not exists (select 1 from pg_depend dp where dp.objid = p.oid and dp.deptype = 'e')
+  loop
+    execute format('alter function %s set search_path = cbt_private, public, pg_temp', f.oid::regprocedure);
+  end loop;
+  -- G8: row level security on every private table too (the functions that use them are owned by the same role, which
+  -- RLS does not limit). Skipped if any table or SECURITY DEFINER function belongs to another role.
+  if not exists (select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+                  where n.nspname = 'cbt_private' and c.relkind in ('r', 'p') and c.relowner <> (select oid from pg_roles where rolname = current_user))
+     and not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                  where n.nspname in ('public', 'cbt_private') and p.prosecdef
+                    and not exists (select 1 from pg_depend dp where dp.objid = p.oid and dp.deptype = 'e')
+                    and p.proowner <> (select oid from pg_roles where rolname = current_user)) then
+    for f in select c.oid from pg_class c join pg_namespace n on n.oid = c.relnamespace
+              where n.nspname = 'cbt_private' and c.relkind in ('r', 'p') and not c.relrowsecurity loop
+      execute format('alter table %s enable row level security', f.oid::regclass);
+    end loop;
+  else
+    raise notice 'RLS on cbt_private skipped: some tables or functions belong to another role';
+  end if;
 end $do$;
 
 notify pgrst, 'reload schema';

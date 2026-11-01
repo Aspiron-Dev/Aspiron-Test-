@@ -558,7 +558,7 @@ AX.shareTest = async id => {
 /* ---------- cover & files ---------- */
 function mediaDrawer(sid) {
   if (!canM()) return;
-  let kind = 'syllabus', file = null, busy = false;
+  let kind = 'syllabus', file = null, busy = false, OPENS = {};
   const body = () => {
     const s = S_(sid); if (!s) return UI.empty({ icon: 'layers', title: 'Series not found' });
     const cv = COV.get(sid);
@@ -567,7 +567,7 @@ function mediaDrawer(sid) {
       <p class="xs mut mt8">Shown on the series card for students and in the store. A wide photo works best (about 16 : 7). It is compressed automatically.</p>
       <div class="row wrap mt12"><button class="btn soft" data-act="cvUp">${icon('upload', 16)} ${s.has_cover ? 'Change photo' : 'Upload photo'}</button>${s.has_cover ? h`<button class="btn ghost danger" data-act="cvRm">${icon('trash', 15)} Remove</button>${cv === undefined ? '' : UI.pill('Cover set', 'ok')}` : ''}</div>
       <div class="section-t">Syllabus, schedule & notes</div>
-      <div class="card flat tight">${(s.files || []).length ? join(s.files, f => h`<div class="ts-file"><span class="ts-ic ${f.kind === 'schedule' ? 'info' : f.kind === 'notes' ? 'vio' : 'gold'}">${icon(/\.pdf$/i.test(f.name || '') ? 'pdf' : 'image', 18)}</span><div class="grow"><b class="ell" style="display:block">${f.title}</b><div class="xs mut">${f.kind} · ${Math.round((f.size || 0) / 1024)} KB${f.name ? ' · ' + f.name : ''}</div></div><button class="btn xs danger" data-act="fDel" data-id="${f.id}">${icon('trash', 13)} Delete</button></div>`) : h`<div class="xs mut">No files yet. Students can open these from the series page.</div>`}</div>
+      <div class="card flat tight">${(s.files || []).length ? join(s.files, f => h`<div class="ts-file"><span class="ts-ic ${f.kind === 'schedule' ? 'info' : f.kind === 'notes' ? 'vio' : 'gold'}">${icon(/\.pdf$/i.test(f.name || '') ? 'pdf' : 'image', 18)}</span><div class="grow"><b class="ell" style="display:block">${f.title}</b><div class="xs mut">${f.kind} · ${Math.round((f.size || 0) / 1024)} KB${f.name ? ' · ' + f.name : ''}</div>${OPENS[f.id] ? h`<div class="xs mt4">${UI.pill((OPENS[f.id] > Date.now() ? 'Opens ' : 'Opened ') + fmt.dt(OPENS[f.id]), OPENS[f.id] > Date.now() ? 'warn' : 'ok')}</div>` : ''}</div><button class="btn xs" data-act="fOpen" data-id="${f.id}" title="Students can open it only from this time">${icon('clock', 13)} ${OPENS[f.id] ? 'Change' : 'Opens at'}</button><button class="btn xs danger" data-act="fDel" data-id="${f.id}">${icon('trash', 13)} Delete</button></div>`) : h`<div class="xs mut">No files yet. Students can open these from the series page.</div>`}</div>
       <div class="card flat mt12"><div class="card-h">${icon('upload')}<h3>Upload a file</h3></div><div class="col gap16">
         <div class="fld"><label for="mf-t">Name shown to students</label><input class="inp" id="mf-t" maxlength="80" placeholder="e.g. Full syllabus"></div>
         <div class="fld"><label>Type</label><div class="seg" id="mf-k">${join([['syllabus', 'Syllabus'], ['schedule', 'Schedule'], ['notes', 'Notes']], ([v, l]) => h`<button type="button" class="${kind === v ? 'on' : ''}" data-v="${v}">${l}</button>`)}</div></div>
@@ -582,6 +582,8 @@ function mediaDrawer(sid) {
       const redraw = () => { api.set(body()); };
       const refresh = async () => { AX.cache.drop('catalog'); const c = await AX.data.catalog(true); if (c && c.ok) C = c; redraw(); AX.emit('data:changed'); AX.emit('tests:changed'); };
       if (S_(sid) && S_(sid).has_cover && !COV.has(sid)) loadCovers().then(() => { if (el.isConnected) redraw(); });
+      // v43: when each file opens for students (e.g. solutions only after the test)
+      AX.api.call('cbt_admin_files', 'get', { series_id: sid }).then(r => { if (r && r.ok) { OPENS = r.files || {}; if (el.isConnected) redraw(); } });
       el.addEventListener('click', e => { const b = e.target.closest('#mf-k button'); if (!b) return; kind = b.dataset.v; el.querySelectorAll('#mf-k button').forEach(x => x.classList.toggle('on', x === b)); });
       AX.act(el, {
         async cvUp(b) {
@@ -603,6 +605,16 @@ function mediaDrawer(sid) {
             if (!r.ok) return UI.err(r);
             AX.api.rpc('cbt_admin_series_cover', { p_series: sid, p_set: '' }).catch(() => {});
             COV.set(sid, ''); UI.toast('Cover removed'); await refresh(); paintCover(sid);
+          });
+        },
+        async fOpen(b) {
+          const v = await UI.pickDateTime({ value: OPENS[b.dataset.id] || null, title: 'Students can open this file from', clear: true });
+          if (v === undefined) return;
+          await UI.busy(b, async () => {
+            const r = await AX.api.call('cbt_admin_files', 'set', { id: b.dataset.id, at: v });
+            if (!r.ok) return r.error === 'missing' ? UI.toast('Run supabase_v43_test_rules.sql in Supabase first', { tone: 'bad' }) : UI.err(r);
+            if (v) OPENS[b.dataset.id] = v; else delete OPENS[b.dataset.id];
+            UI.toast(v ? 'Opens ' + fmt.dt(v) : 'Opens at once'); redraw();
           });
         },
         async fDel(b) {

@@ -39,7 +39,7 @@ const ACT = {
   'cbt_admin_cheat:flag': 'Tagged cheating', 'cbt_admin_cheat:unflag': 'Removed a cheating tag', 'cbt_admin_cheat:suspend': 'Suspended a student', 'cbt_admin_cheat:lift': 'Lifted a suspension',
   'cbt_admin_pyq:bulk': 'Added PYQ questions', 'cbt_admin_pyq:update': 'Edited a PYQ question', 'cbt_admin_pyq:delete': 'Deleted a PYQ question', 'cbt_admin_pyq:delete_paper': 'Deleted a PYQ paper',
   'cbt_admin_team:user_save': 'Saved a team member', 'cbt_admin_team:user_delete': 'Removed a team member', 'cbt_admin_team:session_revoke': 'Signed out a session',
-  'cbt_admin_2fa:start': 'Started two-step set-up', 'cbt_admin_2fa:confirm': 'Turned on two-step sign-in', 'cbt_admin_2fa:off': 'Turned off two-step sign-in',
+  'cbt_admin_files:set': 'Set when a file opens', 'cbt_admin_2fa:start': 'Started two-step set-up', 'cbt_admin_2fa:confirm': 'Turned on two-step sign-in', 'cbt_admin_2fa:off': 'Turned off two-step sign-in',
   'cbt_admin_2fa:recovery': 'Made new recovery codes', 'cbt_admin_2fa:reset': "Reset a member's two-step sign-in",
   'cbt_admin_team:sessions_revoke': 'Signed out sessions', 'cbt_admin_team:owner_password': 'Changed the owner password', 'cbt_admin_team:self_password': 'Changed own password', 'cbt_admin_team:self_revoke': 'Signed out own session'
 };

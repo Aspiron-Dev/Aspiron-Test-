@@ -1,6 +1,6 @@
 # Security map — Aspiron CBT
 
-Snapshot of `main` @ `d5667a6` (2026-11-01, after v42 and v35.3). Documentation only: nothing here changes how the app works.
+Snapshot of `main` (2026-11-01, after v42, v43 and v35.3). Documentation only: nothing here changes how the app works.
 Legend: **[T]** = a test was run on a local copy of the database (production base export + every repo SQL file, fake data only) or in Chromium · **[C]** = code read only · **[P]** = needs a look at production (no access from here).
 
 ---
@@ -102,19 +102,19 @@ None. The code never uses Supabase Storage **[C]** (no `storage/v1` call). PDFs,
 | 1 | Answers/solutions not sent during a test | **PASS** [T] | `cbt_start` (`supabase_v41_medium.sql:180`): `questions` has only q/options/img/sec; same for the Hindi version (`q_hi`). By design, **practice** tests send answers at start, and after a student's own submit the answer key comes back (live tests: only after the result time). |
 | 2 | Paper only when the test opens, only to allowed students | **PASS** [T] | Before `opens_at` → `not_open` with no questions; no series access → `locked`. |
 | 3 | Score and rank on the server | **PASS** [T] | `grade_session` (`supabase_v30_result_time.sql:54`) grades against the key in the DB; a `"score":999` sent by the browser is ignored (result 4). Rank is computed in `cbt_leaderboard` / `cbt_overall`. |
-| 4 | Timer checked on the server, no late submit | **NEEDS REVIEW** [T] | `ends_at` is set by the server; `cbt_save` after the time → `over`. A late submit **is saved** (late = true, score shown to the student) but left **out of the rank**. See G2. |
+| 4 | Timer checked on the server, no late submit | **PASS** [T] | `ends_at` is set by the server and, for a live test, is never later than "Live ends" (start 8:58, Live ends 9:00 → ends 9:00; v43). `cbt_save` after the time → `over`; the server auto-submits the saved answers at the end time. A submit that arrives late is kept for the student only (late = true) and never ranked; the rank counts first attempts submitted by "Live ends" (+2 min). |
 | 5 | One attempt (if the rule exists), no double submit | **PASS** [T] | Same client id twice → same result; another submit → `no_session`. Live tests: one attempt until the result time (v33). Non-live tests allow re-attempts by design; rank counts the first one. |
 | 6 | Answers cannot change after submit | **PASS** [T] | `cbt_save` after submit → `no_session`; `results` has no client write access. |
-| 7 | Solutions/PDFs only after the test, only to allowed users | **NEEDS REVIEW** [T] | Review/explanations: after own submit and after the result time **PASS**. Series PDFs: allowed users only (v42) **PASS**, but not tied to any test's end time. See G3. |
-| 8 | Stop question-bank scraping / bulk download | **FAIL** [C] | No per-student limit on `cbt_start`, `cbt_review` or `cbt_pyq_chapter`. See G1. |
-| 9 | Account sharing / session limit | **NEEDS REVIEW** [C] | Device limit 2 + 2 swaps/day (`supabase_v21_devices.sql`), but the device id is sent by the phone, so it can be copied. See G4. |
+| 7 | Solutions/PDFs only after the test, only to allowed users | **PASS** [T] | Review/explanations: after own submit and after the result time. Series PDFs: only students of the series (v42), and each file can get an "Opens at" time (v43, Tests → Cover & files) → before it `not_open`. |
+| 8 | Stop question-bank scraping / bulk download | **PASS** [T] | Per student per hour: 30 new attempts, 120 reviews, 60 PYQ chapters → `busy` (v43). Copying slowly over many hours is still possible for a paying student. |
+| 9 | Account sharing / session limit | **PASS** [T] (limits) | Device limit 2 + 2 swaps/day; a sign-in token works only with the phone id it was made for (v43). Someone who copies the whole browser storage of a phone can still share it; that cannot be stopped from a website. |
 | 10 | Leaderboard shows no phone/email | **PASS** [T] | `top[]` keys: name (first name only), score, rank, me, cheat. |
 | 11 | Paid access only after verified payment, no price tampering | **PASS** price [C] · **N/A** webhook | Amount comes from `cbt_store_items.price` on the server (`supabase_v42_audit_fixes.sql:221`). There is no payment gateway: access is granted only by an admin with Store permission after checking the UPI payment by hand. |
 
 ### B. Supabase / database
 | # | Check | Status | Evidence |
 |---|---|---|---|
-| 12 | RLS on every table, separate policies | **PASS** [T] | 23 public tables: RLS on, **no policies = deny all** (stricter than per-command policies, since the browser never touches tables). `cbt_private` is not exposed (RLS off there; see G8). |
+| 12 | RLS on every table, separate policies | **PASS** [T] | 23 public tables and every `cbt_private` table: RLS on, **no policies = deny all** (stricter than per-command policies, since the browser never touches tables). |
 | 13 | WITH CHECK (user_id, score, rank, role, status) | **PASS** [T] | No client writes at all: insert/update/delete/select as anon → `permission denied`. Functions take the student id from `auth`, never from the request. |
 | 14 | Admin role not in user_metadata | **PASS** [C] | Supabase Auth is not used; roles live in `cbt_private.admin_users` + `settings`. |
 | 15 | Views (security_invoker) and SECURITY DEFINER functions | **PASS** [T] local · [P] prod | No views. Every definer function has a fixed `search_path` with `pg_temp` last; anon can run 0 `cbt_private` functions; 88 admin calls with bad credentials all refused. |
@@ -124,19 +124,19 @@ None. The code never uses Supabase Storage **[C]** (no `storage/v1` call). PDFs,
 | 19 | service_role only on the server | **PASS** [T] | Only in the Edge Function environment; history scan clean. |
 | 20 | Least privilege, DB not open, TLS | **NEEDS REVIEW** [P] | anon = RPC execute only **PASS**. Network restrictions and "Enforce SSL" are dashboard settings. The backup uses the full `postgres` user (G6). |
 | 21 | Backups on | **PASS** | `db-backup.yml` run #8 succeeded with 1 artifact (owner's screenshot, 2026-11-01). Free plan: no Supabase backups/PITR. |
-| 22 | Security Advisor warnings fixed | **NEEDS REVIEW** [P] | Expected: "Function search path mutable" for ~28 non-definer helpers (G5); "RLS enabled, no policy" (INFO, intended). |
+| 22 | Security Advisor warnings fixed | **NEEDS REVIEW** [P] | Every function now has a fixed search path and every private table has RLS (v35.3) [T]. Expected left: "RLS enabled, no policy" (INFO, intended: no direct table access). Needs a screenshot from production. |
 
-## 9. Findings (not fixed — waiting for approval)
+## 9. Findings
 | # | Sev | Finding | Fix idea | Verify |
 |---|---|---|---|---|
-| G1 | Medium | A paid student can pull the whole question bank: start every test, submit blank, open the review (answer keys) in minutes; `cbt_pyq_chapter` returns whole chapters with answers. No per-student rate limit. (`supabase_v41_medium.sql:180,296`, `supabase_v11_pyq.sql:42`) | Per-student limits in SQL, e.g. 30 new test sessions/hour, 60 reviews/hour, 40 PYQ chapters/hour → `{"error":"busy"}`; alert in the Integrity page when hit. | Loop 31 `cbt_start` calls → the 31st is `busy`; a normal student is never stopped. |
-| G2 | Low | Late submit (time over, nothing auto-saved) is saved with its score (late, not ranked). (`cbt_submit`, `supabase_v41_medium.sql:249`) | If the rule is "no late submit": return `over` when `now > ends_at + 2 min` and no auto-saved copy exists (the auto-saved path stays). | Submit 10 minutes late → `over`, no result row. |
-| G3 | Low | Series PDFs (e.g. solutions) are open to series members at any time, not after a test ends. | Optional "opens at" date per file, checked in `cbt_file_part`. | A file with a future date → `not_open`. |
-| G4 | Low | The device limit trusts the device id sent by the phone; copying `localStorage` (token + device id) shares an account. | Bind tokens to their device and/or allow one active test session per student at a time. | A token used with another device id → `invalid`. |
-| G5 | Low | ~28 helper functions without a fixed `search_path` (Advisor warning; not exploitable here, since none is SECURITY DEFINER). | `alter function … set search_path = cbt_private, pg_temp` in a loop. | Advisor shows no "search path mutable". |
-| G6 | Low | The backup secret is the full `postgres` login: if GitHub secrets leak, the whole DB can be changed. | A read-only role `backup_ro` (SELECT + USAGE only) for `SUPABASE_DB_URL`. | Backup still green; `backup_ro` cannot update. |
-| G7 | Info | Practice tests send answers at start, and any submit returns that test's key, so keys can be shared between students. | Product rule; limit with G1. | – |
-| G8 | Info | `cbt_private` tables have RLS off (safe today because the schema is not exposed). | `alter table … enable row level security` on all of them (owner functions keep working). | Advisor / query shows RLS on. |
+| G1 | Medium · **fixed v43** | A paid student can pull the whole question bank: start every test, submit blank, open the review (answer keys) in minutes; `cbt_pyq_chapter` returns whole chapters with answers. No per-student rate limit. (`supabase_v41_medium.sql:180,296`, `supabase_v11_pyq.sql:42`) | Per-student limits in SQL, e.g. 30 new test sessions/hour, 60 reviews/hour, 40 PYQ chapters/hour → `{"error":"busy"}`; alert in the Integrity page when hit. | Loop 31 `cbt_start` calls → the 31st is `busy`; a normal student is never stopped. |
+| G2 | Low · **rule decided** | Late submit (time over, nothing auto-saved) is saved with its score (late, not ranked). (`cbt_submit`, `supabase_v41_medium.sql:249`) | If the rule is "no late submit": return `over` when `now > ends_at + 2 min` and no auto-saved copy exists (the auto-saved path stays). | Submit 10 minutes late → `over`, no result row. |
+| G3 | Low · **fixed v43** | Series PDFs (e.g. solutions) are open to series members at any time, not after a test ends. | Optional "opens at" date per file, checked in `cbt_file_part`. | A file with a future date → `not_open`. |
+| G4 | Low · **fixed v43** | The device limit trusts the device id sent by the phone; copying `localStorage` (token + device id) shares an account. | Bind tokens to their device and/or allow one active test session per student at a time. | A token used with another device id → `invalid`. |
+| G5 | Low · **fixed v35.3** | ~28 helper functions without a fixed `search_path` (Advisor warning; not exploitable here, since none is SECURITY DEFINER). | `alter function … set search_path = cbt_private, pg_temp` in a loop. | Advisor shows no "search path mutable". |
+| G6 | Low · open | The backup secret is the full `postgres` login: if GitHub secrets leak, the whole DB can be changed. | A read-only role `backup_ro` (SELECT + USAGE only) for `SUPABASE_DB_URL`. | Backup still green; `backup_ro` cannot update. |
+| G7 | Info · limited by G1 | Practice tests send answers at start, and any submit returns that test's key, so keys can be shared between students. | Product rule; limit with G1. | – |
+| G8 | Info · **fixed v35.3** | `cbt_private` tables have RLS off (safe today because the schema is not exposed). | `alter table … enable row level security` on all of them (owner functions keep working). | Advisor / query shows RLS on. |
 
 ## 10. Needs a look in production (read-only)
 1. Supabase → **Advisors → Security Advisor**: screenshot of the list (B22).

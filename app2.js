@@ -104,7 +104,7 @@ async function openFile(id){
   const parts=[];let n=0,total=1,mime='application/pdf',name='file';
   while(n<total){
     const r=await rpc('cbt_file_part',{p_file:id,p_n:n});
-    if(!r.ok){closeModal();if(!authErr(r))toast('Could not download this file.');return}
+    if(!r.ok){closeModal();if(!authErr(r))toast(r.error==='not_open'?'This file opens on '+fmtWhen(r.opens_at)+'.':r.error==='locked'?'This file is part of a test series you have not joined.':r.error==='busy'?errText(r):'Could not download this file.');return}
     total=r.parts;mime=r.mime;name=r.name;parts.push(r.data||'');n++;
     const e=$('#fp');if(e)e.textContent=`Downloading… ${Math.round(n*100/total)}%`;
   }
