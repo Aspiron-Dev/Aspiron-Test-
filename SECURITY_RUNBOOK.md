@@ -4,6 +4,7 @@ Keep calm, act in this order, write down what you did and when (incident log at 
 Map of everything: `SECURITY_MAP.md`.
 
 ## 0. Signs that something is wrong
+- GitHub e-mail **"Security alerts" failed**, or the red bell: Admin → Team & access → **Security alerts** (what, who, when).
 - Admin → Team & access → **Activity log**: changes you did not make, many "Refused", sign-ins from unknown devices/IPs.
 - Team & access → **Where signed in**: a device you do not know.
 - Many students saying "signed out" / "locked", sudden wrong-code locks, odd orders or payments.

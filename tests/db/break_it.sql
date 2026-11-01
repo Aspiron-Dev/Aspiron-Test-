@@ -215,6 +215,79 @@ select pg_temp.chk('16c every SECURITY DEFINER function has a fixed search path 
 select pg_temp.chk('16d RLS on every table', not exists (select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
   where n.nspname in ('public','cbt_private') and c.relkind = 'r' and not c.relrowsecurity));
 
+-- ===== 17. R1–R3 (SECURITY_REVIEW.md, fixed in supabase_v47_alerts_results.sql) =====
+-- R1: a live test with "Live ends" but no result time keeps the answer key, score and rank until "Live ends"
+insert into cbt_private.tests(id,series_id,title,duration,data,question_count,active,practice,closes_at,result_at) values
+  ('aaaaaaaa-0000-0000-0000-0000000000f1','22222222-2222-2222-2222-222222222222','Live, no result time',60,
+   '[{"q":"KQ","options":["a","b","c","d"],"answer":2,"explanation":"KEY"}]',1,true,false,(extract(epoch from now())*1000)::bigint+3600000,null)
+  on conflict (id) do nothing;
+set role anon;
+select public.cbt_start('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000000f1')->>'ok';
+select public.cbt_submit('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000000f1','{"0":2}','r1-live') as r1 \gset
+select pg_temp.chk('17a R1 only "Live ends": no answer key or score at submit',
+  (:'r1'::jsonb->>'hidden')::boolean and not ((:'r1'::jsonb)::text ~ '"answer"|KEY') and (:'r1'::jsonb->'result'->>'score') is null);
+select pg_temp.chk('17c R1 only "Live ends": review and rank hidden too',
+  public.cbt_review('9000000002','BBBB2222','dev-bbbbbbbb',(:'r1'::jsonb->'result'->>'id')::uuid)->>'error' = 'hidden'
+  and (public.cbt_leaderboard('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000000f1')->>'hidden')::boolean);
+reset role;
+select pg_temp.chk('17b R1 only "Live ends": the result shows when "Live ends" comes',
+  (:'r1'::jsonb->>'result_at')::bigint = (select closes_at from cbt_private.tests where id = 'aaaaaaaa-0000-0000-0000-0000000000f1'));
+update cbt_private.tests set closes_at = (extract(epoch from now())*1000)::bigint - 1000 where id = 'aaaaaaaa-0000-0000-0000-0000000000f1';
+set role anon;
+select pg_temp.chk('17d R1 after "Live ends" the answer key is shown',
+  public.cbt_review('9000000002','BBBB2222','dev-bbbbbbbb',(:'r1'::jsonb->'result'->>'id')::uuid)::text ~ 'KEY');
+reset role;
+
+-- R2: deleting a student removes everything about them; students cannot do it themselves
+insert into cbt_private.students(id,name,mobile,status,salt,code_hash) values
+  ('bbbbbbbb-0000-0000-0000-0000000000d1','To Delete','9000000099','approved','sd',cbt_private.hash_code('sd','DDDD4444')) on conflict do nothing;
+insert into public.cbt_push_subs(endpoint, mobile, p256dh, auth) values ('https://fcm.googleapis.com/fcm/send/del1','9000000099','a','b') on conflict do nothing;
+insert into cbt_private.results(student_id,test_id,test_title,score,max_score,correct,wrong,skipped,used_seconds,answers)
+  values ('bbbbbbbb-0000-0000-0000-0000000000d1','aaaaaaaa-0000-0000-0000-000000000004','x',0,4,0,0,1,1,'{}');
+insert into cbt_private.bookmarks(student_id,test_id,qidx) values ('bbbbbbbb-0000-0000-0000-0000000000d1','aaaaaaaa-0000-0000-0000-000000000004',0);
+select pg_temp.chk('17e R2 no public function lets a student export or delete their own account',
+  not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public'
+              and p.proargnames[1] = 'p_mobile' and p.proname ~ '(export|erase|forget|download|delete_(me|account|student|data))'));
+select public.cbt_admin_login('','OwnerPass2026x','Owner', cbt_private.adm_totp(:'sec', floor(extract(epoch from now())/30)::bigint + 1))->>'token' as ow2 \gset
+select public.cbt_admin(:'ow2','student_delete','{"id":"bbbbbbbb-0000-0000-0000-0000000000d1"}')->>'ok';
+select pg_temp.chk('17f R2 admin delete removes results, saved questions and phone subscriptions',
+  not exists (select 1 from cbt_private.students where id = 'bbbbbbbb-0000-0000-0000-0000000000d1')
+  and not exists (select 1 from cbt_private.results where student_id = 'bbbbbbbb-0000-0000-0000-0000000000d1')
+  and not exists (select 1 from cbt_private.bookmarks where student_id = 'bbbbbbbb-0000-0000-0000-0000000000d1')
+  and not exists (select 1 from public.cbt_push_subs where mobile = '9000000099'));
+
+-- R3: attacks and misuse leave security events, and serious ones become alerts for the owner
+select set_config('request.headers', '{"x-real-ip":"198.51.100.33"}', false);
+select public.cbt_admin_login('','wrong-guess-' || g,'X')->>'error' from generate_series(1,5) g;
+select pg_temp.chk('17g R3 5 wrong owner passwords: one alert',
+  (select count(*) from cbt_private.security_events where kind = 'owner_wrong_password' and ip = '198.51.•.•') = 5
+  and (select count(*) from cbt_private.security_events where kind = 'many:owner_wrong_password' and level = 'high') = 1);
+set role anon;
+select public.cbt_catalog('9000000001','WRONG' || g,'dev-aaaaaaaa')->>'error' from generate_series(1,8) g;
+reset role;
+select pg_temp.chk('17h R3 a student locked out by wrong codes is recorded',
+  exists (select 1 from cbt_private.security_events where kind = 'student_locked' and who like 'Free Student%'));
+select pg_temp.chk('17i R3 refused actions and team changes are recorded',
+  exists (select 1 from cbt_private.security_events where kind = 'refused')
+  and exists (select 1 from cbt_private.security_events where kind = 'team_changed' and level = 'high'));
+-- the "lost phone" way from SECURITY_RUNBOOK.md (SQL Editor) must raise the alert too
+delete from cbt_private.admin_totp where acct = 'owner';
+select pg_temp.chk('17j R3 turning two-step sign-in off raises an alert',
+  exists (select 1 from cbt_private.security_events where kind = '2fa_off' and level = 'high'));
+select pg_temp.chk('17k R3 no password or code is kept in the events',
+  not exists (select 1 from cbt_private.security_events where (who || detail) ~* 'wrong-guess|OwnerPass|WRONG[0-9]|Tr7k'));
+select pg_temp.chk('17l R3 a team member cannot read the alerts', public.cbt_admin_security(:'vt','get','{}')->>'error' = 'forbidden');
+select pg_temp.chk('17m R3 the owner sees the alerts',
+  (public.cbt_admin_security(:'ow2','get','{}')->>'unseen')::int > 0);
+set role anon;
+do $$ begin
+  begin perform 1 from cbt_private.security_events; perform pg_temp.chk('17n R3 alerts cannot be read from outside', false);
+  exception when others then perform pg_temp.chk('17n R3 alerts cannot be read from outside', true); end;
+end $$;
+reset role;
+select pg_temp.chk('17o R3 the hourly GitHub check reports each alert once',
+  (select count(*) from cbt_private.sec_mail()) > 0 and (select count(*) from cbt_private.sec_mail()) = 0);
+
 -- ===== report =====
 \t off
 \a

@@ -7,7 +7,7 @@ function instr(t,s){
   <h3 style="font-size:15px;margin:6px 0">Read before you start</h3>
   <ul>
    <li>${ic('clock')}<span>The countdown timer is shown at the top right. It <b>never pauses</b> – even if you refresh or close the page. Your answers are also saved online as you go, so the test submits automatically with them when time ends, even if the app is closed.</span></li>
-   ${(t.closes_at||t.result_at)&&!t.practice?`<li>${ic('calendar')}<span>${t.closes_at?`Live till <b>${esc(fmtWhen(t.closes_at))}</b>: no new start after that. `:''}${t.result_at?`Your <b>result, rank and answer key</b> will be shown after <b>${esc(fmtWhen(t.result_at))}</b>. `:''}Only your <b>first attempt</b> counts for the rank.</span></li>`:''}
+   ${(t.closes_at||t.result_at)&&!t.practice?`<li>${ic('calendar')}<span>${t.closes_at?`Live till <b>${esc(fmtWhen(t.closes_at))}</b>: no new start after that. `:''}${t.result_at||t.closes_at?`Your <b>result, rank and answer key</b> will be shown after <b>${esc(fmtWhen(t.result_at||t.closes_at))}</b>. `:''}Only your <b>first attempt</b> counts for the rank.</span></li>`:''}
    <li>${ic('grid')}<span>The <b>Question Palette</b> shows the status of every question. Use it to jump to any question.</span></li>
    <li><span class="lg-row"><i class="lg nv">1</i> Not visited <i class="lg na">2</i> Not answered <i class="lg ans">3</i> Answered <i class="lg mark">4</i> Marked for review <i class="lg mans">5</i> Answered &amp; marked</span></li>
    <li>${ic('check')}<span><b>Save &amp; Next</b> saves your answer and moves ahead. <b>Mark for Review &amp; Next</b> flags the question to revisit. <b>Clear Response</b> removes your answer.</span></li>
