@@ -546,8 +546,8 @@ function addStudent() {
   let mode = 'one';
   UI.modal({ title: 'Add students', sub: 'They get an access code at once. Send it on WhatsApp or Telegram.', size: 'wide',
     body: h`<div class="seg" style="margin-bottom:16px" id="am-seg"><button type="button" class="on" data-m="one">${icon('user', 15)} One student</button><button type="button" data-m="many">${icon('users', 15)} Many at once</button></div>
-      <form id="am1" class="form-grid" autocomplete="off" onsubmit="return false">${AX.f.input({ name: 'name', label: 'Full name', placeholder: 'Rahul Sharma', max: 60 })}${AX.f.input({ name: 'mobile', label: 'Mobile number', type: 'tel', inputmode: 'numeric', placeholder: '10-digit number', max: 16 })}</form>
-      <form id="am2" class="hide" onsubmit="return false">${AX.f.textarea({ name: 'lines', label: 'One student per line: name, mobile', rows: 7, placeholder: 'Rahul Sharma, 9876543210\nPriya Singh, 9123456780' })}<div class="hint xs mut mt8" id="am2c">Paste from a spreadsheet or WhatsApp. Each line needs a name and a 10-digit number.</div></form>`,
+      <form id="am1" class="form-grid" autocomplete="off">${AX.f.input({ name: 'name', label: 'Full name', placeholder: 'Rahul Sharma', max: 60 })}${AX.f.input({ name: 'mobile', label: 'Mobile number', type: 'tel', inputmode: 'numeric', placeholder: '10-digit number', max: 16 })}</form>
+      <form id="am2" class="hide">${AX.f.textarea({ name: 'lines', label: 'One student per line: name, mobile', rows: 7, placeholder: 'Rahul Sharma, 9876543210\nPriya Singh, 9123456780' })}<div class="hint xs mut mt8" id="am2c">Paste from a spreadsheet or WhatsApp. Each line needs a name and a 10-digit number.</div></form>`,
     foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="go" data-busy="Creating…">${icon('key', 16)} <span id="am-go">Create & get code</span></button>`,
     onOpen(el, close) {
       const f1 = el.querySelector('#am1'), f2 = el.querySelector('#am2');
@@ -728,7 +728,7 @@ function tabHtml(s, tab, su, M, R) {
   }
   // account
   const I = infoOk() ? DR.info : null, v44 = !(DR.info && DR.info._err === 'missing');
-  return h`${can ? h`<form class="card flat" id="s3-name" onsubmit="return false"><div class="card-h">${icon('user', 16)}<h3>Details</h3></div>
+  return h`${can ? h`<form class="card flat" id="s3-name"><div class="card-h">${icon('user', 16)}<h3>Details</h3></div>
       <div class="form-grid">${AX.f.input({ name: 'name', label: 'Full name', value: nameOf(s), max: 60 })}
         ${v44 ? AX.f.input({ name: 'mobile', label: 'Mobile number', type: 'tel', inputmode: 'numeric', value: s.mobile, max: 16 }) : ''}
         ${v44 ? AX.f.input({ name: 'email', label: 'Email (optional)', type: 'email', value: I ? I.email : '', placeholder: I ? 'name@example.com' : 'Loading…', max: 120, disabled: !I }) : ''}</div>
@@ -861,7 +861,7 @@ function wireDrawer(el) {
 function suspendForm(s) {
   const DUR = [['', 'Until I lift it'], ['24', '24 hours'], ['72', '3 days'], ['168', '7 days'], ['720', '30 days']];
   UI.modal({ title: 'Suspend ' + nameOf(s), sub: 'The app and website show a full-screen notice with a Support button instead of the tests. Nothing else is deleted.', size: 'narrow',
-    body: h`<form id="sf" class="col gap16" onsubmit="return false">${AX.f.select({ name: 'hours', label: 'How long', value: '', options: DUR.map(([value, label]) => ({ value, label })) })}${AX.f.textarea({ name: 'reason', label: 'Message the student sees', rows: 4, max: 500, value: 'You were found cheating in the test "". Your ID is suspended. Talk to the support team within 24 hours to solve this.' })}</form>`,
+    body: h`<form id="sf" class="col gap16">${AX.f.select({ name: 'hours', label: 'How long', value: '', options: DUR.map(([value, label]) => ({ value, label })) })}${AX.f.textarea({ name: 'reason', label: 'Message the student sees', rows: 4, max: 500, value: 'You were found cheating in the test "". Your ID is suspended. Talk to the support team within 24 hours to solve this.' })}</form>`,
     foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn danger solid" data-act="go" data-busy="Suspending…">${icon('shield', 16)} Suspend now</button>`,
     onOpen(el, close) { AX.act(el, { async go(b) {
       const d = AX.f.read(el.querySelector('#sf'));

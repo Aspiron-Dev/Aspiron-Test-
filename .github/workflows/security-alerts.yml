@@ -2,7 +2,7 @@
 # security events not reported yet (wrong passwords many times, locked sign-ins, 2FA turned off, team or password
 # changes, recovery codes used, …). If there are any, this check FAILS, so GitHub sends the owner a "Run failed"
 # e-mail. Details are only in Admin → Team & access → Security alerts; this log shows only the kind and how many.
-# Uses the same SUPABASE_DB_URL secret as the daily backup.
+# Uses the same database secret as the daily backup (SUPABASE_BACKUP_DB_URL, read-only, when set; else SUPABASE_DB_URL).
 name: Security alerts
 on:
   schedule:
@@ -17,13 +17,12 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Ask the database for new alerts
-        env: { DB: '${{ secrets.SUPABASE_DB_URL }}' }
+        env: { DB: '${{ secrets.SUPABASE_BACKUP_DB_URL || secrets.SUPABASE_DB_URL }}' }
         run: |
           set -uo pipefail
           [ -n "$DB" ] || { echo "::warning::SUPABASE_DB_URL is not set (see BACKUP.md)"; exit 0; }
-          if ! psql "$DB" -X -At -c "select to_regprocedure('cbt_private.sec_mail()') is not null" | grep -qx t; then
-            echo "::warning::Run supabase_v47_alerts_results.sql in Supabase first"; exit 0
-          fi
+          ready=$(psql "$DB" -X -At -c "select to_regprocedure('cbt_private.sec_mail()') is not null") || { echo "::error::Could not reach the database (check the secret)"; exit 1; }
+          if [ "$ready" != "t" ]; then echo "::warning::Run supabase_v47_alerts_results.sql in Supabase first"; exit 0; fi
           out=$(psql "$DB" -X -At -v ON_ERROR_STOP=1 -c "select * from cbt_private.sec_mail()") || { echo "::error::Could not reach the database"; exit 1; }
           if [ -z "$out" ]; then echo "No new security alerts."; exit 0; fi
           echo "$out" | while IFS= read -r l; do echo "::error::Security alert: $l"; done

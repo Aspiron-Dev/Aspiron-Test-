@@ -202,9 +202,9 @@ None. The code never uses Supabase Storage **[C]** (no `storage/v1` call). PDFs,
 | 71 | No secrets in logs | **PASS** [C] |
 | 72 | Alerts (brute force, 5xx, new admin) | **PASS** (5xx: N/A, Supabase) — owner bell + Team → Security alerts; hourly `security-alerts.yml` fails → GitHub e-mail |
 | 73 | MFA on owner accounts | **Manual** — owner's checklist in `SECURITY_REPORT.md` |
-| 74 | Access review, old keys | **Partial** — Team & access review by owner; legacy Supabase keys to check (R7) |
+| 74 | Access review, old keys | **Partial** — Team & access review by owner; legacy keys: `send-push` ready for `SB_SECRET_KEY`, owner turns legacy keys off (R7) |
 | 75 | Spending alerts | **PASS** — Free plan, spend cap, no card, nothing paid |
-| 76 | Data minimised, no analytics | **Partial** — no trackers; IP hashes reversible (R4) |
+| 76 | Data minimised, no analytics | **PASS** — no trackers; IPs keyed-hashed, cleared after 30 days (R4, v48, test 18a/18b) |
 | 77 | Export / delete / privacy notice (DPDP) | **PASS (owner's choice)** — no self-service export/delete (owner decision); request on chat → admin delete removes all student data (trigger `student_wipe`, test 17f); notice updated `app6.js` section 6 |
 | 78 | SPF/DKIM/DMARC | **N/A** — the app sends no e-mail |
 | 79 | Backup restore test, RESTORE.md | **PASS** — `restore-drill.yml` monthly + `RESTORE.md` |

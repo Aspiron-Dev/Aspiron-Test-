@@ -66,6 +66,7 @@ function liveError(m) {
 }
 function liveWarn(m) {
   const dur = +m.duration || 180;
+  if (m.practice && m.closes_at && m.closes_at > Date.now()) return 'This test is in practice mode but has a live end time: until the live end, students get no instant answers (the answer key stays hidden like a live test).';
   return m.result_at && m.closes_at && m.result_at < m.closes_at + dur * 60000 ? `Someone who starts just before the live end will still be writing when the result comes out (the test is ${dur} min). Their attempt then does not count for rank.` : '';
 }
 async function liveCheck(m) {

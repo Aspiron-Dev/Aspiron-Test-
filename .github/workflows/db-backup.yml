@@ -19,7 +19,7 @@ jobs:
       HAS_DRIVE: ${{ secrets.RCLONE_CONFIG != '' }}
     steps:
       - name: Check secrets
-        env: { A: '${{ secrets.SUPABASE_DB_URL }}', B: '${{ secrets.BACKUP_PASSWORD }}' }
+        env: { A: '${{ secrets.SUPABASE_BACKUP_DB_URL || secrets.SUPABASE_DB_URL }}', B: '${{ secrets.BACKUP_PASSWORD }}' }
         run: |
           [ -n "$A" ] && [ -n "$B" ] || { echo "::error::Add the 2 secrets SUPABASE_DB_URL and BACKUP_PASSWORD first (see BACKUP.md)"; exit 1; }
           [ ${#B} -ge 16 ] || { echo "::error::BACKUP_PASSWORD must be at least 16 characters"; exit 1; }
@@ -31,7 +31,7 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17 >/dev/null
       - name: Dump and encrypt
         env:
-          DB: ${{ secrets.SUPABASE_DB_URL }}
+          DB: ${{ secrets.SUPABASE_BACKUP_DB_URL || secrets.SUPABASE_DB_URL }}   # read-only login (supabase_backup_role.sql) when set
           PASS: ${{ secrets.BACKUP_PASSWORD }}
         run: |
           set -euo pipefail

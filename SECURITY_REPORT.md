@@ -7,10 +7,10 @@ Edge Function `send-push`, GitHub repository and workflows. Details: `SECURITY_M
 ## A. Executive summary
 1. The app is in a much stronger state than at the start of the audit: 0 Security Advisor errors, server-checked logins and
    permissions everywhere, 2FA + bcrypt for admins, sign-in tokens for students, encrypted daily backups, secret scanning.
-2. 60 "break it" attacks run on every push against the real SQL and pass; browser tests cover the student app, store and admin.
+2. 70 "break it" attacks run on every push against the real SQL and pass; browser tests cover the student app, store and admin.
 3. Both High findings (F1 paid PDFs, F2 pdf.js) and the Medium ones found so far (F3, F4, G1, G9) are fixed, plus the Low/Info
    items listed below; the 3 Medium findings of the attacker review are fixed too (R1 answer key before "Live ends",
-   R2 data deletion + privacy notice, R3 security alerts — `supabase_v47_alerts_results.sql`). Low / Info R4–R13 stay open.
+   R2 data deletion + privacy notice, R3 security alerts — `supabase_v47_alerts_results.sql`). Low / Info R4–R13: fixed in `supabase_v48_review_low.sql` + app/admin, except R7 and R11 (ready, you switch them on), R9 (partly) and R12 (needs a domain).
 4. Limits of this audit: production was never accessed directly (tests ran on a copy built from code + the 20 Oct export);
    GitHub Pages cannot send security headers.
 5. This does not mean the app is "fully secure"; it means the known risks are listed, tested where possible and ranked.
@@ -40,21 +40,21 @@ cap, no card; GitHub free; no SMS/e-mail/AI. 76 — only name, mobile, optional 
 | Critical | — | — |
 | High | F1 (paid PDFs open to any student), F2 (pdf.js crafted PDF) | — |
 | Medium | F3 (order takeover by mobile), F4 (no backup), G1 (question-bank copying), G9 (purchase hijack by number change), R1, R2, R3 | — |
-| Low | F5–F9, G3, G4, G5, G10, G11; checklist items 26, 27, 29, 34, 40, 43, 45, 48, 49, 53, 55, 56, 59, 61, 64 | R4–R9 |
-| Info | F10, F12–F14, G8 (F11, G2, G7 accepted / decided) | R10–R13 (accepted) |
+| Low | F5–F9, G3, G4, G5, G10, G11, R4, R5, R6, R8; checklist items 26, 27, 29, 34, 40, 43, 45, 48, 49, 53, 55, 56, 59, 61, 64 | R7 (ready), R9 (partly) |
+| Info | F10, F12–F14, G8, R10, R13 (F11, G2, G7 accepted / decided) | R11 (ready), R12 (needs a domain) |
 
 ## D. Top 5 risks now
 1. **Alerts need attention** — R3 alerts only help if someone reads the GitHub e-mail / bell and acts (SECURITY_RUNBOOK.md).
 2. **R2 by request only** — students ask on chat for deletion; answer such requests promptly (DPDP Act 2023).
-3. **R4** — buyers' IPs stored with a reversible hash.
-4. **Insider access** — a member with Full access can give series/approve orders (logged only); keep team small, use View.
+3. **R7 / R11** — legacy Supabase keys and the full database login in GitHub stay until you switch (steps below).
+4. **Insider access** — a member with Full access can give series/approve orders (now on your bell); keep team small, use View.
 5. **Production drift** — the live database may differ from the repository; run new SQL in the README order, v35 last.
 
 ## E. Fix order (after your go-ahead, one at a time)
-R1 → R2 → R3 (+R6 alerts) done; next: R4 → R5 → R7 (with you, in the dashboard) → R8 → R9 → R10/R11 (optional).
+R1–R13 done or ready. Left with you: R7 (switch keys), R11 (backup login), R12 (when a domain is bought).
 
 ## F. Testing plan from here
-- Every push / PR: `tests.yml` (60 database attacks + student/admin browser tests) and `security.yml` (gitleaks, repo files).
+- Every push / PR: `tests.yml` (70 database attacks + student/admin browser tests) and `security.yml` (gitleaks, repo files).
 - After every change to `main` and every Monday: live-site check (`scripts/check-exposed.sh`).
 - 1st of every month: backup restore drill; daily: encrypted backup.
 - Every new feature: add its attack checks to `tests/db/break_it.sql`; move an open finding there once fixed; never weaken a check.
@@ -64,7 +64,7 @@ R1 → R2 → R3 (+R6 alerts) done; next: R4 → R5 → R7 (with you, in the das
 - No direct production access: production functions and foreign keys were checked only through the 20 Oct export, your
   screenshots (Security Advisor 0 errors, SSL on, no buckets/views) and repository code.
 - The live website could not be fetched from this environment; the live checks run in GitHub Actions instead.
-- Open: R4–R13 (above). Accepted: function names public, account sharing by copying a phone's browser data, HTTP 200 "busy".
+- Open: R7 and R11 until switched, R9 `unsafe-eval` (OCR), R12 (domain). Accepted: function names public, account sharing by copying a phone's browser data, HTTP 200 "busy".
 - Third parties not audited: Supabase, GitHub, Google Fonts, jsDelivr/Tesseract data, push services.
 
 ## Manual checklist (only you can do these)
@@ -76,4 +76,7 @@ R1 → R2 → R3 (+R6 alerts) done; next: R4 → R5 → R7 (with you, in the das
 - [ ] Actions → Backup restore drill → Run workflow once now; check green monthly.
 - [ ] Never change Supabase → Data API settings (exposed schema must stay `public`).
 - [ ] Run `supabase_v47_alerts_results.sql`, then `supabase_v35_admin_team.sql`; then Actions → Security alerts → Run workflow once (green).
+- [ ] Run `supabase_v48_review_low.sql`, then `supabase_v35_admin_team.sql`; redeploy `send-push`.
+- [ ] R7: SECURITY_RUNBOOK.md §7 (new secret key → test notification → legacy keys off).
+- [ ] R11: `supabase_backup_role.sql` (BACKUP.md "Read-only login").
 - [ ] A GitHub e-mail "Security alerts … failed" = open Admin → Team & access → Security alerts.

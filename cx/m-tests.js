@@ -351,6 +351,7 @@ function metaSave(t, patch) {
 }
 async function setPractice(t, on) {
   if (on && t.result_at) return UI.toast('Practice tests show answers at once: clear the result time or turn practice off', { tone: 'bad', ms: 6000, action: { label: 'Edit schedule', fn: () => AX.openTest(t.id, { step: 'publish' }) } });
+  if (on && ms(t.closes_at) > Date.now() && !(await UI.confirm({ title: 'Practice mode on a live test?', text: 'Until the live end (' + fmt.dt(t.closes_at) + ') students get no instant answers: the answer key stays hidden like a live test.', yes: 'Turn on', no: 'Cancel' }))) return;
   const r = await AX.api.call('cbt_admin_practice', 'set', { id: t.id, on });
   if (!r.ok) return on ? UI.toast('Practice mode needs the v5 SQL update in Supabase', { tone: 'bad' }) : UI.err(r);
   changed(on ? 'Practice mode on: answers show after each question' : 'Practice mode off');

@@ -10,6 +10,10 @@ const CFG = window.CBT_CONFIG || {};
 const AX = window.AX = window.AX || {};
 AX.cfg = CFG;
 AX.url = String(CFG.SUPABASE_URL || '').replace(/\/+$/, '');
+// R9: the page allows no inline script (CSP), so forms never submit (no onsubmit="return false" needed)
+// and buttons marked data-reload reload the page
+document.addEventListener('submit', e => e.preventDefault(), true);
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-reload]')) location.reload(); });
 
 /* ---------- safe HTML: AX.h`<b>${name}</b>` escapes every value; AX.raw() / nested AX.h are kept ---------- */
 class Safe { constructor(s) { this.s = s; } toString() { return this.s; } }

@@ -288,6 +288,69 @@ reset role;
 select pg_temp.chk('17o R3 the hourly GitHub check reports each alert once',
   (select count(*) from cbt_private.sec_mail()) > 0 and (select count(*) from cbt_private.sec_mail()) = 0);
 
+-- ===== 18. R4–R13 (SECURITY_REVIEW.md, fixed in supabase_v48_review_low.sql) =====
+-- R4: buyers' IPs are not a plain md5 any more, and old ones are cleared
+select set_config('request.headers', '{"x-real-ip":"203.0.113.44"}', false);
+set role anon;
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Ip Buyer','9444444444')->>'ok';
+reset role;
+select pg_temp.chk('18a R4 a buyer''s IP is kept with a keyed hash, not md5',
+  (select ip <> '' and ip <> md5('cbt-store|203.0.113.44') and length(ip) = 64 from public.cbt_store_orders where mobile = '9444444444' limit 1));
+update public.cbt_store_orders set created_at = now() - interval '31 days' where mobile = '9444444444';
+select cbt_private.ip_purge();
+select pg_temp.chk('18b R4 IPs older than 30 days are cleared',
+  (select ip = '' from public.cbt_store_orders where mobile = '9444444444' limit 1)
+  and exists (select 1 from cron.job where jobname = 'cbt-ip-purge'));
+
+-- R5: a live test marked "practice" by mistake sends no answers at the start and holds the result back
+insert into cbt_private.tests(id,series_id,title,duration,data,question_count,active,practice,closes_at,result_at) values
+  ('aaaaaaaa-0000-0000-0000-0000000000f5','22222222-2222-2222-2222-222222222222','Live but practice',60,
+   '[{"q":"PQ","options":["a","b","c","d"],"answer":1,"explanation":"PKEY"}]',1,true,true,(extract(epoch from now())*1000)::bigint+3600000,null)
+  on conflict (id) do nothing;
+set role anon;
+select pg_temp.chk('18c R5 practice + "Live ends" ahead: no answer key at the start',
+  not (public.cbt_start('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000000f5')::text ~ '"answer"|PKEY'));
+select pg_temp.chk('18d R5 practice + "Live ends" ahead: no answer key at submit',
+  not (public.cbt_submit('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000000f5','{"0":1}','r5')::text ~ '"answer"|PKEY'));
+reset role;
+
+-- R6: a team member giving free access shows on the owner's bell
+select public.cbt_admin_team(:'ow2','user_save','{"name":"Support","username":"support1","password":"Qw8v-Lm3x-Zp7k","perms":{"students":"manage"}}')->>'ok';
+select public.cbt_admin_login('support1','Qw8v-Lm3x-Zp7k','S')->>'token' as st6 \gset
+update cbt_private.security_events set seen = true;
+select public.cbt_admin(:'st6','grant','{"student_id":"bbbbbbbb-0000-0000-0000-00000000000a","series_id":"11111111-1111-1111-1111-111111111111","on":true}')->>'ok';
+select pg_temp.chk('18e R6 a member giving access raises a bell alert for the owner',
+  exists (select 1 from cbt_private.security_events where kind = 'member_access_or_money' and level = 'warn' and who = 'Support')
+  and (public.cbt_admin_security(:'ow2','count','{}')->>'unseen')::int >= 1);
+select pg_temp.chk('18f R6 bell alerts are not e-mailed', not exists (select 1 from cbt_private.sec_mail() m where m like 'member_access%'));
+
+-- R10: access codes are changed over to bcrypt at the next sign-in; signed-in phones stay signed in
+set role anon;
+select public.cbt_login('9000000002','BBBB2222','dev-bbbbbbbb')->>'token' as tk10 \gset
+reset role;
+select pg_temp.chk('18g R10 after a sign-in with the code it is kept with bcrypt',
+  (select salt like 'b1$%' and code_hash like '$2a$08$%' from cbt_private.students where mobile = '9000000002'));
+set role anon;
+select pg_temp.chk('18h R10 the same code and the token still work, a wrong code does not',
+  (public.cbt_catalog('9000000002','BBBB2222','dev-bbbbbbbb')->>'ok')::boolean
+  and (public.cbt_catalog('9000000002',:'tk10','dev-bbbbbbbb')->>'ok')::boolean
+  and public.cbt_catalog('9000000002','BBBB2223','dev-bbbbbbbb')->>'error' = 'invalid');
+reset role;
+
+insert into cbt_private.students(id,name,mobile,status,salt,code_hash,devices) values
+  ('bbbbbbbb-0000-0000-0000-0000000000e7','Old Phone','9000000077','approved','s7',cbt_private.hash_code('s7','EEEE7777'),'{dev-eeeeeeee}') on conflict do nothing;
+select cbt_private.st_new('bbbbbbbb-0000-0000-0000-0000000000e7','dev-eeeeeeee') as tk7 \gset
+set role anon;
+select public.cbt_catalog('9000000077','EEEE7777','dev-eeeeeeee')->>'ok';
+select pg_temp.chk('18j R10 a phone signed in before the change-over stays signed in',
+  (public.cbt_catalog('9000000077',:'tk7','dev-eeeeeeee')->>'ok')::boolean);
+reset role;
+
+-- R13: "busy" answers HTTP 429
+select pg_temp.chk('18i R13 a refused request answers HTTP 429 with Retry-After',
+  (select not cbt_private.rate_ok('bbbbbbbb-0000-0000-0000-00000000000a', 't429', 0)
+          and current_setting('response.status', true) = '429' and current_setting('response.headers', true) like '%Retry-After%'));
+
 -- ===== report =====
 \t off
 \a

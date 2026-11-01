@@ -202,7 +202,7 @@ S.editAmount = async (code) => {
   const o = D && D.ok && D.orders.find(x => x.code === code);
   if (!o) return UI.toast('Order ' + code + ' was not found.', { tone: 'warn' });
   UI.modal({ title: 'Correct the amount', sub: (o.item_title || 'Order') + ' · ' + o.code + ' · ' + (o.name || ''), size: 'narrow',
-    body: h`<form id="oa" class="col gap16" onsubmit="return false">${AX.f.input({ name: 'amount', label: 'Amount really paid (₹)', type: 'tel', inputmode: 'numeric', value: o.amount, max: 8 })}
+    body: h`<form id="oa" class="col gap16">${AX.f.input({ name: 'amount', label: 'Amount really paid (₹)', type: 'tel', inputmode: 'numeric', value: o.amount, max: 8 })}
       ${AX.f.input({ name: 'note', label: 'Note (optional)', value: o.amount_note || '', placeholder: 'e.g. paid ₹250 on UPI, discount', max: 200 })}
       <p class="xs mut">${o.amount_was != null ? 'First amount: ' + fmt.inr(o.amount_was) + '. ' : ''}Totals in Payments, Students and Promotions use the new amount at once. The first amount is kept and shown crossed out.</p></form>`,
     foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="go" data-busy="Saving…">${icon('check', 16)} Save amount</button>`,
