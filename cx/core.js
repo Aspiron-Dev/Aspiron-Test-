@@ -126,7 +126,8 @@ AX.api = {
     }
     if (j == null || typeof j !== 'object') return { ok: true, data: j };
     if (j.ok === false && opt.auth !== false && AUTH_ERR.includes(j.error)) AX.emit('auth:lost', j.error);
-    if (j.ok === false && j.error === 'locked' && opt.auth !== false) AX.emit('auth:lost', 'locked');
+    // 'locked' from a password check inside Team & access (wrong current password) is not a lost sign-in
+    if (j.ok === false && j.error === 'locked' && opt.auth !== false && fn !== 'cbt_admin_team') AX.emit('auth:lost', 'locked');
     return j;
   },
   // cbt_admin-style call: AX.api.call('cbt_admin_store', 'get', {…})

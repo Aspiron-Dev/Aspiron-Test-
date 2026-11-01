@@ -46,7 +46,7 @@ create table if not exists cbt_private.admin_sessions (
   ip          text not null default '',          -- shortened, e.g. 49.36.•.•
   created_at  timestamptz not null default now(),
   last_seen   timestamptz not null default now(),
-  expires_at  timestamptz not null default now() + interval '7 days',
+  expires_at  timestamptz not null default now() + interval '30 days',
   revoked_at  timestamptz,
   revoked_by  text
 );
@@ -346,7 +346,7 @@ begin
   if r.expires_at < now() then return 'expired'; end if;
   if r.user_id is not null and r.active is not true then return 'disabled'; end if;
   if r.last_seen < now() - interval '30 seconds' then
-    update admin_sessions set last_seen = now(), expires_at = least(now() + interval '7 days', created_at + interval '30 days') where id = v_id;
+    update admin_sessions set last_seen = now(), expires_at = least(now() + interval '30 days', created_at + interval '180 days') where id = v_id;
   end if;
   perform set_config('cbt.sid', v_id::text, true);
   perform set_config('cbt.uid', coalesce(r.user_id::text, ''), true);
@@ -402,6 +402,11 @@ begin
 end $$;
 revoke all on function cbt_private.admin_after(jsonb, text) from public, anon, authenticated;
 drop function if exists cbt_private.admin_log(text);
+
+-- v35.4: a session lasts 30 days without use (180 days at most); sessions already open get the longer time on their next use
+alter table cbt_private.admin_sessions alter column expires_at set default now() + interval '30 days';
+update cbt_private.admin_sessions set expires_at = least(last_seen + interval '30 days', created_at + interval '180 days')
+ where revoked_at is null and expires_at > now() and expires_at < least(last_seen + interval '30 days', created_at + interval '180 days');
 
 -- ---------- admin_ok: the password (owner, as before) or a session ----------
 create or replace function cbt_private.admin_ok(p_pw text)
