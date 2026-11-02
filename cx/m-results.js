@@ -445,6 +445,8 @@ const PUB_FONTS = [
 ];
 const hexA = (hex, a) => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return 'rgba(255,255,255,' + a + ')'; const n = parseInt(m[1], 16); return 'rgba(' + (n >> 16) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; };
 // each series keeps its own look (saved on this device)
+// a steady colour per series for its tests in the picker
+const pubGrad = id => { let n = 0; for (const ch of String(id || '')) n = (n * 31 + ch.charCodeAt(0)) >>> 0; const t = PUB_THEMES[n % 6]; return 'linear-gradient(135deg,' + t.bg2 + ',' + t.bg1 + ')'; };
 const pubThemeKey = ser => 'rs_pubtheme:' + (ser || '-');
 // Public result list: pick how many toppers and what to show; the picture never has mobile numbers
 function topCard(title, ser, rows) {
@@ -455,36 +457,44 @@ function topCard(title, ser, rows) {
   const L = () => rows.slice(0, Math.max(1, Math.min(100, O.n || 10)));
   const name = () => (title || 'result').replace(/[^\w]+/g, '_') + '_top' + L().length + '.png';
   const draw = el => { AX.ls.set('rs_pub', O); AX.ls.set(pubThemeKey(ser), T); c = cardCanvas(title, ser, L(), O, T); url = c.toDataURL('image/png'); el.querySelector('#pub-img').src = url; el.querySelector('#pub-n').textContent = 'Top ' + L().length + ' of ' + rows.length; };
-  const chk = (k, l) => h`<label class="row gap6 sm"><input type="checkbox" data-k="${k}" ${O[k] ? raw('checked') : ''}><span>${l}</span></label>`;
+  const chk = (k, l) => h`<label class="pub-chip"><input type="checkbox" data-k="${k}" ${O[k] ? raw('checked') : ''}><span>${icon('check', 13)}${l}</span></label>`;
+  const isTh = t => t.bg1 === T.bg1 && t.bg2 === T.bg2 && t.tx === T.tx && t.ac === T.ac;
   UI.modal({
     title: 'Public result list', sub: 'Choose how many toppers and what to show, then download the picture for your channel. Mobile numbers are never shown.', size: 'wide',
-    body: h`<div class="row wrap gap6"><b class="sm">Show</b>${join([10, 15, 25, 50, 100].filter((n, i) => !i || n <= rows.length || rows.length > [10, 15, 25, 50][i - 1]), n => h`<button type="button" class="btn xs ${O.n === n ? 'pri' : 'ghost'}" data-act="pn" data-n="${n}">Top ${n}</button>`)}
-        <input class="inp sm num" id="pub-c" type="number" min="1" max="100" value="${O.n}" style="width:84px" aria-label="How many toppers"><span class="xs mut" id="pub-n"></span>
-        <span class="grow"></span><button type="button" class="btn xs" data-act="pth" aria-expanded="false">${icon('edit', 13)} Theme &amp; text</button></div>
-      <div class="pub-th hide" id="pub-th">
-        <div class="xs mut">Colours${ser ? ' for "' + ser + '"' : ''} — every series keeps its own look</div>
-        <div class="row wrap gap6 mt8">${join(PUB_THEMES, t => h`<button type="button" class="pub-sw" data-act="pset" data-id="${t.id}" title="${t.name}" style="background:linear-gradient(135deg,${t.bg1},${t.bg2});color:${t.ac}">Aa</button>`)}</div>
-        <div class="row wrap mt12" style="gap:14px">${join([['bg1', 'Background 1'], ['bg2', 'Background 2'], ['tx', 'Text'], ['ac', 'Highlight']], ([k, l]) => h`<label class="row gap6 sm"><input type="color" data-c="${k}" value="${T[k]}"><span>${l}</span></label>`)}
-          <label class="row gap6 sm"><span>Font</span><select class="inp sm" data-f="1" style="width:auto">${join(PUB_FONTS, f => h`<option value="${f[0]}" ${T.font === f[0] ? raw('selected') : ''}>${f[1]}</option>`)}</select></label></div>
-        <div class="row wrap gap6 mt12"><input class="inp sm grow" data-t="head" maxlength="60" placeholder="Top line (your institute name)" value="${T.head != null ? T.head : ''}" aria-label="Top line">
-          <input class="inp sm grow" data-t="foot" maxlength="80" placeholder="Bottom line (e.g. Congratulations to all toppers!)" value="${T.foot != null ? T.foot : ''}" aria-label="Bottom line">
-          <button type="button" class="btn xs ghost" data-act="preset">Reset</button></div></div>
-      <div class="row wrap mt8" style="gap:14px">${chk('marks', 'Marks')}${chk('time', 'Time taken')}${chk('rw', 'Right / wrong')}${chk('pct', 'Percentage')}${chk('ser', 'Series name')}</div>
-      <img id="pub-img" alt="Result picture" style="width:100%;border-radius:14px;display:block;margin-top:14px">`,
+    body: h`<div class="pub-bar">
+        <div class="pub-seg" role="group" aria-label="How many toppers">${join([10, 15, 25, 50, 100].filter((n, i) => !i || n <= rows.length || rows.length > [10, 15, 25, 50][i - 1]), n => h`<button type="button" class="${O.n === n ? 'on' : ''}" data-act="pn" data-n="${n}">Top ${n}</button>`)}</div>
+        <label class="pub-num"><span>Custom</span><input class="inp sm num" id="pub-c" type="number" min="1" max="100" value="${O.n}" aria-label="How many toppers"></label>
+        <span class="xs mut" id="pub-n"></span><span class="grow"></span>
+        <button type="button" class="btn sm soft" data-act="pth" aria-expanded="false">${icon('edit', 15)} Theme &amp; text</button></div>
+      <div class="pub-th" id="pub-th" hidden>
+        <div class="pub-sec"><div class="pub-lb">Theme <span>${ser ? 'saved for ' + ser : 'saved on this device'}</span></div>
+          <div class="pub-sws">${join(PUB_THEMES, t => h`<button type="button" class="pub-sw ${isTh(t) ? 'on' : ''}" data-act="pset" data-id="${t.id}"><i style="background:linear-gradient(135deg,${t.bg1},${t.bg2});color:${t.ac}">Aa<em>${icon('check', 12)}</em></i><span>${t.name}</span></button>`)}</div></div>
+        <div class="pub-sec"><div class="pub-lb">Your colours</div>
+          <div class="pub-cls">${join([['bg1', 'Background 1'], ['bg2', 'Background 2'], ['tx', 'Text'], ['ac', 'Highlight']], ([k, l]) => h`<label class="pub-cl"><input type="color" data-c="${k}" value="${T[k]}"><span>${l}</span></label>`)}</div></div>
+        <div class="pub-sec"><div class="pub-lb">Font</div>
+          <div class="pub-fns">${join(PUB_FONTS, f => h`<button type="button" class="pub-fn ${(T.font || 'sans') === f[0] ? 'on' : ''}" data-act="pfont" data-f="${f[0]}"><b style="font-family:${raw(f[2])}">Aa</b><span>${f[1]}</span></button>`)}</div></div>
+        <div class="pub-sec"><div class="pub-lb">Text on the picture</div>
+          <div class="pub-tx"><label><span>Top line</span><input class="inp sm" data-t="head" maxlength="60" placeholder="Your institute name" value="${T.head != null ? T.head : ''}"></label>
+            <label><span>Bottom line</span><input class="inp sm" data-t="foot" maxlength="80" placeholder="Congratulations to all toppers!" value="${T.foot != null ? T.foot : ''}"></label></div></div>
+        <div class="row"><span class="grow"></span><button type="button" class="btn xs ghost" data-act="preset">${icon('refresh', 13)} Reset to default</button></div></div>
+      <div class="pub-chips"><span class="pub-lb">Show</span>${chk('marks', 'Marks')}${chk('time', 'Time taken')}${chk('rw', 'Right / wrong')}${chk('pct', 'Percentage')}${chk('ser', 'Series name')}</div>
+      <div class="pub-pv"><img id="pub-img" alt="Result picture"></div>`,
     foot: h`<span class="sp"></span><button class="btn ghost" data-close>Close</button>${navigator.canShare ? h`<button class="btn" data-act="cshare">${icon('external', 16)} Share</button>` : ''}<button class="btn pri" data-act="cdl">${icon('download', 16)} Download picture</button>`,
     onOpen(el) {
       draw(el);
-      const pick = n => { O.n = Math.max(1, Math.min(100, n || 10)); el.querySelector('#pub-c').value = O.n; el.querySelectorAll('[data-act="pn"]').forEach(b => b.className = 'btn xs ' + (+b.dataset.n === O.n ? 'pri' : 'ghost')); draw(el); };
+      const pick = n => { O.n = Math.max(1, Math.min(100, n || 10)); el.querySelector('#pub-c').value = O.n; el.querySelectorAll('[data-act="pn"]').forEach(b => b.classList.toggle('on', +b.dataset.n === O.n)); draw(el); };
       el.querySelector('#pub-c').addEventListener('change', e => pick(+e.target.value));
       el.querySelectorAll('input[type=checkbox][data-k]').forEach(i => i.addEventListener('change', () => { O[i.dataset.k] = i.checked; draw(el); }));
-      const sync = () => { el.querySelectorAll('input[data-c]').forEach(i => { i.value = T[i.dataset.c]; }); el.querySelector('select[data-f]').value = T.font || 'sans';
+      const sync = () => { el.querySelectorAll('input[data-c]').forEach(i => { i.value = T[i.dataset.c]; });
+        el.querySelectorAll('.pub-fn').forEach(b => b.classList.toggle('on', b.dataset.f === (T.font || 'sans')));
+        el.querySelectorAll('.pub-sw').forEach(b => b.classList.toggle('on', isTh(PUB_THEMES.find(t => t.id === b.dataset.id))));
         el.querySelectorAll('input[data-t]').forEach(i => { i.value = T[i.dataset.t] != null ? T[i.dataset.t] : ''; }); };
-      el.querySelectorAll('input[data-c]').forEach(i => i.addEventListener('input', () => { T[i.dataset.c] = i.value; draw(el); }));
-      el.querySelector('select[data-f]').addEventListener('change', e => { T.font = e.target.value; draw(el); });
+      el.querySelectorAll('input[data-c]').forEach(i => i.addEventListener('input', () => { T[i.dataset.c] = i.value; sync(); draw(el); }));
       el.querySelectorAll('input[data-t]').forEach(i => i.addEventListener('input', AX.u.debounce(() => { T[i.dataset.t] = i.value.trim() ? i.value : null; draw(el); }, 200)));
       AX.act(el, {
         pn: b => pick(+b.dataset.n),
-        pth(b) { const p = el.querySelector('#pub-th'), open = p.classList.toggle('hide') === false; b.setAttribute('aria-expanded', open); b.classList.toggle('pri', open); },
+        pth(b) { const p = el.querySelector('#pub-th'), open = p.hidden; p.hidden = !open; b.setAttribute('aria-expanded', open); b.classList.toggle('pri', open); b.classList.toggle('soft', !open); },
+        pfont(b) { T.font = b.dataset.f; sync(); draw(el); },
         pset(b) { const t = PUB_THEMES.find(x => x.id === b.dataset.id); if (!t) return; Object.assign(T, { bg1: t.bg1, bg2: t.bg2, tx: t.tx, ac: t.ac }); sync(); draw(el); },
         preset() { Object.keys(T).forEach(k => delete T[k]); Object.assign(T, PUB_THEMES[0]); sync(); draw(el); },
         cdl() { const a = document.createElement('a'); a.href = url; a.download = name(); document.body.appendChild(a); a.click(); a.remove(); UI.toast('Downloaded'); },
@@ -524,24 +534,31 @@ async function pickPublic() {
   const SR = []; L.forEach(x => { const k = serOf(x); if (!SR.some(s => s.id === k)) SR.push({ id: k, title: seriesTitle(catTest(x.id)) || 'Other tests' }); });
   const P = { ser: AX.ls.get('rs_pubser', ''), q: '' };
   if (!SR.some(s => s.id === P.ser)) P.ser = SR.length > 1 ? SR[0].id : '';
+  const day0 = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); })();
+  const grp = at => at >= day0 ? 'Today' : at >= day0 - DAY ? 'Yesterday' : at >= day0 - 6 * DAY ? 'This week' : at >= day0 - 30 * DAY ? 'This month' : 'Older';
+  const row = (x, q) => { const t = catTest(x.id), st = seriesTitle(t);
+    return h`<button type="button" class="pub-row" data-act="pubt" data-id="${x.id}"><span class="pub-ic" style="background:${raw(pubGrad(t ? t.series_id : x.id))}">${icon('trophy', 17)}</span>
+      <span class="grow"><b class="ell">${t ? t.title : x.title}</b><span class="pub-meta">${q && st ? h`<span class="ell">${st}</span>` : ''}<span>${icon('users', 12)} ${x.n}</span><span>${fmt.dt(x.at)}</span></span></span>${icon('chevR', 16)}</button>`; };
   const list = () => {
     const q = P.q.trim().toLowerCase();
     const F = L.filter(x => (q ? true : !P.ser || serOf(x) === P.ser) && (!q || ((catTest(x.id) || x).title || '').toLowerCase().includes(q)));
-    return F.length ? h`${join(F.slice(0, 100), x => { const t = catTest(x.id); return h`<div class="li click" data-act="pubt" data-id="${x.id}"><div class="grow"><div class="t ell">${t ? t.title : x.title}</div><div class="s">${q && seriesTitle(t) ? seriesTitle(t) + ' · ' : ''}${fmt.plural(x.n, 'student')} · ${fmt.dt(x.at)}</div></div>${icon('chevR', 16)}</div>`; })}${F.length > 100 ? h`<div class="xs mut" style="padding:8px 12px">Showing 100 of ${F.length} — type a name to find the rest.</div>` : ''}`
-      : h`<div class="xs mut" style="padding:12px">No test matches.</div>`;
+    if (!F.length) return h`<div class="pub-empty">${icon('search', 22)}<span>No test matches “${P.q}”.</span></div>`;
+    const V = F.slice(0, 100), G = [];
+    V.forEach(x => { const g = grp(x.at); const o = G.find(y => y.g === g); if (o) o.L.push(x); else G.push({ g, L: [x] }); });
+    return h`${join(G, o => h`<div class="pub-g">${o.g} <span>${o.L.length}</span></div>${join(o.L, x => row(x, q))}`)}${F.length > 100 ? h`<div class="xs mut" style="padding:10px 4px">Showing 100 of ${F.length} — type a name to find the rest.</div>` : ''}`;
   };
   UI.modal({
-    title: 'Public result list', sub: 'Choose the test series, then the test. Then choose Top 10 / 15 / 100 … and download the picture.',
-    body: h`<div class="inp-wrap search">${icon('search', 16)}<input class="inp sm" id="pub-q" type="search" placeholder="Search a test in any series" autocomplete="off" aria-label="Search test"></div>
-      ${SR.length > 1 ? h`<div class="row wrap gap6 mt8" id="pub-sr">${join(SR, x => h`<button type="button" class="btn xs ${P.ser === x.id ? 'pri' : 'ghost'}" data-act="pubs" data-id="${x.id}">${x.title} <span class="faint">${L.filter(y => serOf(y) === x.id).length}</span></button>`)}</div>` : ''}
-      <div class="list mt8" id="pub-l">${list()}</div>`,
+    title: 'Public result list', sub: 'Pick a test series and a test — then choose the toppers and download the picture.',
+    body: h`<div class="inp-wrap search">${icon('search', 16)}<input class="inp" id="pub-q" type="search" placeholder="Search a test in any series" autocomplete="off" aria-label="Search test"></div>
+      ${SR.length > 1 ? h`<div class="pub-sr" id="pub-sr">${join(SR, x => h`<button type="button" class="pub-pill ${P.ser === x.id ? 'on' : ''}" data-act="pubs" data-id="${x.id}"><span class="ell">${x.title}</span><em>${L.filter(y => serOf(y) === x.id).length}</em></button>`)}</div>` : ''}
+      <div class="pub-list" id="pub-l">${list()}</div>`,
     foot: h`<span class="sp"></span><button class="btn ghost" data-close>Close</button>`,
     onOpen(el, close) {
       const redraw = () => AX.set(el.querySelector('#pub-l'), list());
-      el.querySelector('#pub-q').addEventListener('input', AX.u.debounce(e => { P.q = e.target.value; const sr = el.querySelector('#pub-sr'); if (sr) sr.style.opacity = P.q.trim() ? '.45' : ''; redraw(); }, 150));
+      el.querySelector('#pub-q').addEventListener('input', AX.u.debounce(e => { P.q = e.target.value; const sr = el.querySelector('#pub-sr'); if (sr) sr.classList.toggle('dim', !!P.q.trim()); redraw(); }, 150));
       AX.act(el, {
         pubt(b) { close(); publicList(b.dataset.id); },
-        pubs(b) { P.ser = b.dataset.id; AX.ls.set('rs_pubser', P.ser); el.querySelectorAll('[data-act="pubs"]').forEach(x => x.className = 'btn xs ' + (x.dataset.id === P.ser ? 'pri' : 'ghost')); redraw(); }
+        pubs(b) { P.ser = b.dataset.id; AX.ls.set('rs_pubser', P.ser); el.querySelectorAll('[data-act="pubs"]').forEach(x => x.classList.toggle('on', x.dataset.id === P.ser)); b.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' }); redraw(); }
       });
     }
   });
