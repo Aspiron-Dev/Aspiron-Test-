@@ -445,6 +445,22 @@ const PUB_FONTS = [
 ];
 const hexA = (hex, a) => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return 'rgba(255,255,255,' + a + ')'; const n = parseInt(m[1], 16); return 'rgba(' + (n >> 16) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; };
 // each series keeps its own look (saved on this device)
+// the picture as a one-page PDF (the canvas as JPEG inside; no library needed)
+function jpegPdf(cv) {
+  const jpg = atob(cv.toDataURL('image/jpeg', 0.92).split(',')[1]), w = cv.width, h = cv.height;
+  const pw = 595.28, ph = Math.round(pw * h / w * 100) / 100, draw = 'q ' + pw + ' 0 0 ' + ph + ' 0 0 cm /Im0 Do Q';
+  const objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + pw + ' ' + ph + '] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>',
+    '<< /Type /XObject /Subtype /Image /Width ' + w + ' /Height ' + h + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpg.length + ' >>\nstream\n' + jpg + '\nendstream',
+    '<< /Length ' + draw.length + ' >>\nstream\n' + draw + '\nendstream'];
+  let out = '%PDF-1.4\n%\xe2\xe3\xcf\xd3\n'; const at = [];
+  objs.forEach((o, i) => { at.push(out.length); out += (i + 1) + ' 0 obj\n' + o + '\nendobj\n'; });
+  const x = out.length;
+  out += 'xref\n0 ' + (objs.length + 1) + '\n0000000000 65535 f \n' + at.map(n => String(n).padStart(10, '0') + ' 00000 n \n').join('') +
+    'trailer\n<< /Size ' + (objs.length + 1) + ' /Root 1 0 R >>\nstartxref\n' + x + '\n%%EOF';
+  const b = new Uint8Array(out.length); for (let i = 0; i < out.length; i++) b[i] = out.charCodeAt(i) & 255;
+  return new Blob([b], { type: 'application/pdf' });
+}
 // a steady colour per series for its tests in the picker
 const pubGrad = id => { let n = 0; for (const ch of String(id || '')) n = (n * 31 + ch.charCodeAt(0)) >>> 0; const t = PUB_THEMES[n % 6]; return 'linear-gradient(135deg,' + t.bg2 + ',' + t.bg1 + ')'; };
 const pubThemeKey = ser => 'rs_pubtheme:' + (ser || '-');
@@ -480,7 +496,7 @@ function topCard(title, ser, rows) {
         <div class="row"><span class="grow"></span><button type="button" class="btn xs ghost" data-act="preset">${icon('refresh', 13)} Reset to default</button></div></div></div>
       <div class="pub-chips"><span class="pub-lb">Show</span>${chk('marks', 'Marks')}${chk('time', 'Time taken')}${chk('rw', 'Right / wrong')}${chk('pct', 'Percentage')}${chk('ser', 'Series name')}</div>
       <div class="pub-pv"><img id="pub-img" alt="Result picture"></div>`,
-    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Close</button>${navigator.canShare ? h`<button class="btn" data-act="cshare">${icon('external', 16)} Share</button>` : ''}<button class="btn pri" data-act="cdl">${icon('download', 16)} Download picture</button>`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Close</button>${navigator.canShare ? h`<button class="btn" data-act="cshare">${icon('external', 16)} Share</button>` : ''}<button class="btn pri" data-act="cdl" aria-haspopup="menu">${icon('download', 16)} Download ${icon('chevD', 15)}</button>`,
     onOpen(el) {
       draw(el);
       const pick = n => { O.n = Math.max(1, Math.min(100, n || 10)); el.querySelector('#pub-c').value = O.n; el.querySelectorAll('[data-act="pn"]').forEach(b => b.classList.toggle('on', +b.dataset.n === O.n)); draw(el); };
@@ -498,7 +514,16 @@ function topCard(title, ser, rows) {
         pfont(b) { T.font = b.dataset.f; sync(); draw(el); },
         pset(b) { const t = PUB_THEMES.find(x => x.id === b.dataset.id); if (!t) return; Object.assign(T, { bg1: t.bg1, bg2: t.bg2, tx: t.tx, ac: t.ac }); sync(); draw(el); },
         preset() { Object.keys(T).forEach(k => delete T[k]); Object.assign(T, PUB_THEMES[0]); sync(); draw(el); },
-        cdl() { const a = document.createElement('a'); a.href = url; a.download = name(); document.body.appendChild(a); a.click(); a.remove(); UI.toast('Downloaded'); },
+        cdl(b) {
+          const base = name().replace(/\.png$/, '');
+          UI.menu(b, [{ head: 'Download as' },
+            { label: 'Picture', hint: 'PNG', icon: 'image', fn() { const a = document.createElement('a'); a.href = url; a.download = base + '.png'; document.body.appendChild(a); a.click(); a.remove(); UI.toast('Picture downloaded'); } },
+            { label: 'PDF', hint: 'PDF', icon: 'fileText', fn() { AX.u.download(base + '.pdf', jpegPdf(c), 'application/pdf'); UI.toast('PDF downloaded'); } },
+            { label: 'Excel / Google Sheets', hint: 'CSV', icon: 'grid', fn() {
+              dl(base + '.csv', [[title + (ser ? ' · ' + ser : '')], ['Rank', 'Name', 'Score', 'Max', 'Percentage', 'Correct', 'Wrong', 'Skipped', 'Time'],
+                ...L().map(x => [x.rank, x.name, x.score, x.max, (x.max ? Math.round(x.score * 100 / x.max) : 0) + '%', x.correct, x.wrong, x.skipped, fsec(x.used)])]);
+              UI.toast('Sheet downloaded'); } }]);
+        },
         cshare() { c.toBlob(async bl => { const f = new File([bl], name(), { type: 'image/png' }); try { if (navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title }); else UI.toast('Sharing is not available here — use Download', { tone: 'warn' }); } catch (e) {} }, 'image/png'); }
       });
     }
