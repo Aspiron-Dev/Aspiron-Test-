@@ -535,3 +535,6 @@ body.privacy::after{content:"";position:fixed;inset:0;z-index:999;background:var
 .as-o{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;font-size:13.5px}
 .as-o+.as-o{margin-top:4px}
 .as-o.k{background:var(--ok-soft)}.as-o.m{background:var(--bad-soft)}
+
+/* results list: mobile numbers hidden for screenshots (m-results.js) */
+.rs-hidemob .rs-mob{display:none}

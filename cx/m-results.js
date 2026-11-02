@@ -131,7 +131,8 @@ async function tabAll(ctx) {
       ${sel('t', [['', 'All tests'], ...opts.map(o => [o.k, o.label])], S.f.t, 'Test', 'rs-t')}
       ${sel('range', RANGES.map(([k]) => [k, rangeLabel(k)]), S.f.range, 'Date')}
       ${sel('sort', SORTS, S.f.sort, 'Sort')}
-    </div><div id="rs-sum" class="mt12"></div><div id="rs-list" class="mt12"></div>`);
+      <button type="button" class="btn sm ${hideMob() ? 'pri' : 'ghost'}" data-act="hidemob" title="Hide mobile numbers (for screenshots)">${icon('eye', 15)} ${hideMob() ? 'Mobile hidden' : 'Hide mobile'}</button>
+    </div><div id="rs-sum" class="mt12"></div><div id="rs-list" class="mt12 ${hideMob() ? 'rs-hidemob' : ''}"></div>`);
   const draw = () => {
     if (!ctx.alive()) return;
     const L = filtered(rs), any = S.f.q || S.f.t || S.f.range !== 'all';
@@ -146,13 +147,13 @@ async function tabAll(ctx) {
     const more = L.length > V.length ? h`<div class="row mt12" style="justify-content:center"><button class="btn sm" data-act="more">Show ${Math.min(100, L.length - V.length)} more</button><span class="xs mut">${fmt.num(V.length)} of ${fmt.num(L.length)}</span></div>` : '';
     if (UI.isPhone()) {
       AX.set('#rs-list', h`<div class="card pad0 list">${join(V, x => { const p = pctRow(x), fl = isFlagged(x); return h`<div class="rs-li">
-          <div class="row top"><button class="rs-stu grow" data-act="stu" data-m="${x.mobile}">${UI.avatar(x.student, x.mobile, 'sm')}<span class="grow"><b class="ell">${x.student}</b><span class="xs mut mono">${fmt.mobile(x.mobile)}</span></span></button>${pctTag(p)}</div>
+          <div class="row top"><button class="rs-stu grow" data-act="stu" data-m="${x.mobile}">${UI.avatar(x.student, x.mobile, 'sm')}<span class="grow"><b class="ell">${x.student}</b><span class="xs mut mono rs-mob">${fmt.mobile(x.mobile)}</span></span></button>${pctTag(p)}</div>
           <div class="rs-lt"><span class="ell b">${x.title}</span>${fl ? UI.pill('🚩 Cheating', 'bad') : ''}</div>
           <div class="row"><div class="grow xs mut rs-lm"><span class="num"><b class="tx2">${x.score}</b>/${x.max}</span><span class="num">${ans(x)}</span><span>${mins(x.used)} min</span>${x.late ? UI.pill('Late', 'warn') : ''}<span>${fmt.dt(x.at)}</span></div>${acts(x, fl)}</div></div>`; })}</div>${more}`);
     } else {
       AX.set('#rs-list', h`<div class="tbl-wrap"><table class="tbl rs-tbl"><thead><tr><th>Student</th><th>Test</th><th class="r">Score</th><th>%</th><th>✓ ✗ Skipped</th><th>Time</th><th>Date</th><th class="r"><span class="sr">Actions</span></th></tr></thead><tbody>
         ${join(V, x => { const p = pctRow(x), fl = isFlagged(x); return h`<tr class="${fl ? 'rs-flagged' : ''}">
-          <td><button class="rs-stu" data-act="stu" data-m="${x.mobile}">${UI.avatar(x.student, x.mobile, 'sm')}<span class="grow"><b class="ell">${x.student}</b><span class="xs mut mono">${fmt.mobile(x.mobile)}</span></span></button></td>
+          <td><button class="rs-stu" data-act="stu" data-m="${x.mobile}">${UI.avatar(x.student, x.mobile, 'sm')}<span class="grow"><b class="ell">${x.student}</b><span class="xs mut mono rs-mob">${fmt.mobile(x.mobile)}</span></span></button></td>
           <td class="rs-tc"><div class="ell b6" title="${x.title}">${x.title}</div>${fl ? h`<div class="mt4">${UI.pill('🚩 Cheating', 'bad')}</div>` : ''}</td>
           <td class="r num nowrap"><b>${x.score}</b><span class="mut">/${x.max}</span></td><td>${pctTag(p)}</td>
           <td class="num nowrap">${ans(x)}</td><td class="nowrap">${mins(x.used)} min${x.late ? h` ${UI.pill('Late', 'warn')}` : ''}</td>
@@ -164,6 +165,11 @@ async function tabAll(ctx) {
   AX.act(ctx.el, {
     retry: () => ctx.reload(),
     more() { S.show += 100; draw(); },
+    hidemob(b) {
+      const on = !hideMob(); AX.ls.set('rs_hidemob', on);
+      b.className = 'btn sm ' + (on ? 'pri' : 'ghost'); AX.set(b, h`${icon('eye', 15)} ${on ? 'Mobile hidden' : 'Hide mobile'}`);
+      const l = ctx.el.querySelector('#rs-list'); if (l) l.classList.toggle('rs-hidemob', on);
+    },
     clear() { S.f = { q: '', t: '', range: 'all', from: null, to: null, sort: S.f.sort }; S.show = 100; ctx.reload(); },
     stu: el => openStu(el.dataset.m),
     sheet(el) { openSheet(el.dataset.id, y => { const x = find(el.dataset.id); if (x) Object.assign(x, y); AX.cache.drop('results'); AX.emit('data:changed'); draw(); }); },
@@ -199,6 +205,7 @@ async function tabAll(ctx) {
 
 /* ---------- answer sheet of one attempt (v49): what the student chose, the key today, re-grade ---------- */
 const LT = ['A', 'B', 'C', 'D'];
+const hideMob = () => !!AX.ls.get('rs_hidemob', false);
 async function openSheet(id, onRegrade) {
   const r = await AX.api.call('cbt_admin_sheet', 'get', { id });
   if (!r.ok) return r.error === 'missing'
@@ -380,19 +387,28 @@ async function tabInsights(ctx) {
 }
 
 /* ---------- result image to post in the channel: rank, name, time, score (no mobile numbers) ---------- */
-function cardCanvas(title, ser, L) {
+// O = { marks, time, rw, pct, ser } — what to show next to rank and name (never the mobile number)
+function cardCanvas(title, ser, L, O) {
   const W = 1080, P = 56, RH = 84, top = 250, H = top + L.length * RH + 96;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const g = c.getContext('2d'), F = '"Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari", Arial, sans-serif';
   const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#0b1a2e'); bg.addColorStop(1, '#0d3b3a');
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
   const fit = (t, w, font) => { g.font = font; t = String(t || ''); if (g.measureText(t).width <= w) return t; while (t && g.measureText(t + '…').width > w) t = t.slice(0, -1); return t + '…'; };
+  // columns from the right edge: [label, width, value, main colour?]
+  const C = [];
+  if (O.marks) C.push(['SCORE', 190, x => x.score + ' / ' + x.max, 1]);
+  if (O.pct) C.push(['%', 110, x => (x.max ? Math.round(x.score * 100 / x.max) : 0) + '%', !O.marks]);
+  if (O.rw) C.push(['✓  ✗', 150, x => x.correct + '  ' + x.wrong]);
+  if (O.time) C.push(['TIME', 150, x => fsec(x.used)]);
+  const xs = []; let right = W - P; C.forEach(col => { xs.push(right); right -= col[1] + 24; });
+  const nameW = right - (P + 120);
   g.fillStyle = '#5eead4'; g.font = '700 26px ' + F; g.fillText(((window.CBT_CONFIG || {}).SITE_NAME || 'Results').toUpperCase(), P, 78);
   g.fillStyle = '#fff'; g.fillText(fit(title, W - 2 * P, '800 50px ' + F), P, 142);
-  g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText(fit('Top ' + L.length + (ser ? ' · ' + ser : '') + ' · ' + new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }), W - 2 * P, '500 28px ' + F), P, 192);
+  g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText(fit('Top ' + L.length + (O.ser && ser ? ' · ' + ser : '') + ' · ' + new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }), W - 2 * P, '500 28px ' + F), P, 192);
   g.fillStyle = 'rgba(255,255,255,.5)'; g.font = '600 22px ' + F;
   g.fillText('RANK', P, top - 16); g.fillText('NAME', P + 120, top - 16);
-  g.textAlign = 'right'; g.fillText('TIME', W - P - 230, top - 16); g.fillText('SCORE', W - P, top - 16); g.textAlign = 'left';
+  g.textAlign = 'right'; C.forEach((col, i) => g.fillText(col[0], xs[i], top - 16)); g.textAlign = 'left';
   const medal = ['#fbbf24', '#cbd5e1', '#f59e0b'];
   L.forEach((x, i) => {
     const y = top + i * RH, cy = y + RH / 2;
@@ -400,25 +416,39 @@ function cardCanvas(title, ser, L) {
     g.beginPath(); if (g.roundRect) g.roundRect(P - 16, y + 6, W - 2 * P + 32, RH - 12, 18); else g.rect(P - 16, y + 6, W - 2 * P + 32, RH - 12); g.fill();
     if (x.rank <= 3) { g.fillStyle = medal[x.rank - 1]; g.beginPath(); g.arc(P + 30, cy, 26, 0, 7); g.fill(); g.fillStyle = '#0b1a2e'; } else g.fillStyle = '#fff';
     g.font = '800 28px ' + F; g.textAlign = 'center'; g.fillText(String(x.rank), P + 30, cy + 10); g.textAlign = 'left';
-    g.fillStyle = '#fff'; g.fillText(fit(x.name, W - 2 * P - 590, '700 31px ' + F), P + 120, cy + 11);
-    g.textAlign = 'right'; g.fillStyle = 'rgba(255,255,255,.75)'; g.font = '500 27px ' + F; g.fillText(fsec(x.used), W - P - 230, cy + 10);
-    g.fillStyle = '#5eead4'; g.font = '800 31px ' + F; g.fillText(x.score + ' / ' + x.max, W - P, cy + 11); g.textAlign = 'left';
+    g.fillStyle = '#fff'; g.fillText(fit(x.name, nameW, '700 31px ' + F), P + 120, cy + 11);
+    g.textAlign = 'right';
+    C.forEach((col, k) => { g.fillStyle = col[3] ? '#5eead4' : 'rgba(255,255,255,.75)'; g.font = (col[3] ? '800 31px ' : '500 27px ') + F; g.fillText(col[2](x), xs[k], cy + 10); });
+    g.textAlign = 'left';
   });
   g.fillStyle = 'rgba(255,255,255,.45)'; g.font = '500 22px ' + F; g.fillText('Congratulations to all toppers!', P, H - 40);
   return c;
 }
-function topCard(title, ser, L) {
-  if (!L.length) return UI.toast('No students yet', { tone: 'warn' });
-  L = L.slice(0, 100);
-  const c = cardCanvas(title, ser, L), url = c.toDataURL('image/png'), name = (title || 'result').replace(/[^\w]+/g, '_') + '_top' + L.length + '.png';
+// Public result list: pick how many toppers and what to show; the picture never has mobile numbers
+function topCard(title, ser, rows) {
+  if (!rows.length) return UI.toast('No students yet', { tone: 'warn' });
+  const O = Object.assign({ n: 10, marks: true, time: true, rw: false, pct: false, ser: true }, AX.ls.get('rs_pub', {}));
+  let c = null, url = '';
+  const L = () => rows.slice(0, Math.max(1, Math.min(100, O.n || 10)));
+  const name = () => (title || 'result').replace(/[^\w]+/g, '_') + '_top' + L().length + '.png';
+  const draw = el => { AX.ls.set('rs_pub', O); c = cardCanvas(title, ser, L(), O); url = c.toDataURL('image/png'); el.querySelector('#pub-img').src = url; el.querySelector('#pub-n').textContent = 'Top ' + L().length + ' of ' + rows.length; };
+  const chk = (k, l) => h`<label class="row gap6 sm"><input type="checkbox" data-k="${k}" ${O[k] ? raw('checked') : ''}><span>${l}</span></label>`;
   UI.modal({
-    title: 'Result image', sub: 'Rank, name, time and score only — no mobile numbers. Download it and post it in your channel.', size: 'wide',
-    body: h`<img src="${url}" alt="Result image" style="width:100%;border-radius:14px;display:block">`,
-    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Close</button>${navigator.canShare ? h`<button class="btn" data-act="cshare">${icon('external', 16)} Share</button>` : ''}<button class="btn pri" data-act="cdl">${icon('download', 16)} Download image</button>`,
+    title: 'Public result list', sub: 'Choose how many toppers and what to show, then download the picture for your channel. Mobile numbers are never shown.', size: 'wide',
+    body: h`<div class="row wrap gap6"><b class="sm">Show</b>${join([10, 15, 25, 50, 100].filter((n, i) => !i || n <= rows.length || rows.length > [10, 15, 25, 50][i - 1]), n => h`<button type="button" class="btn xs ${O.n === n ? 'pri' : 'ghost'}" data-act="pn" data-n="${n}">Top ${n}</button>`)}
+        <input class="inp sm num" id="pub-c" type="number" min="1" max="100" value="${O.n}" style="width:84px" aria-label="How many toppers"><span class="xs mut" id="pub-n"></span></div>
+      <div class="row wrap mt8" style="gap:14px">${chk('marks', 'Marks')}${chk('time', 'Time taken')}${chk('rw', 'Right / wrong')}${chk('pct', 'Percentage')}${chk('ser', 'Series name')}</div>
+      <img id="pub-img" alt="Result picture" style="width:100%;border-radius:14px;display:block;margin-top:14px">`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Close</button>${navigator.canShare ? h`<button class="btn" data-act="cshare">${icon('external', 16)} Share</button>` : ''}<button class="btn pri" data-act="cdl">${icon('download', 16)} Download picture</button>`,
     onOpen(el) {
+      draw(el);
+      const pick = n => { O.n = Math.max(1, Math.min(100, n || 10)); el.querySelector('#pub-c').value = O.n; el.querySelectorAll('[data-act="pn"]').forEach(b => b.className = 'btn xs ' + (+b.dataset.n === O.n ? 'pri' : 'ghost')); draw(el); };
+      el.querySelector('#pub-c').addEventListener('change', e => pick(+e.target.value));
+      el.querySelectorAll('input[type=checkbox][data-k]').forEach(i => i.addEventListener('change', () => { O[i.dataset.k] = i.checked; draw(el); }));
       AX.act(el, {
-        cdl() { const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); UI.toast('Downloaded'); },
-        cshare() { c.toBlob(async b => { const f = new File([b], name, { type: 'image/png' }); try { if (navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title }); else UI.toast('Sharing is not available here — use Download', { tone: 'warn' }); } catch (e) {} }, 'image/png'); }
+        pn: b => pick(+b.dataset.n),
+        cdl() { const a = document.createElement('a'); a.href = url; a.download = name(); document.body.appendChild(a); a.click(); a.remove(); UI.toast('Downloaded'); },
+        cshare() { c.toBlob(async bl => { const f = new File([bl], name(), { type: 'image/png' }); try { if (navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title }); else UI.toast('Sharing is not available here — use Download', { tone: 'warn' }); } catch (e) {} }, 'image/png'); }
       });
     }
   });
@@ -477,7 +507,7 @@ async function analytics(el, id, o) {
   };
   const drawTop = () => {
     const T = A.top ? rows.slice(0, A.top) : rows;
-    AX.set(el.querySelector('#an-top'), T.length ? h`<div class="row wrap gap6" style="padding:4px 12px 8px">${join([[10, 'Top 10'], [50, 'Top 50'], [100, 'Top 100'], [0, 'All']].filter(([n]) => n === 10 || n < rows.length || (!n && rows.length > 10)), ([n, l]) => h`<button type="button" class="btn xs ${A.top === n ? 'pri' : 'ghost'}" data-act="topn" data-n="${n}">${l}</button>`)}<span class="grow"></span><button type="button" class="btn xs" data-act="card">${icon('download', 13)} Image</button></div>
+    AX.set(el.querySelector('#an-top'), T.length ? h`<div class="row wrap gap6" style="padding:4px 12px 8px">${join([[10, 'Top 10'], [50, 'Top 50'], [100, 'Top 100'], [0, 'All']].filter(([n]) => n === 10 || n < rows.length || (!n && rows.length > 10)), ([n, l]) => h`<button type="button" class="btn xs ${A.top === n ? 'pri' : 'ghost'}" data-act="topn" data-n="${n}">${l}</button>`)}<span class="grow"></span><button type="button" class="btn xs pri" data-act="card">${icon('download', 13)} Public list</button></div>
       ${join(T, x => { const pp = x.max ? Math.round(x.score * 100 / x.max) : 0; return h`<div class="li click" data-act="row" data-m="${x.mobile}" title="Open the answer sheet">${rankTag(x.rank - 1)}<div class="grow"><div class="t ell">${x.name}</div><div class="s"><span class="num">✓${x.correct} ✗${x.wrong} –${x.skipped}</span> · ${fsec(x.used)}${x.attempts > 1 ? ' · ' + x.attempts + ' attempts' : ''}</div></div><div class="rs-end"><b class="num">${x.score}<span class="mut" style="font-weight:600">/${x.max}</span></b><span class="xs ${'t-' + tone(pp)}">${pp}%</span></div></div>`; })}` : h`<div class="rs-none">No students yet.</div>`);
   };
   // a row → the answer sheet of the attempt the rank counts (the student's first in this test)
@@ -503,7 +533,7 @@ async function analytics(el, id, o) {
     openq: b => openQ(Number(b.dataset.i)),
     topn(b) { A.top = Number(b.dataset.n); drawTop(); },
     row: b => openRow(b.dataset.m),
-    card: () => topCard(title, ser, A.top ? rows.slice(0, A.top) : rows),
+    card: () => topCard(title, ser, rows),
     stu: b => openStu(b.dataset.m),
     csv, full() { if (o.drawer) o.drawer.close(); }
   });
