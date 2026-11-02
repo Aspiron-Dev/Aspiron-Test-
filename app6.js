@@ -420,12 +420,7 @@ function openLook(only){
   if(only)return;
   const M=[['light','Light','#f4f6fa'],['dark','Dark','#151b24'],['oled','True Black','#000']];
   sheet(`<h2 class="sht">Theme settings</h2><div class="shl"></div>
-   <div class="eyebrow" style="margin:0 0 10px">Design</div>
-   <div class="dsgrid">
-     <button class="dsb ${v2?'on':''}" onclick="setDesign('v2')"><b>New look</b><span>Clean, premium</span></button>
-     <button class="dsb ${v2?'':'on'}" onclick="setDesign('classic')"><b>Classic</b><span>The old look</span></button>
-   </div>
-   <div class="eyebrow" style="margin:18px 0 10px">Mode</div>
+   <div class="eyebrow" style="margin:0 0 10px">Mode</div>
    <div class="modegrid">${M.map(m=>`<button class="mode ${md===m[0]?'on':''}" data-m="${m[0]}" onclick="setMode('${m[0]}')"><i style="background:${m[2]}"></i>${m[1]}</button>`).join('')}</div>
    <div class="eyebrow" style="margin:18px 0 10px">Colour palette</div>
    <div class="pgrid">${Object.keys(A).map(a=>`<button class="accb ${ac===a?'on':''}" data-a="${a}" onclick="setAccent('${a}')"><i style="background:${A[a][1]}"></i><span>${A[a][0]}</span></button>`).join('')}</div>

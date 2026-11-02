@@ -137,6 +137,10 @@ Made for 500–1000 students taking a test at the same time.
 Never put the admin password or a secret / service_role key in `config.js` or anywhere in this repository.
 
 ## New look (Aspiron Lux) and Classic — `design-v2.css`, `app21.js`
+> **Switched off.** The student app uses the original (Classic) design for everyone again; `design-v2.css` is not loaded
+> and the Design switch is hidden. To bring the new look back: load `design-v2.css` in `index.html` again and set `ds` from `cbt_ds`
+> in the theme script (see PR #121). The PDF notes button (`app21.js`, `supabase_v51_test_pdf.sql`) stays on in the original design.
+
 - The student app opens in the **new look** by default. Theme settings (palette button) → **Design** → *New look* / *Classic*.
   Classic is the old design exactly (its CSS is untouched; `design-v2.css` only applies to `html[data-ds="v2"]`).
   The choice is saved on the phone (`cbt_ds`); each design keeps its own colour (`cbt_accent_v2` / `cbt_accent`). No data changes.
