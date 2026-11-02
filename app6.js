@@ -411,18 +411,35 @@ function sheet(h,id){
 }
 IC.edit='<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/>';
 const ACC={cyber:['Cyber Blue','linear-gradient(135deg,#22d3ee,#6366f1)'],green:['Emerald','linear-gradient(135deg,#059669,#34d399)'],royal:['Royal Purple','linear-gradient(135deg,#7c3aed,#c084fc)'],blue:['Classic Blue','linear-gradient(135deg,#1c5fe0,#3b9bff)'],rose:['Rose','linear-gradient(135deg,#e11d48,#fb7185)'],gray:['Slate','linear-gradient(135deg,#334155,#94a3b8)']};
+/* palette for design v2 (Aspiron Lux): Black → Gold, Yellow, Emerald; Light → Graphite, Gold, Blue Ice */
+const ACC2={gold:['Gold','linear-gradient(135deg,#9b7422,#e6c46f 60%,#f8e6b2)'],yellow:['Yellow','linear-gradient(135deg,#b38f0c,#f7d843 60%,#fff3ad)'],green:['Emerald','linear-gradient(135deg,#0c7650,#3fdc98)'],ice:['Blue Ice','linear-gradient(135deg,#2a6aa8,#8fd6ff 70%,#d8f2ff)'],grey:['Graphite','linear-gradient(135deg,#3b3b43,#d6d6dc)'],rose:['Rose','linear-gradient(135deg,#be123c,#fb7185)']};
 function openLook(only){
-  const md=curMode(),ac=document.documentElement.dataset.accent||'cyber';
+  const v2=isV2(),A=v2?ACC2:ACC,md=curMode(),ac=document.documentElement.dataset.accent||(v2?'gold':'cyber');
   const cur=document.querySelector('#layer .bsheet[data-id="look"]');
   if(cur){cur.querySelectorAll('.mode').forEach(b=>b.classList.toggle('on',b.dataset.m===md));cur.querySelectorAll('.accb').forEach(b=>b.classList.toggle('on',b.dataset.a===ac));return}
   if(only)return;
   const M=[['light','Light','#f4f6fa'],['dark','Dark','#151b24'],['oled','True Black','#000']];
   sheet(`<h2 class="sht">Theme settings</h2><div class="shl"></div>
-   <div class="eyebrow" style="margin:0 0 10px">Mode</div>
+   <div class="eyebrow" style="margin:0 0 10px">Design</div>
+   <div class="dsgrid">
+     <button class="dsb ${v2?'on':''}" onclick="setDesign('v2')"><b>New look</b><span>Premium, smooth</span></button>
+     <button class="dsb ${v2?'':'on'}" onclick="setDesign('classic')"><b>Classic</b><span>The old look</span></button>
+   </div>
+   <div class="eyebrow" style="margin:18px 0 10px">Mode</div>
    <div class="modegrid">${M.map(m=>`<button class="mode ${md===m[0]?'on':''}" data-m="${m[0]}" onclick="setMode('${m[0]}')"><i style="background:${m[2]}"></i>${m[1]}</button>`).join('')}</div>
    <div class="eyebrow" style="margin:18px 0 10px">Colour palette</div>
-   <div class="pgrid">${Object.keys(ACC).map(a=>`<button class="accb ${ac===a?'on':''}" data-a="${a}" onclick="setAccent('${a}')"><i style="background:${ACC[a][1]}"></i><span>${ACC[a][0]}</span></button>`).join('')}</div>
-   <p class="sm mut" style="margin:14px 0 0">Saved on this phone.</p>`,'look');
+   <div class="pgrid">${Object.keys(A).map(a=>`<button class="accb ${ac===a?'on':''}" data-a="${a}" onclick="setAccent('${a}')"><i style="background:${A[a][1]}"></i><span>${A[a][0]}</span></button>`).join('')}</div>
+   <p class="sm mut" style="margin:14px 0 0">Saved on this phone. Your tests, results and profile are not affected by the look.</p>`,'look');
+}
+/* switch between the new look and the old one. Only the look changes: no data is moved or deleted. */
+function setDesign(d){
+  const h=document.documentElement,v=d==='classic'?'classic':'v2';
+  LS.set('cbt_ds',v);
+  themeSwap(()=>{
+    h.dataset.ds=v;
+    h.dataset.accent=v==='v2'?(LS.get('cbt_accent_v2','gold')||'gold'):(LS.get('cbt_accent','cyber')||'cyber');
+    syncTheme();closeModal();openLook();
+  });
 }
 function pfField(k,l,t,ph,v){return `<label class="pfl">${l}</label><input class="pfi" id="pf_${k}" type="${t}" placeholder="${ph}" value="${esc(v||'')}" autocomplete="off">`}
 function openProfile(){

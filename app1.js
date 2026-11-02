@@ -125,7 +125,9 @@ function themeSwap(fn){try{if(document.startViewTransition&&!matchMedia('(prefer
 function applyMode(t){const h=document.documentElement;h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';else delete h.dataset.oled}
 function curMode(){const D=document.documentElement.dataset;return D.theme==='light'?'light':D.oled==='1'?'oled':'dark'}
 function setMode(t){LS.set('cbt_theme',t);themeSwap(()=>{applyMode(t);syncTheme();openLook(1)})}
-function setAccent(a){LS.set('cbt_accent',a);themeSwap(()=>{document.documentElement.dataset.accent=a;syncTheme();openLook(1)})}
+/* design v2 (Aspiron Lux, design-v2.css) is the default; 'classic' = the old look. Each keeps its own colour choice. */
+function isV2(){return document.documentElement.dataset.ds!=='classic'}
+function setAccent(a){LS.set(isV2()?'cbt_accent_v2':'cbt_accent',a);themeSwap(()=>{document.documentElement.dataset.accent=a;syncTheme();openLook(1)})}
 function updateHeader(){
   mnuUpdate();
   {const bl=document.getElementById('bell');if(bl){bl.innerHTML=ic('bell',20);bl.style.display=AUTH?'':'none'}}

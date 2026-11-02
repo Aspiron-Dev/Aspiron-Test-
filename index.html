@@ -17,7 +17,7 @@
 <meta name="apple-mobile-web-app-title" content="CBT Test">
 <title>CBT Test Series</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Syne:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#f3f6f9;--surface:#ffffff;--surface2:#eef2f6;--tx:#0e1b26;--mut:#5a6b7b;--bd:#dfe6ed;
@@ -1265,7 +1265,8 @@ img,svg{max-width:100%}
 .tr3 .btn[disabled]{opacity:.7}
 @media(prefers-reduced-motion:reduce){.tl3{animation:none!important}}
 </style>
-<script>(function(){try{var h=document.documentElement,t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';h.dataset.accent=JSON.parse(localStorage.getItem('cbt_accent'))||'cyber'}catch(e){document.documentElement.dataset.theme='light';document.documentElement.dataset.accent='cyber'}})()</script>
+<link rel="stylesheet" href="design-v2.css?v=1">
+<script>(function(){var h=document.documentElement;function g(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}try{var ds=g('cbt_ds')==='classic'?'classic':'v2';h.dataset.ds=ds;var t=g('cbt_theme');if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';h.dataset.accent=ds==='v2'?(g('cbt_accent_v2')||'gold'):(g('cbt_accent')||'cyber')}catch(e){h.dataset.ds='v2';h.dataset.theme='light';h.dataset.accent='gold'}})()</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6', 'app7', 'app8', 'app9', 'app10', 'app11', 'app12', 'app13', 'app14', 'app15', 'app16', 'app17', 'app18', 'app19'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
 <script src="config.js?v=5"></script>
 </head>
@@ -1284,12 +1285,12 @@ img,svg{max-width:100%}
 <div id="layer"></div>
 
 
-<script src="app1.js?v=30" onerror="(window.__miss=window.__miss||[]).push('app1.js')"></script>
+<script src="app1.js?v=31"onerror="(window.__miss=window.__miss||[]).push('app1.js')"></script>
 <script src="app2.js?v=23" onerror="(window.__miss=window.__miss||[]).push('app2.js')"></script>
 <script src="app3.js?v=27" onerror="(window.__miss=window.__miss||[]).push('app3.js')"></script>
 <script src="app4.js?v=19" onerror="(window.__miss=window.__miss||[]).push('app4.js')"></script>
 <script src="app5.js?v=18" onerror="(window.__miss=window.__miss||[]).push('app5.js')"></script>
-<script src="app6.js?v=29" onerror="(window.__miss=window.__miss||[]).push('app6.js')"></script>
+<script src="app6.js?v=30"onerror="(window.__miss=window.__miss||[]).push('app6.js')"></script>
 <script src="app7.js?v=2" onerror="(window.__miss=window.__miss||[]).push('app7.js')"></script>
 <script src="app8.js?v=11" onerror="(window.__miss=window.__miss||[]).push('app8.js')"></script>
 <script src="app9.js?v=9" onerror="(window.__miss=window.__miss||[]).push('app9.js')"></script>
