@@ -388,11 +388,14 @@ async function tabInsights(ctx) {
 
 /* ---------- result image to post in the channel: rank, name, time, score (no mobile numbers) ---------- */
 // O = { marks, time, rw, pct, ser } — what to show next to rank and name (never the mobile number)
-function cardCanvas(title, ser, L, O) {
+// T = theme: { bg1, bg2, tx, ac, font, head, foot } (see PUB_THEMES)
+function cardCanvas(title, ser, L, O, T) {
+  T = Object.assign({}, PUB_THEMES[0], T || {});
   const W = 1080, P = 56, RH = 84, top = 250, H = top + L.length * RH + 96;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
-  const g = c.getContext('2d'), F = '"Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari", Arial, sans-serif';
-  const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#0b1a2e'); bg.addColorStop(1, '#0d3b3a');
+  const g = c.getContext('2d'), F = (PUB_FONTS.find(f => f[0] === T.font) || PUB_FONTS[0])[2];
+  const tx = a => hexA(T.tx, a);
+  const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, T.bg1); bg.addColorStop(1, T.bg2);
   g.fillStyle = bg; g.fillRect(0, 0, W, H);
   const fit = (t, w, font) => { g.font = font; t = String(t || ''); if (g.measureText(t).width <= w) return t; while (t && g.measureText(t + '…').width > w) t = t.slice(0, -1); return t + '…'; };
   // columns from the right edge: [label, width, value, main colour?]
@@ -403,40 +406,69 @@ function cardCanvas(title, ser, L, O) {
   if (O.time) C.push(['TIME', 150, x => fsec(x.used)]);
   const xs = []; let right = W - P; C.forEach(col => { xs.push(right); right -= col[1] + 24; });
   const nameW = right - (P + 120);
-  g.fillStyle = '#5eead4'; g.font = '700 26px ' + F; g.fillText(((window.CBT_CONFIG || {}).SITE_NAME || 'Results').toUpperCase(), P, 78);
-  g.fillStyle = '#fff'; g.fillText(fit(title, W - 2 * P, '800 50px ' + F), P, 142);
-  g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText(fit('Top ' + L.length + (O.ser && ser ? ' · ' + ser : '') + ' · ' + new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }), W - 2 * P, '500 28px ' + F), P, 192);
-  g.fillStyle = 'rgba(255,255,255,.5)'; g.font = '600 22px ' + F;
+  g.fillStyle = T.ac; g.fillText(fit(T.head != null ? T.head : ((window.CBT_CONFIG || {}).SITE_NAME || 'Results').toUpperCase(), W - 2 * P, '700 26px ' + F), P, 78);
+  g.fillStyle = T.tx; g.fillText(fit(title, W - 2 * P, '800 50px ' + F), P, 142);
+  g.fillStyle = tx(.7); g.fillText(fit('Top ' + L.length + (O.ser && ser ? ' · ' + ser : '') + ' · ' + new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }), W - 2 * P, '500 28px ' + F), P, 192);
+  g.fillStyle = tx(.5); g.font = '600 22px ' + F;
   g.fillText('RANK', P, top - 16); g.fillText('NAME', P + 120, top - 16);
   g.textAlign = 'right'; C.forEach((col, i) => g.fillText(col[0], xs[i], top - 16)); g.textAlign = 'left';
   const medal = ['#fbbf24', '#cbd5e1', '#f59e0b'];
   L.forEach((x, i) => {
     const y = top + i * RH, cy = y + RH / 2;
-    g.fillStyle = i % 2 ? 'rgba(255,255,255,.035)' : 'rgba(255,255,255,.08)';
+    g.fillStyle = i % 2 ? tx(.035) : tx(.08);
     g.beginPath(); if (g.roundRect) g.roundRect(P - 16, y + 6, W - 2 * P + 32, RH - 12, 18); else g.rect(P - 16, y + 6, W - 2 * P + 32, RH - 12); g.fill();
-    if (x.rank <= 3) { g.fillStyle = medal[x.rank - 1]; g.beginPath(); g.arc(P + 30, cy, 26, 0, 7); g.fill(); g.fillStyle = '#0b1a2e'; } else g.fillStyle = '#fff';
+    if (x.rank <= 3) { g.fillStyle = medal[x.rank - 1]; g.beginPath(); g.arc(P + 30, cy, 26, 0, 7); g.fill(); g.fillStyle = '#1f2937'; } else g.fillStyle = T.tx;
     g.font = '800 28px ' + F; g.textAlign = 'center'; g.fillText(String(x.rank), P + 30, cy + 10); g.textAlign = 'left';
-    g.fillStyle = '#fff'; g.fillText(fit(x.name, nameW, '700 31px ' + F), P + 120, cy + 11);
+    g.fillStyle = T.tx; g.fillText(fit(x.name, nameW, '700 31px ' + F), P + 120, cy + 11);
     g.textAlign = 'right';
-    C.forEach((col, k) => { g.fillStyle = col[3] ? '#5eead4' : 'rgba(255,255,255,.75)'; g.font = (col[3] ? '800 31px ' : '500 27px ') + F; g.fillText(col[2](x), xs[k], cy + 10); });
+    C.forEach((col, k) => { g.fillStyle = col[3] ? T.ac : tx(.75); g.font = (col[3] ? '800 31px ' : '500 27px ') + F; g.fillText(col[2](x), xs[k], cy + 10); });
     g.textAlign = 'left';
   });
-  g.fillStyle = 'rgba(255,255,255,.45)'; g.font = '500 22px ' + F; g.fillText('Congratulations to all toppers!', P, H - 40);
+  g.fillStyle = tx(.45); g.fillText(fit(T.foot != null ? T.foot : 'Congratulations to all toppers!', W - 2 * P, '500 22px ' + F), P, H - 40);
   return c;
 }
+const PUB_THEMES = [
+  { id: 'teal', name: 'Teal night', bg1: '#0b1a2e', bg2: '#0d3b3a', tx: '#ffffff', ac: '#5eead4' },
+  { id: 'royal', name: 'Royal blue', bg1: '#0f1b4d', bg2: '#1e3a8a', tx: '#ffffff', ac: '#93c5fd' },
+  { id: 'purple', name: 'Purple', bg1: '#2e1065', bg2: '#6d28d9', tx: '#ffffff', ac: '#f0abfc' },
+  { id: 'sunset', name: 'Sunset', bg1: '#7c2d12', bg2: '#be185d', tx: '#ffffff', ac: '#fde68a' },
+  { id: 'forest', name: 'Green', bg1: '#052e16', bg2: '#166534', tx: '#ffffff', ac: '#bef264' },
+  { id: 'black', name: 'Black & gold', bg1: '#0a0a0a', bg2: '#262626', tx: '#ffffff', ac: '#facc15' },
+  { id: 'light', name: 'White', bg1: '#ffffff', bg2: '#e0f2fe', tx: '#0f172a', ac: '#0369a1' },
+  { id: 'paper', name: 'Cream', bg1: '#fffbeb', bg2: '#fde68a', tx: '#422006', ac: '#b45309' }
+];
+const PUB_FONTS = [
+  ['sans', 'Clean', '"Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari", Arial, sans-serif'],
+  ['round', 'Rounded', '"Nunito", "Varela Round", "Trebuchet MS", "Noto Sans Devanagari", sans-serif'],
+  ['serif', 'Classic', 'Georgia, "Times New Roman", "Noto Serif Devanagari", serif'],
+  ['mono', 'Typewriter', '"Courier New", Courier, "Noto Sans Devanagari", monospace']
+];
+const hexA = (hex, a) => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return 'rgba(255,255,255,' + a + ')'; const n = parseInt(m[1], 16); return 'rgba(' + (n >> 16) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; };
+// each series keeps its own look (saved on this device)
+const pubThemeKey = ser => 'rs_pubtheme:' + (ser || '-');
 // Public result list: pick how many toppers and what to show; the picture never has mobile numbers
 function topCard(title, ser, rows) {
   if (!rows.length) return UI.toast('No students yet', { tone: 'warn' });
   const O = Object.assign({ n: 10, marks: true, time: true, rw: false, pct: false, ser: true }, AX.ls.get('rs_pub', {}));
+  const T = Object.assign({}, PUB_THEMES[0], AX.ls.get(pubThemeKey(ser), {}));
   let c = null, url = '';
   const L = () => rows.slice(0, Math.max(1, Math.min(100, O.n || 10)));
   const name = () => (title || 'result').replace(/[^\w]+/g, '_') + '_top' + L().length + '.png';
-  const draw = el => { AX.ls.set('rs_pub', O); c = cardCanvas(title, ser, L(), O); url = c.toDataURL('image/png'); el.querySelector('#pub-img').src = url; el.querySelector('#pub-n').textContent = 'Top ' + L().length + ' of ' + rows.length; };
+  const draw = el => { AX.ls.set('rs_pub', O); AX.ls.set(pubThemeKey(ser), T); c = cardCanvas(title, ser, L(), O, T); url = c.toDataURL('image/png'); el.querySelector('#pub-img').src = url; el.querySelector('#pub-n').textContent = 'Top ' + L().length + ' of ' + rows.length; };
   const chk = (k, l) => h`<label class="row gap6 sm"><input type="checkbox" data-k="${k}" ${O[k] ? raw('checked') : ''}><span>${l}</span></label>`;
   UI.modal({
     title: 'Public result list', sub: 'Choose how many toppers and what to show, then download the picture for your channel. Mobile numbers are never shown.', size: 'wide',
     body: h`<div class="row wrap gap6"><b class="sm">Show</b>${join([10, 15, 25, 50, 100].filter((n, i) => !i || n <= rows.length || rows.length > [10, 15, 25, 50][i - 1]), n => h`<button type="button" class="btn xs ${O.n === n ? 'pri' : 'ghost'}" data-act="pn" data-n="${n}">Top ${n}</button>`)}
-        <input class="inp sm num" id="pub-c" type="number" min="1" max="100" value="${O.n}" style="width:84px" aria-label="How many toppers"><span class="xs mut" id="pub-n"></span></div>
+        <input class="inp sm num" id="pub-c" type="number" min="1" max="100" value="${O.n}" style="width:84px" aria-label="How many toppers"><span class="xs mut" id="pub-n"></span>
+        <span class="grow"></span><button type="button" class="btn xs" data-act="pth" aria-expanded="false">${icon('edit', 13)} Theme &amp; text</button></div>
+      <div class="pub-th hide" id="pub-th">
+        <div class="xs mut">Colours${ser ? ' for "' + ser + '"' : ''} — every series keeps its own look</div>
+        <div class="row wrap gap6 mt8">${join(PUB_THEMES, t => h`<button type="button" class="pub-sw" data-act="pset" data-id="${t.id}" title="${t.name}" style="background:linear-gradient(135deg,${t.bg1},${t.bg2});color:${t.ac}">Aa</button>`)}</div>
+        <div class="row wrap mt12" style="gap:14px">${join([['bg1', 'Background 1'], ['bg2', 'Background 2'], ['tx', 'Text'], ['ac', 'Highlight']], ([k, l]) => h`<label class="row gap6 sm"><input type="color" data-c="${k}" value="${T[k]}"><span>${l}</span></label>`)}
+          <label class="row gap6 sm"><span>Font</span><select class="inp sm" data-f="1" style="width:auto">${join(PUB_FONTS, f => h`<option value="${f[0]}" ${T.font === f[0] ? raw('selected') : ''}>${f[1]}</option>`)}</select></label></div>
+        <div class="row wrap gap6 mt12"><input class="inp sm grow" data-t="head" maxlength="60" placeholder="Top line (your institute name)" value="${T.head != null ? T.head : ''}" aria-label="Top line">
+          <input class="inp sm grow" data-t="foot" maxlength="80" placeholder="Bottom line (e.g. Congratulations to all toppers!)" value="${T.foot != null ? T.foot : ''}" aria-label="Bottom line">
+          <button type="button" class="btn xs ghost" data-act="preset">Reset</button></div></div>
       <div class="row wrap mt8" style="gap:14px">${chk('marks', 'Marks')}${chk('time', 'Time taken')}${chk('rw', 'Right / wrong')}${chk('pct', 'Percentage')}${chk('ser', 'Series name')}</div>
       <img id="pub-img" alt="Result picture" style="width:100%;border-radius:14px;display:block;margin-top:14px">`,
     foot: h`<span class="sp"></span><button class="btn ghost" data-close>Close</button>${navigator.canShare ? h`<button class="btn" data-act="cshare">${icon('external', 16)} Share</button>` : ''}<button class="btn pri" data-act="cdl">${icon('download', 16)} Download picture</button>`,
@@ -445,8 +477,16 @@ function topCard(title, ser, rows) {
       const pick = n => { O.n = Math.max(1, Math.min(100, n || 10)); el.querySelector('#pub-c').value = O.n; el.querySelectorAll('[data-act="pn"]').forEach(b => b.className = 'btn xs ' + (+b.dataset.n === O.n ? 'pri' : 'ghost')); draw(el); };
       el.querySelector('#pub-c').addEventListener('change', e => pick(+e.target.value));
       el.querySelectorAll('input[type=checkbox][data-k]').forEach(i => i.addEventListener('change', () => { O[i.dataset.k] = i.checked; draw(el); }));
+      const sync = () => { el.querySelectorAll('input[data-c]').forEach(i => { i.value = T[i.dataset.c]; }); el.querySelector('select[data-f]').value = T.font || 'sans';
+        el.querySelectorAll('input[data-t]').forEach(i => { i.value = T[i.dataset.t] != null ? T[i.dataset.t] : ''; }); };
+      el.querySelectorAll('input[data-c]').forEach(i => i.addEventListener('input', () => { T[i.dataset.c] = i.value; draw(el); }));
+      el.querySelector('select[data-f]').addEventListener('change', e => { T.font = e.target.value; draw(el); });
+      el.querySelectorAll('input[data-t]').forEach(i => i.addEventListener('input', AX.u.debounce(() => { T[i.dataset.t] = i.value.trim() ? i.value : null; draw(el); }, 200)));
       AX.act(el, {
         pn: b => pick(+b.dataset.n),
+        pth(b) { const p = el.querySelector('#pub-th'), open = p.classList.toggle('hide') === false; b.setAttribute('aria-expanded', open); b.classList.toggle('pri', open); },
+        pset(b) { const t = PUB_THEMES.find(x => x.id === b.dataset.id); if (!t) return; Object.assign(T, { bg1: t.bg1, bg2: t.bg2, tx: t.tx, ac: t.ac }); sync(); draw(el); },
+        preset() { Object.keys(T).forEach(k => delete T[k]); Object.assign(T, PUB_THEMES[0]); sync(); draw(el); },
         cdl() { const a = document.createElement('a'); a.href = url; a.download = name(); document.body.appendChild(a); a.click(); a.remove(); UI.toast('Downloaded'); },
         cshare() { c.toBlob(async bl => { const f = new File([bl], name(), { type: 'image/png' }); try { if (navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title }); else UI.toast('Sharing is not available here — use Download', { tone: 'warn' }); } catch (e) {} }, 'image/png'); }
       });
@@ -479,11 +519,31 @@ async function pickPublic() {
   const L = [...m.values()].sort((a, b) => (b.id === S.f.t) - (a.id === S.f.t) || b.at - a.at);
   if (!L.length) return UI.toast('No results yet', { tone: 'warn' });
   if (L.length === 1) return publicList(L[0].id);
+  // series first (newest used first), then search: a long list stays easy to find in
+  const serOf = x => { const t = catTest(x.id); return t ? t.series_id || '' : ''; };
+  const SR = []; L.forEach(x => { const k = serOf(x); if (!SR.some(s => s.id === k)) SR.push({ id: k, title: seriesTitle(catTest(x.id)) || 'Other tests' }); });
+  const P = { ser: AX.ls.get('rs_pubser', ''), q: '' };
+  if (!SR.some(s => s.id === P.ser)) P.ser = SR.length > 1 ? SR[0].id : '';
+  const list = () => {
+    const q = P.q.trim().toLowerCase();
+    const F = L.filter(x => (q ? true : !P.ser || serOf(x) === P.ser) && (!q || ((catTest(x.id) || x).title || '').toLowerCase().includes(q)));
+    return F.length ? h`${join(F.slice(0, 100), x => { const t = catTest(x.id); return h`<div class="li click" data-act="pubt" data-id="${x.id}"><div class="grow"><div class="t ell">${t ? t.title : x.title}</div><div class="s">${q && seriesTitle(t) ? seriesTitle(t) + ' · ' : ''}${fmt.plural(x.n, 'student')} · ${fmt.dt(x.at)}</div></div>${icon('chevR', 16)}</div>`; })}${F.length > 100 ? h`<div class="xs mut" style="padding:8px 12px">Showing 100 of ${F.length} — type a name to find the rest.</div>` : ''}`
+      : h`<div class="xs mut" style="padding:12px">No test matches.</div>`;
+  };
   UI.modal({
-    title: 'Public result list', sub: 'Which test? Then choose Top 10 / 15 / 100 … and download the picture.',
-    body: h`<div class="list">${join(L.slice(0, 60), x => { const t = catTest(x.id); return h`<div class="li click" data-act="pubt" data-id="${x.id}"><div class="grow"><div class="t ell">${t ? t.title : x.title}</div><div class="s">${seriesTitle(t) ? seriesTitle(t) + ' · ' : ''}${fmt.plural(x.n, 'student')} · ${fmt.dt(x.at)}</div></div>${icon('chevR', 16)}</div>`; })}</div>`,
+    title: 'Public result list', sub: 'Choose the test series, then the test. Then choose Top 10 / 15 / 100 … and download the picture.',
+    body: h`<div class="inp-wrap search">${icon('search', 16)}<input class="inp sm" id="pub-q" type="search" placeholder="Search a test in any series" autocomplete="off" aria-label="Search test"></div>
+      ${SR.length > 1 ? h`<div class="row wrap gap6 mt8" id="pub-sr">${join(SR, x => h`<button type="button" class="btn xs ${P.ser === x.id ? 'pri' : 'ghost'}" data-act="pubs" data-id="${x.id}">${x.title} <span class="faint">${L.filter(y => serOf(y) === x.id).length}</span></button>`)}</div>` : ''}
+      <div class="list mt8" id="pub-l">${list()}</div>`,
     foot: h`<span class="sp"></span><button class="btn ghost" data-close>Close</button>`,
-    onOpen(el, close) { AX.act(el, { pubt(b) { close(); publicList(b.dataset.id); } }); }
+    onOpen(el, close) {
+      const redraw = () => AX.set(el.querySelector('#pub-l'), list());
+      el.querySelector('#pub-q').addEventListener('input', AX.u.debounce(e => { P.q = e.target.value; const sr = el.querySelector('#pub-sr'); if (sr) sr.style.opacity = P.q.trim() ? '.45' : ''; redraw(); }, 150));
+      AX.act(el, {
+        pubt(b) { close(); publicList(b.dataset.id); },
+        pubs(b) { P.ser = b.dataset.id; AX.ls.set('rs_pubser', P.ser); el.querySelectorAll('[data-act="pubs"]').forEach(x => x.className = 'btn xs ' + (x.dataset.id === P.ser ? 'pri' : 'ghost')); redraw(); }
+      });
+    }
   });
 }
 
