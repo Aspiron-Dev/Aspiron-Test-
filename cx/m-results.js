@@ -464,9 +464,10 @@ function topCard(title, ser, rows) {
     body: h`<div class="pub-bar">
         <div class="pub-seg" role="group" aria-label="How many toppers">${join([10, 15, 25, 50, 100].filter((n, i) => !i || n <= rows.length || rows.length > [10, 15, 25, 50][i - 1]), n => h`<button type="button" class="${O.n === n ? 'on' : ''}" data-act="pn" data-n="${n}">Top ${n}</button>`)}</div>
         <label class="pub-num"><span>Custom</span><input class="inp sm num" id="pub-c" type="number" min="1" max="100" value="${O.n}" aria-label="How many toppers"></label>
-        <span class="xs mut" id="pub-n"></span><span class="grow"></span>
-        <button type="button" class="btn sm soft" data-act="pth" aria-expanded="false">${icon('edit', 15)} Theme &amp; text</button></div>
-      <div class="pub-th" id="pub-th" hidden>
+        <span class="xs mut" id="pub-n"></span></div>
+      <div class="pub-th" id="pub-th">
+        <button type="button" class="pub-thh" data-act="pth" aria-expanded="false" aria-controls="pub-thb">${icon('edit', 16)}<b>Theme &amp; text</b><span class="grow"></span><span class="pub-chev">${icon('chevD', 18)}</span></button>
+        <div class="pub-thb" id="pub-thb">
         <div class="pub-sec"><div class="pub-lb">Theme <span>${ser ? 'saved for ' + ser : 'saved on this device'}</span></div>
           <div class="pub-sws">${join(PUB_THEMES, t => h`<button type="button" class="pub-sw ${isTh(t) ? 'on' : ''}" data-act="pset" data-id="${t.id}"><i style="background:linear-gradient(135deg,${t.bg1},${t.bg2});color:${t.ac}">Aa<em>${icon('check', 12)}</em></i><span>${t.name}</span></button>`)}</div></div>
         <div class="pub-sec"><div class="pub-lb">Your colours</div>
@@ -476,7 +477,7 @@ function topCard(title, ser, rows) {
         <div class="pub-sec"><div class="pub-lb">Text on the picture</div>
           <div class="pub-tx"><label><span>Top line</span><input class="inp sm" data-t="head" maxlength="60" placeholder="Your institute name" value="${T.head != null ? T.head : ''}"></label>
             <label><span>Bottom line</span><input class="inp sm" data-t="foot" maxlength="80" placeholder="Congratulations to all toppers!" value="${T.foot != null ? T.foot : ''}"></label></div></div>
-        <div class="row"><span class="grow"></span><button type="button" class="btn xs ghost" data-act="preset">${icon('refresh', 13)} Reset to default</button></div></div>
+        <div class="row"><span class="grow"></span><button type="button" class="btn xs ghost" data-act="preset">${icon('refresh', 13)} Reset to default</button></div></div></div>
       <div class="pub-chips"><span class="pub-lb">Show</span>${chk('marks', 'Marks')}${chk('time', 'Time taken')}${chk('rw', 'Right / wrong')}${chk('pct', 'Percentage')}${chk('ser', 'Series name')}</div>
       <div class="pub-pv"><img id="pub-img" alt="Result picture"></div>`,
     foot: h`<span class="sp"></span><button class="btn ghost" data-close>Close</button>${navigator.canShare ? h`<button class="btn" data-act="cshare">${icon('external', 16)} Share</button>` : ''}<button class="btn pri" data-act="cdl">${icon('download', 16)} Download picture</button>`,
@@ -493,7 +494,7 @@ function topCard(title, ser, rows) {
       el.querySelectorAll('input[data-t]').forEach(i => i.addEventListener('input', AX.u.debounce(() => { T[i.dataset.t] = i.value.trim() ? i.value : null; draw(el); }, 200)));
       AX.act(el, {
         pn: b => pick(+b.dataset.n),
-        pth(b) { const p = el.querySelector('#pub-th'), open = p.hidden; p.hidden = !open; b.setAttribute('aria-expanded', open); b.classList.toggle('pri', open); b.classList.toggle('soft', !open); },
+        pth(b) { const open = el.querySelector('#pub-th').classList.toggle('open'); b.setAttribute('aria-expanded', open); },
         pfont(b) { T.font = b.dataset.f; sync(); draw(el); },
         pset(b) { const t = PUB_THEMES.find(x => x.id === b.dataset.id); if (!t) return; Object.assign(T, { bg1: t.bg1, bg2: t.bg2, tx: t.tx, ac: t.ac }); sync(); draw(el); },
         preset() { Object.keys(T).forEach(k => delete T[k]); Object.assign(T, PUB_THEMES[0]); sync(); draw(el); },
