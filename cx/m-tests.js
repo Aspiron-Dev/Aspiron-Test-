@@ -334,6 +334,7 @@ function tMenu(el, t) {
     m && { label: 'Time & publish', icon: 'calendar', fn: () => AX.openTest(t.id, { step: 'publish' }) },
     AX.can('results') && { label: 'Analytics', icon: 'chart', fn: () => openAna(t.id) },
     { label: 'Share link', icon: 'link', fn: () => AX.shareTest(t.id) },
+    AX.isOwner() && { label: 'PDF notes link', icon: 'fileText', fn: () => pdfLink(t) },
     m && { sep: true },
     m && { label: p ? 'Turn practice mode off' : 'Turn practice mode on', icon: 'zap', fn: () => setPractice(t, !p) },
     m && { label: t.active === false ? 'Show to students' : 'Hide from students', icon: t.active === false ? 'eye' : 'eyeOff', fn: async () => { const r = await metaSave(t, { active: t.active === false }); if (!r.ok) return UI.err(r); changed(t.active === false ? 'Visible to students' : 'Hidden from students'); } },
@@ -652,5 +653,21 @@ function mediaDrawer(sid) {
       });
     }
   });
+}
+/* ---------- PDF notes link per test (Google Drive) — supabase_v51_test_pdf.sql, owner only ---------- */
+const PDF_RE = /^https:\/\/(drive|docs)\.google\.com\/[A-Za-z0-9/_?=&%.#~+-]+$/;
+async function pdfLink(t) {
+  const g = await AX.api.call('cbt_admin_test_pdf', 'get');
+  if (!g || !g.ok) { if (g && g.error === 'missing') UI.toast('Run supabase_v51_test_pdf.sql in Supabase first.', { tone: 'warn' }); else UI.err(g); return; }
+  const cur = (g.items || {})[String(t.id)] || {};
+  const v = await UI.prompt({ title: 'PDF notes link', label: 'Google Drive link', value: cur.url || '', required: false,
+    placeholder: 'https://drive.google.com/file/d/…/view',
+    hint: 'Share the file as "Anyone with the link → Viewer". Students see a PDF button next to this test. Leave empty to remove.' });
+  if (v == null) return;
+  const url = String(v).trim();
+  if (url && (url.length > 500 || !PDF_RE.test(url))) { UI.toast('Only drive.google.com or docs.google.com links.', { tone: 'bad' }); return; }
+  const r = await AX.api.call('cbt_admin_test_pdf', url ? 'set' : 'remove', url ? { id: String(t.id), url } : { id: String(t.id) });
+  if (!r || !r.ok) { UI.err(r); return; }
+  UI.toast(url ? 'PDF link saved' : 'PDF link removed');
 }
 })();

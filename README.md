@@ -135,3 +135,17 @@ Made for 500–1000 students taking a test at the same time.
 **Database backup:** every night GitHub Actions saves a locked (AES-256) copy of the whole database for 90 days (`.github/workflows/db-backup.yml`); setup from a phone and restore steps: `BACKUP.md`.
 
 Never put the admin password or a secret / service_role key in `config.js` or anywhere in this repository.
+
+## New look (Aspiron Lux) and Classic — `design-v2.css`, `app21.js`
+- The student app opens in the **new look** by default. Theme settings (palette button) → **Design** → *New look* / *Classic*.
+  Classic is the old design exactly (its CSS is untouched; `design-v2.css` only applies to `html[data-ds="v2"]`).
+  The choice is saved on the phone (`cbt_ds`); each design keeps its own colour (`cbt_accent_v2` / `cbt_accent`). No data changes.
+- Colours: Black (Dark / True Black) and Light, each with Champagne gold (default), Yellow, Emerald, Blue ice, Graphite, Rose.
+- Menu (new look): Home · Tests · Library · Store · Me. Phones: bar at the bottom; computers/tablets: menu on the left.
+  **Library** (`#/lib`): Mistakes, Saved, PYQ, Notes & PDFs (`#/notes`), tools (Marks calculator, Focus timer).
+  **Me** (`#/me`): Results & ranks, Study tracker, Notices, Profile, Appearance, Help, Sign out.
+- Look: flat surfaces, thin lines, one solid accent colour (no gradients or glow), serif page titles, underlined tabs.
+- **PDF notes per test** (`supabase_v51_test_pdf.sql`, run once in Supabase): Admin → Test studio → a test's ⋯ menu → *PDF notes link*
+  (owner only). Paste a Google Drive / Docs link shared as "Anyone with the link → Viewer". Students see a **PDF** button next to the
+  test and the file in Library → Notes & PDFs. Only `https://drive.google.com/…` and `https://docs.google.com/…` links are accepted
+  (checked on the server and in the app), and a student only gets links of tests they can open.
