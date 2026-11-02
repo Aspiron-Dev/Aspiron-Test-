@@ -482,7 +482,7 @@ function topCard(title, ser, rows) {
         <label class="pub-num"><span>Custom</span><input class="inp sm num" id="pub-c" type="number" min="1" max="100" value="${O.n}" aria-label="How many toppers"></label>
         <span class="xs mut" id="pub-n"></span></div>
       <div class="pub-th" id="pub-th">
-        <button type="button" class="pub-thh" data-act="pth" aria-expanded="false" aria-controls="pub-thb">${icon('edit', 16)}<b>Theme &amp; text</b><span class="grow"></span><span class="pub-chev">${icon('chevD', 18)}</span></button>
+        <button type="button" class="pub-thh" data-act="pth" aria-expanded="false" aria-controls="pub-thb"><b>Design studio</b><span class="xs mut">Colours, font &amp; text</span><span class="grow"></span><span class="pub-chev">${icon('chevD', 18)}</span></button>
         <div class="pub-thb" id="pub-thb">
         <div class="pub-sec"><div class="pub-lb">Theme <span>${ser ? 'saved for ' + ser : 'saved on this device'}</span></div>
           <div class="pub-sws">${join(PUB_THEMES, t => h`<button type="button" class="pub-sw ${isTh(t) ? 'on' : ''}" data-act="pset" data-id="${t.id}"><i style="background:linear-gradient(135deg,${t.bg1},${t.bg2});color:${t.ac}">Aa<em>${icon('check', 12)}</em></i><span>${t.name}</span></button>`)}</div></div>
