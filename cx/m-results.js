@@ -141,7 +141,7 @@ async function tabAll(ctx) {
     if (!rs.length) return AX.set('#rs-list', h`<div class="card">${UI.empty({ icon: 'fileText', title: 'No results yet', text: 'Results show here as soon as students submit a test.' })}</div>`);
     if (!L.length) return AX.set('#rs-list', h`<div class="card">${UI.empty({ icon: 'search', title: 'No results match', text: 'Try another name, test or date.', action: h`<button class="btn sm" data-act="clear">Clear filters</button>` })}</div>`);
     const V = L.slice(0, S.show), del = canDel(), flg = canFlag();
-    const acts = (x, fl) => h`${flg ? h`<button class="ibtn sm rs-fl ${fl ? 'on' : ''}" data-act="flag" data-id="${x.id}" title="${fl ? 'Tagged as cheating' : 'Report cheating'}" aria-label="Report cheating">${icon('flag', 15)}</button>` : ''}${del ? h`<button class="ibtn sm rs-del" data-act="del" data-id="${x.id}" title="Delete result" aria-label="Delete result">${icon('trash', 15)}</button>` : ''}`;
+    const acts = (x, fl) => h`<button class="ibtn sm" data-act="sheet" data-id="${x.id}" title="Answer sheet" aria-label="Answer sheet">${icon('list', 15)}</button>${flg ? h`<button class="ibtn sm rs-fl ${fl ? 'on' : ''}" data-act="flag" data-id="${x.id}" title="${fl ? 'Tagged as cheating' : 'Report cheating'}" aria-label="Report cheating">${icon('flag', 15)}</button>` : ''}${del ? h`<button class="ibtn sm rs-del" data-act="del" data-id="${x.id}" title="Delete result" aria-label="Delete result">${icon('trash', 15)}</button>` : ''}`;
     const ans = x => h`<span class="t-ok">✓ ${x.correct}</span> <span class="t-bad">✗ ${x.wrong}</span> <span class="mut">– ${x.skipped}</span>`;
     const more = L.length > V.length ? h`<div class="row mt12" style="justify-content:center"><button class="btn sm" data-act="more">Show ${Math.min(100, L.length - V.length)} more</button><span class="xs mut">${fmt.num(V.length)} of ${fmt.num(L.length)}</span></div>` : '';
     if (UI.isPhone()) {
@@ -150,13 +150,13 @@ async function tabAll(ctx) {
           <div class="rs-lt"><span class="ell b">${x.title}</span>${fl ? UI.pill('🚩 Cheating', 'bad') : ''}</div>
           <div class="row"><div class="grow xs mut rs-lm"><span class="num"><b class="tx2">${x.score}</b>/${x.max}</span><span class="num">${ans(x)}</span><span>${mins(x.used)} min</span>${x.late ? UI.pill('Late', 'warn') : ''}<span>${fmt.dt(x.at)}</span></div>${acts(x, fl)}</div></div>`; })}</div>${more}`);
     } else {
-      AX.set('#rs-list', h`<div class="tbl-wrap"><table class="tbl rs-tbl"><thead><tr><th>Student</th><th>Test</th><th class="r">Score</th><th>%</th><th>✓ ✗ Skipped</th><th>Time</th><th>Date</th>${del || flg ? h`<th class="r"><span class="sr">Actions</span></th>` : ''}</tr></thead><tbody>
+      AX.set('#rs-list', h`<div class="tbl-wrap"><table class="tbl rs-tbl"><thead><tr><th>Student</th><th>Test</th><th class="r">Score</th><th>%</th><th>✓ ✗ Skipped</th><th>Time</th><th>Date</th><th class="r"><span class="sr">Actions</span></th></tr></thead><tbody>
         ${join(V, x => { const p = pctRow(x), fl = isFlagged(x); return h`<tr class="${fl ? 'rs-flagged' : ''}">
           <td><button class="rs-stu" data-act="stu" data-m="${x.mobile}">${UI.avatar(x.student, x.mobile, 'sm')}<span class="grow"><b class="ell">${x.student}</b><span class="xs mut mono">${fmt.mobile(x.mobile)}</span></span></button></td>
           <td class="rs-tc"><div class="ell b6" title="${x.title}">${x.title}</div>${fl ? h`<div class="mt4">${UI.pill('🚩 Cheating', 'bad')}</div>` : ''}</td>
           <td class="r num nowrap"><b>${x.score}</b><span class="mut">/${x.max}</span></td><td>${pctTag(p)}</td>
           <td class="num nowrap">${ans(x)}</td><td class="nowrap">${mins(x.used)} min${x.late ? h` ${UI.pill('Late', 'warn')}` : ''}</td>
-          <td class="xs tx2 nowrap">${fmt.dt(x.at)}</td>${del || flg ? h`<td class="r nowrap">${acts(x, fl)}</td>` : ''}</tr>`; })}</tbody></table></div>${more}`);
+          <td class="xs tx2 nowrap">${fmt.dt(x.at)}</td><td class="r nowrap">${acts(x, fl)}</td></tr>`; })}</tbody></table></div>${more}`);
     }
   };
   draw();
@@ -166,6 +166,7 @@ async function tabAll(ctx) {
     more() { S.show += 100; draw(); },
     clear() { S.f = { q: '', t: '', range: 'all', from: null, to: null, sort: S.f.sort }; S.show = 100; ctx.reload(); },
     stu: el => openStu(el.dataset.m),
+    sheet(el) { openSheet(el.dataset.id, y => { const x = find(el.dataset.id); if (x) Object.assign(x, y); AX.cache.drop('results'); AX.emit('data:changed'); draw(); }); },
     flag(el) { const x = find(el.dataset.id); if (x) AX.integrity.report(Object.assign({}, x, { test_id: tidOf(x) })); },
     async del(el) {
       const x = find(el.dataset.id); if (!x) return;
@@ -194,6 +195,50 @@ async function tabAll(ctx) {
   const off = AX.on('integrity:changed', () => { if (!ctx.alive()) return off(); flagLoad().then(draw); });
   const ph = document.getElementById('ax-ph');
   if (ph) AX.act(ph, { csv() { const L = filtered(rs); if (!L.length) return UI.toast('Nothing to export', { tone: 'warn' }); csvResults(L); UI.toast('Downloaded ' + fmt.plural(L.length, 'result')); } });
+}
+
+/* ---------- answer sheet of one attempt (v49): what the student chose, the key today, re-grade ---------- */
+const LT = ['A', 'B', 'C', 'D'];
+async function openSheet(id, onRegrade) {
+  const r = await AX.api.call('cbt_admin_sheet', 'get', { id });
+  if (!r.ok) return r.error === 'missing'
+    ? UI.toast('Run supabase_v49_answer_sheet.sql in Supabase first (then v35 again).', { tone: 'warn' }) : UI.err(r);
+  const R = r.result, N = r.now, Q = r.questions || [], hi = R.lang === 'hi';
+  const st = q => q.mine == null || q.key == null ? 'skip' : q.mine === q.key ? 'ok' : 'bad';
+  const changed = N.correct !== R.correct || N.wrong !== R.wrong || +N.score !== +R.score;
+  let F = 'all';
+  const diag = () => h`${changed ? h`<div class="callout warn">${icon('alert')}<div class="sm"><b>The answer key or marks changed after this attempt.</b> Saved: ${R.score}/${R.max} (✓ ${R.correct} ✗ ${R.wrong}). With today's key: <b>${N.score}/${N.max}</b> (✓ ${N.correct} ✗ ${N.wrong}).${canDel() ? ' Press Re-grade to save the new score.' : ''}</div></div>`
+      : h`<div class="callout ok">${icon('checkCircle')}<div class="sm"><b>The saved score matches today's answer key.</b> The options below are exactly what the student's phone sent at the submit. If the student says an answer was right, compare it with the correct option — the answer key itself may be wrong.</div></div>`}
+    ${hi ? h`<div class="callout info mt8">${icon('info')}<div class="sm">Written in <b>हिंदी</b>. The answer key is shared with English: if the Hindi options are in another order than the English ones, a right Hindi answer counts as wrong. The Hindi text is shown with each question.</div></div>` : ''}
+    ${(r.edits || []).length ? h`<div class="callout info mt8">${icon('history')}<div class="sm">The test was saved again after this attempt: ${join(r.edits, (e, i) => h`${i ? ', ' : ''}<span class="nowrap">${fmt.dt(e.at)} (${e.who})</span>`)}.</div></div>` : ''}`;
+  const opt = (q, j, txt) => { const k = j === q.key, m = j === q.mine; return h`<div class="as-o ${k ? 'k' : ''} ${m && !k ? 'm' : ''}"><b>${LT[j]}</b><span class="grow">${txt || '—'}</span>${m ? UI.pill('Student', k ? 'ok' : 'bad') : ''}${k ? UI.pill('Correct', 'ok') : ''}</div>`; };
+  const list = () => { const L = Q.map((q, i) => [q, i]).filter(([q]) => F === 'all' || st(q) === F); return L.length ? join(L, ([q, i]) => { const s = st(q); return h`<div class="as-q ${s}">
+      <div class="row"><b>Q${i + 1}</b>${q.sec ? h`<span class="xs mut">${q.sec}</span>` : ''}<span class="grow"></span>${q.time != null ? h`<span class="xs mut">${q.time}s</span>` : ''}${UI.pill(s === 'ok' ? 'Right' : s === 'bad' ? 'Wrong' : q.key == null ? 'No key' : 'Skipped', s === 'ok' ? 'ok' : s === 'bad' ? 'bad' : '')}</div>
+      ${hi && q.hq ? h`<div class="sm mt4">${q.hq}</div>` : ''}<div class="sm ${hi && q.hq ? 'xs mut' : ''} mt4">${q.q || (q.img ? '[picture]' : '')}</div>
+      <div class="mt8">${join([0, 1, 2, 3], j => opt(q, j, hi && q.hoptions && q.hoptions[j] ? q.hoptions[j] + ' · ' + (q.options[j] || '') : q.options[j]))}</div></div>`; }) : h`<div class="xs mut">Nothing here.</div>`; };
+  const cnt = k => Q.filter(q => st(q) === k).length;
+  UI.modal({
+    title: 'Answer sheet', sub: r.student.name + ' · ' + fmt.mobile(r.student.mobile) + ' · ' + r.test.title + ' · ' + fmt.dt(R.at) + (hi ? ' · हिंदी' : ' · English'), size: 'wide',
+    body: h`<div id="as-d">${diag()}</div>
+      ${(r.attempts || []).length > 1 ? h`<div class="xs mut mt8">${fmt.plural(r.attempts.length, 'attempt')} of this test: ${join(r.attempts, (a, i) => h`${i ? ' · ' : ''}<span class="nowrap ${a.id === R.id ? 'b6' : ''}">${fmt.dt(a.at)} ${a.score}/${a.max}</span>`)}</div>` : ''}
+      <div class="row wrap gap6 mt12" id="as-f">${join([['all', 'All', Q.length], ['bad', 'Wrong', cnt('bad')], ['ok', 'Right', cnt('ok')], ['skip', 'Skipped', cnt('skip')]], ([k, l, n]) => h`<button type="button" class="btn xs ${k === F ? 'pri' : 'ghost'}" data-act="asf" data-k="${k}">${l} ${n}</button>`)}</div>
+      <div class="as-l mt12" id="as-l">${list()}</div>`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Close</button>${changed && canDel() ? h`<button class="btn pri" data-act="asre">${icon('refresh', 16)} Re-grade with today's key</button>` : ''}`,
+    onOpen(el, close) {
+      AX.act(el, {
+        asf(b) { F = b.dataset.k; el.querySelectorAll('#as-f .btn').forEach(x => x.className = 'btn xs ' + (x.dataset.k === F ? 'pri' : 'ghost')); AX.set(el.querySelector('#as-l'), list()); },
+        async asre(b) {
+          if (!(await UI.confirm({ title: 'Re-grade this attempt?', text: 'Score ' + R.score + ' → ' + N.score + ' (counted with today\'s answer key). Rank and the student\'s result change too.', yes: 'Re-grade' }))) return;
+          await UI.busy(b, async () => {
+            const y = await AX.api.call('cbt_admin_sheet', 'regrade', { id });
+            if (!y.ok) return UI.err(y);
+            close(); UI.toast('Re-graded: ' + y.score + '/' + y.max);
+            if (onRegrade) onRegrade({ score: y.score, max: y.max, correct: y.correct, wrong: y.wrong, skipped: y.skipped });
+          });
+        }
+      });
+    }
+  });
 }
 
 /* ---------- per-test stats (grouped by test id; results without one fall back to the title) ---------- */
