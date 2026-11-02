@@ -379,6 +379,51 @@ async function tabInsights(ctx) {
   if (ph) AX.act(ph, { incsv() { const P = [...inStats(rs, sts, I.range).people].sort((a, b) => b.avg - a.avg); dl('insights-' + I.range + 'days.csv', [['Name', 'Mobile', 'Tests', 'Average %', 'Best %', 'Change %', 'Last test'], ...P.map(p => [p.name, p.mobile, p.n, p.avg, p.best, p.trend, new Date(p.last).toLocaleDateString('en-IN')])]); UI.toast('Downloaded ' + fmt.plural(P.length, 'student')); } });
 }
 
+/* ---------- result image to post in the channel: rank, name, time, score (no mobile numbers) ---------- */
+function cardCanvas(title, ser, L) {
+  const W = 1080, P = 56, RH = 84, top = 250, H = top + L.length * RH + 96;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), F = '"Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari", Arial, sans-serif';
+  const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#0b1a2e'); bg.addColorStop(1, '#0d3b3a');
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  const fit = (t, w, font) => { g.font = font; t = String(t || ''); if (g.measureText(t).width <= w) return t; while (t && g.measureText(t + '…').width > w) t = t.slice(0, -1); return t + '…'; };
+  g.fillStyle = '#5eead4'; g.font = '700 26px ' + F; g.fillText(((window.CBT_CONFIG || {}).SITE_NAME || 'Results').toUpperCase(), P, 78);
+  g.fillStyle = '#fff'; g.fillText(fit(title, W - 2 * P, '800 50px ' + F), P, 142);
+  g.fillStyle = 'rgba(255,255,255,.7)'; g.fillText(fit('Top ' + L.length + (ser ? ' · ' + ser : '') + ' · ' + new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }), W - 2 * P, '500 28px ' + F), P, 192);
+  g.fillStyle = 'rgba(255,255,255,.5)'; g.font = '600 22px ' + F;
+  g.fillText('RANK', P, top - 16); g.fillText('NAME', P + 120, top - 16);
+  g.textAlign = 'right'; g.fillText('TIME', W - P - 230, top - 16); g.fillText('SCORE', W - P, top - 16); g.textAlign = 'left';
+  const medal = ['#fbbf24', '#cbd5e1', '#f59e0b'];
+  L.forEach((x, i) => {
+    const y = top + i * RH, cy = y + RH / 2;
+    g.fillStyle = i % 2 ? 'rgba(255,255,255,.035)' : 'rgba(255,255,255,.08)';
+    g.beginPath(); if (g.roundRect) g.roundRect(P - 16, y + 6, W - 2 * P + 32, RH - 12, 18); else g.rect(P - 16, y + 6, W - 2 * P + 32, RH - 12); g.fill();
+    if (x.rank <= 3) { g.fillStyle = medal[x.rank - 1]; g.beginPath(); g.arc(P + 30, cy, 26, 0, 7); g.fill(); g.fillStyle = '#0b1a2e'; } else g.fillStyle = '#fff';
+    g.font = '800 28px ' + F; g.textAlign = 'center'; g.fillText(String(x.rank), P + 30, cy + 10); g.textAlign = 'left';
+    g.fillStyle = '#fff'; g.fillText(fit(x.name, W - 2 * P - 590, '700 31px ' + F), P + 120, cy + 11);
+    g.textAlign = 'right'; g.fillStyle = 'rgba(255,255,255,.75)'; g.font = '500 27px ' + F; g.fillText(fsec(x.used), W - P - 230, cy + 10);
+    g.fillStyle = '#5eead4'; g.font = '800 31px ' + F; g.fillText(x.score + ' / ' + x.max, W - P, cy + 11); g.textAlign = 'left';
+  });
+  g.fillStyle = 'rgba(255,255,255,.45)'; g.font = '500 22px ' + F; g.fillText('Congratulations to all toppers!', P, H - 40);
+  return c;
+}
+function topCard(title, ser, L) {
+  if (!L.length) return UI.toast('No students yet', { tone: 'warn' });
+  L = L.slice(0, 100);
+  const c = cardCanvas(title, ser, L), url = c.toDataURL('image/png'), name = (title || 'result').replace(/[^\w]+/g, '_') + '_top' + L.length + '.png';
+  UI.modal({
+    title: 'Result image', sub: 'Rank, name, time and score only — no mobile numbers. Download it and post it in your channel.', size: 'wide',
+    body: h`<img src="${url}" alt="Result image" style="width:100%;border-radius:14px;display:block">`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Close</button>${navigator.canShare ? h`<button class="btn" data-act="cshare">${icon('external', 16)} Share</button>` : ''}<button class="btn pri" data-act="cdl">${icon('download', 16)} Download image</button>`,
+    onOpen(el) {
+      AX.act(el, {
+        cdl() { const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); UI.toast('Downloaded'); },
+        cshare() { c.toBlob(async b => { const f = new File([b], name, { type: 'image/png' }); try { if (navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title }); else UI.toast('Sharing is not available here — use Download', { tone: 'warn' }); } catch (e) {} }, 'image/png'); }
+      });
+    }
+  });
+}
+
 /* ---------- one test's analytics ---------- */
 const LET = 'ABCD';
 async function analytics(el, id, o) {
@@ -392,8 +437,11 @@ async function analytics(el, id, o) {
     return;
   }
   const t = catTest(id), ser = seriesTitle(t), title = r.title || (t && t.title) || 'Test';
-  const A = { sort: 'no', allTop: false };
-  const qs = r.questions || [], rows = r.rows || [], sus = qs.filter(q => q.suspect);
+  const A = { sort: 'no', top: 10 };
+  const qs = r.questions || [], sus = qs.filter(q => q.suspect);
+  // rank: higher score first, then less time; numbered 1, 2, 3 … (no repeated or missing numbers)
+  const rows = [...(r.rows || [])].sort((a, b) => (+b.score - +a.score) || ((+a.used || 0) - (+b.used || 0)) || String(a.name).localeCompare(String(b.name)))
+    .map((x, i) => Object.assign({}, x, { rank: i + 1 }));
   if (o.drawer) o.drawer.head(h`<h2 class="ell">${title}</h2><div class="m-s">Test analytics${ser ? ' · ' + ser : ''}</div>`);
   if (o.onTitle) o.onTitle(title, ser);
   const csv = () => {
@@ -422,9 +470,16 @@ async function analytics(el, id, o) {
     AX.set(el.querySelector('#an-qs'), L.length ? join(L, qCard) : h`<div class="card">${UI.empty({ icon: 'fileText', title: 'No questions' })}</div>`);
   };
   const drawTop = () => {
-    const T = A.allTop ? rows : rows.slice(0, 10);
-    AX.set(el.querySelector('#an-top'), T.length ? h`${join(T, x => { const pp = x.max ? Math.round(x.score * 100 / x.max) : 0; return h`<div class="li click" data-act="stu" data-m="${x.mobile}">${rankTag((x.rank || 1) - 1)}<div class="grow"><div class="t ell">${x.name}</div><div class="s"><span class="num">✓${x.correct} ✗${x.wrong} –${x.skipped}</span> · ${mins(x.used)} min${x.attempts > 1 ? ' · ' + x.attempts + ' attempts' : ''}</div></div><div class="rs-end"><b class="num">${x.score}<span class="mut" style="font-weight:600">/${x.max}</span></b><span class="xs ${'t-' + tone(pp)}">${pp}%</span></div></div>`; })}
-      ${rows.length > 10 ? h`<div style="padding:8px 12px 12px"><button class="btn xs ghost" data-act="alltop">${A.allTop ? 'Show top 10' : 'Show all ' + rows.length}</button></div>` : ''}` : h`<div class="rs-none">No students yet.</div>`);
+    const T = A.top ? rows.slice(0, A.top) : rows;
+    AX.set(el.querySelector('#an-top'), T.length ? h`<div class="row wrap gap6" style="padding:4px 12px 8px">${join([[10, 'Top 10'], [50, 'Top 50'], [100, 'Top 100'], [0, 'All']].filter(([n]) => n === 10 || n < rows.length || (!n && rows.length > 10)), ([n, l]) => h`<button type="button" class="btn xs ${A.top === n ? 'pri' : 'ghost'}" data-act="topn" data-n="${n}">${l}</button>`)}<span class="grow"></span><button type="button" class="btn xs" data-act="card">${icon('download', 13)} Image</button></div>
+      ${join(T, x => { const pp = x.max ? Math.round(x.score * 100 / x.max) : 0; return h`<div class="li click" data-act="row" data-m="${x.mobile}" title="Open the answer sheet">${rankTag(x.rank - 1)}<div class="grow"><div class="t ell">${x.name}</div><div class="s"><span class="num">✓${x.correct} ✗${x.wrong} –${x.skipped}</span> · ${fsec(x.used)}${x.attempts > 1 ? ' · ' + x.attempts + ' attempts' : ''}</div></div><div class="rs-end"><b class="num">${x.score}<span class="mut" style="font-weight:600">/${x.max}</span></b><span class="xs ${'t-' + tone(pp)}">${pp}%</span></div></div>`; })}` : h`<div class="rs-none">No students yet.</div>`);
+  };
+  // a row → the answer sheet of the attempt the rank counts (the student's first in this test)
+  const openRow = async m => {
+    const rr = await AX.data.results();
+    const L = ((rr && rr.results) || []).filter(x => x.mobile === m && x.test_id === id).sort((a, b) => a.at - b.at);
+    if (!L.length) return openStu(m);
+    openSheet(L[0].id, () => { AX.cache.drop('results'); AX.emit('data:changed'); });
   };
   AX.set(el, h`<div class="an-wrap">
     <div class="an-tiles">${join([['Students', fmt.num(r.students), 'users', ''], ['Average', avg, 'target', 'vio'], ['Highest', h`${r.high}<small>/${r.max}</small>`, 'trophy', 'gold'], ['Lowest', r.low, 'minus', 'bad'], ['Avg time', fsec(r.avg_time), 'clock', 'info'], ['Attempts', fmt.num(r.attempts), 'fileText', '']], x => UI.kpi({ label: x[0], value: x[1], icon: x[2], tone: x[3] }))}</div>
@@ -439,7 +494,9 @@ async function analytics(el, id, o) {
     sort(b) { A.sort = b.dataset.v; b.parentElement.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); drawQs(); },
     more(p) { p.classList.toggle('open'); },
     openq: b => openQ(Number(b.dataset.i)),
-    alltop() { A.allTop = !A.allTop; drawTop(); },
+    topn(b) { A.top = Number(b.dataset.n); drawTop(); },
+    row: b => openRow(b.dataset.m),
+    card: () => topCard(title, ser, A.top ? rows.slice(0, A.top) : rows),
     stu: b => openStu(b.dataset.m),
     csv, full() { if (o.drawer) o.drawer.close(); }
   });
