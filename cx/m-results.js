@@ -454,6 +454,39 @@ function topCard(title, ser, rows) {
   });
 }
 
+/* ---------- a test's students in rank order (r = cbt_admin2 analytics) ---------- */
+async function rankedRows(id, r) {
+  const rk = await AX.api.call('cbt_admin_ranks', 'get', { id }), RK = {};
+  if (rk && rk.ok) (rk.ranks || []).forEach(x => { RK[x.mobile] = x; });
+  const rows = [...(r.rows || [])].sort((a, b) => ((RK[a.mobile] ? RK[a.mobile].rank : 1e9) - (RK[b.mobile] ? RK[b.mobile].rank : 1e9))
+      || (+b.score - +a.score) || ((+a.wrong || 0) - (+b.wrong || 0)) || ((+a.used || 0) - (+b.used || 0)) || String(a.name).localeCompare(String(b.name)))
+    .map((x, i) => Object.assign({}, x, { rank: i + 1 }));
+  return { rows, RK };
+}
+// "Public list" from the page header: straight to the picture of one test
+async function publicList(id) {
+  UI.toast('Loading the result…');
+  const r = await AX.api.call('cbt_admin2', 'analytics', { id });
+  if (!r.ok) return UI.err(r);
+  const { rows } = await rankedRows(id, r), tt = catTest(id);
+  topCard(r.title || (tt && tt.title) || 'Test', seriesTitle(tt), rows);
+}
+// pick the test first (newest attempted first; the test chosen in the Results filter comes first)
+async function pickPublic() {
+  const [rr] = await Promise.all([AX.data.results(), AX.data.catalog().then(c => { if (c && c.ok) S.cat = c; })]);
+  const m = new Map();
+  ((rr && rr.results) || []).forEach(x => { if (!x.test_id) return; const o = m.get(x.test_id); if (o) { o.n++; o.at = Math.max(o.at, x.at); } else m.set(x.test_id, { id: x.test_id, title: x.title, n: 1, at: x.at }); });
+  const L = [...m.values()].sort((a, b) => (b.id === S.f.t) - (a.id === S.f.t) || b.at - a.at);
+  if (!L.length) return UI.toast('No results yet', { tone: 'warn' });
+  if (L.length === 1) return publicList(L[0].id);
+  UI.modal({
+    title: 'Public result list', sub: 'Which test? Then choose Top 10 / 15 / 100 … and download the picture.',
+    body: h`<div class="list">${join(L.slice(0, 60), x => { const t = catTest(x.id); return h`<div class="li click" data-act="pubt" data-id="${x.id}"><div class="grow"><div class="t ell">${t ? t.title : x.title}</div><div class="s">${seriesTitle(t) ? seriesTitle(t) + ' · ' : ''}${fmt.plural(x.n, 'student')} · ${fmt.dt(x.at)}</div></div>${icon('chevR', 16)}</div>`; })}</div>`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Close</button>`,
+    onOpen(el, close) { AX.act(el, { pubt(b) { close(); publicList(b.dataset.id); } }); }
+  });
+}
+
 /* ---------- one test's analytics ---------- */
 const LET = 'ABCD';
 async function analytics(el, id, o) {
@@ -472,11 +505,7 @@ async function analytics(el, id, o) {
   // rank: higher score first, then less time; numbered 1, 2, 3 … (no repeated or missing numbers)
   // v50: the server's rank order (marks, fewer wrong, Biology, Chemistry, Physics, less time, submitted first);
   // students it does not rank (late, after the result time) follow, by marks then time. Numbered 1, 2, 3 … without ties
-  const rk = await AX.api.call('cbt_admin_ranks', 'get', { id }), RK = {};
-  if (rk && rk.ok) (rk.ranks || []).forEach(x => { RK[x.mobile] = x; });
-  const rows = [...(r.rows || [])].sort((a, b) => ((RK[a.mobile] ? RK[a.mobile].rank : 1e9) - (RK[b.mobile] ? RK[b.mobile].rank : 1e9))
-      || (+b.score - +a.score) || ((+a.wrong || 0) - (+b.wrong || 0)) || ((+a.used || 0) - (+b.used || 0)) || String(a.name).localeCompare(String(b.name)))
-    .map((x, i) => Object.assign({}, x, { rank: i + 1 }));
+  const { rows, RK } = await rankedRows(id, r);
   if (!el.isConnected || (o.ctx && !o.ctx.alive())) return;
   if (o.drawer) o.drawer.head(h`<h2 class="ell">${title}</h2><div class="m-s">Test analytics${ser ? ' · ' + ser : ''}</div>`);
   if (o.onTitle) o.onTitle(title, ser);
@@ -547,8 +576,10 @@ AX.openAnalytics = (id) => {
 async function pageAnalytics(ctx, id) {
   const t0 = catTest(id);
   const headFor = (title, ser) => ctx.head({ title: title || 'Test analytics', sub: 'Test analytics' + (ser ? ' · ' + ser : '') + ' — how students answered each question.', crumb: 'Test analytics',
-    actions: h`<a class="btn sm ghost" href="#/results/tests">${icon('arrowL', 15)} All tests</a>` });
+    actions: h`<a class="btn sm ghost" href="#/results/tests">${icon('arrowL', 15)} All tests</a><button class="btn sm pri" data-act="pub">${icon('download', 15)} Public list</button>` });
   headFor(t0 && t0.title, seriesTitle(t0));
+  const ph = document.getElementById('ax-ph');
+  if (ph) AX.act(ph, { pub: () => publicList(id) });
   await analytics(ctx.el, id, { ctx, onTitle: headFor });
 }
 
@@ -569,9 +600,9 @@ AX.mod({
     const refresh = h`<button class="btn sm ghost" data-act="refresh">${icon('refresh', 15)} Refresh</button>`;
     ctx.head({ title: 'Results & analytics', sub: SUB[tab], tab,
       tabs: [{ id: 'all', title: 'Results', icon: 'list', href: '#/results' }, { id: 'tests', title: 'Tests', icon: 'bars' }, { id: 'insights', title: 'Insights', icon: 'sparkle' }],
-      actions: tab === 'all' ? h`${refresh}<button class="btn sm" data-act="csv">${icon('download', 15)} Export CSV</button>` : tab === 'insights' ? h`${refresh}<button class="btn sm" data-act="incsv">${icon('download', 15)} Report CSV</button>` : refresh });
+      actions: tab === 'all' ? h`${refresh}<button class="btn sm" data-act="csv">${icon('download', 15)} Export CSV</button><button class="btn sm pri" data-act="pub">${icon('download', 15)} Public list</button>` : tab === 'insights' ? h`${refresh}<button class="btn sm" data-act="incsv">${icon('download', 15)} Report CSV</button><button class="btn sm pri" data-act="pub">${icon('download', 15)} Public list</button>` : h`${refresh}<button class="btn sm pri" data-act="pub">${icon('download', 15)} Public list</button>` });
     const ph = document.getElementById('ax-ph');
-    if (ph) AX.act(ph, { refresh() { AX.cache.drop('results'); if (tab === 'insights') AX.cache.drop('students'); ctx.reload(); } });
+    if (ph) AX.act(ph, { refresh() { AX.cache.drop('results'); if (tab === 'insights') AX.cache.drop('students'); ctx.reload(); }, pub: () => pickPublic() });
     if (tab === 'tests') return tabTests(ctx);
     if (tab === 'insights') return tabInsights(ctx);
     return tabAll(ctx);
