@@ -139,11 +139,15 @@ function toast(m){const t=document.createElement('div');t.className='toast';t.te
 function modal(h){$('#layer').innerHTML=`<div class="modal" onclick="if(event.target===this)closeModal()"><div class="box">${h}</div></div>`}
 function closeModal(){$('#layer').innerHTML=''}
 const NAVIT=[['dash','#/','Home','grid'],['series','#/series','Tests','file'],['mk','#/m','Mistakes','notebook'],['bm','#/b','Saved','bmark'],['results','#/r','Results','trophy'],['tr','#/t','Tracker','pulse']];
+/* new design: 5 tabs; Mistakes, Saved, Tracker, PYQ, notes and tools live in Library (app21.js). Classic keeps NAVIT. */
+const NAVIT2=[['dash','#/','Home','home'],['series','#/series','Tests','file'],['lib','#/lib','Library','book'],['results','#/r','Results','trophy'],['store','store.html','Store','bag']];
+function navI(){return isV2()?NAVIT2:NAVIT}
 function setNav(tab){
   const bn=$('#bnav');
-  if(!bn.children.length)bn.innerHTML=NAVIT.map(x=>`<button data-k="${x[0]}" onclick="location.hash='${x[1]}'">${ic(x[3],22)}${x[2]}</button>`).join('');
+  const N=navI(),ds=isV2()?'v2':'classic';
+  if(!bn.children.length||bn.dataset.ds!==ds){bn.dataset.ds=ds;bn.style.setProperty('--n',N.length);bn.innerHTML=N.map(x=>`<button data-k="${x[0]}" aria-label="${x[2]}" onclick="${x[1][0]==='#'?`location.hash='${x[1]}'`:`location.href='${x[1]}'`}">${ic(x[3],22)}${ds==='v2'?`<span>${x[2]}</span>`:x[2]}</button>`).join('')}
   bn.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.k===tab));
-  bn.style.setProperty('--i',Math.max(0,NAVIT.findIndex(x=>x[0]===tab)));
+  bn.style.setProperty('--i',Math.max(0,N.findIndex(x=>x[0]===tab)));
   document.body.classList.add('hasnav');
 }
 let ROUTING=0,PGDX=0;
@@ -245,8 +249,8 @@ async function loadCat(silent){
   return true;
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AUTH&&!INTEST&&CAT&&Date.now()-CATAT>30000)route()});
-const navTab=h=>/^#\/(s|f)\//.test(h)||h==='#/series'?'series':/^#\/h\//.test(h)||h==='#/r'?'results':h==='#/m'?'mk':h==='#/b'?'bm':h==='#/t'?'tr':'dash';
-const NAVRK=h=>{const t=NAVIT.findIndex(x=>x[0]===navTab(h));return /^#\/(s|f|h)\//.test(h)||h==='#/n'?t+0.5:t};
+const navTab=h=>/^#\/(s|f)\//.test(h)||h==='#/series'?'series':isV2()&&/^#\/(lib|notes|m|b|t|n|pyq)(\/|$)/.test(h)?'lib':/^#\/h\//.test(h)||h==='#/r'?'results':h==='#/m'?'mk':h==='#/b'?'bm':h==='#/t'?'tr':'dash';
+const NAVRK=h=>{const t=navI().findIndex(x=>x[0]===navTab(h));return /^#\/(s|f|h)\//.test(h)||h==='#/n'?t+0.5:t};
 let LASTRK=null;
 function pgAnim(ap){
   if(!PGDX){ap.classList.remove('pg');return}

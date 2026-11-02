@@ -438,6 +438,7 @@ function setDesign(d){
   themeSwap(()=>{
     h.dataset.ds=v;
     h.dataset.accent=v==='v2'?(LS.get('cbt_accent_v2','gold')||'gold'):(LS.get('cbt_accent','cyber')||'cyber');
+    if(AUTH&&!INTEST&&document.body.classList.contains('hasnav'))setNav(navTab(location.hash||'#/'));
     syncTheme();closeModal();openLook();
   });
 }

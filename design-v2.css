@@ -161,3 +161,50 @@ html[data-ds="v2"] #app.pg,html[data-ds="v2"] #app.pgf{animation:v2rise .5s var(
 @media (prefers-reduced-motion:reduce){
   html[data-ds="v2"] *,html[data-ds="v2"] *::before,html[data-ds="v2"] *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+
+/* ---------- Library, Notes & tools (app21.js) — both designs ---------- */
+.lib .libh{margin:4px 0 18px}.lib .libh h1{font-size:30px;margin:4px 0 6px}
+.lib .h2s{margin:22px 0 10px;font-size:17px}
+.libg{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:720px){.libg{grid-template-columns:1fr 1fr}}
+.libt,.libstore{display:flex;align-items:center;gap:14px;width:100%;text-align:left;font:inherit;color:var(--tx);cursor:pointer;padding:14px 16px;text-decoration:none}
+.libt b,.libstore b{display:block;font-size:15px;line-height:1.3}
+.libt small,.libstore small{display:block;font-size:12.5px;color:var(--mut);margin-top:2px}
+.libt .grow,.libstore .grow{flex:1;min-width:0}
+.libt>svg:last-child,.libstore>svg:last-child{color:var(--mut);flex:none;transition:transform .3s}
+.libt:hover>svg:last-child{transform:translateX(3px)}
+.libi{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:var(--priSoft);color:var(--pri);flex:none}
+.libn{min-width:26px;height:26px;padding:0 8px;border-radius:99px;background:var(--grad);color:var(--onpri,#fff);font-size:12px;font-weight:800;display:grid;place-items:center}
+.libstore{margin-top:22px;background:var(--grad)!important;color:var(--onpri,#fff)!important;border:0!important}
+.libstore small,.libstore>svg:last-child{color:inherit;opacity:.85}
+.tlg{margin-bottom:10px}
+.tlr{display:flex;justify-content:space-between;align-items:baseline;padding:14px 16px;border-radius:16px;background:var(--priSoft);margin-top:6px}
+.tlr b{font-size:30px;color:var(--pri);font-family:var(--fh)}
+.tlt{text-align:center;font-family:var(--fh);font-size:64px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;padding:10px 0}
+.pdfb svg{width:16px;height:16px}
+
+/* ---------- new bottom bar: 5 tabs on phones ---------- */
+@media(max-width:700px){
+  html[data-ds="v2"] .bnav:before{width:calc((100% - 28px)/5)}
+}
+/* ---------- computers & tablets: menu on the left, like a website ---------- */
+@media(min-width:701px){
+  html[data-ds="v2"] body.hasnav .bnav{display:flex;flex-direction:column;gap:4px;position:fixed;left:20px;top:84px;width:210px;padding:10px;z-index:30;border-radius:24px;background:var(--nav);border:1px solid var(--bd);box-shadow:var(--shadow);backdrop-filter:blur(18px) saturate(1.3);-webkit-backdrop-filter:blur(18px) saturate(1.3)}
+  html[data-ds="v2"] .bnav:before{display:none}
+  html[data-ds="v2"] body.hasnav .bnav button{flex:none;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:12px;padding:12px 14px;border:0;border-radius:16px;background:transparent!important;color:var(--mut);font:inherit;font-size:14.5px!important;font-weight:600!important;cursor:pointer;transition:background .3s var(--ease),color .3s var(--ease)}
+  html[data-ds="v2"] body.hasnav .bnav button:hover{background:var(--surface2)!important;color:var(--tx)}
+  html[data-ds="v2"] body.hasnav .bnav button.on{background:var(--priSoft)!important;color:var(--pri)}
+  html[data-ds="v2"] body.hasnav #app{padding-left:240px}
+  html[data-ds="v2"] body.intest #app{padding-left:0}
+}
+@media(min-width:701px) and (max-width:1023px){
+  html[data-ds="v2"] body.hasnav .bnav{width:76px;left:14px}
+  html[data-ds="v2"] body.hasnav .bnav button{justify-content:center;padding:12px 0}
+  html[data-ds="v2"] body.hasnav .bnav button span{display:none}
+  html[data-ds="v2"] body.hasnav #app{padding-left:96px}
+}
+@media(min-width:701px){
+  html[data-ds="v2"] body.hasnav #app{padding-right:24px}
+  html[data-ds="v2"] .pms{aspect-ratio:16/5;max-height:300px}
+  html[data-ds="v2"] .cover{aspect-ratio:16/5;max-height:280px}
+}
