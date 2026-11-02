@@ -40,47 +40,56 @@ function pdfWarm(){
   loadPdfs().then(o=>{if(Object.keys(o).length&&!INTEST&&/^#\/(s|f|notes|lib)\b/.test(location.hash||''))route()});
 }
 
-/* ---------- Library ---------- */
-function libTile(go,icon,t,s,n){
-  return `<button class="card libt" onclick="${go}"><span class="libi">${ic(icon,22)}</span><span class="grow"><b>${t}</b><small>${s}</small></span>${n?`<span class="libn">${n}</span>`:''}${ic('right',18)}</button>`;
+/* ---------- Library & Me: grouped lists ---------- */
+function lrow(go,icon,t,s,n){
+  return `<button class="lgr" onclick="${go}"><span class="lgi">${ic(icon,20)}</span><span class="grow"><b>${t}</b>${s?`<small>${s}</small>`:''}</span>${n!==''&&n!=null?`<span class="lgn">${n}</span>`:''}<span class="lgc">${ic('right',16)}</span></button>`;
 }
+const lgroup=(title,rows)=>`<section class="lgs"><div class="lgh">${title}</div><div class="card lgp">${rows.join('')}</div></section>`;
+function pageHead(kicker,title,sub){return `<header class="pgh"><div class="eyebrow">${kicker}</div><h1>${title}</h1>${sub?`<p class="mut">${sub}</p>`:''}</header>`}
 function viewLibrary(){
-  const nNotes=PDFS?Object.keys(PDFS).length:0,hasPyq=typeof pqHead==='function';
+  const nNotes=PDFS?Object.keys(PDFS).length:'',hasPyq=typeof pqHead==='function';
   setApp(`<div class="wrap lib">
-   <div class="libh"><div class="eyebrow">Your study space</div><h1>Library</h1><p class="mut">Revise, keep notes and use tools. Everything in one place.</p></div>
-   <div class="h2s">Revise</div>
-   <div class="libg">
-    ${libTile("location.hash='#/m'",'notebook','Mistakes','Questions you got wrong')}
-    ${libTile("location.hash='#/b'",'star','Saved','Questions you bookmarked',BM&&BM.size?BM.size:'')}
-    ${hasPyq?libTile("location.hash='#/pyq'",'pyq','Previous year papers','Chapter-wise PYQ'):''}
-   </div>
-   <div class="h2s">Study material</div>
-   <div class="libg">
-    ${libTile("location.hash='#/notes'",'pdf','Notes & PDFs','Notes for your tests',nNotes||'')}
-    ${libTile("location.hash='#/n'",'bell','Notices','Updates from your teachers')}
-   </div>
-   <div class="h2s">Progress</div>
-   <div class="libg">
-    ${libTile("location.hash='#/t'",'pulse','Tracker','Your syllabus and daily progress')}
-    ${libTile("location.hash='#/r'",'trophy','Results','Scores, ranks and analysis')}
-   </div>
-   <div class="h2s">Tools</div>
-   <div class="libg">
-    ${libTile('toolMarks()','calc','Marks calculator','NEET / JEE score from right and wrong')}
-    ${libTile('toolTimer()','timer','Focus timer','25 or 50 minute study sessions')}
-   </div>
-   <a class="card libstore" href="store.html">${ic('bag',22)}<span class="grow"><b>Get more test series</b><small>Open the store</small></span>${ic('right',18)}</a>
+   ${pageHead('Study','Library','Everything you revise from, in one place.')}
+   ${lgroup('Revise',[
+     lrow("location.hash='#/m'",'notebook','Mistakes','Questions you got wrong'),
+     lrow("location.hash='#/b'",'star','Saved questions','Your bookmarks',BM&&BM.size?BM.size:''),
+     hasPyq?lrow("location.hash='#/pyq'",'pyq','Previous year papers','Chapter-wise PYQ'):''])}
+   ${lgroup('Material',[
+     lrow("location.hash='#/notes'",'pdf','Notes & PDFs','Notes added to your tests',nNotes)])}
+   ${lgroup('Tools',[
+     lrow('toolMarks()','calc','Marks calculator','Score from right and wrong answers'),
+     lrow('toolTimer()','timer','Focus timer','Timed study sessions')])}
   </div>`);
   pdfWarm();
 }
+function viewMe(){
+  const nm=(AUTH&&AUTH.name)||'Student',P=typeof pstats==='function'?pstats(CAT?CAT.results||[]:[]):{n:0,avg:0,streak:0,lvl:''};
+  setApp(`<div class="wrap me">
+   <header class="meh">
+    <button class="meav" onclick="openProfile()" aria-label="Edit profile">${typeof pfInner==='function'?pfInner(nm):esc(nm[0]||'S')}</button>
+    <div class="grow"><div class="eyebrow">Account</div><h1>${esc(nm)}</h1><p class="mut">+91 ${esc(maskMob(AUTH&&AUTH.mobile))}${P.lvl?` · ${esc(P.lvl)}`:''}</p></div>
+   </header>
+   <div class="mest card"><div><b>${P.n}</b><span>Tests taken</span></div><div><b>${P.avg}%</b><span>Average</span></div><div><b>${P.streak}</b><span>Day streak</span></div></div>
+   ${lgroup('Performance',[
+     lrow("location.hash='#/r'",'trophy','Results & ranks','Scores, leaderboards, every attempt'),
+     lrow("location.hash='#/t'",'pulse','Study tracker','Your weekly plan and progress')])}
+   ${lgroup('Updates',[
+     lrow("location.hash='#/n'",'bell','Notices','Messages from your teachers')])}
+   ${lgroup('Account',[
+     lrow('openProfile()','user','Profile','Name, class, target exam, photo'),
+     lrow('openLook()','palette','Appearance','Design, light or dark, colour'),
+     typeof supportSheet==='function'?lrow('supportSheet()','msg','Help & support','Chat with our team'):'',
+     `<button class="lgr lgout" onclick="signOut()"><span class="lgi">${ic('logout',20)}</span><span class="grow"><b>Sign out</b></span></button>`])}
+  </div>`);
+}
 async function viewNotes(){
-  setApp(`<div class="wrap lib"><div class="crumb"><a href="#/lib">${ic('left',16)} Library</a></div><h1 style="margin:6px 0 14px">Notes & PDFs</h1><div class="card"><div class="sk" style="height:60px"></div></div></div>`);
+  setApp(`<div class="wrap lib"><div class="crumb"><a href="#/lib">${ic('left',16)} Library</a></div>${pageHead('Material','Notes & PDFs','')}<div class="card"><div class="sk" style="height:60px"></div></div></div>`);
   const o=await loadPdfs(true);if(location.hash!=='#/notes')return;
   const T=(CAT&&CAT.tests||[]).filter(t=>o[t.id]);
   const by=new Map();for(const t of T){const k=t.series_id;if(!by.has(k))by.set(k,[]);by.get(k).push(t)}
   const sname=id=>{const s=(CAT.series||[]).find(x=>x.id===id);return s?s.title:'Tests'};
-  setApp(`<div class="wrap lib"><div class="crumb"><a href="#/lib">${ic('left',16)} Library</a></div><h1 style="margin:6px 0 14px">Notes & PDFs</h1>
-   ${T.length?[...by].map(([sid,ts])=>`<div class="h2s">${esc(sname(sid))}</div><div class="libg">${ts.map(t=>`<button class="card libt" onclick="openPdf('${esc(String(t.id))}')"><span class="libi">${ic('pdf',22)}</span><span class="grow"><b>${esc(o[t.id].label||t.title)}</b><small>${esc(t.title)} · opens in Google Drive</small></span>${ic('right',18)}</button>`).join('')}</div>`).join('')
+  setApp(`<div class="wrap lib"><div class="crumb"><a href="#/lib">${ic('left',16)} Library</a></div>${pageHead('Material','Notes & PDFs','Opens in Google Drive.')}
+   ${T.length?[...by].map(([sid,ts])=>lgroup(esc(sname(sid)),ts.map(t=>lrow(`openPdf('${esc(String(t.id))}')`,'pdf',esc(o[t.id].label||t.title),esc(t.title))))).join('')
    :`<div class="card empty">${ic('pdf',30)}<h3 style="margin:10px 0 4px">No notes yet</h3><p class="sm mut">When your teacher adds a PDF to a test, it shows here and next to the test.</p></div>`}
   </div>`);
 }
@@ -118,17 +127,25 @@ function toolTimer(){
   L.querySelectorAll('#tmx button').forEach(b=>b.onclick=()=>{stop();L.querySelectorAll('#tmx button').forEach(x=>x.classList.toggle('on',x===b));len=left=+b.dataset.m*60;show()});
 }
 
+/* new look: every inner page says where it belongs (Me or Library) */
+const V2P={'#/r':['#/me','Me','Performance','Results & ranks'],'#/t':['#/me','Me','Performance','Study tracker'],'#/n':['#/me','Me','Updates','Notices'],
+  '#/m':['#/lib','Library','Revise','Mistakes'],'#/b':['#/lib','Library','Revise','Saved questions'],'#/pyq':['#/lib','Library','Revise','Previous year papers']};
+function v2Head(h){
+  const p=V2P[h];if(!p||!isV2()||location.hash!==h)return;
+  const w=document.querySelector('#app>.wrap');if(!w||w.querySelector('.v2crumb'))return;
+  w.insertAdjacentHTML('afterbegin',`<div class="v2crumb"><div class="crumb"><a href="${p[0]}">${ic('left',16)} ${p[1]}</a></div>${h==='#/r'?pageHead(p[2],p[3],''):''}</div>`);
+}
 /* routes */
 {
   const _r0=route0;
   route0=async function(){
     const h=location.hash||'#/';
-    if(h==='#/lib'||h==='#/notes'){
+    if(h==='#/lib'||h==='#/notes'||h==='#/me'){
       if(!CAT){skelPage();if(!(await loadCat()))return}
-      return h==='#/lib'?viewLibrary():viewNotes();
+      return h==='#/lib'?viewLibrary():h==='#/me'?viewMe():viewNotes();
     }
     const r=await _r0.apply(this,arguments);
-    pdfWarm();
+    pdfWarm();v2Head(h);
     return r;
   };
 }

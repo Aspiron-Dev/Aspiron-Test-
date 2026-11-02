@@ -412,7 +412,7 @@ function sheet(h,id){
 IC.edit='<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/>';
 const ACC={cyber:['Cyber Blue','linear-gradient(135deg,#22d3ee,#6366f1)'],green:['Emerald','linear-gradient(135deg,#059669,#34d399)'],royal:['Royal Purple','linear-gradient(135deg,#7c3aed,#c084fc)'],blue:['Classic Blue','linear-gradient(135deg,#1c5fe0,#3b9bff)'],rose:['Rose','linear-gradient(135deg,#e11d48,#fb7185)'],gray:['Slate','linear-gradient(135deg,#334155,#94a3b8)']};
 /* palette for design v2 (Aspiron Lux): Black → Gold, Yellow, Emerald; Light → Graphite, Gold, Blue Ice */
-const ACC2={gold:['Gold','linear-gradient(135deg,#9b7422,#e6c46f 60%,#f8e6b2)'],yellow:['Yellow','linear-gradient(135deg,#b38f0c,#f7d843 60%,#fff3ad)'],green:['Emerald','linear-gradient(135deg,#0c7650,#3fdc98)'],ice:['Blue Ice','linear-gradient(135deg,#2a6aa8,#8fd6ff 70%,#d8f2ff)'],grey:['Graphite','linear-gradient(135deg,#3b3b43,#d6d6dc)'],rose:['Rose','linear-gradient(135deg,#be123c,#fb7185)']};
+const ACC2={gold:['Champagne gold','#c9a96e'],yellow:['Yellow','#e3c34d'],green:['Emerald','#5fb38a'],ice:['Blue ice','#9cc7e0'],grey:['Graphite','#8e8e93'],rose:['Rose','#d98b95']};
 function openLook(only){
   const v2=isV2(),A=v2?ACC2:ACC,md=curMode(),ac=document.documentElement.dataset.accent||(v2?'gold':'cyber');
   const cur=document.querySelector('#layer .bsheet[data-id="look"]');
@@ -422,7 +422,7 @@ function openLook(only){
   sheet(`<h2 class="sht">Theme settings</h2><div class="shl"></div>
    <div class="eyebrow" style="margin:0 0 10px">Design</div>
    <div class="dsgrid">
-     <button class="dsb ${v2?'on':''}" onclick="setDesign('v2')"><b>New look</b><span>Premium, smooth</span></button>
+     <button class="dsb ${v2?'on':''}" onclick="setDesign('v2')"><b>New look</b><span>Clean, premium</span></button>
      <button class="dsb ${v2?'':'on'}" onclick="setDesign('classic')"><b>Classic</b><span>The old look</span></button>
    </div>
    <div class="eyebrow" style="margin:18px 0 10px">Mode</div>
