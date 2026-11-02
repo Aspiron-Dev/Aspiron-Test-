@@ -440,8 +440,14 @@ async function analytics(el, id, o) {
   const A = { sort: 'no', top: 10 };
   const qs = r.questions || [], sus = qs.filter(q => q.suspect);
   // rank: higher score first, then less time; numbered 1, 2, 3 … (no repeated or missing numbers)
-  const rows = [...(r.rows || [])].sort((a, b) => (+b.score - +a.score) || ((+a.used || 0) - (+b.used || 0)) || String(a.name).localeCompare(String(b.name)))
+  // v50: the server's rank order (marks, fewer wrong, Biology, Chemistry, Physics, less time, submitted first);
+  // students it does not rank (late, after the result time) follow, by marks then time. Numbered 1, 2, 3 … without ties
+  const rk = await AX.api.call('cbt_admin_ranks', 'get', { id }), RK = {};
+  if (rk && rk.ok) (rk.ranks || []).forEach(x => { RK[x.mobile] = x; });
+  const rows = [...(r.rows || [])].sort((a, b) => ((RK[a.mobile] ? RK[a.mobile].rank : 1e9) - (RK[b.mobile] ? RK[b.mobile].rank : 1e9))
+      || (+b.score - +a.score) || ((+a.wrong || 0) - (+b.wrong || 0)) || ((+a.used || 0) - (+b.used || 0)) || String(a.name).localeCompare(String(b.name)))
     .map((x, i) => Object.assign({}, x, { rank: i + 1 }));
+  if (!el.isConnected || (o.ctx && !o.ctx.alive())) return;
   if (o.drawer) o.drawer.head(h`<h2 class="ell">${title}</h2><div class="m-s">Test analytics${ser ? ' · ' + ser : ''}</div>`);
   if (o.onTitle) o.onTitle(title, ser);
   const csv = () => {
@@ -476,6 +482,7 @@ async function analytics(el, id, o) {
   };
   // a row → the answer sheet of the attempt the rank counts (the student's first in this test)
   const openRow = async m => {
+    if (RK[m]) return openSheet(RK[m].result_id, () => { AX.cache.drop('results'); AX.emit('data:changed'); });
     const rr = await AX.data.results();
     const L = ((rr && rr.results) || []).filter(x => x.mobile === m && x.test_id === id).sort((a, b) => a.at - b.at);
     if (!L.length) return openStu(m);

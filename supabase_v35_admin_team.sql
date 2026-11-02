@@ -325,6 +325,7 @@ create or replace function cbt_private.admin_need(p_fn text, p_act text) returns
                                               when p_act in ('order_edit', 'order_delete') then 'store:manage' else 'students:manage' end   -- v44
     when 'cbt_admin_security'       then case when p_act in ('get', 'count') then 'owner_read' else 'owner' end   -- v47
     when 'cbt_admin_sheet'          then case when p_act = 'regrade' then 'results:manage' else 'results:view' end   -- v49
+    when 'cbt_admin_ranks'          then 'results:view'   -- v50
   end
 $$;
 revoke all on function cbt_private.admin_need(text, text) from public, anon, authenticated;
