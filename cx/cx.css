@@ -561,7 +561,13 @@ body.privacy::after{content:"";position:fixed;inset:0;z-index:999;background:var
 .pub-seg button{flex:none;height:32px;padding:0 14px;border:0;border-radius:var(--r-pill);background:transparent;color:var(--tx-2);font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:background .2s,color .2s,box-shadow .2s}
 .pub-seg button.on{background:var(--solid,#fff);color:var(--tx);box-shadow:0 2px 8px -2px rgba(0,0,0,.25)}
 .pub-num{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--mut)}.pub-num input{width:72px}
-.pub-th{margin-top:14px;padding:16px;border:1px solid var(--line-2);border-radius:var(--r-lg);background:var(--solid-2,transparent);display:flex;flex-direction:column;gap:16px;animation:pubIn .28s cubic-bezier(.2,.8,.2,1)}
+.pub-th{margin-top:14px;border:1px solid var(--line-2);border-radius:var(--r-lg);background:var(--solid-2,transparent);overflow:hidden}
+.pub-thh{display:flex;align-items:center;gap:10px;width:100%;padding:14px 16px;border:0;background:none;color:var(--tx);font:inherit;font-size:14px;cursor:pointer;text-align:left}
+.pub-thh>.ax-ic{color:var(--pri)}.pub-thh:hover{background:var(--hover)}
+.pub-chev{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--line);color:var(--tx-2);transition:transform .3s cubic-bezier(.2,.8,.2,1),background .2s}
+.pub-th.open .pub-chev{transform:rotate(180deg);background:var(--pri-soft);color:var(--pri)}
+.pub-thb{display:none;flex-direction:column;gap:16px;padding:4px 16px 16px;border-top:1px solid var(--line)}
+.pub-th.open .pub-thb{display:flex;animation:pubIn .28s cubic-bezier(.2,.8,.2,1)}
 @keyframes pubIn{from{opacity:0;transform:translateY(-6px)}}
 .pub-lb{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin-bottom:8px}.pub-lb span{text-transform:none;letter-spacing:0;font-weight:500;color:var(--faint);margin-left:6px}
 .pub-sws{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:10px}
@@ -586,4 +592,4 @@ body.privacy::after{content:"";position:fixed;inset:0;z-index:999;background:var
 .pub-chip input:focus-visible+span{outline:2px solid var(--pri);outline-offset:2px}
 .pub-pv{margin-top:14px;border-radius:16px;overflow:hidden;box-shadow:0 18px 40px -22px rgba(0,0,0,.55)}.pub-pv img{width:100%;display:block}
 @media(max-width:560px){.pub-fns{grid-template-columns:repeat(2,minmax(0,1fr))}.pub-tx{grid-template-columns:1fr}.pub-num span{display:none}}
-@media(prefers-reduced-motion:reduce){.pub-th{animation:none}}
+@media(prefers-reduced-motion:reduce){.pub-th.open .pub-thb{animation:none}.pub-chev{transition:none}}
