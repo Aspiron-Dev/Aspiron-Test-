@@ -326,9 +326,10 @@ AX.u = {
   // poster / banner / cover → exactly 16:9 JPEG (default 1280 × 720), kept under `limit` characters.
   // A picture that is already about 16:9 is only resized. Any other shape is NOT cut: the whole picture is
   // placed in the middle and the empty sides are filled with a blurred, darker copy of it.
+  // `file` can also be a data URL (to convert a picture that is already saved).
   poster(file, { w = 1280, h = 720, limit = 260000 } = {}) {
     return new Promise((resolve, reject) => {
-      const r = new FileReader();
+      const r = typeof file === 'string' ? { result: file } : new FileReader();
       r.onerror = () => reject(new Error('read'));
       r.onload = () => {
         const img = new Image();
@@ -356,8 +357,12 @@ AX.u = {
         };
         img.src = r.result;
       };
-      r.readAsDataURL(file);
+      if (typeof file === 'string') r.onload(); else r.readAsDataURL(file);
     });
+  },
+  // true when a saved picture (data URL) is already 16:9 (within 3 %)
+  is169(src) {
+    return new Promise(res => { const i = new Image(); i.onload = () => res(Math.abs(i.naturalWidth / Math.max(1, i.naturalHeight) - 16 / 9) / (16 / 9) <= 0.03); i.onerror = () => res(true); i.src = src; });
   },
   fileToDataURL(file) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error('read')); r.readAsDataURL(file); }); },
   pickFile(accept, multiple) {

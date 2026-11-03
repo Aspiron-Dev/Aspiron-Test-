@@ -28,6 +28,9 @@ AX.mod({
           <dl class="kv"><dt><span class="kbd">Ctrl K</span> or <span class="kbd">/</span></dt><dd>Search everything and run commands</dd><dt><span class="kbd">Esc</span></dt><dd>Close a window</dd><dt><span class="kbd">+</span> button</dt><dd>Create a student, test, payment…</dd></dl></div>
       </div>
       <div class="col gap16">
+        ${canPosters() ? h`<div class="card"><div class="card-h">${icon('image')}<h3>Old posters → 16:9</h3></div>
+          <p class="sm tx2">Changes every saved Home banner, store photo and series cover to 16:9 (1280 × 720 px). Nothing is cut: a picture of another shape is placed in the middle with a blurred copy on the sides. Pictures that are already 16:9 are left as they are.</p>
+          <button class="btn sm mt12" data-act="posters">${icon('image', 15)} Convert old posters</button></div>` : ''}
         <div class="card" id="st-db"><div class="card-h">${icon('db')}<h3>Database storage</h3></div>${UI.skeleton(3)}</div>
         ${me.owner ? h`<div class="card"><div class="card-h">${icon('history')}<h3>Backup panel</h3></div><p class="sm tx2">The previous admin panel is kept for a short time as a backup, in case you need something quickly. It uses the owner password.</p><a class="btn sm mt12" href="cp-dt764twzf54s5m-old.html" target="_blank" rel="noopener">${icon('external', 15)} Open backup panel</a></div>` : ''}
         <div class="card"><div class="card-h">${icon('globe')}<h3>Links</h3></div><div class="col gap6">
@@ -40,7 +43,8 @@ AX.mod({
         if (installEvt) { installEvt.prompt(); const r = await installEvt.userChoice; installEvt = null; if (r.outcome === 'accepted') UI.toast('Installed'); return; }
         UI.modal({ title: 'Install as an app', size: 'narrow', body: h`<ol class="sm tx2" style="line-height:1.9;padding-left:18px;margin:0"><li>Android (Chrome): menu <b>⋮</b> → <b>Add to Home screen</b> / <b>Install app</b>.</li><li>Phone says <b>“Could not open app”</b>? Remove the old icon (long-press → <b>Uninstall</b>), refresh this page and install again. Still failing? Use <b>⋮</b> → <b>Add to Home screen</b> → <b>Create shortcut</b>: it opens in Chrome and always works.</li><li>iPhone (Safari): <b>Share</b> → <b>Add to Home Screen</b>.</li><li>Computer (Chrome / Edge): the install icon in the address bar.</li></ol>` });
       },
-      out() { AX.signOut(); }
+      out() { AX.signOut(); },
+      posters(b) { postersTo169(b); }
     });
     ctx.el.querySelector('[name=lock]').addEventListener('change', e => { AX.autoLock.set(e.target.checked); UI.toast(e.target.checked ? 'Will sign out after 15 minutes without use' : 'Stays signed in'); });
     if (!AX.session.legacy) tfaCard(ctx);
@@ -57,6 +61,63 @@ AX.mod({
       <div class="row wrap sm mut"><span>${fmt.num(r.students)} students</span>·<span>${fmt.num(r.tests)} tests</span>·<span>${fmt.num(r.results)} results</span>·<span>${fmt.bytes(used)} of ${fmt.bytes(lim)}</span></div>`);
   }
 });
+/* ---------- old posters → 16:9 (banners, store photos, series covers) ---------- */
+const canPosters = () => AX.can('messaging', 'manage') || AX.can('store', 'manage') || AX.can('content', 'manage');
+async function postersTo169(btn) {
+  if (!(await UI.confirm({ title: 'Convert old posters to 16:9?', yes: 'Convert',
+    text: 'Every Home banner, store photo and series cover that is not 16:9 is saved again as 1280 × 720. Nothing is cut — other shapes get blurred sides. Keep this page open until it says done.' }))) return;
+  const n = { done: 0, ok: 0, fail: [] };
+  const closeT = UI.toast('Converting posters… keep this page open', { tone: 'warn', ms: 600000 });
+  // returns the 16:9 copy, or null when the picture is already 16:9 / not a picture
+  const conv = async src => (typeof src === 'string' && /^data:image\//.test(src) && !(await AX.u.is169(src))) ? AX.u.poster(src) : null;
+  const fail = (what, r) => n.fail.push(what + (r && r.error ? ' (' + AX.errText(r) + ')' : ''));
+  await UI.busy(btn, async () => {
+    // 1) Home banners
+    if (AX.can('messaging', 'manage')) {
+      const r = await AX.api.call('cbt_admin_banners', 'list');
+      if (r.ok) for (const b of r.items || []) {
+        let d = null; try { d = await conv(b.img); } catch (e) { fail('Banner “' + (b.title || '') + '”'); continue; }
+        if (!d) continue;
+        const x = await AX.api.call('cbt_admin_banners', 'save', { id: b.id, title: b.title || '', text: b.text || '', link: b.link || '', active: b.active !== false, image: d });
+        if (x.ok) n.done++; else fail('Banner “' + (b.title || '') + '”', x);
+      } else if (r.error !== 'missing') fail('Banners', r);
+    }
+    // the store photos as they are now (a new series cover is also copied onto its store items — put each item's own photo back after)
+    const st = AX.can('store', 'manage') ? await AX.api.call('cbt_admin_store', 'get') : null;
+    const items = st && st.ok ? (st.items || []) : [];
+    if (st && !st.ok) fail('Store', st);
+    // 2) series covers
+    const touched = new Set();
+    if (AX.can('content', 'manage')) {
+      const c = await AX.data.catalog(true);
+      for (const s of (c && c.ok ? c.series : []) || []) {
+        if (!s.has_cover) continue;
+        const r = await AX.api.rpc('cbt_admin_series_cover', { p_series: s.id });
+        let d = null; try { d = r && r.ok ? await conv(r.cover) : null; } catch (e) { fail('Cover of “' + s.title + '”'); continue; }
+        if (!d) continue;
+        const x = await AX.api.admin('series_cover', { id: s.id, cover: d });
+        if (!x.ok) { fail('Cover of “' + s.title + '”', x); continue; }
+        await AX.api.rpc('cbt_admin_series_cover', { p_series: s.id, p_set: d }).catch(() => {});
+        touched.add(s.id); n.done++;
+      }
+      AX.cache.drop('catalog');
+    }
+    // 3) store photos (each item keeps its own photo, now 16:9)
+    if (st && st.ok && AX.sto && AX.sto.itemPayload) {
+      for (const it of items) {
+        let d = null; try { d = await conv(it.image); } catch (e) { fail('Store photo “' + it.title + '”'); continue; }
+        if (!d && !touched.has(it.series_id)) continue;
+        const x = await AX.api.call('cbt_admin_store', 'save_item', AX.sto.itemPayload(it, { image: d || it.image || '' }));
+        if (!x.ok) fail('Store photo “' + it.title + '”', x); else if (d) { n.done++; }
+      }
+      AX.cache.drop('store');
+    }
+  });
+  closeT();
+  AX.emit('data:changed');
+  if (n.fail.length) UI.modal({ title: 'Some posters were not changed', size: 'narrow', body: h`<p class="sm tx2">${n.done} changed. These failed — try again, or upload them again by hand:</p><ul class="sm">${join(n.fail, f => h`<li>${f}</li>`)}</ul>` });
+  else UI.toast(n.done ? n.done + ' poster' + (n.done === 1 ? '' : 's') + ' changed to 16:9' : 'All posters are already 16:9', { tone: 'ok' });
+}
 /* ---------- two-step sign-in (supabase_v35: cbt_admin_2fa) ---------- */
 async function tfaCard(ctx) {
   const box = ctx.el.querySelector('#st-2fa'); if (!box) return;

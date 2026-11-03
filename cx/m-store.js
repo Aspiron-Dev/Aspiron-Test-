@@ -118,6 +118,8 @@ let LQ = Promise.resolve();
 const lay = (a, d) => (LQ = LQ.then(() => AX.api.call('cbt_admin_store_layout', a, d)));
 const itemPayload = (x, over) => Object.assign({ id: x.id || '', title: x.title, subtitle: x.subtitle || '', price: x.price, mrp: x.mrp == null ? '' : x.mrp, badge: x.badge || '', color: x.color || 'blue', series_id: x.series_id || '', sort_order: x.sort_order || 0, active: x.active !== false, features: x.features || [], image: x.image || '' }, over || {});
 
+S.itemPayload = itemPayload;   // used by Settings → Old posters to 16:9
+
 /* ---------- shared pieces ---------- */
 const cover = (x, cls) => h`<div class="st-cv ${cls || ''}" style="--cc:${hex(x.color)}">${x.image ? h`<img src="${x.image}" alt="" loading="lazy">` : h`<span>${(String(x.title || '?').trim()[0] || '?').toUpperCase()}</span>`}</div>`;
 const courseTxt = c => c === 'neet' ? 'NEET' : c === 'jee' ? 'JEE' : 'NEET + JEE';
