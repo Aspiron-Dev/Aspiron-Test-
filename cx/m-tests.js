@@ -38,7 +38,7 @@ AX.css('tests', `
 .ts-sc{display:flex;flex-direction:column;cursor:pointer;transition:transform var(--std) var(--ease),border-color var(--std)}
 .ts-sc:hover{transform:translateY(-3px);border-color:var(--pri-line)}
 .ts-sc.off .ts-cv{filter:saturate(.35)}
-.ts-cv{--c:#14b8a6;position:relative;aspect-ratio:16/7;overflow:hidden;display:grid;place-items:center;background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--c) 90%,#fff) 0%,var(--c) 45%,color-mix(in srgb,var(--c) 45%,#020617) 100%)}
+.ts-cv{--c:#14b8a6;position:relative;aspect-ratio:16/9;overflow:hidden;display:grid;place-items:center;background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--c) 90%,#fff) 0%,var(--c) 45%,color-mix(in srgb,var(--c) 45%,#020617) 100%)}
 .ts-cv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .ts-mono{font-family:var(--font-display);font-size:38px;font-weight:600;color:rgba(255,255,255,.94);letter-spacing:-.02em;text-shadow:0 4px 18px rgba(0,0,0,.25)}
 .ts-cvp{position:absolute;left:10px;top:10px;right:10px;display:flex;gap:6px;flex-wrap:wrap;z-index:1}
@@ -53,7 +53,7 @@ AX.css('tests', `
 .ts-hero{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr)}
 .ts-hero .ts-cv{aspect-ratio:auto;min-height:190px;height:100%}
 .ts-hb{padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0}
-@media (max-width:760px){.ts-hero{grid-template-columns:minmax(0,1fr)}.ts-hero .ts-cv{aspect-ratio:16/7;min-height:0}}
+@media (max-width:760px){.ts-hero{grid-template-columns:minmax(0,1fr)}.ts-hero .ts-cv{aspect-ratio:16/9;min-height:0}}
 .ts-fold{margin-top:16px}
 .ts-fh{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 16px;border-bottom:1px solid var(--line);background:var(--solid-2);min-width:0}
 .ts-fh .fi{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--gold-soft);color:var(--gold);flex:none}
@@ -68,7 +68,7 @@ AX.css('tests', `
 .ts-ro .r b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px}
 .ts-ro .r .n{width:22px;color:var(--faint);font-weight:800;font-size:12px}
 .ts-cvbox{border-radius:16px;overflow:hidden;border:1px solid var(--line)}
-.ts-cvbox .ts-cv{aspect-ratio:16/7}
+.ts-cvbox .ts-cv{aspect-ratio:16/9}
 .ts-file{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
 .ts-file:first-child{border-top:0}
 @media (max-width:620px){.ts-ta .wide{display:none}.ts-tool .search{max-width:none}}
@@ -566,7 +566,7 @@ function mediaDrawer(sid) {
     const cv = COV.get(sid);
     return h`<div class="section-t" style="margin-top:0">Cover photo</div>
       <div class="ts-cvbox">${cover(s)}</div>
-      <p class="xs mut mt8">Shown on the series card for students and in the store. A wide photo works best (about 16 : 7). It is compressed automatically.</p>
+      <p class="xs mut mt8">Shown on the series card for students and in the store. Use a 16 : 9 photo (1280 × 720 px). Other shapes are fitted into 16 : 9 without cutting, and compressed automatically.</p>
       <div class="row wrap mt12"><button class="btn soft" data-act="cvUp">${icon('upload', 16)} ${s.has_cover ? 'Change photo' : 'Upload photo'}</button>${s.has_cover ? h`<button class="btn ghost danger" data-act="cvRm">${icon('trash', 15)} Remove</button>${cv === undefined ? '' : UI.pill('Cover set', 'ok')}` : ''}</div>
       <div class="section-t">Syllabus, schedule & notes</div>
       <div class="card flat tight">${(s.files || []).length ? join(s.files, f => h`<div class="ts-file"><span class="ts-ic ${f.kind === 'schedule' ? 'info' : f.kind === 'notes' ? 'vio' : 'gold'}">${icon(/\.pdf$/i.test(f.name || '') ? 'pdf' : 'image', 18)}</span><div class="grow"><b class="ell" style="display:block">${f.title}</b><div class="xs mut">${f.kind} · ${Math.round((f.size || 0) / 1024)} KB${f.name ? ' · ' + f.name : ''}</div>${OPENS[f.id] ? h`<div class="xs mt4">${UI.pill((OPENS[f.id] > Date.now() ? 'Opens ' : 'Opened ') + fmt.dt(OPENS[f.id]), OPENS[f.id] > Date.now() ? 'warn' : 'ok')}</div>` : ''}</div><button class="btn xs" data-act="fOpen" data-id="${f.id}" title="Students can open it only from this time">${icon('clock', 13)} ${OPENS[f.id] ? 'Change' : 'Opens at'}</button><button class="btn xs danger" data-act="fDel" data-id="${f.id}">${icon('trash', 13)} Delete</button></div>`) : h`<div class="xs mut">No files yet. Students can open these from the series page.</div>`}</div>
@@ -592,7 +592,7 @@ function mediaDrawer(sid) {
           const f = await AX.u.pickFile('image/*'); if (!f) return;
           await UI.busy(b, async () => {
             let d = null;
-            try { d = AX.compressDataUrl ? await AX.compressDataUrl(await AX.u.fileToDataURL(f), 900, 0.78) : await AX.u.compressImage(f, { max: 900, quality: 0.78 }); } catch (e) { d = null; }
+            try { d = await AX.u.poster(f); } catch (e) { d = null; }
             if (!d) return UI.toast('Could not save the photo', { tone: 'bad' });
             const r = await AX.api.admin('series_cover', { id: sid, cover: d });
             if (!r.ok) return r.error === 'image' ? UI.toast('This photo is too large. Try a smaller one.', { tone: 'bad' }) : UI.err(r);

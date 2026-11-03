@@ -444,7 +444,7 @@ button.kpi:active{transform:scale(.98)}
 .srow{display:flex;align-items:center;gap:12px;padding:10px;border-radius:var(--r-lg);background:var(--solid);border:1px solid var(--line);box-shadow:var(--shadow);transition:border-color var(--fast),transform var(--std) var(--ease);animation:rise .5s var(--out) backwards;animation-delay:calc(var(--i,0)*40ms)}
 @media (hover:hover){.srow:hover{border-color:var(--pri-line);transform:translateX(2px)}}
 .sr-main{flex:1;min-width:0;display:flex;align-items:center;gap:14px;border:0;background:transparent;padding:0;text-align:left;color:var(--tx)}
-.th{position:relative;width:96px;aspect-ratio:16/10;border-radius:12px;overflow:hidden;flex:none;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,var(--a,#1e3a8a),var(--b,#0ea5e9))}
+.th{position:relative;width:96px;aspect-ratio:16/9;border-radius:12px;overflow:hidden;flex:none;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,var(--a,#1e3a8a),var(--b,#0ea5e9))}
 .th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .th .i{width:26px;height:26px;opacity:.92}
 .sr-t{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:15px;font-weight:750;line-height:1.3}

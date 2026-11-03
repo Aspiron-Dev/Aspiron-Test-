@@ -170,8 +170,8 @@ html[data-ds="v2"] .lbtabs .on,html[data-ds="v2"] .lbs .on{background:var(--tx)!
   html[data-ds="v2"] body.hasnav #app{padding-left:232px}
   html[data-ds="v2"] .hdr-in{max-width:none;padding-left:24px;padding-right:24px}
   html[data-ds="v2"] body.hasnav .wrap{padding:36px 40px 80px}
-  html[data-ds="v2"] .pms{aspect-ratio:16/5;max-height:300px}
-  html[data-ds="v2"] .cover{aspect-ratio:16/5;max-height:260px}
+  html[data-ds="v2"] .pms{aspect-ratio:16/9;max-height:none}
+  html[data-ds="v2"] .cover{aspect-ratio:16/9;max-height:none}
 }
 @media(min-width:701px) and (max-width:1023px){
   html[data-ds="v2"] body.hasnav .bnav{width:72px;padding:16px 10px}
