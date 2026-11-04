@@ -302,6 +302,8 @@ function cardHtml(x,i){
 // Buy now, or — for a series not launched yet (Buy now off in the admin panel) — "Coming soon · Notify me". short = on a card
 function buyBtn(x,short){
   if(x.buy_on!==false)return `<button class="btn pri block" data-buy="${esc(x.id)}">${I('bag')}${short?'Buy now':`Buy now · ${inr(x.price)}`}</button>`;
+  // coming soon with Pre-booking on in the admin panel (v54): pay now, the same checkout as Buy now
+  if(x.prebook===true)return `<button class="btn pri block" data-buy="${esc(x.id)}">${I('bag')}${short?'Pre-book':`Pre-book · ${inr(x.price)}`}</button>`;
   const m=ME(),done=!!m&&LSg('store_notify',{})[x.id]===m.mobile;
   return `<button class="btn ${done?'okb':'goldl'} block" data-soon="${esc(x.id)}"${short?' data-k="1"':''}>${done?`${I('ok')}${short?'Notified':'You will be notified'}`:`${I('bell')}${short?'Notify me':'Coming soon · Notify me'}`}</button>`;
 }
@@ -526,7 +528,7 @@ function liveCheck(){
 /* ---------- checkout: pay → payment details → verify on Telegram / WhatsApp (3 steps; name + mobile are already known) ---------- */
 const STEPS=['Pay','Payment details','Verify'],STS=['Pay','Details','Verify'];
 function sheet(step,body,foot){
-  ovSet(modal({t:IT.title,s:`Step ${step} of 3 · ${STEPS[step-1]}`,cls:'co',body,foot,
+  ovSet(modal({t:IT.title,s:`${IT.buy_on===false?'Pre-booking · ':''}Step ${step} of 3 · ${STEPS[step-1]}`,cls:'co',body,foot,
    top:`<div class="steps" aria-hidden="true">${STS.map((s,i)=>`<div class="st${i+1<step?' done':i+1===step?' on':''}"><i>${i+1<step?I('check'):i+1}</i><span>${s}</span></div>${i<2?`<span class="sl${i+1<step?' fill':''}${i+2===step?' now':''}"></span>`:''}`).join('')}</div>`}));
 }
 let BUYN=0;
@@ -561,7 +563,7 @@ function langSheet(id){
 }
 async function buy(id,lang){
   IT=ST.items.find(i=>i.id===id);if(!IT)return;
-  if(IT.buy_on===false)return soonSheet(id);
+  if(IT.buy_on===false&&IT.prebook!==true)return soonSheet(id);
   const me=ME();if(!me)return meSheet(()=>buy(id,lang));
   const bi=LANGS.has(id);
   if(bi&&!lang)return langSheet(id);
@@ -739,7 +741,9 @@ async function saveQr(){
   setTimeout(()=>{const b=$('[data-step=paid]');if(b)b.classList.add('nudge')},800);
 }
 // message for the support chat (Telegram / WhatsApp); the student sends the payment screenshot with it
-function tgText(){return `Payment done ✅\nOrder code: ${ORD.code}\nSeries: ${ORD.title}${ORD.lang?`\nMedium: ${ORD.lang==='hi'?'Hindi (हिंदी)':'English'}`:''}${ORD.coupon_off||ORD.wallet_used?`\nPrice: ${inr(listP())}${ORD.coupon_off?`\nCoupon: ${ORD.coupon_code} (−${inr(ORD.coupon_off)})`:''}${ORD.wallet_used?`\nWallet used: ${inr(ORD.wallet_used)}`:''}`:''}\nAmount: ${inr(ORD.amount)}\nStudent name: ${ORD.name}\nMobile: ${ORD.mobile}\nPaid from account of: ${ORD.payer||'-'}\nUTR / Transaction ID: ${ORD.utr||'-'}\n📎 Payment screenshot attached`}
+// the order is a pre-booking: the series is still coming soon
+const preOrd=()=>{const x=ORD&&ST.items.find(i=>i.id===ORD.item);return !!x&&x.buy_on===false}
+function tgText(){return `Payment done ✅\nOrder code: ${ORD.code}\nSeries: ${ORD.title}${preOrd()?' (Pre-booking)':''}${ORD.lang?`\nMedium: ${ORD.lang==='hi'?'Hindi (हिंदी)':'English'}`:''}${ORD.coupon_off||ORD.wallet_used?`\nPrice: ${inr(listP())}${ORD.coupon_off?`\nCoupon: ${ORD.coupon_code} (−${inr(ORD.coupon_off)})`:''}${ORD.wallet_used?`\nWallet used: ${inr(ORD.wallet_used)}`:''}`:''}\nAmount: ${inr(ORD.amount)}\nStudent name: ${ORD.name}\nMobile: ${ORD.mobile}\nPaid from account of: ${ORD.payer||'-'}\nUTR / Transaction ID: ${ORD.utr||'-'}\n📎 Payment screenshot attached`}
 /* step 2: who paid (account holder name) + UTR, saved with the order */
 function paidStep(){
   sheet(2,`${bigI('receipt','ok')}<h3 class="center">Payment details</h3>
