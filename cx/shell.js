@@ -23,7 +23,7 @@ AX.boot = async () => {
   return offline(r);
 };
 function splash() {
-  document.body.innerHTML = AX.html(h`<div class="lg-wrap"><div class="col" style="align-items:center;gap:18px"><div class="lg-mark">${icon('shield')}</div><span class="spin" style="color:var(--pri)"></span></div></div>`);
+  document.body.innerHTML = AX.html(h`<div class="lg-wrap"><div class="col" style="align-items:center;gap:18px"><div class="lg-mark"><img src="admin-icon-192.png" alt="Aspiron" width="56" height="56"></div><span class="spin" style="color:var(--pri)"></span></div></div>`);
 }
 async function check() {
   if (S.legacy) return AX.api.admin('ping');
@@ -44,7 +44,7 @@ function login(reason) {
   UI.closeAll(); window.onhashchange = null;
   const mode = AX.ls.get('cx_lmode', 'owner');
   document.body.innerHTML = AX.html(h`<div class="lg-wrap"><form class="lg-card glass" id="lg" autocomplete="on" novalidate>
-    <div class="lg-mark">${icon('shield')}</div>
+    <div class="lg-mark"><img src="admin-icon-192.png" alt="Aspiron" width="56" height="56"></div>
     <div class="lg-t">Aspiron Control</div>
     <div class="lg-s">Sign in to the admin console</div>
     ${reason && LOST[reason] ? h`<div class="callout warn mt16">${icon('info')}<div>${LOST[reason]}</div></div>` : ''}
@@ -141,7 +141,7 @@ function meCard() {
 }
 function start() {
   document.body.innerHTML = AX.html(h`<div class="ax-app">
-    <aside class="ax-side glass"><a class="ax-brand" href="#/home"><span class="mk">${icon('shield')}</span><span class="grow"><div class="bt">Aspiron</div><div class="bs">Control</div></span></a>
+    <aside class="ax-side glass"><a class="ax-brand" href="#/home"><span class="mk"><img src="admin-icon-192.png" alt="Aspiron" width="38" height="38"></span><span class="grow"><div class="bt">Aspiron</div><div class="bs">Control</div></span></a>
       <nav class="ax-nav" id="ax-nav" aria-label="Main"></nav><div id="ax-mewrap">${meCard()}</div></aside>
     <div class="ax-main">
       <header class="ax-top glass"><button class="ibtn ax-menu-btn" id="ax-menu" aria-label="Menu" style="display:none">${icon('menu')}</button>

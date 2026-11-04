@@ -1,7 +1,7 @@
 /* Service worker: lets the site be installed like an app.
    Pages always come from the network first, so new uploads show up at once; files with ?v= come from the phone.
    It never touches the database (Supabase) calls. */
-const CACHE='cbt-shell-v5';
+const CACHE='cbt-shell-v6';
 const SHELL=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).catch(()=>{}));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
