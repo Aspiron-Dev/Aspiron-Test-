@@ -378,18 +378,24 @@ select pg_temp.chk('19g a removed coupon stops working', public.cbt_store_order_
 -- referral: A shares, B joins and buys, A gets the reward once
 select public.cbt_refer_me('9844444444','Rahul Sharma')->>'code' as rc \gset
 select pg_temp.chk('19h the referral code is first name + last 5 digits', :'rc' = 'rahul44444');
-select public.cbt_refer_join(:'rc','9844444444','Rahul Sharma')->>'ok';
-select public.cbt_refer_join(:'rc','9855555555','Friend One')->>'ok';
-select public.cbt_refer_join(:'rc','9000000002','Old Student')->>'ok';
+-- v53: a referral is joined through the order made from the link (cbt_refer_order), not by the link alone
 reset role;
+select set_config('request.headers', '{"x-real-ip":"198.51.100.67"}', false);
+set role anon;
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Rahul Sharma','9844444444')->>'code' as own1 \gset
+select public.cbt_refer_order(:'own1','9844444444',:'rc')->>'ok';
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Old Student','9000000002')->>'code' as old1 \gset
+select public.cbt_refer_order(:'old1','9000000002',:'rc')->>'ok';
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Friend One','9855555555')->>'code' as fo1 \gset
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Friend One','9855555555')->>'code' as fo2 \gset
+select public.cbt_refer_order(:'fo1','9855555555',:'rc')->>'ok';
+select public.cbt_refer_order(:'fo2','9855555555',:'rc')->>'ok';
+reset role;
+delete from public.cbt_store_orders where code in (:'own1', :'old1');
 select pg_temp.chk('19i own number and existing students are not joined; a new number is',
   (select count(*) from cbt_private.refer_links where referrer = '9844444444') = 1
   and exists (select 1 from cbt_private.refer_links where mobile = '9855555555'));
 select pg_temp.chk('19j joining alone earns nothing', cbt_private.wallet_balance('9844444444') = 0);
-set role anon;
-select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Friend One','9855555555')->>'code' as fo1 \gset
-select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Friend One','9855555555')->>'code' as fo2 \gset
-reset role;
 select public.cbt_admin_store(:'ow5','order_status',jsonb_build_object('code',:'fo1','status','paid'))->>'ok';
 select public.cbt_admin_store(:'ow5','order_status',jsonb_build_object('code',:'fo2','status','paid'))->>'ok';
 select pg_temp.chk('19k a referred student''s purchase gives the reward once (₹25)', cbt_private.wallet_balance('9844444444') = 25
@@ -399,13 +405,16 @@ select pg_temp.chk('19l undoing the approval takes the reward back', cbt_private
 select public.cbt_admin_store(:'ow5','order_status',jsonb_build_object('code',:'fo1','status','paid'))->>'ok';
 -- wallet: used once, never twice, given back when the order is rejected
 select public.cbt_admin_refer(:'ow5','adjust','{"mobile":"9844444444","amount":"475","note":"test"}')->>'ok';
+-- v53: the wallet is used by its owner signed in (student account + the app's sign-in)
+insert into cbt_private.students(id,name,mobile,status,salt,code_hash,devices) values
+  ('bbbbbbbb-0000-0000-0000-0000000000a4','Rahul Sharma','9844444444','approved','sr',cbt_private.hash_code('sr','RRRR4444'),'{dev-rrrrrrrr}') on conflict do nothing;
 set role anon;
 select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Rahul Sharma','9844444444')->>'code' as wo1 \gset
 select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Rahul Sharma','9844444444')->>'code' as wo2 \gset
 select pg_temp.chk('19m the wallet pays the order (₹500 → ₹0 to pay)',
-  (select (r->>'amount')::int = 0 and (r->>'wallet_used')::int = 499 from (select public.cbt_store_order_apply(:'wo1','9844444444','',true) r) x));
+  (select (r->>'amount')::int = 0 and (r->>'wallet_used')::int = 499 from (select public.cbt_store_order_apply(:'wo1','9844444444','',true,'RRRR4444','dev-rrrrrrrr') r) x));
 select pg_temp.chk('19n the same money cannot pay a second order',
-  (select (r->>'wallet_used')::int = 1 and (r->>'amount')::int = 498 from (select public.cbt_store_order_apply(:'wo2','9844444444','',true) r) x));
+  (select (r->>'wallet_used')::int = 1 and (r->>'amount')::int = 498 from (select public.cbt_store_order_apply(:'wo2','9844444444','',true,'RRRR4444','dev-rrrrrrrr') r) x));
 reset role;
 select public.cbt_admin_store(:'ow5','order_status',jsonb_build_object('code',:'wo1','status','rejected'))->>'ok';
 select pg_temp.chk('19o a rejected order gives the wallet money back', cbt_private.wallet_balance('9844444444') = 499);
@@ -430,6 +439,86 @@ select pg_temp.chk('19t switched on again: the code works', (public.cbt_store_or
 reset role;
 select pg_temp.chk('19u a view-only member cannot switch the coupon box', public.cbt_admin_coupons(:'vt','switch','{"on":false}')->>'error' = 'forbidden');
 select set_config('request.headers', '{"x-real-ip":"203.0.113.10"}', false);
+
+-- ===== 20. Refer & earn and wallet misuse (supabase_v53_refer_fixes.sql) =====
+select set_config('request.headers', '{"x-real-ip":"198.51.100.70"}', false);
+delete from public.cbt_store_tries;
+set role anon;
+select public.cbt_refer_me('9811111111','Asha')->>'ok';
+select public.cbt_refer_me('9822222222','Xavi')->>'ok';
+-- hijack: X puts a friend's number under his link first; the friend then orders from A's link
+select public.cbt_refer_join('xavi22222','9833333333','Victim')->>'ok';
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Victim','9833333333')->>'ok';
+reset role;
+select code as rv from public.cbt_store_orders where mobile='9833333333' order by created_at desc limit 1 \gset
+set role anon;
+select public.cbt_refer_order(:'rv','9833333333','asha11111')->>'ok';
+reset role;
+update public.cbt_store_orders set status='paid' where code=:'rv';
+select pg_temp.chk('20a refer: the reward goes to the link the buyer ordered from, not to a number put in earlier',
+  (select mobile from cbt_private.wallet_txn where kind='refer' and ref_mobile='9833333333') = '9811111111');
+-- a nearly free order (99% coupon) earns no reward
+insert into cbt_private.store_coupons(item_id,code,kind,value,ends_at) values ('cccccccc-0000-0000-0000-000000000001','BIG99','pct',99,now()+interval '1 day')
+  on conflict (item_id) do update set code='BIG99',kind='pct',value=99,starts_at=now()-interval '1 minute',ends_at=now()+interval '1 day',active=true;
+set role anon;
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Sim Two','9844444444')->>'ok';
+reset role;
+select code as rc2 from public.cbt_store_orders where mobile='9844444444' order by created_at desc limit 1 \gset
+set role anon;
+select public.cbt_refer_order(:'rc2','9844444444','xavi22222')->>'ok';
+select public.cbt_store_order_apply(:'rc2','9844444444','BIG99',false)->>'ok';
+reset role;
+update public.cbt_store_orders set status='paid' where code=:'rc2';
+select pg_temp.chk('20b refer: no reward when the new student paid less than the minimum (₹99)',
+  not exists (select 1 from cbt_private.wallet_txn where kind='refer' and ref_mobile='9844444444'));
+delete from cbt_private.store_coupons where code='BIG99';
+-- the wallet: nobody else can see or use it
+insert into cbt_private.students(id,name,mobile,status,salt,code_hash,devices) values
+  ('bbbbbbbb-0000-0000-0000-0000000000f9','Xavi','9822222222','approved','sx',cbt_private.hash_code('sx','XXXX9999'),'{dev-xxxxxxxx}') on conflict do nothing;
+insert into cbt_private.wallet_txn(mobile,amount,kind,note) values ('9822222222',100,'admin','test');
+insert into public.cbt_store_items(id,title,price,active,buy_on,series_id) values ('cccccccc-0000-0000-0000-000000000012','Cheap',100,true,true,'11111111-1111-1111-1111-111111111111'),
+  ('cccccccc-0000-0000-0000-000000000013','Cheap 2',100,true,true,'22222222-2222-2222-2222-222222222222') on conflict do nothing;
+set role anon;
+select pg_temp.chk('20c wallet: balance and earnings are not shown without the owner''s sign-in',
+  not (public.cbt_refer_me('9822222222', null) ?| array['balance','earned','joined']));
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000012','Xavi','9822222222')->>'ok';
+reset role;
+select code as wa from public.cbt_store_orders where mobile='9822222222' order by created_at desc limit 1 \gset
+set role anon;
+select pg_temp.chk('20d wallet: cannot be used without the owner''s sign-in',
+  public.cbt_store_order_apply(:'wa','9822222222','',true)->>'error' = 'signin');
+select pg_temp.chk('20e wallet: the signed-in owner can use it',
+  (public.cbt_store_order_apply(:'wa','9822222222','',true,'XXXX9999','dev-xxxxxxxx')->>'amount')::int = 0);
+reset role;
+-- double spend: order A holds the money, 2 days pass, order B uses it, then A is confirmed
+update public.cbt_store_orders set created_at = now() - interval '49 hours' where code=:'wa';
+delete from public.cbt_store_tries;
+set role anon;
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000013','Xavi','9822222222')->>'ok';
+reset role;
+select code as wb from public.cbt_store_orders where mobile='9822222222' and code <> :'wa' order by created_at desc limit 1 \gset
+set role anon;
+select public.cbt_store_order_apply(:'wb','9822222222','',true,'XXXX9999','dev-xxxxxxxx')->>'ok';
+select public.cbt_store_paid(:'wb','9822222222','Wallet balance','')->>'ok';
+select pg_temp.chk('20f wallet: the same money cannot pay two orders',
+  public.cbt_store_paid(:'wa','9822222222','Wallet balance','')->>'error' = 'wallet');
+reset role;
+select pg_temp.chk('20g wallet: the old order now asks for the full price',
+  (select wallet_used = 0 and amount = 100 from public.cbt_store_orders where code = :'wa')
+  and cbt_private.wallet_balance('9822222222') >= 0);
+-- an order is never approved when its wallet money is already gone
+update cbt_private.wallet_txn set amount = 40 where mobile='9822222222' and kind='admin';
+do $$ declare ok boolean := false; begin
+  begin update public.cbt_store_orders set status='paid' where mobile='9822222222' and wallet_used > 0;
+  exception when others then ok := sqlerrm like 'wallet_overdrawn%'; end;
+  perform pg_temp.chk('20h wallet: an order is not approved when the wallet would go below ₹0', ok);
+end $$;
+-- a member changing a wallet shows on the owner's bell
+select public.cbt_admin_team(:'ow2','user_save','{"name":"Store","username":"store1","password":"Tr7k-9mQz-pLx4","perms":{"store":"manage"}}')->>'ok';
+select public.cbt_admin_login('store1','Tr7k-9mQz-pLx4','S')->>'token' as stt \gset
+select public.cbt_admin_refer(:'stt','adjust','{"mobile":"9822222222","amount":500,"note":"x"}')->>'ok';
+select pg_temp.chk('20i a team member adding wallet money shows on the owner''s bell',
+  exists (select 1 from cbt_private.security_events where kind = 'member_access_or_money' and level = 'warn' and detail like 'cbt_admin_refer:adjust%'));
 
 -- ===== report =====
 \t off

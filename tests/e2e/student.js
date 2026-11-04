@@ -105,13 +105,20 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   ({ c, p, errs } = await mk());
   await p.addInitScript(() => { if (!sessionStorage.getItem('s')) { sessionStorage.setItem('s', 1); localStorage.setItem('store_me', JSON.stringify({ name: 'Aman Gupta', mobile: '9822200002', course: 'neet' })); } });
   await p.goto(BASE + 'store.html?r=' + rcode); await p.waitForTimeout(2500);
-  ok((await q(`select referrer from cbt_private.refer_links where mobile='9822200002'`)).length === 1, 'refer: a new student who opens the link is joined to the sharer');
-  await p.click('[data-buy]'); await p.waitForSelector('#cpi');
+  ok((await q(`select referrer from cbt_private.refer_links where mobile='9822200002'`)).length === 0, 'refer: opening the link alone joins nobody (v53)');
+  await p.click('[data-buy]'); await p.waitForSelector('#cpi'); await p.waitForTimeout(800);
+  ok((await q(`select referrer from cbt_private.refer_links where mobile='9822200002'`)).length === 1
+     && (await q(`select refer_code from public.cbt_store_orders where mobile='9822200002' and refer_code is not null`)).length === 1, 'refer: the new student\'s own order from the link joins them to the sharer');
   await p.fill('#cpi', 'WRONG1'); await p.click('[data-cpgo]'); await p.waitForTimeout(800);
   ok(/does not work/.test(await p.textContent('#cper')), 'coupon: a wrong code is refused');
   await p.fill('#cpi', 'diwali'); await p.press('#cpi', 'Enter'); await p.waitForTimeout(1200);
   ok((await p.textContent('.amt b')).includes('400'), 'coupon: DIWALI 20% takes ₹499 to ₹400');
   await q(`insert into cbt_private.wallet_txn(mobile,amount,kind,note) values ('9822200002',450,'admin','e2e')`);
+  // v53: without the student app's sign-in the wallet is not offered
+  await p.evaluate(() => { WAL = null; payStep(); }); await p.waitForTimeout(1200);
+  ok(!(await p.$('[data-wal]')), 'wallet: not offered without the student app sign-in');
+  await q(`insert into cbt_private.students(name,mobile,status,salt,code_hash,devices) values ('Aman Gupta','9822200002','approved','sa',cbt_private.hash_code('sa','AMAN2222'),'{dev-aman0002}') on conflict do nothing`);
+  await p.evaluate(() => { localStorage.setItem('cbt_auth', JSON.stringify({ mobile: '9822200002', code: 'AMAN2222', name: 'Aman Gupta' })); localStorage.setItem('cbt_dev', JSON.stringify('dev-aman0002')); });
   await p.evaluate(() => { WAL = null; payStep(); }); await p.waitForSelector('[data-wal]');
   await p.click('[data-wal]'); await p.waitForSelector('[data-walgo]');
   const wo = (await q(`select amount, wallet_used, coupon_off from public.cbt_store_orders where mobile='9822200002' order by created_at desc limit 1`))[0];

@@ -40,6 +40,14 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Safety note:** the store has no sign-in yet — the wallet belongs to the mobile number typed on the store. An order paid with the wallet always needs your approval; approve it only when the student messages you from that number (the order card says so). The planned email / password sign-in for the store closes this.
 - **Setup:** run `supabase_v52_coupons_refer.sql` once (after v48 or later), then `supabase_v35_admin_team.sql` again. Until then the store hides the coupon box, the Refer & earn pages say “coming soon” and the admin section asks for the setup. A mobile number changed later (v44) does not move its wallet / referral code — add the money to the new number by hand (Refer & earn → Wallet).
 
+## Refer & earn safety (`supabase_v53_refer_fixes.sql`)
+- The reward goes only to the link the new student ordered from (the code is kept on that order); putting someone's number under your link earlier gives nothing.
+- No reward when the new student paid less than **₹99** by UPI (Admin → Coupons & Refer → Refer & earn → *Reward only if the new student paid at least*).
+- The wallet is seen and used only by its owner, signed in to the student app on the same phone; nobody can see or spend another number's wallet.
+- Wallet money cannot pay two orders: an unconfirmed order gives it back after 48 h (it then asks for the full price), and an order is never approved when its wallet money is already used.
+- A team member changing wallets, the reward or coupons shows on the owner's bell (Security alerts).
+- **Setup:** run `supabase_v53_refer_fixes.sql` (after v52), then `supabase_v35_admin_team.sql` again.
+
 ## Live tests: result time and auto-save (`supabase_v30_result_time.sql`)
 - In the admin test form, a test can get **Live ends** (no new start after it) and **Result & answer key at**. The link "Fill: live till 9 PM, result 10 PM" fills both for the start day.
 - Until the result time, a student who submits sees only "Test submitted ✓ — result, rank and answer key after …": no score, rank, answer key, mistakes, insights or bookmarked answers for that test. After it, everything shows by itself. Tests without a result time and practice tests show results at once, as before.
