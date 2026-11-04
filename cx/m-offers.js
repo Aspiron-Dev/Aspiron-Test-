@@ -115,7 +115,7 @@ function editCode(code) {
       ${UI.dtField({ name: 'ends_at', label: 'Works till', value: end0, clear: false, hint: 'Stops by itself at this time' })}
       <div class="fld"><label>Quick end</label><div class="row gap6 wrap">${join([[3, '3 days'], [7, '7 days'], [15, '15 days'], [30, '30 days']], ([n, l]) => h`<button type="button" class="btn xs" data-act="days" data-n="${n}">${l}</button>`)}</div></div>
       <div class="full"><div class="section-t" style="margin-top:4px">Discount on each series</div>
-        <div class="card flat pad0 list of-ed">${join(d.items || [], it => { const c = by(it.id), o = other(it.id); return h`<div class="li"><div class="grow"><b class="ell">${it.title}</b><div class="xs mut">${fmt.inr(it.price)}${it.active === false ? ' · hidden' : ''}${o ? h` · <span class="tx-warn">has ${o.code} (will be replaced)</span>` : ''}</div></div>
+        <div class="card flat pad0 list of-ed">${join(d.items || [], it => { const c = by(it.id), o = other(it.id); return h`<div class="li of-row"><div class="of-t"><b>${it.title}</b><div class="xs mut">${fmt.inr(it.price)}${it.active === false ? ' · hidden' : ''}${o ? h` · <span class="tx-warn">has ${o.code} (will be replaced)</span>` : ''}</div></div>
           <input class="inp of-v" name="v_${it.id}" type="number" min="1" inputmode="numeric" placeholder="—" value="${c ? c.value : ''}" aria-label="Discount for ${it.title}">
           <select class="inp of-k" name="k_${it.id}" aria-label="% or ₹"><option value="flat" ${c && c.kind === 'flat' ? raw('selected') : ''}>₹ off</option><option value="pct" ${!c || c.kind === 'pct' ? raw('selected') : ''}>% off</option></select></div>`; })}</div>
         <div class="err" data-err="items"></div></div>
@@ -245,9 +245,11 @@ AX.css('offers', `
 .of-code{font-size:17px;font-weight:800;letter-spacing:.06em;padding:6px 12px;border-radius:var(--r-md);border:1.5px dashed var(--pri);color:var(--pri);background:var(--pri-soft);flex:none}
 .of-list .li{padding:10px 0}
 .of-use{text-align:right;flex:none;line-height:1.35}
-.of-ed .li{gap:8px}
-.of-ed .of-v{width:92px;flex:none}
-.of-ed .of-k{width:96px;flex:none}
+.of-ed .of-row{display:grid;grid-template-columns:minmax(0,1fr) 100px 110px;align-items:center;gap:10px}
+.of-ed .of-t{min-width:0}
+.of-ed .of-t b{display:block;overflow-wrap:anywhere;line-height:1.35}
+.of-ed .of-v,.of-ed .of-k{width:100%;min-width:0}
+@media (max-width:560px){.of-ed .of-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.of-ed .of-t{grid-column:1 / -1}}
 .tx-warn{color:var(--warn)}
 .of-2{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .of-how{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:13.5px;color:var(--tx-2);line-height:1.5}
