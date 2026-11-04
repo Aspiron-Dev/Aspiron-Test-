@@ -385,6 +385,8 @@ button.kpi:hover,a.kpi:hover{transform:translateY(-2px);border-color:var(--pri-l
 .lg-card::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(140deg,rgba(255,255,255,.22),transparent 40%,transparent 60%,color-mix(in srgb,var(--gold) 50%,transparent));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
 .lg-mark{width:56px;height:56px;border-radius:18px;display:grid;place-items:center;background:var(--grad-pri);color:var(--pri-ink);box-shadow:0 12px 30px color-mix(in srgb,var(--pri-2) 40%,transparent)}
 .lg-mark .ax-ic{width:28px;height:28px;stroke-width:2}
+.lg-mark img,.ax-brand .mk img{width:100%;height:100%;border-radius:inherit;display:block}
+.lg-mark:has(img),.ax-brand .mk:has(img){background:#060a13;overflow:hidden;border:1px solid rgba(255,255,255,.12)}
 .lg-t{font-family:var(--font-display);font-size:30px;font-weight:600;letter-spacing:-.02em;margin-top:18px}
 .lg-s{color:var(--mut);margin-top:6px;font-size:14px}
 .lg-foot{margin-top:18px;font-size:12px;color:var(--faint);display:flex;align-items:center;gap:8px;justify-content:center}
