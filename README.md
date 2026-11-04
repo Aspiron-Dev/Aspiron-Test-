@@ -66,7 +66,7 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 ## Security checks (repository)
 - `scripts/check-exposed.sh --local` scans the repository; `scripts/check-exposed.sh` asks the live site for files that must not be served. `.github/workflows/security.yml` runs gitleaks (whole history) on every push and the live check every Monday.
 - Pre-commit hook against committing secrets: `git config core.hooksPath .githooks` (uses gitleaks if installed). `.env.example` lists the secret names; the values live only in Supabase / GitHub settings.
-- `send-push` answers browsers only from `https://aspiron-dev.github.io` (Edge Function secret `ALLOWED_ORIGINS`, comma separated, for a future domain). Full map: `SECURITY_MAP.md`.
+- `send-push` answers browsers only from the site's own addresses: `https://aspironeducation.com`, `https://www.aspironeducation.com` and the old `https://aspiron-dev.github.io` (Edge Function secret `ALLOWED_ORIGINS`, comma separated). Full map: `SECURITY_MAP.md`.
 
 ## Rank in one fixed order (`supabase_v50_rank_order.sql`)
 - No two students share a rank: 1. more marks, 2. fewer wrong answers, 3. more marks in Biology, 4. Chemistry, 5. Physics, 6. less time, 7. submitted earlier. Used by the student leaderboard / "Your rank" and Admin → Results → a test → Top students (`cbt_admin_ranks`).

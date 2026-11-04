@@ -29,7 +29,7 @@ const cors = {
 };
 // browsers may call this function only from these sites (secret ALLOWED_ORIGINS, comma separated, e.g. when a custom
 // domain is added). The minute job calls it from the database, where CORS does not apply.
-const ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "https://aspiron-dev.github.io").split(",").map((s) => s.trim().replace(/\/+$/, "")).filter(Boolean);
+const ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "https://aspironeducation.com,https://www.aspironeducation.com,https://aspiron-dev.github.io").split(",").map((s) => s.trim().replace(/\/+$/, "")).filter(Boolean);
 const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 
 const PAGE_MAX = 200;    // phones per call at most
