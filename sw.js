@@ -1,7 +1,7 @@
 /* Service worker: lets the site be installed like an app.
-   It always asks the network first, so new uploads show up at once.
+   Pages always come from the network first, so new uploads show up at once; files with ?v= come from the phone.
    It never touches the database (Supabase) calls. */
-const CACHE='cbt-shell-v4';
+const CACHE='cbt-shell-v5';
 const SHELL=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).catch(()=>{}));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
@@ -11,6 +11,16 @@ self.addEventListener('fetch',e=>{
   // Pages (index.html, admin page): always the newest copy. The extra ?_sw= makes the hosting CDN skip
   // its own copy too, so one refresh never shows the old design and the next the new one.
   const nav=r.mode==='navigate';
+  // Scripts / styles with ?v=N: the page always asks for the number it needs, so a saved copy is never stale.
+  // Served from the phone at once (much faster app opening); fetched once per new number, older numbers removed.
+  if(!nav&&u.searchParams.has('v')){
+    e.respondWith(caches.open(CACHE).then(c=>c.match(r).then(hit=>hit||fetch(r).then(res=>{
+      if(res&&res.ok){c.put(r,res.clone()).catch(()=>{});
+        c.keys().then(ks=>ks.forEach(k=>{const ku=new URL(k.url);if(ku.pathname===u.pathname&&ku.search!==u.search)c.delete(k)})).catch(()=>{})}
+      return res;
+    }))).catch(()=>fetch(r)));
+    return;
+  }
   let net;
   if(nav){const b=new URL(r.url);b.searchParams.set('_sw',Date.now());net=fetch(b.href,{cache:'no-store',credentials:'same-origin'}).then(res=>res.redirected?fetch(r):res)}
   else net=fetch(r,{cache:'no-cache'});

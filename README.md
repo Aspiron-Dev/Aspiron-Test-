@@ -13,7 +13,7 @@ Static website on GitHub Pages + Supabase (database functions). No build step: u
 | `admin.html` | Decoy "404" page (the real admin page has a hidden name) | – |
 
 Scripts load in number order; a later file adds to or replaces functions of earlier ones.
-After changing a script, raise its `?v=` number in the page that loads it so phones get the new copy.
+After changing a script, raise its `?v=` number in the page that loads it so phones get the new copy — **always**: the service worker keeps a file with the same number on the phone and never asks for it again. A file loaded by several pages (e.g. `config.js`) must have the same number on all of them.
 
 Other files: `sw.js` (installable app, always loads the newest pages), `manifest.webmanifest` /
 `cp-dt764twzf54s5m.webmanifest` (app icons and names), `pyq-data/` (past papers for the admin PYQ import),
@@ -24,9 +24,11 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 ## Brand: name, logo, start-up animation (`index.html`, `config.js`, `manifest.webmanifest`)
 - **Name:** "Aspiron Education" everywhere (`SITE_NAME` in `config.js`, page titles, app name on the home screen, store, messages). Under ASPIRON it is always **EDUCATION** (never "Study Hub").
 - **Logo:** the letters, cap, swoosh and star are traced from the official logo into vector shapes, kept once in the hidden `#bsprite` at the top of `index.html` (`#bA` the A, `#bCap` + `#bArc` + `#bTas` the cap and tassel, `#bSw` swoosh, `#bSt` star, `#bWord` ASPIRON, `#bEdu` + `#bLnL` / `#bLnR` EDUCATION and its lines). Dark parts take the text colour, so the logo turns white in dark mode; the gold is the `#bG` gradient.
-- **Header:** ASPIRON with EDUCATION (gold) below, in the logo's own letters (`.brand .bmk`).
-- **Start-up animation** (`#splash`): the A rises, the gold swoosh sweeps across, the cap drops onto the A and its tassel swings, the star sparkles, then ASPIRON / EDUCATION appear with a gold shine (about 2.7 s, tap to skip). It plays in full once per app launch; a reload in the same session shows the logo only briefly. With *reduce motion* on, the logo shows without movement.
+- **Header:** ASPIRON in the logo's own letters (the cut P and R), spaced out, navy-to-slate colour, with a small grey EDUCATION below (`.brand .bmk`). A soft shine passes over the name every 8 s (16 s in lite mode), never while the app is in the background or in a test. The name's shape is a mask (`data:` SVG in the CSS), so the shine is moved by the phone's graphics chip.
+- **Start-up animation** (`#splash`): the A rises, the gold swoosh sweeps across, the cap drops onto the A and its tassel swings, the star sparkles, then ASPIRON / EDUCATION appear with a shine (about 1.8 s, tap to skip). Every part is its own small layer and only `transform` / `opacity` move, so it stays smooth while the scripts load underneath. It plays in full once per app launch; a reload in the same session shows the logo only briefly. With *reduce motion* on, the logo shows without movement.
 - **Sound:** a soft whoosh, tap and chime made in the browser (no sound file). It plays only where the phone allows sound without a tap (the installed app on Android; not on iPhone). Students can turn it off: Settings → *Opening Sound* (`cbt_snd`).
+- **Lite mode** (`html[data-lite]`, set in the `<head>` before the first paint): phones with 4 cores or fewer or 2 GB memory or less, data saver on, or battery at 20% or less and not charging. It drops the live blur behind the header, menu bar and sheets, uses the plain page slide instead of the full-page transition, and stops decorative loops. Decorations that used to loop for ever (home card glow, live-test pulse, notification bell) now play a few times and stop, for everyone.
+- **Faster opening:** Google Fonts no longer hold up the first paint, and the service worker serves every file that has a `?v=` number straight from the phone (fetched once per new number). **So a changed script or style must get a new `?v=` number, or phones keep the old copy.** Pages themselves still always come from the network first.
 - **App icons:** `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png` show the logo symbol on ivory. Phones that installed the app pick up the new icon and name by themselves (Android can take a day or so).
 
 ## Coupons and Refer & earn (`supabase_v52_coupons_refer.sql`, `store.js`, `app22.js`, `cx/m-offers.js`)

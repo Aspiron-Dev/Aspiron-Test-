@@ -121,7 +121,7 @@ function authErr(r){
 
 /* ---------- theme / header / helpers ---------- */
 function updateTheme(){$('#thm').innerHTML=ic('palette');syncTheme()}
-function themeSwap(fn){try{if(document.startViewTransition&&!matchMedia('(prefers-reduced-motion:reduce)').matches){document.startViewTransition(fn);return}}catch(e){}fn()}
+function themeSwap(fn){try{if(document.startViewTransition&&!matchMedia('(prefers-reduced-motion:reduce)').matches&&document.documentElement.dataset.lite!=='1'){document.startViewTransition(fn);return}}catch(e){}fn()}
 function applyMode(t){const h=document.documentElement;h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';else delete h.dataset.oled}
 function curMode(){const D=document.documentElement.dataset;return D.theme==='light'?'light':D.oled==='1'?'oled':'dark'}
 function setMode(t){LS.set('cbt_theme',t);themeSwap(()=>{applyMode(t);syncTheme();openLook(1)})}
@@ -259,7 +259,7 @@ function pgAnim(ap){
   ap.classList.remove('pg');void ap.offsetWidth;ap.classList.add('pg');
   clearTimeout(ap._pt);ap._pt=setTimeout(()=>ap.classList.remove('pg'),360);
 }
-const RMOT=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
+const RMOT=()=>matchMedia('(prefers-reduced-motion:reduce)').matches||document.documentElement.dataset.lite==='1';
 async function route(){
   if(INTEST||!AUTH)return;
   const h0=location.hash||'#/',rk=NAVRK(h0);let dir=0;
