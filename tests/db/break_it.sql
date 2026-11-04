@@ -416,6 +416,19 @@ select pg_temp.chk('19q anon cannot read the wallet or coupon tables', not has_t
 select pg_temp.chk('19r a view-only team member cannot set coupons or add wallet money',
   public.cbt_admin_coupons(:'vt','remove_code','{"code":"DIWALI"}')->>'error' = 'forbidden'
   and public.cbt_admin_refer(:'vt','adjust','{"mobile":"9844444444","amount":"100"}')->>'error' = 'forbidden');
+select public.cbt_admin_coupons(:'ow5','set',jsonb_build_object('item_id','cccccccc-0000-0000-0000-000000000001','code','OFFTEST','kind','pct','value',10,
+  'ends_at', floor(extract(epoch from now() + interval '3 days') * 1000)::bigint))->>'ok';
+select public.cbt_admin_coupons(:'ow5','switch','{"on":false}')->>'ok';
+set role anon;
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Switch Test','9866666666')->>'code' as so1 \gset
+select pg_temp.chk('19s coupon box switched off: the store is told and no code works',
+  public.cbt_store_offers()->>'coupons' = 'false' and public.cbt_store_order_apply(:'so1','9866666666','OFFTEST',false)->>'error' = 'coupon_off');
+reset role;
+select public.cbt_admin_coupons(:'ow5','switch','{"on":true}')->>'ok';
+set role anon;
+select pg_temp.chk('19t switched on again: the code works', (public.cbt_store_order_apply(:'so1','9866666666','OFFTEST',false)->>'coupon_off')::int = 49);
+reset role;
+select pg_temp.chk('19u a view-only member cannot switch the coupon box', public.cbt_admin_coupons(:'vt','switch','{"on":false}')->>'error' = 'forbidden');
 select set_config('request.headers', '{"x-real-ip":"203.0.113.10"}', false);
 
 -- ===== report =====
