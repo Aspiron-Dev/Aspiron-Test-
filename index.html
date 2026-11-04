@@ -1360,11 +1360,12 @@ html[data-theme="dark"] .brand .bmk-e{color:#a0a8b8}
 .liveb i{animation-iteration-count:8!important}
 
 /* lite mode (html[data-lite]: phones with few cores or little memory, data saver, or battery at 20% or less and not
-   charging): no live blur behind the header, menu bar and sheets, plain page change — smoother scrolling, less battery */
-html[data-lite] .hdr,html[data-lite] .hdr.sc,html[data-lite] .bnav,html[data-lite] body.hasnav .bnav,html[data-lite] .rtabs,html[data-lite] .modal,
+   charging): lighter blur behind the header and menu bar, none behind sheets, plain page change — smoother scrolling, less battery */
+html[data-lite] .rtabs,html[data-lite] .modal,
 html[data-lite] .modal .box,html[data-lite] .sheet .in,html[data-lite] .instbar,html[data-lite] .drw,html[data-lite] .drp,html[data-lite] .hero .stat,html[data-lite] .hero .streak{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
-html[data-lite] .hdr.sc{background:color-mix(in srgb,var(--bg) 96%,transparent)!important}
-html[data-lite] body.hasnav .bnav{background:color-mix(in srgb,var(--surface) 97%,transparent)!important}
+/* the header and the menu bar keep their frosted glass in lite mode too, with a lighter blur */
+html[data-lite] .hdr.sc{-webkit-backdrop-filter:blur(12px) saturate(1.4);backdrop-filter:blur(12px) saturate(1.4)}
+html[data-lite] body.hasnav .bnav{-webkit-backdrop-filter:blur(12px) saturate(1.5);backdrop-filter:blur(12px) saturate(1.5)}
 html[data-lite] .rtabs{background:var(--bg)!important}
 html[data-lite] .modal .box,html[data-lite] .sheet .in,html[data-lite] .instbar,html[data-lite] .drp{background:var(--surface)!important}
 html[data-lite] .modal{background:rgba(3,6,14,.58)!important}
