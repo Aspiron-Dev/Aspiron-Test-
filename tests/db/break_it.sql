@@ -520,6 +520,15 @@ select public.cbt_admin_refer(:'stt','adjust','{"mobile":"9822222222","amount":5
 select pg_temp.chk('20i a team member adding wallet money shows on the owner''s bell',
   exists (select 1 from cbt_private.security_events where kind = 'member_access_or_money' and level = 'warn' and detail like 'cbt_admin_refer:adjust%'));
 
+-- ===== 21. store map (v54): the store item of each series, for signed-in students only =====
+set role anon;
+select pg_temp.chk('21a store map: nothing without a valid sign-in',
+  coalesce((public.cbt_store_map('9000000002','WRONG999','dev-bbbbbbbb')->>'ok')::boolean, false) is not true
+  and public.cbt_store_map('9000000002','WRONG999','dev-bbbbbbbb')->'map' is null);
+select pg_temp.chk('21b store map: a signed-in student gets the item of the series',
+  public.cbt_store_map('9000000002','BBBB2222','dev-bbbbbbbb')->'map'->>'11111111-1111-1111-1111-111111111111' = 'cccccccc-0000-0000-0000-000000000001');
+reset role;
+
 -- ===== report =====
 \t off
 \a

@@ -208,6 +208,9 @@ async function load(){
 const emptyHtml=(ic,t,p,k,more)=>`<div class="card empty ${k||''}"><div class="e-ic">${I(ic)}</div><h4>${t}</h4><p>${p}</p>${more||''}</div>`;
 // a shared link (#p=…) shows that series on Home (or opens it, if it is not there); an Explore link (#x=…) opens its page
 function jump(){
+  // from the student app's Buy now (#b=…): straight to the payment of that series, for the app's own number
+  const b=location.hash.match(/(?:^#|&)b=([0-9a-f-]{36})/);
+  if(b&&ST.items.some(i=>i.id===b[1])){history.replaceState(history.state,'',location.pathname+location.search);return buy(b[1])}
   const x=location.hash.match(/x=([0-9a-f-]{36})/);
   if(x&&ST.items.some(i=>i.id===x[1])){if(!history.state)under({xp:1},'#x='+x[1]);return explore(x[1])}
   const h=location.hash.match(/p=([0-9a-f-]{36})/);if(!h||!ST.items.some(i=>i.id===h[1]))return;
