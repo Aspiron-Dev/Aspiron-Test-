@@ -542,6 +542,14 @@ function captureRef(){
 function attachRef(order,mobile){
   const r=LSg('store_ref',null);
   if(order&&r&&REF_OK.test(r.c)&&Date.now()-r.at<30*864e5)rpc('cbt_promo_attach',{p_order:order,p_code:r.c,p_mobile:mobile||''});
+  // v53: a friend's Refer & earn link counts only for the order the buyer makes themselves
+  const f=LSg('store_rc',null);
+  if(order&&f&&RC_OK.test(f.c)&&Date.now()-f.at<30*864e5)rpc('cbt_refer_order',{p_order:order,p_mobile:mobile||'',p_ref:f.c});
+}
+// v53: the wallet is used only with the student app's sign-in on this phone (same number)
+function appAuth(mobile){
+  const a=LSg('cbt_auth',null),d=LSg('cbt_dev',null),m=String(mobile||'').replace(/\D/g,'').slice(-10);
+  return a&&a.code&&d&&String(a.mobile||'').replace(/\D/g,'').slice(-10)===m?{p_auth:a.code,p_device:String(d)}:null;
 }
 // a series sold in English + हिंदी: the medium is asked first and kept with the order (the tests come in it)
 function langSheet(id){
@@ -603,7 +611,9 @@ let OFFER=null,WAL=null,CPN=true;   // CPN = the coupon box is on (Admin → Cou
    // OFFER false = the server has no coupons yet (v52 not run) · WAL = {balance, code, …} of this number
 async function walLoad(make){
   const m=ME();if(!m)return null;
-  const r=await rpc('cbt_refer_me',{p_mobile:m.mobile,p_name:make?m.name:null});
+  const au=appAuth(m.mobile);
+  let r=au?await rpc('cbt_refer_wallet',{p_mobile:m.mobile,p_code:au.p_auth,p_device:au.p_device}):null;
+  if(!r||!r.ok)r=await rpc('cbt_refer_me',{p_mobile:m.mobile,p_name:make?m.name:null});
   if(r.ok){WAL=r;if(OFFER===null)OFFER=true}else if(r.error==='missing'){OFFER=false;WAL=null}
   return r;
 }
@@ -626,11 +636,12 @@ function offerHtml(){
 function offerUi(){const b=$('#offer');if(b)b.innerHTML=offerHtml()}
 const OFERR={coupon:'This coupon code does not work for this test series.',coupon_off:'Coupons are not available right now.',coupon_expired:'This coupon has ended.',coupon_soon:'This coupon has not started yet.',
   locked:'This order can no longer change. Close and tap Buy now again.',order:'This order was not found. Close and tap Buy now again.',busy:'Too many tries. Please wait a while and try again.',
-  network:'No internet. Please try again.',item:'This series is not available right now.'};
+  network:'No internet. Please try again.',item:'This series is not available right now.',
+  signin:'To use your wallet, sign in to the student app on this phone with this number first.'};
 async function offerGo(coupon,wallet,btn){
   const er=$('#cper');if(er)er.textContent='';
   if(btn){btn.disabled=true;btn.dataset.t=btn.innerHTML;btn.innerHTML='<span class="spin"></span>'}
-  const r=await rpc('cbt_store_order_apply',{p_code:ORD.code,p_mobile:ORD.mobile,p_coupon:coupon||'',p_wallet:!!wallet});
+  const r=await rpc('cbt_store_order_apply',Object.assign({p_code:ORD.code,p_mobile:ORD.mobile,p_coupon:coupon||'',p_wallet:!!wallet},wallet?appAuth(ORD.mobile)||{}:{}));
   if(btn&&btn.isConnected){btn.disabled=false;btn.innerHTML=btn.dataset.t}
   if(!r.ok){
     if(r.error==='missing'){OFFER=false;offerUi();return}
@@ -658,6 +669,8 @@ async function walGo(){
   const b=$('#wgo');if(b){b.disabled=true;b.innerHTML='<span class="spin"></span>Saving…'}
   const r=await rpc('cbt_store_paid',{p_code:ORD.code,p_mobile:ORD.mobile,p_payer:'Wallet balance',p_utr:''});
   if(!r.ok&&r.error==='network'){if(b){b.disabled=false;b.innerHTML=`${I('check')}Confirm order ${I('next')}`}return toast('No internet. Please try again.','alert','bad')}
+  // v53: the wallet no longer covers this order (used elsewhere, or the order is older than 2 days): pay the rest by UPI
+  if(!r.ok&&r.error==='wallet'){if(r.amount)ORD.amount=r.amount;ORD.wallet_used=r.amount?0:ORD.wallet_used;WAL=null;LSs('store_ord',ORD);toast('Your wallet does not cover this order any more. Please pay the amount shown.','alert','bad');return payStep()}
   ORD.payer='Wallet balance';ORD.utr='';LSs('store_ord',ORD);vStep();
 }
 
@@ -689,7 +702,7 @@ async function rfDraw(fetch){
    <div class="card rflink"><div class="card-h"><span class="hic">${I('share')}</span><div class="grow"><h3>Your link</h3><p class="sub">It opens this store · code <b class="code">${esc(w.code)}</b></p></div></div>
     <div class="rfu"><span class="mono">${esc(url)}</span>${cpBtn(url,'Link copied')}</div>
     <div class="row wrap rfa"><button class="btn pri" data-rfshare>${I('share')}Share link</button>${waUrlShare(rfMsg(w.code))}<button class="btn line" data-copy="${esc(rfMsg(w.code))}" data-what="Message copied">${I('copy')}Copy message</button></div></div>
-   <div class="rfk">${[['user','Friends joined',w.joined,''],['bag','Friends bought',w.bought,'ok'],['gift','Total earned',inr(w.earned),'gold'],['card','Wallet balance',inr(w.balance),'pri']].map(([ic,l,v,k])=>`<div class="card rfn ${k}"><span>${I(ic)}${l}</span><b>${v}</b></div>`).join('')}</div>
+   ${w.signin?`<div class="card rfn pri"><span>${I('lock')}Wallet</span><p class="sm mut mt4">To see your friends, earnings and wallet, sign in to the student app on this phone with ${esc(m.mobile)}.</p></div>`:`<div class="rfk">${[['user','Friends joined',w.joined,''],['bag','Friends bought',w.bought,'ok'],['gift','Total earned',inr(w.earned),'gold'],['card','Wallet balance',inr(w.balance),'pri']].map(([ic,l,v,k])=>`<div class="card rfn ${k}"><span>${I(ic)}${l}</span><b>${v}</b></div>`).join('')}</div>`}
    <div class="card"><div class="card-h"><span class="hic vio">${I('info')}</span><h3>How it works</h3></div>
     <ol class="tl"><li><i>1</i><div><b>Share your link</b><p>On WhatsApp, Telegram or anywhere. It opens the store.</p></div></li>
      <li><i>2</i><div><b>Your friend buys a test series</b><p>Only new students count. Joining alone does not give money — the purchase does.</p></div></li>

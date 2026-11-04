@@ -24,7 +24,12 @@ const STATE = { live: ['Active', 'ok'], soon: ['Starts later', 'info'], ended: [
 const storeBase = () => (AX.sto && AX.sto.siteBase ? AX.sto.siteBase() : location.href.replace(/[#?].*$/, '').replace(/[^/]*\.html$/, ''));
 
 async function loadC(force) { if (!force && O.c) return { ok: true }; const r = await AX.api.call('cbt_admin_coupons', 'get'); if (r.ok) O.c = r; return r; }
-async function loadR(force) { if (!force && O.r) return { ok: true }; const r = await AX.api.call('cbt_admin_refer', 'get'); if (r.ok) O.r = r; return r; }
+async function loadR(force) {
+  if (!force && O.r) return { ok: true };
+  const [r, mp] = await Promise.all([AX.api.call('cbt_admin_refer', 'get'), AX.api.call('cbt_admin_refer_min', 'get')]);
+  if (r.ok) { O.r = r; O.r.min_paid = mp.ok ? mp.min_paid : null; }   // min_paid: supabase_v53_refer_fixes.sql
+  return r;
+}
 let VIEW = null;
 const repaint = async () => { O.c = null; O.r = null; AX.cache.drop('store'); if (VIEW && VIEW.alive()) VIEW.reload(); };
 
@@ -179,13 +184,15 @@ function refer(el) {
       <div class="card"><div class="card-h">${icon('settings')}<h3 class="grow">Settings</h3></div>
         <form id="rs" class="col gap12" autocomplete="off">
           ${AX.f.input({ name: 'reward', label: 'Reward for each new student who buys (₹)', type: 'number', value: s.reward, min: 0, inputmode: 'numeric', disabled: !m, hint: 'Added to the sharer\'s wallet when the new student\'s first order is approved. A new amount applies from now on.' })}
+          ${d.min_paid != null ? AX.f.input({ name: 'min_paid', label: 'Reward only if the new student paid at least (₹ by UPI)', type: 'number', value: d.min_paid, min: 0, inputmode: 'numeric', disabled: !m, hint: 'Stops misuse with a nearly free order (e.g. a big coupon). 0 = any paid amount.' }) : ''}
           ${AX.f.switch({ name: 'active', value: !!s.active, label: 'Refer & earn is on', hint: 'Off = no new rewards. Wallet money already earned can still be used.', disabled: !m })}
           ${m ? h`<div class="row end"><button type="button" class="btn pri" data-act="rsave" data-busy="Saving…">${icon('check', 16)} Save</button></div>` : ''}
         </form></div>
       <div class="card"><div class="card-h">${icon('info')}<h3 class="grow">How it works</h3></div>
         <ol class="of-how"><li>Every student gets a link on the store and in the app (Me → Refer &amp; earn): <span class="mono">store.html?r=name12345</span> (first name + last 5 digits). It opens the store.</li>
-          <li>A <b>new</b> number that opens the link and enters its details is counted as <b>joined</b> — no money for joining.</li>
-          <li>When you approve that student's first paid order, the sharer gets the reward in the wallet. Undo / reject / delete takes it back.</li>
+          <li>A <b>new</b> number that orders from the link is counted as <b>joined</b> — no money for joining.</li>
+          <li>When you approve that order (paid at least the minimum above), the sharer gets the reward in the wallet. Undo / reject / delete takes it back.</li>
+          <li>The wallet is used only by its owner, signed in to the student app. An order never gets approved if the wallet money was already used elsewhere.</li>
           <li>The wallet cannot be withdrawn. It is used at checkout (part or all of the price). Orders paid from the wallet show <b>Wallet</b> in Orders.</li></ol></div>
     </div>
     <div class="row wrap gap16 of-tools mt16"><label class="inp-wrap search grow">${icon('search', 17)}<input class="inp" id="of-q" type="search" placeholder="Search name, mobile or code" value="${O.q}" aria-label="Search referrers"></label></div>
@@ -194,7 +201,13 @@ function refer(el) {
     async rsave(b) {
       const f = el.querySelector('#rs'), v = AX.f.read(f), rw = String(v.reward).trim();
       if (!/^\d{1,5}$/.test(rw) || +rw > 10000) return AX.f.error(f, 'reward', ERR.reward);
-      await UI.busy(b, async () => { const r = await AX.api.call('cbt_admin_refer', 'settings', { reward: rw, active: !!v.active }); if (!r.ok) return UI.toast(errText(r), { tone: 'bad' }); UI.toast('Saved'); repaint(); });
+      const mp = v.min_paid == null ? null : String(v.min_paid).trim();
+      if (mp != null && !/^\d{1,6}$/.test(mp)) return AX.f.error(f, 'min_paid', 'A whole number of rupees.');
+      await UI.busy(b, async () => {
+        const r = await AX.api.call('cbt_admin_refer', 'settings', { reward: rw, active: !!v.active }); if (!r.ok) return UI.toast(errText(r), { tone: 'bad' });
+        if (mp != null) { const x = await AX.api.call('cbt_admin_refer_min', 'set', { min_paid: mp }); if (!x.ok) return UI.toast(errText(x), { tone: 'bad' }); }
+        UI.toast('Saved'); O.r = null; repaint();
+      });
     },
     open: b => detail(b.dataset.m),
     adj: b => adjust(b.dataset.m)
