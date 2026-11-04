@@ -48,6 +48,11 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - A team member changing wallets, the reward or coupons shows on the owner's bell (Security alerts).
 - **Setup:** run `supabase_v53_refer_fixes.sql` (after v52), then `supabase_v35_admin_team.sql` again.
 
+## Free booking (`supabase_v54_free_booking.sql`, `store.js`, `cx/m-store.js`, `cx/m-orders.js`)
+- **Admin → Store → Edit → Free booking:** on = the store shows **“Book free”** for that series instead of Buy now / Notify me (usually for a series that is not launched yet). The student books with their name + mobile, no payment; one free booking per mobile per series.
+- Bookings come to **Orders → Payment done** as ₹0 orders with a **Free booking** tag: *Approve & unlock* them like any order (for example when the series launches), or *Reject*. Turning Free booking off stops new bookings at once (checked in the database too).
+- **Setup:** run `supabase_v54_free_booking.sql` (after v53), then `supabase_v35_admin_team.sql` again.
+
 ## Live tests: result time and auto-save (`supabase_v30_result_time.sql`)
 - In the admin test form, a test can get **Live ends** (no new start after it) and **Result & answer key at**. The link "Fill: live till 9 PM, result 10 PM" fills both for the start day.
 - Until the result time, a student who submits sees only "Test submitted ✓ — result, rank and answer key after …": no score, rank, answer key, mistakes, insights or bookmarked answers for that test. After it, everything shows by itself. Tests without a result time and practice tests show results at once, as before.
