@@ -17,7 +17,7 @@ Shuru: 4 Nov 2026. Ek-ek task karke chalenge. Jo task ho jaye, uska `[ ]` badal 
 ## Phase 1: Jo pehle se bana hai, use on karo (👤 Aap, lagbhag 1 ghanta)
 Live database Claude ko nahi dikhta. Jo kaam pehle hi ho chuka ho, use seedha tick kar do.
 
-- [ ] **1.1 SQL files chalao.** Supabase → SQL Editor me, isi order me:
+- [x] **1.1 SQL files chalao.** Supabase → SQL Editor me, isi order me:
   `supabase_v47_alerts_results.sql` → `supabase_v35_admin_team.sql` → `supabase_v48_review_low.sql` → `supabase_v35_admin_team.sql`
   → `supabase_v49_v50_all_in_one.sql` → `supabase_v51_test_pdf.sql` → `supabase_v52_coupons_refer.sql` → `supabase_v35_admin_team.sql`.
   *Kaise pata chalega ho gaya:* Admin → Coupons & Refer khulta hai aur "setup" nahi maangta.
