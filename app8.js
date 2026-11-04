@@ -5,7 +5,7 @@ IC.users='<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0M16 4.
 /* ---------- promo slider (managed from Admin → Banners) ---------- */
 let PROMO=null,PRT=null,PRI=0,PRHOLD=0;
 function promoDefault(){
-  const s=esc(CFG.SITE_NAME||'CBT Test Series');
+  const s=esc(CFG.SITE_NAME||'Aspiron Education');
   return [
     {id:'d1',title:'All India Test Series 2027',text:'Real NEET pattern · All-India rank · Detailed analysis',link:'#/series',label:'Explore tests',c:'a'},
     {id:'d2',title:s,text:'Practise daily, revise your mistakes and track your progress',link:'#/series',label:'Start practising',c:'b'},

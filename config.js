@@ -4,7 +4,7 @@
 window.CBT_CONFIG = {
   SUPABASE_URL: "https://klvvhbqkhbdzysgpykpr.supabase.co",
   SUPABASE_KEY: "sb_publishable_pt-b8kuOOsxyyAz277qsNA_q6e8D2G3",
-  SITE_NAME: "CBT Test Series",
+  SITE_NAME: "Aspiron Education",
   // Student support (chat only, no calls) — shown everywhere a student can ask for help: app, store, payment verify
   SUPPORT_URL: "https://t.me/Students_support_teams",      // Telegram
   SUPPORT_WA: "https://wa.me/message/47QZ42AJBL4AE1",      // WhatsApp: a wa.me link, or a number with country code ("" hides WhatsApp)

@@ -75,7 +75,8 @@ function runningTest(){
   return null;
 }
 let T0=Date.now();
-function hideSplash(){const e=document.getElementById('splash');if(!e||e.classList.contains('off'))return;setTimeout(()=>{e.classList.add('off');setTimeout(()=>e.remove(),350)},Math.max(0,300-(Date.now()-T0)))}
+function hideSplash(){const e=document.getElementById('splash');window.__splReady=1;if(!e||e.classList.contains('off'))return;clearTimeout(window.__splT);/* the start-up animation sets __splEnd (index.html); a tap on it sets 0 */
+  const end=window.__splEnd!=null?window.__splEnd:300;window.__splT=setTimeout(()=>{e.classList.add('off');setTimeout(()=>e.remove(),650)},Math.max(0,end-performance.now()))}
 setTimeout(hideSplash,5000);
 function skelPage(){
   setApp(`<div class="wrap skpage"><div class="sk skhero"></div><div class="skrow"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>

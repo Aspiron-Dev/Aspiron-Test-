@@ -132,7 +132,7 @@ function updateHeader(){
   mnuUpdate();
   {const bl=document.getElementById('bell');if(bl){bl.innerHTML=ic('bell',20);bl.style.display=AUTH?'':'none'}}
   $('#lg').innerHTML=ic('target',20);
-  $('#sn').textContent=CFG.SITE_NAME||'CBT Test Series';{const sp=document.getElementById('spn');if(sp)sp.textContent=CFG.SITE_NAME||'CBT Test Series'}document.title=CFG.SITE_NAME||'CBT Test Series';
+  $('#sn').textContent=CFG.SITE_NAME||'Aspiron Education';document.title=CFG.SITE_NAME||'Aspiron Education';
   pfHdr();
 }
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}

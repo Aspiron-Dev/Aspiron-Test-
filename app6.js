@@ -525,19 +525,25 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 ;(window.__p=window.__p||{})['app6']=1;
 
 /* ===== v17: Settings / About / Terms sheets, bell-only notices, phone notifications ===== */
-const SN=()=>esc(CFG.SITE_NAME||'CBT Test Series');
+const SN=()=>esc(CFG.SITE_NAME||'Aspiron Education');
 function stRow(i,t,d,f,right){return `<button class="strow" onclick="${f}"><span class="stic">${ic(i,20)}</span><span class="grow"><b>${t}</b>${d?`<small>${d}</small>`:''}</span>${right||ic('right',18)}</button>`}
 function openSettings(){
   const np=npOn();
   sheet(`<h2 class="sht">Settings</h2><div class="shl"></div>
    ${stRow('user','Profile Settings','Name, photo, class and target exam','openProfile()')}
    ${stRow('palette','Theme &amp; Colours','Light, dark and colour palette','openLook()')}
+   ${stRow('vol','Opening Sound',sndOn()?SND_ON:SND_OFF,'sndToggle()',`<span class="tkoff${sndOn()?' on':''}" id="sndsw"><i></i></span>`)}
    ${stRow('bell','Phone Notifications',np?'On · new notices appear on your phone':'Get new notices in your phone’s notification bar','npToggle()',`<span class="tkoff${np?' on':''}" id="npsw"><i></i></span>`)}
    ${stRow('calendar','Exam Countdown','Set your exam date','closeModal();cdEdit()')}
    ${isStandalone()?'':stRow('download','Install App','Add to your home screen','closeModal();installApp()')}
    ${stRow('file','Terms &amp; Conditions','','openTerms()')}
    <button class="btn danger block" style="margin-top:14px" onclick="closeModal();signOut()">${ic('logout')} Logout</button>`,'set');
 }
+/* sound of the start-up animation (index.html): on by default; it plays only where the phone allows (installed app) */
+IC.vol='<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 010 7"/><path d="M18.5 5.5a9 9 0 010 13"/>';
+const SND_ON='On · soft sound with the opening animation',SND_OFF='Off · the app opens silently';
+const sndOn=()=>LS.get('cbt_snd',true)!==false;
+function sndToggle(){const on=!sndOn();LS.set('cbt_snd',on);const sw=document.getElementById('sndsw');if(sw){sw.classList.toggle('on',on);const sm=sw.parentNode.querySelector('small');if(sm)sm.textContent=on?SND_ON:SND_OFF}toast(on?'Opening sound on':'Opening sound off')}
 function openAbout(){
   sheet(`<h2 class="sht">About Us</h2><div class="shl"></div><div class="legal">
    <p><b>${SN()}</b> is an online test series platform for NEET, JEE and board exam students. Our goal is simple: give every student real exam-like practice, honest analysis and the habit of regular revision.</p>

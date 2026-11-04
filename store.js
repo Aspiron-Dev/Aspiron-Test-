@@ -169,7 +169,7 @@ function show(v){
   // the new page slides in from the side of the menu item that was tapped
   if(was&&!RM){el.style.setProperty('--dx',Math.sign(VK.indexOf(v)-VK.indexOf(was))*22+'px');el.classList.remove('vin');void el.offsetWidth;el.classList.add('vin')}
   $('#crumb').textContent=VIEWS[v];
-  document.title=(v==='home'?'Store':VIEWS[v]+' · Store')+' · '+(CFG.SITE_NAME||'CBT Test Series');
+  document.title=(v==='home'?'Store':VIEWS[v]+' · Store')+' · '+(CFG.SITE_NAME||'Aspiron Education');
   navUi();
   if(v==='search')sDraw();else if(v==='me')meDraw();else if(v==='refer')rfDraw(true);
   scrollTo(0,v==='home'?VS.home||0:0);
@@ -188,7 +188,7 @@ function qFocus(){const q=$('#q');if(q)q.focus({preventScroll:true})}
 function under(st,hash){try{history.replaceState(null,'',location.pathname+location.search);history.pushState(st,'',hash);if(st.v)VH=true;else XH=true}catch(_){}}
 
 async function load(){
-  const nm=CFG.SITE_NAME||'CBT Test Series';$$('[data-sname]').forEach(e=>e.textContent=nm);
+  const nm=CFG.SITE_NAME||'Aspiron Education';$$('[data-sname]').forEach(e=>e.textContent=nm);
   const [r,lg,of]=await Promise.all([rpc('cbt_store'),rpc('cbt_store_langs'),rpc('cbt_store_offers')]);
   if(of&&of.ok)CPN=of.coupons!==false;
   if(lg&&lg.ok)LANGS=new Set((lg.items||[]).map(String));
@@ -675,7 +675,7 @@ function rfJoin(){
   rpc('cbt_refer_join',{p_ref:r.c,p_mobile:m.mobile,p_name:m.name}).then(x=>{if(x&&x.ok){r.done=m.mobile;LSs('store_rc',r)}});
 }
 const rfUrl=c=>location.href.split(/[?#]/)[0]+'?r='+encodeURIComponent(c);
-const rfMsg=c=>`${(CFG.SITE_NAME||'CBT Test Series')} — NEET / JEE test series with real exam pattern and All-India rank. I use it. Join with my link:\n${rfUrl(c)}`;
+const rfMsg=c=>`${(CFG.SITE_NAME||'Aspiron Education')} — NEET / JEE test series with real exam pattern and All-India rank. I use it. Join with my link:\n${rfUrl(c)}`;
 let RFN=0;
 async function rfDraw(fetch){
   const box=$('#rfbox'),m=ME();if(!box||!m)return;
