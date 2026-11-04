@@ -32,7 +32,7 @@
   "related_applications": [
     {
       "platform": "webapp",
-      "url": "https://aspiron-dev.github.io/Aspiron-Test-/manifest.webmanifest"
+      "url": "https://aspironeducation.com/manifest.webmanifest"
     }
   ],
   "prefer_related_applications": false

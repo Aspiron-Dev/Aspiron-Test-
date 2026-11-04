@@ -2,7 +2,7 @@
 # Checks that nothing secret or private is exposed.
 #   scripts/check-exposed.sh --local          scan this repository (files that must not be here + secret patterns)
 #   scripts/check-exposed.sh [site url]       ask the live website for files that must not be served
-#                                             (default: https://aspiron-dev.github.io/Aspiron-Test-)
+#                                             (default: https://aspironeducation.com)
 # Exit code 1 = something to fix. Needs bash, grep, curl. Prints only file names / URLs, never secret values.
 set -u
 fail=0
@@ -33,7 +33,7 @@ if [ "${1:-}" = "--local" ]; then
   exit $fail
 fi
 
-BASE="${1:-https://aspiron-dev.github.io/Aspiron-Test-}"; BASE="${BASE%/}"
+BASE="${1:-https://aspironeducation.com}"; BASE="${BASE%/}"
 code() { curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$1"; }
 for p in .env .env.local .env.production .git/HEAD .git/config .github/workflows/db-backup.yml .DS_Store backup.sql dump.sql db.sql \
          lib/tesseract-5.1.1/tesseract.min.js.map config.js.map app1.js.map store.js.map cx/core.js.map supabase/.temp/project-ref; do
