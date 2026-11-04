@@ -1263,6 +1263,28 @@ img,svg{max-width:100%}
 .tr3.st-done .tico,.tr3.st-held .tico{background:var(--okSoft);color:var(--ok)}
 .tr3 .btn[disabled]{opacity:.7}
 @media(prefers-reduced-motion:reduce){.tl3{animation:none!important}}
+/* ===== overlays (side menu, pop-ups, sheets): the page behind blurs on every phone =====
+   Before, the dark layer AND the box on top both used backdrop-filter. Android Chrome then drops the outer blur, so
+   the page behind was only dimmed. Now only the page behind is blurred (a plain filter, works everywhere) and the
+   layers on top have no backdrop-filter of their own. */
+.drw,.modal,.modal.bsheet,.sheet{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.modal .box,.modal.bsheet .box,.sheet .in,.drp{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.modal .box,.modal.bsheet .box{background:color-mix(in srgb,var(--surface) 96%,transparent)}
+.sheet .in{background:color-mix(in srgb,var(--surface) 97%,transparent)}
+#app,.hdr,.bnav{transition:filter .35s var(--ease),opacity .35s var(--ease)}
+.hdr{transition:filter .35s var(--ease),opacity .35s var(--ease),background-color .25s var(--ease),box-shadow .25s var(--ease)}
+body.ovl:not(.intest) #app,body.ovl:not(.intest) .hdr,body.ovl:not(.intest) .bnav,body.ovl:not(.intest) .instbar{filter:blur(9px) saturate(1.15);opacity:.9;pointer-events:none}
+/* side menu: a little more premium */
+.drw{background:rgba(5,8,20,.42)}
+.drp.sb{background:color-mix(in srgb,var(--bg) 94%,transparent)!important;border-right:1px solid var(--hair);box-shadow:24px 0 60px -20px rgba(0,0,0,.45)}
+.drp .dri{animation:driIn .5s var(--ease) both}
+.drp .dri:nth-child(1){animation-delay:.04s}.drp .dri:nth-child(2){animation-delay:.07s}.drp .dri:nth-child(3){animation-delay:.1s}.drp .dri:nth-child(4){animation-delay:.13s}.drp .dri:nth-child(5){animation-delay:.16s}.drp .dri:nth-child(6){animation-delay:.19s}.drp .dri:nth-child(7){animation-delay:.22s}.drp .dri:nth-child(8){animation-delay:.25s}.drp .dri:nth-child(n+9){animation-delay:.28s}
+@keyframes driIn{from{opacity:0;transform:translate3d(-14px,0,0)}}
+.sb .dri{transition:background .2s var(--ease),transform .3s var(--spring)}
+.sb .dri:active{transform:scale(.97)}
+.sb .dri.on{background:color-mix(in srgb,var(--pri) 12%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--pri) 20%,transparent)}
+body.intest .modal{-webkit-backdrop-filter:blur(8px)!important;backdrop-filter:blur(8px)!important}
+@media(prefers-reduced-motion:reduce){.drp .dri{animation:none}#app,.hdr,.bnav{transition:none}}
 </style>
 <script>(function(){try{var h=document.documentElement,t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';h.dataset.accent=JSON.parse(localStorage.getItem('cbt_accent'))||'cyber'}catch(e){document.documentElement.dataset.theme='light';document.documentElement.dataset.accent='cyber'}})()</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6', 'app7', 'app8', 'app9', 'app10', 'app11', 'app12', 'app13', 'app14', 'app15', 'app16', 'app17', 'app18'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
@@ -1303,5 +1325,11 @@ img,svg{max-width:100%}
 <script src="app17.js?v=1" onerror="(window.__miss=window.__miss||[]).push('app17.js')"></script>
 <script src="app18.js?v=4" onerror="(window.__miss=window.__miss||[]).push('app18.js')"></script>
 
+<script>
+/* blur the page behind whenever the side menu / a pop-up / a sheet is open (watches #layer) */
+(function(){var L=document.getElementById('layer');if(!L)return;
+function sync(){var on=!!L.querySelector('.drw,.modal');document.body.classList.toggle('ovl',on)}
+new MutationObserver(sync).observe(L,{childList:true,subtree:true});sync()})();
+</script>
 </body>
 </html>
