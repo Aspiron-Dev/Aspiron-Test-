@@ -1,4 +1,4 @@
-# Security alerts by e-mail (R3, supabase_v47_alerts_results.sql). Every hour this asks the database for serious
+# Security alerts by e-mail (R3, supabase_v47_alerts_results.sql). Once a day this asks the database for serious
 # security events not reported yet (wrong passwords many times, locked sign-ins, 2FA turned off, team or password
 # changes, recovery codes used, …). If there are any, this check FAILS, so GitHub sends the owner a "Run failed"
 # e-mail. Details are only in Admin → Team & access → Security alerts; this log shows only the kind and how many.
@@ -6,7 +6,7 @@
 name: Security alerts
 on:
   schedule:
-    - cron: '17 * * * *'         # every hour
+    - cron: '17 3 * * *'          # once a day, 8:47 AM India time (saves free Actions minutes)
   workflow_dispatch: {}
 permissions:
   contents: read
