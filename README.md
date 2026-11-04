@@ -2,6 +2,8 @@
 
 Static website on GitHub Pages + Supabase (database functions). No build step: upload the files and they are live.
 
+**Pending work, task by task:** `PENDING.md`.
+
 ## Pages
 | Page | What it is | Scripts |
 |---|---|---|
