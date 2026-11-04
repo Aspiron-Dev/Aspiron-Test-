@@ -165,6 +165,8 @@ function start() {
   $('ax-theme').onclick = () => { AX.theme.toggle(); AX.set($('ax-theme'), icon(AX.theme.get() === 'dark' ? 'sun' : 'moon')); };
   document.querySelector('.ax-side').addEventListener('click', e => { if (e.target.closest('#ax-me')) profileMenu(e.target.closest('#ax-me')); });
   window.onhashchange = route;
+  // the installed app opens with ?app=control (its app id); keep the address short
+  if (location.search) history.replaceState(null, '', location.pathname + location.hash);
   if (!location.hash || location.hash === '#' || location.hash === '#/') history.replaceState(null, '', '#/home');
   route();
   refreshAttention();
