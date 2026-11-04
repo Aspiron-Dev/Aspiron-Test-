@@ -25,8 +25,8 @@ Live database Claude ko nahi dikhta. Jo kaam pehle hi ho chuka ho, use seedha ti
   (Task 2.3 ke baad naya email daal dena). *Check:* Admin → Broadcasts se test notification phone par aata hai.
 - [x] **1.3 2FA on karo:** GitHub, Supabase, dono Gmail, Telegram, domain registrar.
 - [x] **1.4 GitHub settings:** Settings → Code security → Secret scanning + Push protection ON. Settings → Pages → Enforce HTTPS ON.
-- [ ] **1.5 GitHub Actions** → "Backup restore drill" → Run workflow. "Security alerts" → Run workflow. *Check:* dono green.
-- [ ] **1.6 Admin → Team & access:** jo log chale gaye unhe hatao, jahan ho sake Full ki jagah View do, "Require two-step sign-in" ON karo.
+- [x] **1.5 GitHub Actions** → "Backup restore drill" → Run workflow. "Security alerts" → Run workflow. *Check:* dono green.
+- [x] **1.6 Admin → Team & access:** jo log chale gaye unhe hatao, jahan ho sake Full ki jagah View do, "Require two-step sign-in" ON karo.
 - [ ] **1.7 R11, backup ke liye read-only login:** `supabase_backup_role.sql` chalao + GitHub secret `SUPABASE_BACKUP_DB_URL` (`BACKUP.md` → "Read-only login").
 - [ ] **1.8 R7, purani Supabase keys band karo:** `SECURITY_RUNBOOK.md` §7 (naya secret key → test notification → tab legacy keys off).
   Notification test kiye bina keys band mat karna.
