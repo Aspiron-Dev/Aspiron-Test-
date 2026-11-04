@@ -50,6 +50,8 @@ create table if not exists cbt_private.refer_settings (
   updated_at timestamptz not null default now()
 );
 insert into cbt_private.refer_settings (id) values (1) on conflict (id) do nothing;
+-- the store's coupon box on / off (Admin → Coupons & Refer → Coupons → "Coupon box on the store"); off = no box, no code works
+alter table cbt_private.refer_settings add column if not exists coupons_on boolean not null default true;
 
 -- one referral code per mobile number
 create table if not exists cbt_private.refer_codes (
@@ -211,6 +213,9 @@ begin
   select * into it from public.cbt_store_items where id = o.item_id and active;
   if not found then return jsonb_build_object('ok', false, 'error', 'item'); end if;
 
+  if v_cc <> '' and not coalesce((select coupons_on from cbt_private.refer_settings where id = 1), true) then
+    return jsonb_build_object('ok', false, 'error', 'coupon_off');
+  end if;
   if v_cc <> '' then
     select * into c from cbt_private.store_coupons where item_id = it.id and code = v_cc and active;
     if not found then perform public.cbt_store_wrong(); return jsonb_build_object('ok', false, 'error', 'coupon'); end if;
@@ -310,6 +315,7 @@ begin
 
   if p_action = 'get' then
     return jsonb_build_object('ok', true, 'now', floor(extract(epoch from now()) * 1000)::bigint,
+      'on', coalesce((select coupons_on from cbt_private.refer_settings where id = 1), true),
       'items', coalesce((select jsonb_agg(jsonb_build_object('id', i.id, 'title', i.title, 'price', i.price, 'active', i.active,
           'course', to_jsonb(i)->>'course', 'section', to_jsonb(i)->>'section') order by i.sort_order, i.created_at) from public.cbt_store_items i), '[]'::jsonb),
       'coupons', coalesce((select jsonb_agg(jsonb_build_object('item_id', c.item_id, 'code', c.code, 'kind', c.kind, 'value', c.value, 'active', c.active,
@@ -345,6 +351,12 @@ begin
       n := n + 1;
     end loop;
     return jsonb_build_object('ok', true, 'saved', n);
+  end if;
+
+  if p_action = 'switch' then
+    if coalesce(d->>'on', '') !~ '^(true|false)$' then return jsonb_build_object('ok', false, 'error', 'action'); end if;
+    update cbt_private.refer_settings set coupons_on = (d->>'on')::boolean, updated_at = now() where id = 1;
+    return jsonb_build_object('ok', true, 'on', (d->>'on')::boolean);
   end if;
 
   if p_action = 'remove' then
@@ -429,13 +441,19 @@ begin
   end if;
   return jsonb_build_object('ok', false, 'error', 'action');
 end $$;
+-- ---------- store page: which offers are on (coupon box, Refer & earn) ----------
+create or replace function public.cbt_store_offers()
+returns jsonb language sql stable security definer set search_path = cbt_private, public, pg_temp as $$
+  select jsonb_build_object('ok', true, 'coupons', coupons_on, 'refer', active, 'reward', reward) from cbt_private.refer_settings where id = 1
+$$;
+
 -- only the website's anon role may call these (never PUBLIC / authenticated)
 revoke all on function public.cbt_admin_coupons(text, text, jsonb), public.cbt_admin_refer(text, text, jsonb),
   public.cbt_store_order_apply(text, text, text, boolean), public.cbt_refer_me(text, text), public.cbt_refer_join(text, text, text),
-  public.cbt_refer_app(text, text, text) from public, authenticated;
+  public.cbt_refer_app(text, text, text), public.cbt_store_offers() from public, authenticated;
 grant execute on function public.cbt_admin_coupons(text, text, jsonb), public.cbt_admin_refer(text, text, jsonb),
   public.cbt_store_order_apply(text, text, text, boolean), public.cbt_refer_me(text, text), public.cbt_refer_join(text, text, text),
-  public.cbt_refer_app(text, text, text) to anon;
+  public.cbt_refer_app(text, text, text), public.cbt_store_offers() to anon;
 
 notify pgrst, 'reload schema';
 select 'v52 installed: store coupons + Refer & Earn wallet — now run supabase_v35_admin_team.sql again' as status;

@@ -64,7 +64,9 @@ function coupons(el) {
   const G = groupsOf(d), live = (d.coupons || []).filter(c => state(c, now) === 'live');
   const paid = (d.coupons || []).reduce((s, c) => s + (+c.paid || 0), 0), given = (d.coupons || []).reduce((s, c) => s + (+c.off_total || 0), 0);
   const none = (d.items || []).filter(i => !(d.coupons || []).some(c => c.item_id === i.id));
-  AX.set(el, h`<div class="kpis">
+  AX.set(el, h`<div class="card of-sw ${d.on === false ? 'off' : ''}"><span class="of-swi">${icon('tag', 20)}</span><div class="grow"><b>Coupon box on the store</b><div class="xs mut">${d.on === false ? 'Off — students do not see “Have a coupon code?” and no code works.' : 'On — students see “Have a coupon code?” at checkout.'}</div></div>
+      ${raw(String(AX.f.switch({ name: 'cpn_on', value: d.on !== false, label: d.on === false ? 'Off' : 'On', disabled: !m })).replace('name="cpn_on"', 'name="cpn_on" data-act="cpnsw" aria-label="Coupon box on the store"'))}</div>
+    <div class="kpis mt16">
       ${UI.kpi({ label: 'Coupons working now', value: fmt.num(live.length), icon: 'tag', hero: true, foot: fmt.plural(G.length, 'code') + ' · ' + fmt.plural((d.coupons || []).length, 'series', 'series') })}
       ${UI.kpi({ label: 'Paid with a coupon', value: fmt.num(paid), icon: 'cart', tone: 'ok', foot: 'approved orders' })}
       ${UI.kpi({ label: 'Discount given', value: fmt.inr(given), icon: 'percent', tone: 'gold', foot: 'on approved orders' })}
@@ -80,6 +82,16 @@ function coupons(el) {
         <footer class="row gap8 wrap">${UI.copyBtn(g.code, 'Copy code')}<button class="btn xs ghost" data-act="msg" data-code="${g.code}">${icon('msg', 13)} Message</button><span class="sp grow"></span>${m ? h`<button class="btn xs ghost" data-act="rmcode" data-code="${g.code}">${icon('trash', 13)} Remove</button>` : ''}</footer>
       </article>`; })}</div>`
     : h`<div class="card mt16">${UI.empty({ icon: 'tag', title: 'No coupons yet', text: 'Make one for a festival or an offer — e.g. DIWALI: Biology ₹100 off, Chemistry 20% off, till Sunday night.', action: m ? h`<button class="btn pri" data-act="new">${icon('plus', 16)} New coupon</button>` : '' })}</div>`}`);
+  AX.act(el, {
+    async cpnsw(inp) {
+      const on = !!inp.checked;
+      if (!on && !(await UI.confirm({ title: 'Turn the coupon box off?', text: 'Students will not see “Have a coupon code?” on the store, and no coupon code works until you turn it on again. Your coupons are kept.', yes: 'Turn off' }))) { inp.checked = true; return; }
+      inp.disabled = true;
+      const r = await AX.api.call('cbt_admin_coupons', 'switch', { on });
+      if (!r.ok) { inp.checked = !on; inp.disabled = false; return UI.toast(r.error === 'action' ? 'Run supabase_v52_coupons_refer.sql again, then supabase_v35_admin_team.sql' : errText(r), { tone: 'bad' }); }
+      UI.toast(on ? 'Coupon box is on' : 'Coupon box is off'); repaint();
+    }
+  }, 'change');
   AX.act(el, {
     new: () => editCode(null),
     edit: b => editCode(b.dataset.code),
@@ -241,6 +253,10 @@ function adjust(mobile) {
 AX.css('offers', `
 .of-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:16px;align-items:start}
 .of-card{display:flex;flex-direction:column;gap:12px}
+.of-sw{display:flex;align-items:center;gap:14px}
+.of-sw .sw{flex:none}
+.of-swi{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex:none;background:var(--pri-soft);color:var(--pri)}
+.of-sw.off .of-swi{background:var(--hover);color:var(--mut)}
 .of-card.dim{opacity:.75}
 .of-code{font-size:17px;font-weight:800;letter-spacing:.06em;padding:6px 12px;border-radius:var(--r-md);border:1.5px dashed var(--pri);color:var(--pri);background:var(--pri-soft);flex:none}
 .of-list .li{padding:10px 0}

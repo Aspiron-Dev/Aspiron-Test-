@@ -189,7 +189,8 @@ function under(st,hash){try{history.replaceState(null,'',location.pathname+locat
 
 async function load(){
   const nm=CFG.SITE_NAME||'CBT Test Series';$$('[data-sname]').forEach(e=>e.textContent=nm);
-  const [r,lg]=await Promise.all([rpc('cbt_store'),rpc('cbt_store_langs')]);
+  const [r,lg,of]=await Promise.all([rpc('cbt_store'),rpc('cbt_store_langs'),rpc('cbt_store_offers')]);
+  if(of&&of.ok)CPN=of.coupons!==false;
   if(lg&&lg.ok)LANGS=new Set((lg.items||[]).map(String));
   if(!r.ok){
     LOADED=-1;$('#kpis').hidden=true;
@@ -598,7 +599,8 @@ function payStep(){
     <button class="btn ${mob?'line':'pri'} lg block" data-step="paid">${I('check')}I have already paid ${I('next')}</button>`);
 }
 /* ---------- coupon code + wallet (supabase_v52): applied on the server to this order; the page never sets a price ---------- */
-let OFFER=null,WAL=null;   // OFFER false = the server has no coupons yet (v52 not run) · WAL = {balance, code, …} of this number
+let OFFER=null,WAL=null,CPN=true;   // CPN = the coupon box is on (Admin → Coupons & Refer → Coupons)
+   // OFFER false = the server has no coupons yet (v52 not run) · WAL = {balance, code, …} of this number
 async function walLoad(make){
   const m=ME();if(!m)return null;
   const r=await rpc('cbt_refer_me',{p_mobile:m.mobile,p_name:make?m.name:null});
@@ -614,14 +616,15 @@ function priceSplit(){
 function offerHtml(){
   if(OFFER===false||ORD.payer)return '';
   const bal=WAL?(+WAL.balance||0):0,used=+ORD.wallet_used||0,can=bal+used;
+  if(!CPN&&!ORD.coupon_code&&can<=0)return '';
   return `<div class="offer">
-   ${ORD.coupon_code?`<div class="cpok">${I('gift')}<span class="grow"><b class="code">${esc(ORD.coupon_code)}</b> applied · you save ${inr(ORD.coupon_off)}</span><button class="btn xs line" data-cpx>Remove</button></div>`
+   ${!CPN&&!ORD.coupon_code?'':ORD.coupon_code?`<div class="cpok">${I('gift')}<span class="grow"><b class="code">${esc(ORD.coupon_code)}</b> applied · you save ${inr(ORD.coupon_off)}</span><button class="btn xs line" data-cpx>Remove</button></div>`
     :`<div class="cpn"><div class="inp-wrap grow">${I('gift')}<input class="inp" id="cpi" maxlength="24" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Have a coupon code?" aria-label="Coupon code"></div><button class="btn line" data-cpgo>Apply</button></div>`}
    ${can>0?`<button type="button" class="walb${used?' on':''}" role="switch" aria-checked="${!!used}" data-wal><span class="hic ok">${I('card')}</span><span class="grow"><b>Use wallet balance</b><small>${used?`${inr(used)} used · ${inr(Math.max(0,can-used))} left`:`${inr(can)} available from Refer &amp; earn`}</small></span><span class="tgl" aria-hidden="true"></span></button>`:''}
    <div class="err" id="cper" role="alert"></div></div>`;
 }
 function offerUi(){const b=$('#offer');if(b)b.innerHTML=offerHtml()}
-const OFERR={coupon:'This coupon code does not work for this test series.',coupon_expired:'This coupon has ended.',coupon_soon:'This coupon has not started yet.',
+const OFERR={coupon:'This coupon code does not work for this test series.',coupon_off:'Coupons are not available right now.',coupon_expired:'This coupon has ended.',coupon_soon:'This coupon has not started yet.',
   locked:'This order can no longer change. Close and tap Buy now again.',order:'This order was not found. Close and tap Buy now again.',busy:'Too many tries. Please wait a while and try again.',
   network:'No internet. Please try again.',item:'This series is not available right now.'};
 async function offerGo(coupon,wallet,btn){
@@ -631,6 +634,7 @@ async function offerGo(coupon,wallet,btn){
   if(btn&&btn.isConnected){btn.disabled=false;btn.innerHTML=btn.dataset.t}
   if(!r.ok){
     if(r.error==='missing'){OFFER=false;offerUi();return}
+    if(r.error==='coupon_off'){CPN=false;offerUi();toast(OFERR.coupon_off,'alert','bad');return}
     const e=$('#cper');if(e)e.textContent=OFERR[r.error]||'Something went wrong. Please try again.';shake($('#cpi')||$('.walb'));
     if(r.error==='order'||r.error==='locked')LSd('store_ord');
     return;
