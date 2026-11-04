@@ -31,7 +31,7 @@ AX.mod({
         <div class="card" id="st-db"><div class="card-h">${icon('db')}<h3>Database storage</h3></div>${UI.skeleton(3)}</div>
         ${me.owner ? h`<div class="card"><div class="card-h">${icon('history')}<h3>Backup panel</h3></div><p class="sm tx2">The previous admin panel is kept for a short time as a backup, in case you need something quickly. It uses the owner password.</p><a class="btn sm mt12" href="cp-dt764twzf54s5m-old.html" target="_blank" rel="noopener">${icon('external', 15)} Open backup panel</a></div>` : ''}
         <div class="card"><div class="card-h">${icon('globe')}<h3>Links</h3></div><div class="col gap6">
-          <a class="btn sm ghost" style="justify-content:flex-start" href="index.html" target="_blank" rel="noopener">${icon('external', 15)} Student website / app</a>
+          <a class="btn sm ghost" style="justify-content:flex-start" href="./" target="_blank" rel="noopener">${icon('external', 15)} Student website / app</a>
           <a class="btn sm ghost" style="justify-content:flex-start" href="store.html" target="_blank" rel="noopener">${icon('store', 15)} Store</a></div></div>
       </div></div>`);
     AX.act(ctx.el, {

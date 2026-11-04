@@ -1,7 +1,7 @@
 /* Service worker: lets the site be installed like an app.
    It always asks the network first, so new uploads show up at once.
    It never touches the database (Supabase) calls. */
-const CACHE='cbt-shell-v2';
+const CACHE='cbt-shell-v3';
 const SHELL=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).catch(()=>{}));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
@@ -22,7 +22,7 @@ self.addEventListener('fetch',e=>{
 // Tap on a phone notification: open (or focus) the app on the Notifications page.
 self.addEventListener('notificationclick',e=>{
   e.notification.close();
-  const url=new URL('index.html'+((e.notification.data&&e.notification.data.url)||''),self.registration.scope).href;
+  const url=new URL('./'+((e.notification.data&&e.notification.data.url)||''),self.registration.scope).href;
   e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(l=>{
     for(const c of l){if('focus' in c){c.navigate(url).catch(()=>{});return c.focus()}}
     return clients.openWindow(url);
