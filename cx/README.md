@@ -88,6 +88,7 @@ check `errors` is empty, `H.unknown` lists no unexpected calls, and `H.overflow(
 | pyq | m-pyq.js | PYQ bank | Academics / 60 | content |
 | orders | m-orders.js | Orders | Commerce / 10 | store |
 | store | m-store.js | Store | Commerce / 20 | store |
+| offers | m-offers.js | Coupons & Refer | Commerce / 25 | store |
 | promos | m-promos.js | Promotions | Commerce / 30 | promotions |
 | messages | m-messaging.js | Broadcasts | Engagement / 10 | messaging |
 | reviews | m-reviews.js | Reviews | Engagement / 20 | reviews |

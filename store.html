@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="store.css?v=4">
+<link rel="stylesheet" href="store.css?v=5">
 </head>
 <body>
 <!-- icons: the admin console's line icons (24 grid, 1.8 stroke), plus the WhatsApp / Telegram logos -->
@@ -107,6 +107,7 @@
       <a class="ni" href="#" data-go="home"><svg class="i" aria-hidden="true"><use href="#i-home"/></svg><span class="lt">Home</span></a>
       <a class="ni" href="#/search" data-go="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="lt">Search</span><kbd class="kbd">/</kbd></a>
       <a class="ni" href="#/reviews" data-go="reviews"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg><span class="lt">Reviews</span><em class="nb" id="nrv" hidden></em></a>
+      <a class="ni" href="#/refer" data-go="refer"><svg class="i" aria-hidden="true"><use href="#i-gift"/></svg><span class="lt">Refer &amp; earn</span></a>
       <span class="ng">Support</span>
       <a class="ni" href="#/help" data-go="help"><svg class="i" aria-hidden="true"><use href="#i-help"/></svg><span class="lt">Help &amp; FAQ</span></a>
       <a class="ni" href="#" data-help><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span class="lt">Chat with us</span></a>
@@ -142,6 +143,7 @@
             <div class="wcard"><span class="wic info"><svg class="i" aria-hidden="true"><use href="#i-bulb"/></svg></span><b>Solutions</b><p>Clear explanation for every question.</p></div>
           </div>
         </section>
+        <a class="card rfpro rvl" href="#/refer" data-go="refer"><span class="hic gold"><svg class="i" aria-hidden="true"><use href="#i-gift"/></svg></span><span class="grow"><b>Refer &amp; earn</b><small>Share your link — get wallet money for every friend who buys a test series.</small></span><svg class="i" aria-hidden="true"><use href="#i-cr"/></svg></a>
         <section class="blk rvl" id="rvhome" hidden></section>
         <div class="cta rvl">
           <span class="cta-ic"><svg class="i" aria-hidden="true"><use href="#i-card"/></svg></span>
@@ -192,6 +194,12 @@
         </div>
       </section>
 
+      <!-- Refer & earn: the student's link, friends joined / bought, wallet (supabase_v52) -->
+      <section class="view" id="v-refer" data-v="refer" hidden>
+        <div class="ph"><div class="pt"><span class="eyebrow">Refer &amp; earn</span><h1>Invite friends, earn wallet money</h1><p class="ps">Share your link. Money for every new friend who buys — use it for your next test series.</p></div></div>
+        <div id="rfbox"></div>
+      </section>
+
       <!-- Profile: details, course, theme, the last order -->
       <section class="view" id="v-me" data-v="me" hidden>
         <div class="ph"><div class="pt"><span class="eyebrow">Profile</span><h1>Your profile</h1><p class="ps">Your details, course, theme and your last order.</p></div></div>
@@ -215,6 +223,6 @@
 <div id="tst" aria-live="polite"></div>
 <script src="config.js?v=5"></script>
 <script src="qrcode.js"></script>
-<script src="store.js?v=29"></script>
+<script src="store.js?v=30"></script>
 </body>
 </html>

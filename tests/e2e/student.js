@@ -98,6 +98,28 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   const pd = await p.evaluate(async (code) => await rpc('cbt_store_paid', { p_code: code, p_mobile: '9876543210', p_payer: 'Test Buyer', p_utr: 'UTR123456' }), r1.code);
   ok(pd.ok && pd.status === 'pending', 'store: buyer can still save payer + UTR');
   ok(!errs.length, 'no page errors (store) ' + errs.join(' | ')); await c.close();
+  // 5b. v52: referral link, coupon box and wallet at checkout (the price is set on the server only)
+  const rcode = (await q(`select public.cbt_refer_me('9811100001','Priya Verma') r`))[0].r.code;
+  await q(`insert into cbt_private.store_coupons(item_id,code,kind,value,ends_at) values ('cccccccc-0000-0000-0000-000000000001','DIWALI','pct',20,now()+interval '5 days')
+           on conflict (item_id) do update set code='DIWALI', kind='pct', value=20, starts_at=now()-interval '1 minute', ends_at=now()+interval '5 days', active=true`);
+  ({ c, p, errs } = await mk());
+  await p.addInitScript(() => { if (!sessionStorage.getItem('s')) { sessionStorage.setItem('s', 1); localStorage.setItem('store_me', JSON.stringify({ name: 'Aman Gupta', mobile: '9822200002', course: 'neet' })); } });
+  await p.goto(BASE + 'store.html?r=' + rcode); await p.waitForTimeout(2500);
+  ok((await q(`select referrer from cbt_private.refer_links where mobile='9822200002'`)).length === 1, 'refer: a new student who opens the link is joined to the sharer');
+  await p.click('[data-buy]'); await p.waitForSelector('#cpi');
+  await p.fill('#cpi', 'WRONG1'); await p.click('[data-cpgo]'); await p.waitForTimeout(800);
+  ok(/does not work/.test(await p.textContent('#cper')), 'coupon: a wrong code is refused');
+  await p.fill('#cpi', 'diwali'); await p.press('#cpi', 'Enter'); await p.waitForTimeout(1200);
+  ok((await p.textContent('.amt b')).includes('400'), 'coupon: DIWALI 20% takes ₹499 to ₹400');
+  await q(`insert into cbt_private.wallet_txn(mobile,amount,kind,note) values ('9822200002',450,'admin','e2e')`);
+  await p.evaluate(() => { WAL = null; payStep(); }); await p.waitForSelector('[data-wal]');
+  await p.click('[data-wal]'); await p.waitForSelector('[data-walgo]');
+  const wo = (await q(`select amount, wallet_used, coupon_off from public.cbt_store_orders where mobile='9822200002' order by created_at desc limit 1`))[0];
+  ok(wo.amount === 0 && wo.wallet_used === 400 && wo.coupon_off === 99, 'wallet: pays the rest of the order (₹0 left to pay)');
+  await p.click('[data-close]'); await p.waitForTimeout(500); await p.evaluate(() => go('refer')); await p.waitForTimeout(1500);
+  ok(/aman00002/.test(await p.textContent('#rfbox')) && /₹50/.test(await p.textContent('#rfbox')), 'refer page: own link and wallet balance');
+  ok(!(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth)), 'refer page: no sideways scroll on a phone');
+  ok(!errs.length, 'no page errors (coupon / wallet / refer) ' + errs.join(' | ')); await c.close();
   // 6. checklist C/D in the app: banner link, file view, access request message
   ({ c, p, errs } = await mk());
   await p.goto(BASE + 'index.html'); await p.waitForSelector('#ph');
@@ -107,6 +129,8 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   await p.evaluate(() => openFile('ffffffff-0000-0000-0000-000000000002')); await p.waitForTimeout(1500);
   const view = await p.$$eval('.modal a', a => a.map(x => x.textContent.trim()));
   ok(!view.some(t => /View/.test(t)), 'HTML file offered only as a download, never opened: ' + view.join('|'));
+  await p.evaluate(() => { try { closeModal(); } catch (e) {} location.hash = '#/refer'; }); await p.waitForTimeout(2000);
+  ok(/store\.html\?r=paid00002$/.test(await p.textContent('.rfu span')), 'app refer page: the link opens the store with the student\'s code');
   ok(!errs.length, 'no page errors (checklist C/D) ' + errs.join(' | ')); await c.close();
   ({ c, p, errs } = await mk());
   await p.goto(BASE + 'index.html'); await p.waitForSelector('#ph');

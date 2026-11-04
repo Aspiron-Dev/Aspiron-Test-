@@ -351,6 +351,73 @@ select pg_temp.chk('18i R13 a refused request answers HTTP 429 with Retry-After'
   (select not cbt_private.rate_ok('bbbbbbbb-0000-0000-0000-00000000000a', 't429', 0)
           and current_setting('response.status', true) = '429' and current_setting('response.headers', true) like '%Retry-After%'));
 
+-- ===== 19. v52 coupons + Refer & Earn wallet =====
+select set_config('request.headers', '{"x-real-ip":"198.51.100.52"}', false);
+select public.cbt_admin_login('','OwnerPass2026x','X', cbt_private.adm_totp(:'sec', floor(extract(epoch from now())/30)::bigint + 1))->>'token' as ow5 \gset
+select public.cbt_admin_coupons(:'ow5','set',jsonb_build_object('item_id','cccccccc-0000-0000-0000-000000000001','code','diwali','kind','flat','value',100,
+  'ends_at', floor(extract(epoch from now() + interval '3 days') * 1000)::bigint))->>'ok' as cset \gset
+select pg_temp.chk('19a admin sets one coupon for a series (code saved in capitals)', :'cset' = 'true'
+  and (select code = 'DIWALI' and value = 100 from cbt_private.store_coupons where item_id = 'cccccccc-0000-0000-0000-000000000001'));
+select pg_temp.chk('19b a flat coupon above the price is refused',
+  public.cbt_admin_coupons(:'ow5','set',jsonb_build_object('item_id','cccccccc-0000-0000-0000-000000000001','code','BIG','kind','flat','value',5000,
+    'ends_at', floor(extract(epoch from now() + interval '3 days') * 1000)::bigint))->>'error' = 'value');
+set role anon;
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Coupon Buyer','9822222222')->>'code' as co1 \gset
+select pg_temp.chk('19c the right coupon takes the discount from the database price',
+  (select (r->>'amount')::int = 399 and (r->>'coupon_off')::int = 100 from (select public.cbt_store_order_apply(:'co1','9822222222','diwali',false) r) x));
+select pg_temp.chk('19d any other code is refused', public.cbt_store_order_apply(:'co1','9822222222','NEWYEAR',false)->>'error' = 'coupon');
+select pg_temp.chk('19e someone else''s order cannot be changed', public.cbt_store_order_apply(:'co1','9833333333','DIWALI',false)->>'error' = 'order');
+reset role;
+update cbt_private.store_coupons set starts_at = now() - interval '2 days', ends_at = now() - interval '1 minute';
+set role anon;
+select pg_temp.chk('19f an ended coupon stops working', public.cbt_store_order_apply(:'co1','9822222222','DIWALI',false)->>'error' = 'coupon_expired');
+reset role;
+select public.cbt_admin_coupons(:'ow5','remove','{"item_id":"cccccccc-0000-0000-0000-000000000001"}')->>'ok';
+set role anon;
+select pg_temp.chk('19g a removed coupon stops working', public.cbt_store_order_apply(:'co1','9822222222','DIWALI',false)->>'error' = 'coupon');
+-- referral: A shares, B joins and buys, A gets the reward once
+select public.cbt_refer_me('9844444444','Rahul Sharma')->>'code' as rc \gset
+select pg_temp.chk('19h the referral code is first name + last 5 digits', :'rc' = 'rahul44444');
+select public.cbt_refer_join(:'rc','9844444444','Rahul Sharma')->>'ok';
+select public.cbt_refer_join(:'rc','9855555555','Friend One')->>'ok';
+select public.cbt_refer_join(:'rc','9000000002','Old Student')->>'ok';
+reset role;
+select pg_temp.chk('19i own number and existing students are not joined; a new number is',
+  (select count(*) from cbt_private.refer_links where referrer = '9844444444') = 1
+  and exists (select 1 from cbt_private.refer_links where mobile = '9855555555'));
+select pg_temp.chk('19j joining alone earns nothing', cbt_private.wallet_balance('9844444444') = 0);
+set role anon;
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Friend One','9855555555')->>'code' as fo1 \gset
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Friend One','9855555555')->>'code' as fo2 \gset
+reset role;
+select public.cbt_admin_store(:'ow5','order_status',jsonb_build_object('code',:'fo1','status','paid'))->>'ok';
+select public.cbt_admin_store(:'ow5','order_status',jsonb_build_object('code',:'fo2','status','paid'))->>'ok';
+select pg_temp.chk('19k a referred student''s purchase gives the reward once (₹25)', cbt_private.wallet_balance('9844444444') = 25
+  and (select count(*) from cbt_private.wallet_txn where mobile = '9844444444' and kind = 'refer') = 1);
+select public.cbt_admin_store(:'ow5','order_status',jsonb_build_object('code',:'fo1','status','pending'))->>'ok';
+select pg_temp.chk('19l undoing the approval takes the reward back', cbt_private.wallet_balance('9844444444') = 0);
+select public.cbt_admin_store(:'ow5','order_status',jsonb_build_object('code',:'fo1','status','paid'))->>'ok';
+-- wallet: used once, never twice, given back when the order is rejected
+select public.cbt_admin_refer(:'ow5','adjust','{"mobile":"9844444444","amount":"475","note":"test"}')->>'ok';
+set role anon;
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Rahul Sharma','9844444444')->>'code' as wo1 \gset
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Rahul Sharma','9844444444')->>'code' as wo2 \gset
+select pg_temp.chk('19m the wallet pays the order (₹500 → ₹0 to pay)',
+  (select (r->>'amount')::int = 0 and (r->>'wallet_used')::int = 499 from (select public.cbt_store_order_apply(:'wo1','9844444444','',true) r) x));
+select pg_temp.chk('19n the same money cannot pay a second order',
+  (select (r->>'wallet_used')::int = 1 and (r->>'amount')::int = 498 from (select public.cbt_store_order_apply(:'wo2','9844444444','',true) r) x));
+reset role;
+select public.cbt_admin_store(:'ow5','order_status',jsonb_build_object('code',:'wo1','status','rejected'))->>'ok';
+select pg_temp.chk('19o a rejected order gives the wallet money back', cbt_private.wallet_balance('9844444444') = 499);
+select pg_temp.chk('19p the wallet cannot be taken below zero by the admin',
+  public.cbt_admin_refer(:'ow5','adjust','{"mobile":"9844444444","amount":"-5000"}')->>'error' = 'too_much');
+select pg_temp.chk('19q anon cannot read the wallet or coupon tables', not has_table_privilege('anon','cbt_private.wallet_txn','select')
+  and not has_table_privilege('anon','cbt_private.store_coupons','select'));
+select pg_temp.chk('19r a view-only team member cannot set coupons or add wallet money',
+  public.cbt_admin_coupons(:'vt','remove_code','{"code":"DIWALI"}')->>'error' = 'forbidden'
+  and public.cbt_admin_refer(:'vt','adjust','{"mobile":"9844444444","amount":"100"}')->>'error' = 'forbidden');
+select set_config('request.headers', '{"x-real-ip":"203.0.113.10"}', false);
+
 -- ===== report =====
 \t off
 \a

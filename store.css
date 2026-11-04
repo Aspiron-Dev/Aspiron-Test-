@@ -833,3 +833,47 @@ html.anim .secs:not(.noanim) .sech{animation:rise .55s var(--out) backwards;anim
 .lgb:hover{border-color:var(--pri);transform:translateY(-1px)}
 .lgb b{font-size:15px}.lgb small{font-size:12.5px;color:var(--mut)}
 .lgl{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;margin-bottom:8px;font-weight:800;font-size:17px;color:#fff;background:linear-gradient(135deg,var(--pri),var(--pri-2,#7c5cff))}
+
+/* ---------- v52: coupon code + wallet at checkout, Refer & earn ---------- */
+.amt .split{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px;margin-top:6px}
+.amt .split s{color:var(--mut);font-size:14px;font-weight:600}
+.amt .split .pill{text-transform:none;letter-spacing:0}
+.amt .split .pill .i{width:13px;height:13px}
+.pill.pri{background:var(--pri-soft);color:var(--pri);border-color:transparent}
+.offer{display:flex;flex-direction:column;gap:10px;margin:0 0 14px}
+.offer .err:empty{display:none}
+.cpn{display:flex;gap:8px;align-items:stretch}
+.cpn .inp{text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.cpn .inp::placeholder{text-transform:none;letter-spacing:0;font-weight:500}
+.cpn .btn{flex:none}
+.cpok{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r-md);background:var(--ok-soft);border:1px dashed color-mix(in srgb,var(--ok) 55%,transparent);color:var(--tx);font-size:13.5px}
+.cpok>.i{color:var(--ok);flex:none}
+.walb{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 12px;border-radius:var(--r-md);border:1px solid var(--line);background:var(--solid-2);color:var(--tx);cursor:pointer;font:inherit}
+.walb .hic{width:34px;height:34px}
+.walb b{display:block;font-size:14px}
+.walb small{display:block;color:var(--mut);font-size:12px;margin-top:1px}
+.walb.on{border-color:color-mix(in srgb,var(--ok) 50%,transparent);background:var(--ok-soft)}
+.walb .tgl{flex:none;width:40px;height:24px;border-radius:99px;background:var(--line);position:relative;transition:background .2s}
+.walb .tgl::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.walb.on .tgl{background:var(--ok)}.walb.on .tgl::after{transform:translateX(16px)}
+.rfpro{display:flex;align-items:center;gap:14px;width:100%;text-align:left;color:var(--tx);text-decoration:none;cursor:pointer;font:inherit;margin:0 0 16px;border-color:color-mix(in srgb,var(--gold) 35%,transparent);background:linear-gradient(135deg,var(--gold-soft),var(--solid) 70%)}
+.rfpro b{display:block;font-size:15px}
+.rfpro small{display:block;color:var(--tx-2);font-size:12.5px;margin-top:2px}
+.rfpro>.i:last-child{color:var(--mut);flex:none}
+#v-home .rfpro{margin:18px 0 0}
+#rfbox{display:flex;flex-direction:column;gap:16px}
+.rfhero{display:flex;gap:16px;align-items:flex-start;background:linear-gradient(135deg,color-mix(in srgb,var(--gold) 18%,var(--solid)),var(--solid) 70%);border-color:color-mix(in srgb,var(--gold) 35%,transparent)}
+.rfhero h2{font-size:22px;font-weight:800;letter-spacing:-.01em;line-height:1.25;margin:2px 0 6px}
+.rfhero p{color:var(--tx-2);font-size:14px;line-height:1.55}
+.rfic{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;flex:none;background:var(--gold);color:#1b1300}
+.rfic .i{width:26px;height:26px}
+.rfu{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 12px;border-radius:var(--r-md);background:var(--solid-2);border:1px solid var(--line);margin:12px 0;min-width:0}
+.rfu .mono{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.rfa{gap:8px}
+.rfk{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.rfn{display:flex;flex-direction:column;gap:6px;padding:14px}
+.rfn span{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--mut)}
+.rfn span .i{width:15px;height:15px}
+.rfn b{font-family:var(--font-display);font-size:26px;font-weight:600;line-height:1.1}
+.rfn.ok b{color:var(--ok)}.rfn.gold b{color:var(--gold)}.rfn.pri b{color:var(--pri)}
+@media (max-width:760px){.rfk{grid-template-columns:repeat(2,minmax(0,1fr))}.rfhero{flex-direction:column}.rfa .btn{flex:1 1 auto}}
