@@ -9,7 +9,7 @@ IC.wallet='<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10
 let RF=null,RFAT=0;
 const rfStore=()=>location.href.replace(/[#?].*$/,'').replace(/[^/]*$/,'')+'store.html';
 const rfLink=c=>rfStore()+'?r='+encodeURIComponent(c);
-const rfText=c=>`${CFG.SITE_NAME||'CBT Test Series'} — NEET / JEE test series with real exam pattern and All-India rank. I use it. Join with my link:\n${rfLink(c)}`;
+const rfText=c=>`${CFG.SITE_NAME||'Aspiron Education'} — NEET / JEE test series with real exam pattern and All-India rank. I use it. Join with my link:\n${rfLink(c)}`;
 async function rfLoad(force){
   if(RF&&!force&&Date.now()-RFAT<60000)return RF;
   const r=await rpc('cbt_refer_app',{});

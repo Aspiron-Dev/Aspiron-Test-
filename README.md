@@ -1,4 +1,4 @@
-# Aspiron CBT Test Series
+# Aspiron Education
 
 Static website on GitHub Pages + Supabase (database functions). No build step: upload the files and they are live.
 
@@ -20,6 +20,14 @@ Other files: `sw.js` (installable app, always loads the newest pages), `manifest
 `lib/` (exact copies of pdf.js 3.11.174, JSZip 3.10.1 and Tesseract.js 5.1.1 from npm, so the admin page runs no script from a third-party CDN;
 the OCR worker and language data still load from jsDelivr / tessdata as before),
 `supabase/functions/send-push` (phone notifications and 🔔 test-live alerts).
+
+## Brand: name, logo, start-up animation (`index.html`, `config.js`, `manifest.webmanifest`)
+- **Name:** "Aspiron Education" everywhere (`SITE_NAME` in `config.js`, page titles, app name on the home screen, store, messages). Under ASPIRON it is always **EDUCATION** (never "Study Hub").
+- **Logo:** the letters, cap, swoosh and star are traced from the official logo into vector shapes, kept once in the hidden `#bsprite` at the top of `index.html` (`#bA` the A, `#bCap` + `#bArc` + `#bTas` the cap and tassel, `#bSw` swoosh, `#bSt` star, `#bWord` ASPIRON, `#bEdu` + `#bLnL` / `#bLnR` EDUCATION and its lines). Dark parts take the text colour, so the logo turns white in dark mode; the gold is the `#bG` gradient.
+- **Header:** ASPIRON with EDUCATION (gold) below, in the logo's own letters (`.brand .bmk`).
+- **Start-up animation** (`#splash`): the A rises, the gold swoosh sweeps across, the cap drops onto the A and its tassel swings, the star sparkles, then ASPIRON / EDUCATION appear with a gold shine (about 2.7 s, tap to skip). It plays in full once per app launch; a reload in the same session shows the logo only briefly. With *reduce motion* on, the logo shows without movement.
+- **Sound:** a soft whoosh, tap and chime made in the browser (no sound file). It plays only where the phone allows sound without a tap (the installed app on Android; not on iPhone). Students can turn it off: Settings → *Opening Sound* (`cbt_snd`).
+- **App icons:** `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png` show the logo symbol on ivory. Phones that installed the app pick up the new icon and name by themselves (Android can take a day or so).
 
 ## Coupons and Refer & earn (`supabase_v52_coupons_refer.sql`, `store.js`, `app22.js`, `cx/m-offers.js`)
 - **Coupons — Admin → Coupons & Refer → Coupons → New coupon:** a code (e.g. `DIWALI`), *Works till* (and an optional start), then a discount on each series: % off or ₹ off (Biology ₹100 off, Chemistry 20% off …). A series left empty does not take that code. **Each series has one coupon only**: only that code works for it, any other code is refused; a new code on a series replaces its old one. *Remove* stops it at once on every series; at the end time it stops by itself. *Message* copies a ready WhatsApp text with the code and the discounts. **Coupon box on the store** (switch at the top of the Coupons tab): off = students do not see “Have a coupon code?” at all and no code works (checked in the database too); on = the box is back. Your coupons are kept either way. (Needs `supabase_v52_coupons_refer.sql` run again, then `supabase_v35_admin_team.sql`.)
