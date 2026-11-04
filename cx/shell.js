@@ -220,7 +220,7 @@ function profileMenu(anchor) {
     !S.legacy ? { label: me.owner ? 'Team & access' : 'My sign-ins', icon: 'team', fn: () => AX.go('team') } : null,
     { label: AX.theme.get() === 'dark' ? 'Light theme' : 'Dark theme', icon: AX.theme.get() === 'dark' ? 'sun' : 'moon', fn: () => { AX.theme.toggle(); drawNav(); } },
     { label: 'Settings', icon: 'settings', fn: () => AX.go('settings') },
-    { label: 'Open student website', icon: 'external', href: 'index.html' },
+    { label: 'Open student website', icon: 'external', href: './' },
     { sep: true },
     { label: 'Sign out', icon: 'logout', tone: 'danger', fn: () => AX.signOut() }
   ]);
