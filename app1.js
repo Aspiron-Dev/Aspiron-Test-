@@ -127,6 +127,9 @@ function curMode(){const D=document.documentElement.dataset;return D.theme==='li
 function setMode(t){LS.set('cbt_theme',t);themeSwap(()=>{applyMode(t);syncTheme();openLook(1)})}
 /* design v2 (Aspiron Lux, design-v2.css) is the default; 'classic' = the old look. Each keeps its own colour choice. */
 function isV2(){return document.documentElement.dataset.ds!=='classic'}
+/* header logo glow: index.html defines --brand-glow (used for the glow and the shine); here the root value is set
+   to the colour the student picked in Theme settings. Runs from syncTheme(), so after every colour / mode change. */
+function brandGlow(){try{const h=document.documentElement,c=getComputedStyle(h).getPropertyValue('--pri').trim();if(c)h.style.setProperty('--brand-glow',c)}catch(e){}}
 function setAccent(a){LS.set(isV2()?'cbt_accent_v2':'cbt_accent',a);themeSwap(()=>{document.documentElement.dataset.accent=a;syncTheme();openLook(1)})}
 function updateHeader(){
   mnuUpdate();

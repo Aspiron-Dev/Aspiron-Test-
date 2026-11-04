@@ -455,7 +455,7 @@ function openProfile(){
    <div class="sm mut" style="margin:8px 0 12px">Saved on this phone only.</div>
    <button class="btn block" onclick="pfSaveAll()">${ic('check')} Save profile</button>
    <div class="row" style="margin-top:10px"><button class="btn ghost" style="flex:1" onclick="closeModal();location.hash='#/b'">${ic('star')} Saved (${BM.size})</button><button class="btn ghost" style="flex:1" onclick="openLook()">${ic('palette')} Theme</button></div>
-   <div class="badges" style="margin:14px 0">${P.badges.map(b=>`<div class="bdg ${b.on?'on':''}"><b>${b.i}</b>${b.t}</div>`).join('')}</div>
+   <div style="height:12px"></div>
    ${wa?`<a class="btn soft block" style="text-decoration:none;margin-bottom:8px" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Contact admin</a>`:''}
    <button class="btn danger block" onclick="closeModal();signOut()">Sign out</button>`,'prof');
 }
