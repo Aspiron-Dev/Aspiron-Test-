@@ -30,7 +30,7 @@ const ACT = {
   'cbt_admin_store:order_status': 'Changed an order status', 'cbt_admin_store_order:contacted': 'Logged a follow-up', 'cbt_admin_store_order:note': 'Wrote an order note',
   'cbt_admin_store_schedule:call': 'Uploaded a schedule', 'cbt_admin_store_layout:place': 'Arranged the store', 'cbt_admin_store_layout:order': 'Reordered the store', 'cbt_admin_store_layout:sections': 'Edited store sections',
   'cbt_admin_store_explore:desc': 'Edited a series page', 'cbt_admin_store_explore:demo_save': 'Saved a demo test', 'cbt_admin_store_explore:demo_delete': 'Removed a demo test',
-  'cbt_admin_store_launch:buy': 'Turned Buy now on/off', 'cbt_admin_store_launch:free': 'Turned Free booking on/off', 'cbt_admin_store_launch:notified': 'Marked the waiting list notified', 'cbt_admin_store_launch:delete': 'Removed from a waiting list',
+  'cbt_admin_store_launch:buy': 'Turned Buy now on/off', 'cbt_admin_store_launch:prebook': 'Turned Pre-booking on/off', 'cbt_admin_store_launch:notified': 'Marked the waiting list notified', 'cbt_admin_store_launch:delete': 'Removed from a waiting list',
   'cbt_admin_payments:add': 'Added a payment', 'cbt_admin_payments:update': 'Edited a payment', 'cbt_admin_payments:delete': 'Deleted a payment',
   'cbt_admin_promos:create': 'Created a promotion link', 'cbt_admin_promos:update': 'Edited a promotion link', 'cbt_admin_promos:payout_add': 'Recorded a payout', 'cbt_admin_promos:payout_delete': 'Deleted a payout', 'cbt_admin_promos:set_valid': 'Changed an order count', 'cbt_admin_promos:delete': 'Deleted a promotion link',
   'cbt_admin_banners:save': 'Saved a banner', 'cbt_admin_banners:toggle': 'Switched a banner', 'cbt_admin_banners:delete': 'Deleted a banner', 'cbt_admin_banners:order': 'Reordered banners',

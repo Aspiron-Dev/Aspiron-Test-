@@ -215,7 +215,7 @@ function itemCard(x) {
   const w = waiting(x).length, sc = T.sched && T.sched[x.id], ser = x.series_id && series(x.series_id), n = sold(x), m = can();
   const off = x.mrp && x.mrp > x.price ? Math.round((x.mrp - x.price) * 100 / x.mrp) : 0;
   return h`<article class="card pad0 st-card ${x.active === false ? 'off' : ''}">
-    <div class="st-top">${cover(x)}<div class="st-tags">${x.active === false ? UI.pill('Hidden', '') : ''}${x.buy_on === false ? UI.pill('Coming soon', 'warn') : ''}${x.free_book ? UI.pill('Free booking', 'ok') : ''}${x.badge ? UI.pill(x.badge, 'gold') : ''}</div></div>
+    <div class="st-top">${cover(x)}<div class="st-tags">${x.active === false ? UI.pill('Hidden', '') : ''}${x.buy_on === false ? UI.pill('Coming soon', 'warn') : ''}${x.buy_on === false && x.prebook ? UI.pill('Pre-booking', 'ok') : ''}${x.badge ? UI.pill(x.badge, 'gold') : ''}</div></div>
     <div class="st-b">
       <div><b class="st-tt">${x.title}</b>${x.subtitle ? h`<div class="xs mut st-sub">${x.subtitle}</div>` : ''}</div>
       <div class="row gap6 wrap"><span class="st-price">${fmt.inr(x.price)}</span>${x.mrp ? h`<s class="mut sm">${fmt.inr(x.mrp)}</s>` : ''}${off ? UI.pill(off + '% off', 'ok') : ''}</div>
@@ -265,7 +265,7 @@ function preview(x, img) {
     <div class="st-pbody"><b class="st-tt">${x.title || 'Name of the series'}</b>${x.subtitle ? h`<div class="xs mut st-sub">${x.subtitle}</div>` : ''}
       ${f.length ? h`<ul class="st-pf">${join(f, l => h`<li>${icon('check', 13)}<span>${l}</span></li>`)}</ul>` : ''}
       <div class="row gap6 mt8"><span class="st-price">${x.price ? fmt.inr(x.price) : '₹ —'}</span>${x.mrp ? h`<s class="mut sm">${fmt.inr(x.mrp)}</s>` : ''}</div>
-      <div class="st-pbtn" style="--cc:${hex(x.color)}">${x.free_book ? 'Book free' : x.buy_on === false ? 'Coming soon · Notify me' : 'Buy now'}</div></div></div>`;
+      <div class="st-pbtn" style="--cc:${hex(x.color)}">${x.buy_on === false ? (x.prebook ? 'Pre-book · ' + fmt.inr(x.price || 0) : 'Coming soon · Notify me') : 'Buy now'}</div></div></div>`;
 }
 function placeFields(course, section, pre) {
   const S2 = sectionNames();
@@ -312,12 +312,12 @@ function editItem(x0) {
         <section class="col gap16"><div class="st-sh">${icon('eye', 16)} Visibility</div>
           ${AX.f.switch({ name: 'active', value: x.active !== false, label: 'Show on the store page' })}
           ${AX.f.switch({ name: 'buy_on', value: x.buy_on !== false, label: 'Buy now is on', hint: 'Turn off for a series that is not launched yet: students see “Coming soon · Notify me”.' })}
-          ${AX.f.switch({ name: 'free_book', value: x.free_book === true, label: 'Free booking', hint: 'Students see “Book free” instead of Buy now / Notify me and book with name + mobile, no payment. Bookings come to Orders as ₹0 “Free booking” — approve & unlock them like any order. Needs supabase_v54_free_booking.sql.' })}</section>
+          ${AX.f.switch({ name: 'prebook', value: x.prebook === true, label: 'Pre-booking', hint: 'With Buy now off: students see “Pre-book” instead of “Notify me” and pay the full price now (same checkout as Buy now). The orders come to Orders tagged “Pre-booking” — approve & unlock them when the series launches. Needs supabase_v54_prebook.sql.' })}</section>
       </form></div>`,
     foot: h`${!isNew ? h`<button class="btn ghost danger" data-act="del">${icon('trash', 16)} Delete</button>` : ''}<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="save" data-busy="Saving…">${icon('check', 16)} ${isNew ? 'Add to store' : 'Save'}</button>`,
     onOpen(el, close) {
       const f = el.querySelector('#st-f'); UI.wire(f); if (v32()) wirePlace(f);
-      const read = () => { const v = AX.f.read(f); return Object.assign({}, x, { title: v.title.trim(), subtitle: v.subtitle.trim(), price: parseInt(v.price, 10) || '', mrp: v.mrp === '' ? '' : parseInt(v.mrp, 10) || 0, badge: v.badge.trim(), color: v.color, series_id: v.series_id, features: String(v.features || '').split('\n').map(s => s.trim()).filter(Boolean).slice(0, 20), active: v.active, buy_on: v.buy_on, free_book: !!v.free_book, course: v.course != null ? v.course : x.course, section: v.section != null ? clean40(v.section) : x.section }); };
+      const read = () => { const v = AX.f.read(f); return Object.assign({}, x, { title: v.title.trim(), subtitle: v.subtitle.trim(), price: parseInt(v.price, 10) || '', mrp: v.mrp === '' ? '' : parseInt(v.mrp, 10) || 0, badge: v.badge.trim(), color: v.color, series_id: v.series_id, features: String(v.features || '').split('\n').map(s => s.trim()).filter(Boolean).slice(0, 20), active: v.active, buy_on: v.buy_on, prebook: !!v.prebook, course: v.course != null ? v.course : x.course, section: v.section != null ? clean40(v.section) : x.section }); };
       const pv = () => AX.set(el.querySelector('#st-pv'), preview(read(), img));
       const ph = () => { AX.set(el.querySelector('#st-ph'), photo()); pv(); };
       f.addEventListener('input', pv); f.addEventListener('change', pv);
@@ -358,7 +358,7 @@ function editItem(x0) {
             if (fillDesc && T.demos !== null) { const s = await AX.api.call('cbt_admin_store_explore', 'desc', { item: id, description: fillDesc }); if (!s.ok) warn = 'Saved — but the Explore page description could not be saved.'; }
             if (v32() && (v.course !== (x0 ? x0.course || '' : '') || v.section !== (x0 ? x0.section || '' : ''))) { const s = await lay('place', { item: id, course: v.course || '', section: v.section || '' }); if (!s.ok) warn = s.error === 'missing' ? 'Saved — but run supabase_v32_store_layout.sql once in Supabase to set NEET / JEE and the section' : 'Saved — but NEET / JEE and the section could not be saved. Try again.'; }
             if (v.buy_on !== (x0 ? x0.buy_on !== false : true)) { const s = await AX.api.call('cbt_admin_store_launch', 'buy', { item: id, on: v.buy_on }); if (!s.ok) warn = s.error === 'missing' ? 'Saved — but run supabase_v31_store_soon.sql once in Supabase to turn Buy now off' : 'Saved — but Buy now could not be changed. Try again.'; }
-            if (!!v.free_book !== (x0 ? x0.free_book === true : false)) { const s = await AX.api.call('cbt_admin_store_launch', 'free', { item: id, on: !!v.free_book }); if (!s.ok) warn = s.error === 'action' || s.error === 'missing' ? 'Saved — but run supabase_v54_free_booking.sql once in Supabase to turn Free booking on' : 'Saved — but Free booking could not be changed. Try again.'; }
+            if (!!v.prebook !== (x0 ? x0.prebook === true : false)) { const s = await AX.api.call('cbt_admin_store_launch', 'prebook', { item: id, on: !!v.prebook }); if (!s.ok) warn = s.error === 'action' || s.error === 'missing' ? 'Saved — but run supabase_v54_prebook.sql once in Supabase to turn Pre-booking on' : 'Saved — but Pre-booking could not be changed. Try again.'; }
             close();
             await refresh();
             const it = D().items.find(z => z.id === id);

@@ -76,7 +76,7 @@ function meSave(n,m,c){
   MEM={name:n,mobile:m,course:CN[c]?c:was};LSs('store_me',MEM);CRS=MEM.course;
   document.documentElement.classList.add('has-me');meUi();
   // "You will be notified" belongs to a number: redraw those buttons for the new one
-  $$('[data-soon],[data-book]').forEach(e=>{const x=ST.items.find(i=>i.id===(e.dataset.soon||e.dataset.book));if(x)e.outerHTML=buyBtn(x,e.dataset.k)});
+  $$('[data-soon]').forEach(e=>{const x=ST.items.find(i=>i.id===e.dataset.soon);if(x)e.outerHTML=buyBtn(x,e.dataset.k)});
   if(MEM.course!==was)courseGo();
   WAL=null;rfJoin();
 }
@@ -301,11 +301,9 @@ function cardHtml(x,i){
 }
 // Buy now, or — for a series not launched yet (Buy now off in the admin panel) — "Coming soon · Notify me". short = on a card
 function buyBtn(x,short){
-  if(x.free_book===true){   // Free booking on in the admin panel (v54): "Book free" instead of Buy now / Notify me
-    const m=ME(),b=LSg('store_book',{})[x.id],done=!!m&&!!b&&b.m===m.mobile;
-    return `<button class="btn ${done?'okb':'pri'} block" data-book="${esc(x.id)}"${short?' data-k="1"':''}>${done?`${I('ok')}${short?'Booked':'Booked free'}`:`${I('gift')}Book free`}</button>`;
-  }
   if(x.buy_on!==false)return `<button class="btn pri block" data-buy="${esc(x.id)}">${I('bag')}${short?'Buy now':`Buy now · ${inr(x.price)}`}</button>`;
+  // coming soon with Pre-booking on in the admin panel (v54): pay now, the same checkout as Buy now
+  if(x.prebook===true)return `<button class="btn pri block" data-buy="${esc(x.id)}">${I('bag')}${short?'Pre-book':`Pre-book · ${inr(x.price)}`}</button>`;
   const m=ME(),done=!!m&&LSg('store_notify',{})[x.id]===m.mobile;
   return `<button class="btn ${done?'okb':'goldl'} block" data-soon="${esc(x.id)}"${short?' data-k="1"':''}>${done?`${I('ok')}${short?'Notified':'You will be notified'}`:`${I('bell')}${short?'Notify me':'Coming soon · Notify me'}`}</button>`;
 }
@@ -516,29 +514,6 @@ async function notifyGo(id){
   const x=ST.items.find(i=>i.id===id);if(x)$$(`[data-soon="${id}"]`).forEach(e=>e.outerHTML=buyBtn(x,e.dataset.k));
   soonSheet(id);
 }
-/* ---------- Free booking (supabase_v54_free_booking.sql): the admin turns it on for a series; the student books it free
-   with name + mobile, no payment. It comes to Admin → Orders as a ₹0 "Free booking" to approve & unlock. ---------- */
-function bookSheet(id){
-  const x=ST.items.find(i=>i.id===id);if(!x)return;IT=x;
-  const me=ME();if(!me)return meSheet(()=>bookSheet(id));
-  const b=LSg('store_book',{})[id],done=!!b&&b.m===me.mobile;
-  ovSet(modal({t:x.title,s:'Free booking',cls:'narrow',
-   body:`<div class="soonbox">${done?bigI('ok','ok'):bigI('gift','ok')}<b>${done?'You have booked it':'Book it free'}</b>
-    <p>${done?`Your free booking is saved. We will message you on <b>${esc(me.mobile)}</b> when it is ready for you.`:'No payment needed. Book this test series free with your name and mobile number — we will message you when it is ready.'}</p>
-    ${done?`<p class="for">Booking code: <b class="code">${esc(b.code)}</b></p>`:`<p class="for">Booking for: <b>${esc(me.name)} · ${esc(me.mobile)}</b> · <a href="#" data-bookme="${esc(id)}">change</a></p>`}</div><div class="err center" id="ber" role="alert"></div>`,
-   foot:done?'<button class="btn line lg block" data-close>OK</button>':`<button class="btn pri lg block" id="bgo" data-bookgo="${esc(id)}">${I('gift')}Book free</button>`}));
-}
-async function bookGo(id){
-  const me=ME(),b=$('#bgo'),er=$('#ber');if(!me||!b)return;
-  b.disabled=true;b.innerHTML='<span class="spin"></span>Please wait…';er.textContent='';
-  const r=await rpc('cbt_store_book',{p_item:id,p_name:me.name,p_mobile:me.mobile});
-  if(!$('#bgo'))return;
-  if(!r.ok){b.disabled=false;b.innerHTML=`${I('gift')}Book free`;
-    return er.textContent=r.error==='off'?'Free booking has closed for this series. Please refresh the page.':r.error==='busy'?'Too many tries. Please wait a while and try again.':r.error==='network'?'No internet. Please try again.':r.error==='missing'?'Free booking is not available yet. Please try again later.':'Something went wrong. Please try again.'}
-  const L=LSg('store_book',{});L[id]={m:me.mobile,code:String(r.code||'')};LSs('store_book',L);
-  const x=ST.items.find(i=>i.id===id);if(x)$$(`[data-book="${id}"]`).forEach(e=>e.outerHTML=buyBtn(x,e.dataset.k));
-  bookSheet(id);toast('Booked free');
-}
 // a series the student asked about is live now: say so once
 function liveCheck(){
   const n=LSg('store_notify',{});let ch=false;
@@ -553,7 +528,7 @@ function liveCheck(){
 /* ---------- checkout: pay → payment details → verify on Telegram / WhatsApp (3 steps; name + mobile are already known) ---------- */
 const STEPS=['Pay','Payment details','Verify'],STS=['Pay','Details','Verify'];
 function sheet(step,body,foot){
-  ovSet(modal({t:IT.title,s:`Step ${step} of 3 · ${STEPS[step-1]}`,cls:'co',body,foot,
+  ovSet(modal({t:IT.title,s:`${IT.buy_on===false?'Pre-booking · ':''}Step ${step} of 3 · ${STEPS[step-1]}`,cls:'co',body,foot,
    top:`<div class="steps" aria-hidden="true">${STS.map((s,i)=>`<div class="st${i+1<step?' done':i+1===step?' on':''}"><i>${i+1<step?I('check'):i+1}</i><span>${s}</span></div>${i<2?`<span class="sl${i+1<step?' fill':''}${i+2===step?' now':''}"></span>`:''}`).join('')}</div>`}));
 }
 let BUYN=0;
@@ -588,8 +563,7 @@ function langSheet(id){
 }
 async function buy(id,lang){
   IT=ST.items.find(i=>i.id===id);if(!IT)return;
-  if(IT.free_book===true)return bookSheet(id);
-  if(IT.buy_on===false)return soonSheet(id);
+  if(IT.buy_on===false&&IT.prebook!==true)return soonSheet(id);
   const me=ME();if(!me)return meSheet(()=>buy(id,lang));
   const bi=LANGS.has(id);
   if(bi&&!lang)return langSheet(id);
@@ -767,7 +741,9 @@ async function saveQr(){
   setTimeout(()=>{const b=$('[data-step=paid]');if(b)b.classList.add('nudge')},800);
 }
 // message for the support chat (Telegram / WhatsApp); the student sends the payment screenshot with it
-function tgText(){return `Payment done ✅\nOrder code: ${ORD.code}\nSeries: ${ORD.title}${ORD.lang?`\nMedium: ${ORD.lang==='hi'?'Hindi (हिंदी)':'English'}`:''}${ORD.coupon_off||ORD.wallet_used?`\nPrice: ${inr(listP())}${ORD.coupon_off?`\nCoupon: ${ORD.coupon_code} (−${inr(ORD.coupon_off)})`:''}${ORD.wallet_used?`\nWallet used: ${inr(ORD.wallet_used)}`:''}`:''}\nAmount: ${inr(ORD.amount)}\nStudent name: ${ORD.name}\nMobile: ${ORD.mobile}\nPaid from account of: ${ORD.payer||'-'}\nUTR / Transaction ID: ${ORD.utr||'-'}\n📎 Payment screenshot attached`}
+// the order is a pre-booking: the series is still coming soon
+const preOrd=()=>{const x=ORD&&ST.items.find(i=>i.id===ORD.item);return !!x&&x.buy_on===false}
+function tgText(){return `Payment done ✅\nOrder code: ${ORD.code}\nSeries: ${ORD.title}${preOrd()?' (Pre-booking)':''}${ORD.lang?`\nMedium: ${ORD.lang==='hi'?'Hindi (हिंदी)':'English'}`:''}${ORD.coupon_off||ORD.wallet_used?`\nPrice: ${inr(listP())}${ORD.coupon_off?`\nCoupon: ${ORD.coupon_code} (−${inr(ORD.coupon_off)})`:''}${ORD.wallet_used?`\nWallet used: ${inr(ORD.wallet_used)}`:''}`:''}\nAmount: ${inr(ORD.amount)}\nStudent name: ${ORD.name}\nMobile: ${ORD.mobile}\nPaid from account of: ${ORD.payer||'-'}\nUTR / Transaction ID: ${ORD.utr||'-'}\n📎 Payment screenshot attached`}
 /* step 2: who paid (account holder name) + UTR, saved with the order */
 function paidStep(){
   sheet(2,`${bigI('receipt','ok')}<h3 class="center">Payment details</h3>
@@ -1007,9 +983,6 @@ document.addEventListener('click',e=>{
   else if('ordv' in d){const o=lastOrd();if(o){ORD=o;IT=ST.items.find(i=>i.id===o.item);vStep()}}
   else if(d.explore)explore(d.explore);
   else if(d.soon)soonSheet(d.soon);
-  else if(d.book)bookSheet(d.book);
-  else if(d.bookgo)bookGo(d.bookgo);
-  else if(d.bookme){e.preventDefault();const id=d.bookme;meSheet(()=>bookSheet(id))}
   else if(d.notify)notifyGo(d.notify);
   else if(d.soonme){e.preventDefault();const id=d.soonme;meSheet(()=>soonSheet(id))}
   else if(d.view)explore(d.view,'d');
