@@ -21,7 +21,7 @@ Live database Claude ko nahi dikhta. Jo kaam pehle hi ho chuka ho, use seedha ti
   `supabase_v47_alerts_results.sql` → `supabase_v35_admin_team.sql` → `supabase_v48_review_low.sql` → `supabase_v35_admin_team.sql`
   → `supabase_v49_v50_all_in_one.sql` → `supabase_v51_test_pdf.sql` → `supabase_v52_coupons_refer.sql` → `supabase_v35_admin_team.sql`.
   *Kaise pata chalega ho gaya:* Admin → Coupons & Refer khulta hai aur "setup" nahi maangta.
-- [ ] **1.2 `send-push` redeploy karo** (Verify JWT off rakhna). Edge Function secret `VAPID_SUBJECT` me ek asli `mailto:` email daalo
+- [x] **1.2 `send-push` redeploy karo** (Verify JWT off rakhna). Edge Function secret `VAPID_SUBJECT` me ek asli `mailto:` email daalo
   (Task 2.3 ke baad naya email daal dena). *Check:* Admin → Broadcasts se test notification phone par aata hai.
 - [ ] **1.3 2FA on karo:** GitHub, Supabase, dono Gmail, Telegram, domain registrar.
 - [ ] **1.4 GitHub settings:** Settings → Code security → Secret scanning + Push protection ON. Settings → Pages → Enforce HTTPS ON.
