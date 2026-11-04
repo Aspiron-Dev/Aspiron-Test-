@@ -162,3 +162,8 @@ Never put the admin password or a secret / service_role key in `config.js` or an
   (owner only). Paste a Google Drive / Docs link shared as "Anyone with the link → Viewer". Students see a **PDF** button next to the
   test and the file in Library → Notes & PDFs. Only `https://drive.google.com/…` and `https://docs.google.com/…` links are accepted
   (checked on the server and in the app), and a student only gets links of tests they can open.
+
+## Cloudflare Pages (hosting)
+- Cloudflare → Workers & Pages → the project → Settings → Build: **Build command** `bash scripts/build-pages.sh` · **Build output directory** `dist` · Framework preset **None**.
+- The build publishes only website files (html, js, css, png, json, webmanifest). SQL, docs, tests, scripts, `supabase/` and `.github/` stay private.
+- Security headers live in `cloudflare/_headers`.

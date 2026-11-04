@@ -1,0 +1,14 @@
+# Cloudflare Pages: security headers for every page (SECURITY_MAP.md §11).
+/*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Content-Security-Policy: frame-ancestors 'self'
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+
+# the service worker and settings must always be the newest copy
+/sw.js
+  Cache-Control: no-cache
+/config.js
+  Cache-Control: no-cache
