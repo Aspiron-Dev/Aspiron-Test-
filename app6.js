@@ -509,8 +509,10 @@ async function viewNotices(){
 }
 if(!IC.reset)IC.reset='<path d="M3 12a9 9 0 109-9 9.7 9.7 0 00-6.7 2.8L3 8"/><path d="M3 3v5h5"/>';
 function installApp(){
-  if(isStandalone()||LS.get('cbt_installed',0)){toast('The app is already installed');return}
+  if(isStandalone()){toast('The app is already installed');return}
+  // Chrome's install offer (DIP) comes only when the app is NOT on the phone, so try it before the saved "installed" mark
   if(typeof DIP!=='undefined'&&DIP){const p=DIP;DIP=null;p.prompt();p.userChoice&&p.userChoice.then(c=>{if(c&&c.outcome==='accepted')toast('Installing…')}).catch(()=>{});return}
+  if(LS.get('cbt_installed',0)){toast('The app is already installed');return}
   const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
   const st=ios?[['Open this site in <b>Safari</b>'],['Tap the <b>Share</b> button (square with an arrow)'],['Tap <b>Add to Home Screen</b>, then <b>Add</b>']]
     :[['Tap the <b>⋮</b> menu at the top right of Chrome'],['Tap <b>Install app</b> (or <b>Add to Home screen</b>)'],['Tap <b>Install</b>, then open the app from your home screen']];
