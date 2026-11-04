@@ -142,4 +142,7 @@ npAskMaybe=function(){clearTimeout(NPASKT);NPASKT=setTimeout(setupPop,2500)};
 // the small install bar at the bottom is replaced by the pop-up above
 showInstall=function(){};
 window.addEventListener('appinstalled',()=>LS.set('cbt_installed',1));
+// Chrome offers the install only when the app is not on the phone: an old mark (app removed later) is cleared,
+// so the set-up pop-up and the Install button work again after an uninstall
+window.addEventListener('beforeinstallprompt',()=>LS.del('cbt_installed'));
 ;(window.__p=window.__p||{})['app18']=2;
