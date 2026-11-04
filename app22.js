@@ -54,7 +54,7 @@ async function viewRefer(){
 /* entry points: the profile sheet, Me (new look) and a small card on Home */
 {const _op=openProfile;const add=()=>{
   const box=document.querySelector('#layer .bsheet[data-id="prof"] .box')||document.querySelector('#layer .box');
-  if(box&&!box.querySelector('.rfbtn')){const b=box.querySelector('.badges');if(b)b.insertAdjacentHTML('beforebegin',`<button class="btn soft block rfbtn" style="margin-top:10px" onclick="closeModal();location.hash='#/refer'">${ic('gift',17)} Refer &amp; earn ₹25</button>`)}
+  if(box&&!box.querySelector('.rfbtn')){const b=box.querySelector('.badges')||box.querySelector('.btn.danger');if(b)b.insertAdjacentHTML('beforebegin',`<button class="btn soft block rfbtn" style="margin:0 0 12px" onclick="closeModal();location.hash='#/refer'">${ic('gift',17)} Refer &amp; earn ₹25</button>`)}
 };openProfile=function(){
   const r=_op.apply(this,arguments);   // app20 makes it async: add the button once it is drawn
   if(r&&typeof r.then==='function')return r.then(v=>{add();return v});

@@ -43,7 +43,7 @@ function addCal(id){
 }
 /* PWA */
 let DIP=null;
-function syncTheme(){try{const m=document.querySelector('meta[name=theme-color]');if(m)m.content=getComputedStyle(document.body).getPropertyValue('--bg').trim()||'#1d6fe8'}catch(e){}}
+function syncTheme(){try{const m=document.querySelector('meta[name=theme-color]');if(m)m.content=getComputedStyle(document.body).getPropertyValue('--bg').trim()||'#1d6fe8'}catch(e){}if(typeof brandGlow==='function')brandGlow()}
 const isStandalone=()=>matchMedia('(display-mode:standalone)').matches||navigator.standalone;
 function showInstall(ios){
   if(isStandalone()||LS.get('cbt_noinst',0)||document.querySelector('.instbar'))return;
