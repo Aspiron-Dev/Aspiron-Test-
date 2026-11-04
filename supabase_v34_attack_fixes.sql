@@ -39,12 +39,18 @@ declare
   m text := cbt_private.norm_mobile(p_mobile);
   c text := cbt_private.norm_code(p_code);
   t bigint := cbt_private.now_ms();
+  v_tok boolean := false;
 begin
   select * into s from students where mobile = m for update;
   if not found then
     return jsonb_build_object('ok',false,'error','invalid');
   end if;
-  if s.locked_until > t then
+  -- a sign-in token from cbt_login (supabase_v42): the phone keeps this instead of the access code
+  if coalesce(p_code, '') like 'st1.%' then
+    v_tok := cbt_private.st_ok(s.id, s.code_hash, p_code);
+    if not v_tok then return jsonb_build_object('ok',false,'error','invalid'); end if;
+  end if;
+  if s.locked_until > t and not v_tok then
     -- A lock is often caused by someone else typing wrong codes for this number. The student's own phone
     -- (already registered on the account) with the right code keeps working; at most 30 tries per lock.
     if not (p_device is not null and p_device = any(s.devices) and s.lock_fails < 30) then
@@ -58,7 +64,7 @@ begin
   if s.status = 'pending' then
     return jsonb_build_object('ok',false,'error','pending');
   end if;
-  if s.code_hash is null or s.code_hash <> hash_code(s.salt, c) then
+  if not v_tok and (s.code_hash is null or s.code_hash <> hash_code(s.salt, c)) then
     update students set
       locked_until = case when fail_count + 1 >= 8 then t + 900000 else locked_until end,
       fail_count   = case when fail_count + 1 >= 8 then 0 else fail_count + 1 end,
@@ -122,7 +128,7 @@ declare
   h text; sl text; lk bigint; f cbt_private.admin_fails%rowtype;
   hd json := coalesce(nullif(current_setting('request.headers', true), '')::json, '{}'::json);
   v_raw text := btrim(coalesce(hd->>'cf-connecting-ip', hd->>'x-real-ip', split_part(coalesce(hd->>'x-forwarded-for', ''), ',', 1), ''));
-  v_ip text := md5('cbt-admin|' || v_raw); v_e text; v_2fa boolean;
+  v_ip text := md5('cbt-admin|' || v_raw); v_e text; v_2fa boolean; v_okpw boolean;
 begin
   -- a v35 sign-in session ("as1.…") is checked by v35, never counted as a wrong password (safe to re-run this file)
   if coalesce(p_pw,'') like 'as1.%' then
@@ -140,10 +146,21 @@ begin
   select value into sl from settings where key = 'admin_salt';
   -- the whole panel locks only after many wrong passwords in an hour (someone guessing from many places)
   select value::bigint into lk from settings where key = 'admin_locked_until';
-  if coalesce(lk,0) > t then return 'locked'; end if;
+  if coalesce(lk,0) > t then
+    -- v35: a connection that signed in correctly before is not stopped by the shared lock
+    if to_regclass('cbt_private.admin_known') is null then return 'locked'; end if;
+    execute 'select exists (select 1 from cbt_private.admin_known where ip = $1 and at > now() - interval ''60 days'')' into v_2fa using v_ip;
+    if not v_2fa then return 'locked'; end if;
+  end if;
   select * into f from admin_fails where ip = v_ip;
   if found and f.locked_until > t then return 'locked'; end if;
-  if h <> hash_code(sl, coalesce(p_pw,'')) then
+  -- v35 keeps the password with bcrypt: check it the same way (safe to re-run this file)
+  if to_regprocedure('cbt_private.adm_pw_ok(text,text,text)') is not null then
+    execute 'select cbt_private.adm_pw_ok($1, $2, $3)' into v_okpw using sl, h, coalesce(p_pw,'');
+  else
+    v_okpw := h = hash_code(sl, coalesce(p_pw,''));
+  end if;
+  if not v_okpw then
     insert into admin_fails as a (ip, fails) values (v_ip, 1)
       on conflict (ip) do update set
         locked_until = case when a.fails + 1 >= 10 then t + 900000 else a.locked_until end,

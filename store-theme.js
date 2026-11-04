@@ -1,3 +1,5 @@
+/* never inside another site's frame (clickjacking) */
+if(window.top!==window.self){try{window.top.location.replace(window.location.href)}catch(e){}document.documentElement.style.display='none'};
 /* Store: light / dark theme (the saved choice, else the phone's setting), whether the student already gave their name +
    mobile, and their course (NEET / JEE). Runs in <head> before the page is drawn, so the wrong theme, course or the
    welcome screen never flashes. */

@@ -98,6 +98,9 @@ AX.mod({
 });
 AX.creates.push({ label: 'Notice', icon: 'bell', perm: ['messaging', 'manage'], run() { AX.go('messages/notices'); setTimeout(() => notice(null, null), 300); } });
 AX.creates.push({ label: 'Phone notification', icon: 'send', perm: ['messaging', 'manage'], run() { AX.go('messages/push'); } });
+// from other pages (e.g. Test studio → a series): a new notice / phone notification with the test series already chosen
+AX.newNotice = async (pre) => { if (!can()) return; await audLoad(); notice(null, null, pre); };
+AX.pushTo = async (pre) => { if (!can()) return; await audLoad(); pushForm(false, Object.assign({ title: '', body: '', url: '#/n' }, pre)); };
 
 /* ---------- notices ---------- */
 let NL = [];
@@ -168,7 +171,7 @@ function readers(n) {
           : h`<p class="sm mut">Nobody has marked it as read yet.</p>`}</div>`);
     } });
 }
-function notice(n, ctx) {
+function notice(n, ctx, pre) {
   const isNew = !n; n = n || { title: '', text: '', link: '', label: '', active: true };
   let img;          // undefined = keep, '' = remove, data URL = replace
   const m = UI.modal({ title: isNew ? 'New notice' : 'Edit notice', sub: 'Students see it under the bell; the newest also shows on their Home.', size: 'wide',
@@ -178,7 +181,7 @@ function notice(n, ctx) {
       ${AX.f.input({ name: 'link', label: 'Link (optional)', value: n.link, inputmode: 'url', placeholder: 'https://… or #/series' })}
       ${AX.f.input({ name: 'label', label: 'Button text', value: n.label, max: 40, placeholder: 'Open link' })}
       <div class="fld full"><label>Image (optional)</label><div class="row wrap"><div id="nprev" class="well grow" style="min-height:64px;display:flex;align-items:center;justify-content:center">${n.img ? h`<span class="spin"></span>` : h`<span class="sm mut">No image</span>`}</div><div class="col gap6"><button type="button" class="btn sm" data-act="pick">${icon('image', 15)} Choose image</button><button type="button" class="btn sm ghost" data-act="rm">${icon('trash', 15)} Remove</button></div></div></div>
-      ${audPicker(isNew ? [] : audOf(n.id))}
+      ${audPicker(isNew ? (pre && pre.series) || [] : audOf(n.id))}
       <div class="full col gap10">${AX.f.switch({ name: 'active', value: n.active !== false, label: 'Show to students' })}
       ${AX.f.switch({ name: 'push', value: isNew, label: 'Also send to students\' phones', hint: 'A phone notification, even if the app is closed — to the same students.' })}</div></form>`,
     foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="save">${icon('send', 16)} ${isNew ? 'Publish' : 'Save'}</button>`,
@@ -279,9 +282,9 @@ async function banners(ctx) {
   if (!ctx.alive()) return;
   if (!r.ok) { AX.set(ctx.el, r.error === 'missing' ? h`<div class="card">${UI.empty({ tone: 'lock', icon: 'db', title: 'One-time setup needed', text: 'Run supabase_v9_banners.sql once in Supabase → SQL Editor, then refresh.' })}</div>` : UI.errorBox(r)); AX.act(ctx.el, { retry: () => ctx.reload() }); return; }
   BL = r.items || [];
-  AX.set(ctx.el, h`<div class="callout info">${icon('info')}<div class="sm">Banners slide at the top of every student's Home. Best image size <b>1200 × 560 px</b>. If no banner is live, students see the default ones.</div></div>
+  AX.set(ctx.el, h`<div class="callout info">${icon('info')}<div class="sm">Banners slide at the top of every student's Home. Best image size <b>1280 × 720 px (16 : 9)</b> — any other shape is fitted into 16 : 9 without cutting. If no banner is live, students see the default ones.</div></div>
     <div class="grid g2 mt16">${BL.length ? join(BL, (b, i) => h`<div class="card pad0" style="${b.active ? '' : 'opacity:.6'}">
-        ${b.img ? h`<img src="${b.img}" alt="" style="width:100%;aspect-ratio:1200/560;object-fit:cover;display:block">` : h`<div style="aspect-ratio:1200/560;background:var(--grad-pri);display:grid;place-items:center;padding:16px;color:var(--pri-ink);text-align:center"><div><b class="lg">${b.title || 'Text banner'}</b><div class="sm">${b.text || ''}</div></div></div>`}
+        ${b.img ? h`<img src="${b.img}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;display:block">` : h`<div style="aspect-ratio:16/9;background:var(--grad-pri);display:grid;place-items:center;padding:16px;color:var(--pri-ink);text-align:center"><div><b class="lg">${b.title || 'Text banner'}</b><div class="sm">${b.text || ''}</div></div></div>`}
         <div style="padding:14px 16px"><div class="row wrap gap6"><b class="ell grow">${b.title || '(no title)'}</b>${UI.pill('#' + (i + 1))}${b.active ? UI.pill('Live', 'ok', true) : UI.pill('Hidden')}</div><div class="xs mut ell mt4">${b.link || 'No link'}</div>
           ${can() ? h`<div class="row mt12"><button class="ibtn sm line" data-act="up" data-i="${i}" ${i === 0 ? raw('disabled') : ''} aria-label="Move up">${icon('chevU', 16)}</button><button class="ibtn sm line" data-act="down" data-i="${i}" ${i === BL.length - 1 ? raw('disabled') : ''} aria-label="Move down">${icon('chevD', 16)}</button><span class="grow"></span><button class="btn sm" data-act="tog" data-i="${i}">${b.active ? 'Hide' : 'Show'}</button><button class="btn sm" data-act="edit" data-i="${i}">${icon('edit', 14)} Edit</button><button class="ibtn sm" data-act="del" data-i="${i}" aria-label="Delete">${icon('trash', 15)}</button></div>` : ''}</div></div>`)
       : h`<div class="card" style="grid-column:1/-1">${UI.empty({ icon: 'image', title: 'No banners yet', text: 'Add your first one — your All India Test Series, your WhatsApp channel, or a partner\'s course.', action: can() ? h`<button class="btn pri" data-act="new">${icon('plus', 16)} New banner</button>` : '' })}</div>`}</div>`);
@@ -301,9 +304,9 @@ async function banners(ctx) {
 function banner(b, ctx) {
   const isNew = !b; b = b || { title: '', text: '', link: '', active: true };
   let img;
-  UI.modal({ title: isNew ? 'New banner' : 'Edit banner', sub: 'Image 1200 × 560 px works best. No image? Students see a coloured card with the title and text.', size: 'wide',
+  UI.modal({ title: isNew ? 'New banner' : 'Edit banner', sub: 'Image 1280 × 720 px (16 : 9) works best. No image? Students see a coloured card with the title and text.', size: 'wide',
     body: h`<form id="bf" class="form-grid" autocomplete="off">
-      <div class="full" id="bprev">${b.img ? h`<img src="${b.img}" alt="" style="width:100%;aspect-ratio:1200/560;object-fit:cover;border-radius:14px">` : h`<div class="dropzone" data-act="pick">${icon('image', 22)}<div class="b mt8">Choose image</div><div class="xs">JPG / PNG, wide</div></div>`}</div>
+      <div class="full" id="bprev">${b.img ? h`<img src="${b.img}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:14px">` : h`<div class="dropzone" data-act="pick">${icon('image', 22)}<div class="b mt8">Choose image</div><div class="xs">JPG / PNG · 16 : 9 (1280 × 720)</div></div>`}</div>
       <div class="full row"><button type="button" class="btn sm" data-act="pick">${icon('image', 15)} ${b.img ? 'Change image' : 'Choose image'}</button><button type="button" class="btn sm ghost" data-act="rm">${icon('trash', 15)} Remove image</button></div>
       ${AX.f.input({ name: 'title', label: 'Title', value: b.title, max: 60, placeholder: 'e.g. AITS 2027 — Join now' })}
       ${AX.f.input({ name: 'text', label: 'Short text (for banners without image)', value: b.text, max: 120, placeholder: 'e.g. Real NEET pattern · All-India rank' })}
@@ -312,9 +315,9 @@ function banner(b, ctx) {
     foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="save">${icon('check', 16)} ${isNew ? 'Publish' : 'Save'}</button>`,
     onOpen(el, close) {
       const f = el.querySelector('#bf');
-      const show = src => AX.set(el.querySelector('#bprev'), src ? h`<img src="${src}" alt="" style="width:100%;aspect-ratio:1200/560;object-fit:cover;border-radius:14px">` : h`<div class="dropzone" data-act="pick">${icon('image', 22)}<div class="b mt8">Choose image</div></div>`);
+      const show = src => AX.set(el.querySelector('#bprev'), src ? h`<img src="${src}" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:14px">` : h`<div class="dropzone" data-act="pick">${icon('image', 22)}<div class="b mt8">Choose image</div></div>`);
       AX.act(el, {
-        async pick() { const file = await AX.u.pickFile('image/*'); if (!file) return; try { img = await squeeze(file, 1200, 0.82); show(img); } catch (e) { UI.toast('Could not use this image', { tone: 'bad' }); } },
+        async pick() { const file = await AX.u.pickFile('image/*'); if (!file) return; try { img = await AX.u.poster(file); show(img); } catch (e) { UI.toast('Could not use this image', { tone: 'bad' }); } },
         rm() { img = ''; show(null); },
         async save(btn) {
           AX.f.clearErrors(f); const d = AX.f.read(f);

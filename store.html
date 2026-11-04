@@ -7,15 +7,15 @@
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#f3f6fa" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#060a13" media="(prefers-color-scheme: dark)">
-<title>Store · CBT Test Series</title>
+<title>Store · Aspiron Education</title>
 <meta name="description" content="NEET and JEE test series — see what's inside and buy with UPI.">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script src="store-theme.js?v=3"></script>
+<script src="store-theme.js?v=4"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="store.css?v=2">
+<link rel="stylesheet" href="store.css?v=5">
 </head>
 <body>
 <!-- icons: the admin console's line icons (24 grid, 1.8 stroke), plus the WhatsApp / Telegram logos -->
@@ -64,6 +64,7 @@
 <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
 <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></symbol>
 <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m16 8-2.5 5.5L8 16l2.5-5.5z"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
 <symbol id="i-steth" viewBox="0 0 24 24"><path d="M6.5 3h-1A1.5 1.5 0 0 0 4 4.5V9a5 5 0 0 0 10 0V4.5A1.5 1.5 0 0 0 12.5 3h-1"/><path d="M9 14v1.5a5.5 5.5 0 0 0 11 0V13"/><circle cx="20" cy="11" r="2"/></symbol>
 <symbol id="i-atom" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.4"/><ellipse cx="12" cy="12" rx="10" ry="4.2"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(-60 12 12)"/></symbol>
 <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M5.5 2.8h13v18.4l-2.6-1.7-2.2 1.7-1.7-1.3-1.7 1.3-2.2-1.7-2.6 1.7z"/><path d="M9 8h6M9 11.5h6M9 15h3.5"/></symbol>
@@ -82,7 +83,7 @@
   <div class="gwrap">
     <div class="lg-card">
       <img class="lg-mark" src="icon-192.png" alt="">
-      <h1 class="lg-t" id="gt">Welcome to <span data-sname>CBT Test Series</span></h1>
+      <h1 class="lg-t" id="gt">Welcome to <span data-sname>Aspiron Education</span></h1>
       <p class="lg-s">Tell us who you are to open the store. You won't be asked again.</p>
       <div class="fld"><label for="gn">Full name</label><div class="inp-wrap"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><input class="inp" id="gn" autocomplete="name" maxlength="60" placeholder="e.g. Rahul Sharma"></div></div>
       <div class="fld"><label for="gm">Mobile number</label><div class="inp-wrap"><svg class="i" aria-hidden="true"><use href="#i-phone"/></svg><input class="inp" id="gm" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="10-digit mobile number"></div></div>
@@ -99,13 +100,14 @@
 <div class="app">
   <!-- computers: the menu on the left (icons only on tablets) -->
   <aside class="sd glass" aria-label="Store menu">
-    <a class="brand" href="#" data-go="home"><img class="mk" src="icon-192.png" alt=""><span class="grow"><b class="bt" data-sname>CBT Test Series</b><small class="bs">Test series store</small></span></a>
+    <a class="brand" href="#" data-go="home"><img class="mk" src="icon-192.png" alt=""><span class="grow"><b class="bt" data-sname>Aspiron Education</b><small class="bs">Test series store</small></span></a>
     <nav class="nav">
       <span class="ind" aria-hidden="true"></span>
       <span class="ng">Store</span>
       <a class="ni" href="#" data-go="home"><svg class="i" aria-hidden="true"><use href="#i-home"/></svg><span class="lt">Home</span></a>
       <a class="ni" href="#/search" data-go="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="lt">Search</span><kbd class="kbd">/</kbd></a>
       <a class="ni" href="#/reviews" data-go="reviews"><svg class="i" aria-hidden="true"><use href="#i-star"/></svg><span class="lt">Reviews</span><em class="nb" id="nrv" hidden></em></a>
+      <a class="ni" href="#/refer" data-go="refer"><svg class="i" aria-hidden="true"><use href="#i-gift"/></svg><span class="lt">Refer &amp; earn</span></a>
       <span class="ng">Support</span>
       <a class="ni" href="#/help" data-go="help"><svg class="i" aria-hidden="true"><use href="#i-help"/></svg><span class="lt">Help &amp; FAQ</span></a>
       <a class="ni" href="#" data-help><svg class="i" aria-hidden="true"><use href="#i-chat"/></svg><span class="lt">Chat with us</span></a>
@@ -118,7 +120,7 @@
     <header class="tb glass" id="tb">
       <a class="tb-mk" href="#" data-go="home" aria-label="Home"><img src="icon-192.png" alt=""></a>
       <div class="crumb"><span class="cb-s">Store</span><svg class="i cb-c" aria-hidden="true"><use href="#i-cr"/></svg><b id="crumb">Home</b></div>
-      <b class="tb-name" data-sname>CBT Test Series</b>
+      <b class="tb-name" data-sname>Aspiron Education</b>
       <button class="sbtn" data-go="search" data-focus><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span>Search test series…</span><kbd class="kbd">/</kbd></button>
       <div class="cseg" role="radiogroup" aria-label="Your course"><span class="thumb" aria-hidden="true"></span><button type="button" role="radio" aria-checked="true" data-course="neet">NEET</button><button type="button" role="radio" aria-checked="false" data-course="jee">JEE</button></div>
       <button class="ibtn line" data-theme-toggle aria-label="Switch light / dark theme"><svg class="i sun" aria-hidden="true"><use href="#i-sun"/></svg><svg class="i moon" aria-hidden="true"><use href="#i-moon"/></svg></button>
@@ -141,6 +143,7 @@
             <div class="wcard"><span class="wic info"><svg class="i" aria-hidden="true"><use href="#i-bulb"/></svg></span><b>Solutions</b><p>Clear explanation for every question.</p></div>
           </div>
         </section>
+        <a class="card rfpro rvl" href="#/refer" data-go="refer"><span class="hic gold"><svg class="i" aria-hidden="true"><use href="#i-gift"/></svg></span><span class="grow"><b>Refer &amp; earn</b><small>Share your link — get wallet money for every friend who buys a test series.</small></span><svg class="i" aria-hidden="true"><use href="#i-cr"/></svg></a>
         <section class="blk rvl" id="rvhome" hidden></section>
         <div class="cta rvl">
           <span class="cta-ic"><svg class="i" aria-hidden="true"><use href="#i-card"/></svg></span>
@@ -191,13 +194,19 @@
         </div>
       </section>
 
+      <!-- Refer & earn: the student's link, friends joined / bought, wallet (supabase_v52) -->
+      <section class="view" id="v-refer" data-v="refer" hidden>
+        <div class="ph"><div class="pt"><span class="eyebrow">Refer &amp; earn</span><h1>Invite friends, earn wallet money</h1><p class="ps">Share your link. Money for every new friend who buys — use it for your next test series.</p></div></div>
+        <div id="rfbox"></div>
+      </section>
+
       <!-- Profile: details, course, theme, the last order -->
       <section class="view" id="v-me" data-v="me" hidden>
         <div class="ph"><div class="pt"><span class="eyebrow">Profile</span><h1>Your profile</h1><p class="ps">Your details, course, theme and your last order.</p></div></div>
         <div id="mebox"></div>
       </section>
 
-      <footer class="foot"><img src="icon-192.png" alt=""><b data-sname>CBT Test Series</b><span class="dot">·</span><span>Need help? <a href="#" data-help>Chat with support</a></span></footer>
+      <footer class="foot"><img src="icon-192.png" alt=""><b data-sname>Aspiron Education</b><span class="dot">·</span><span>Need help? <a href="#" data-help>Chat with support</a></span></footer>
     </main>
   </div>
 </div>
@@ -212,8 +221,8 @@
   <a href="#/me" data-go="me"><span class="av xs" data-meini>S</span><span>Profile</span></a>
 </nav>
 <div id="tst" aria-live="polite"></div>
-<script src="config.js?v=5"></script>
+<script src="config.js?v=10"></script>
 <script src="qrcode.js"></script>
-<script src="store.js?v=28"></script>
+<script src="store.js?v=32"></script>
 </body>
 </html>

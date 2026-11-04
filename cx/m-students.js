@@ -23,22 +23,8 @@ const seenTxt = s => !s.last_seen ? 'Never opened' : seenCls(s) === 'live' ? 'On
 const fmtCode = c => String(c || '').slice(0, 4) + '-' + String(c || '').slice(4);
 const siteUrl = () => location.href.replace(/[#?].*$/, '').replace(/[^/]*\.html$/, '');
 const stuLink = () => /^https:\/\//.test(CFG.SHORT_URL || '') ? CFG.SHORT_URL : siteUrl();
-const MSGLINE = '━━━━━━━━━━━━━━━━';
-// the message sent to a student with their login — exact text of the old panel (WhatsApp: *bold*, _italic_)
-function stuMsg({ name, title, order, mobile, code, keep }) {
-  const tg = /^https:\/\/t\.me\//.test(CFG.TG_CHANNEL || '') ? CFG.TG_CHANNEL : '';
-  const c = code ? code.slice(0, 4) + '-' + code.slice(4) : '';
-  return [`Hi *${name}* 👋`, '',
-    title ? `Your payment for *"${title}"* is verified ✅` : `Your access to *${CFG.SITE_NAME || 'the test series'}* is approved ✅`,
-    ...(order ? [`🧾 Order: *${order}*`] : []),
-    MSGLINE,
-    ...(tg ? ['📢 *Join our Telegram channel*', tg, MSGLINE] : []),
-    '📱 *Open website*', stuLink(), '',
-    '🔑 *Login with*', `Mobile: *${mobile}*`, code ? `Access code: *${c}*` : keep ? 'Access code: *your current code*' : 'Access code: ______',
-    MSGLINE,
-    title ? '🔓 Your series is unlocked. All the best! 💪' : 'All the best for your preparation! 💪',
-    '_Keep your code private. It works on up to 2 phones._'].join('\n');
-}
+// the message sent to a student with their login (cx/amsg.js: per test series when a series is unlocked)
+const stuMsg = o => AX.amsg.make(o);
 AX.stuMsg = stuMsg;
 const msgHtml = m => raw(AX.esc(m).replace(/\*([^*\n]+)\*/g, '<b>$1</b>').replace(/(^|\s)_([^_\n]+)_(?=\s|$)/g, '$1<i>$2</i>'));
 const remindMsg = s => `Hi ${first(s)}, a new test is waiting for you. Open ${stuLink()} and attempt it today. All the best! 💪`;
@@ -49,7 +35,8 @@ async function load(force) {
   const [S, C, R, P] = await Promise.all([
     AX.data.students(force), AX.data.catalog(),
     canR ? AX.data.results() : Promise.resolve({ ok: false, error: 'forbidden' }),
-    canP ? AX.data.payments(force) : Promise.resolve({ ok: false, error: 'forbidden' })
+    canP ? AX.data.payments(force) : Promise.resolve({ ok: false, error: 'forbidden' }),
+    AX.amsg.load(force)
   ]);
   if (!S.ok) return { ok: false, r: S };
   const students = S.students || [];
@@ -192,7 +179,7 @@ button.sx-ac.on:hover{background:var(--bad-soft);color:var(--bad)}
   .sx-bulk select.inp{order:2;grid-column:1/-1;max-width:none;width:100%}
   .sx-bulk>[data-act=bulk]{order:3}
   .sx-bulk>[data-act=copyNums],.sx-bulk>[data-act=selCsv]{order:4}
-  .sx-rq .ops{margin-left:0;width:100%}.sx-rq .ops .btn{flex:1}
+  .sx-rq .ops{margin-left:0;width:100%;flex-wrap:wrap}.sx-rq .ops .btn{flex:1}.sx-rq .ops [data-act=approve]{flex-basis:100%}
   .s3-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));padding:4px 6px 0;margin:-18px -20px 16px}
   .s3-tabs button{flex-direction:column;gap:2px;height:52px;padding:0 2px;font-size:10.5px}
   .s3-tabs button em{display:none}
@@ -249,7 +236,7 @@ AX.on('data:changed', AX.u.debounce(async () => {
   const r = await load(true);
   if (!r.ok) return;
   if (page && V.ctx.alive()) { head(V.ctx); if (V.tab === 'requests') drawRequests(); else drawDirectory(true); }
-  if (DR) drawDrawer();
+  if (DR) { drawDrawer(); loadInfo(); }
 }, 200));
 
 function head(ctx) {
@@ -292,6 +279,10 @@ function wire(ctx) {
     // requests
     approve: b => approve(b.dataset.id, b),
     reject: b => reject([b.dataset.id]),
+    rdel: b => reject([b.dataset.id], 'delete'),
+    rdelMany: () => reject([...V.rsel], 'delete'),
+    allow: b => allowNum(b.dataset.m, b),
+    showBlocked: () => { V.showBl = !V.showBl; drawRequests(); },
     rsel: b => { b.checked ? V.rsel.add(b.dataset.id) : V.rsel.delete(b.dataset.id); drawRequests(); },
     rselAll: b => { pending().forEach(s => b.checked ? V.rsel.add(s.id) : V.rsel.delete(s.id)); drawRequests(); },
     approveMany: b => approveMany(b.dataset.all ? pending().map(s => s.id) : [...V.rsel], b),
@@ -379,6 +370,15 @@ function drawList() {
       ${can && V.D.paid.length ? h`<select class="inp sm" id="sx-bs" aria-label="Series">${join(V.D.paid, x => h`<option value="${x.id}">${x.title}</option>`)}</select><button class="btn sm pri" data-act="bulk" data-on="1" data-busy="Working…">${icon('unlock', 15)} Give access</button><button class="btn sm" data-act="bulk" data-on="0" data-busy="Working…">${icon('lock', 15)} Remove</button>` : ''}
       <button class="btn sm ghost" data-act="copyNums">${icon('copy', 15)} Copy numbers</button><button class="btn sm ghost" data-act="selCsv">${icon('download', 15)} CSV</button><button class="btn sm ghost" data-act="clear">${icon('x', 15)} Clear</button></div>` : ''}`);
 }
+// the login message with the current code; with a series: that series' approval message and Telegram link
+async function msgSheet(s, sid) {
+  await AX.amsg.load();
+  const ser = sid && V.D ? V.D.series.find(x => x.id === sid) : null;
+  const msg = stuMsg({ sid, name: nameOf(s), title: ser ? ser.title : '', mobile: s.mobile, keep: true });
+  UI.modal({ title: ser ? 'Message for ' + ser.title : 'Login message', sub: 'Uses their current code — they already know it.', size: 'narrow', body: h`<div class="well s3-msg">${msgHtml(msg)}</div>`,
+    foot: h`<a class="btn soft" href="${AX.u.wa(s.mobile, msg)}" target="_blank" rel="noopener">${icon('whatsapp', 16)} WhatsApp</a><a class="btn" href="${AX.u.tg(s.mobile)}" target="_blank" rel="noopener" data-act="tg">${icon('telegram', 16)} Telegram</a><button class="btn" data-act="cp">${icon('copy', 16)} Copy</button><span class="sp"></span><button class="btn pri" data-close>Done</button>`,
+    onOpen(m) { AX.act(m, { async cp() { if (await AX.u.copy(msg)) UI.toast('Message copied'); }, tg() { AX.u.copy(AX.u.tgText(msg)); UI.toast('Message copied — paste it in Telegram'); } }); } });
+}
 async function toggleAccess(id, ser, btn) {
   if (!AX.can('students', 'manage')) return;
   const s = V.D.students.find(x => x.id === id); if (!s) return;
@@ -389,7 +389,7 @@ async function toggleAccess(id, ser, btn) {
   if (!r.ok) return;
   s.access = on ? [...new Set([...(s.access || []), ser])] : (s.access || []).filter(x => x !== ser);
   const t = (V.D.series.find(x => x.id === ser) || {}).title || 'series';
-  UI.toast(on ? 'Access to ' + t + ' given to ' + first(s) : 'Access to ' + t + ' removed');
+  UI.toast(on ? 'Access to ' + t + ' given to ' + first(s) : 'Access to ' + t + ' removed', on ? { action: { label: 'Send message', fn: () => msgSheet(s, ser) } } : {});
   if (document.getElementById('sx-list')) drawList();
   if (DR && DR.id === id) drawDrawer();
   changed();
@@ -433,14 +433,37 @@ async function drawRequests() {
   if (!document.getElementById('sx-body')) return;
   const hasOrder = s => orders && orders.some(o => o.mobile === s.mobile);
   const allOn = L.length && L.every(s => V.rsel.has(s.id));
-  AX.set(body, h`<div id="sx-reqs">${L.length ? h`<div class="callout info" style="margin-bottom:14px">${icon('info')}<div class="sm">These students asked for access on the website. <b>Approve</b> gives them an access code to send on WhatsApp or Telegram. <b>Reject</b> removes the request; they can ask again.</div></div>
+  AX.set(body, h`<div id="sx-reqs">${L.length ? h`<div class="callout info" style="margin-bottom:14px">${icon('info')}<div class="sm">These students asked for access on the website. <b>Approve</b> gives them an access code to send on WhatsApp or Telegram. <b>Delete</b> removes the request (they can ask again). <b>Reject</b> removes it and stops that number from asking again.</div></div>
       ${can ? h`<div class="sx-lh"><input type="checkbox" data-act="rselAll" ${allOn ? raw('checked') : ''} aria-label="Select all requests"><span>${fmt.plural(L.length, 'request')}</span><span class="grow"></span>
-        ${V.rsel.size ? h`<button class="btn sm danger" data-act="rejectMany">${icon('x', 15)} Reject ${V.rsel.size}</button><button class="btn sm pri" data-act="approveMany" data-busy="Approving…">${icon('check', 15)} Approve ${V.rsel.size}</button>` : L.length > 1 ? h`<button class="btn sm soft" data-act="approveMany" data-all="1" data-busy="Approving…">${icon('check', 15)} Approve all ${L.length}</button>` : ''}</div>` : ''}
+        ${V.rsel.size ? h`<button class="btn sm ghost" data-act="rdelMany">${icon('trash', 15)} Delete ${V.rsel.size}</button><button class="btn sm danger" data-act="rejectMany">${icon('ban', 15)} Reject ${V.rsel.size}</button><button class="btn sm pri" data-act="approveMany" data-busy="Approving…">${icon('check', 15)} Approve ${V.rsel.size}</button>` : L.length > 1 ? h`<button class="btn sm soft" data-act="approveMany" data-all="1" data-busy="Approving…">${icon('check', 15)} Approve all ${L.length}</button>` : ''}</div>` : ''}
       <div class="card pad0">${join(L, s => h`<div class="sx-rq">${can ? h`<input type="checkbox" data-act="rsel" data-id="${s.id}" ${V.rsel.has(s.id) ? raw('checked') : ''} aria-label="Select ${nameOf(s)}">` : ''}
         ${UI.avatar(nameOf(s), s.id)}<div class="grow" style="min-width:150px"><div class="row gap6 wrap"><b>${nameOf(s)}</b>${hasOrder(s) ? UI.pill('Has a store order', 'info') : ''}</div><div class="xs mut"><span class="mono">${fmt.mobile(s.mobile)}</span> · requested ${fmt.ago(s.created)}</div></div>
         <div class="ops"><a class="btn sm ghost" href="${AX.u.wa(s.mobile, 'Hi ' + first(s) + ', ')}" target="_blank" rel="noopener" aria-label="WhatsApp">${icon('whatsapp', 15)}</a><button class="btn sm ghost" data-act="open" data-id="${s.id}">${icon('user', 15)} Profile</button>
-          ${can ? h`<button class="btn sm danger" data-act="reject" data-id="${s.id}">Reject</button><button class="btn sm pri" data-act="approve" data-id="${s.id}" data-busy="">${icon('check', 15)} Approve & get code</button>` : ''}</div></div>`)}</div>`
-    : h`<div class="card">${UI.empty({ icon: 'checkCircle', title: 'No access requests', text: 'When a student asks for access on the website, they show up here. You can also add a student yourself.', action: can ? h`<button class="btn pri sm" data-act="add">${icon('userPlus', 15)} Add student</button>` : '' })}</div>`}</div>`);
+          ${can ? h`<button class="btn sm ghost" data-act="rdel" data-id="${s.id}" title="Remove from the list (they can ask again)">${icon('trash', 15)} Delete</button><button class="btn sm danger" data-act="reject" data-id="${s.id}" title="Remove and stop this number from asking again">${icon('ban', 15)} Reject</button><button class="btn sm pri" data-act="approve" data-id="${s.id}" data-busy="">${icon('check', 15)} Approve & get code</button>` : ''}</div></div>`)}</div>`
+    : h`<div class="card">${UI.empty({ icon: 'checkCircle', title: 'No access requests', text: 'When a student asks for access on the website, they show up here. You can also add a student yourself.', action: can ? h`<button class="btn pri sm" data-act="add">${icon('userPlus', 15)} Add student</button>` : '' })}</div>`}
+    ${blockedHtml(can)}</div>`);
+  if (V.blocked === undefined) {
+    V.blocked = null;
+    AX.api.call('cbt_admin_edit', 'req_blocked').then(r => { V.blocked = r.ok ? r.blocked || [] : { _err: r.error }; if (document.getElementById('sx-reqs')) drawRequests(); });
+  }
+}
+// numbers whose request was rejected (v44): they cannot ask again until allowed
+function blockedHtml(can) {
+  const B = V.blocked;
+  if (!B || B._err) return B && B._err === 'missing' ? h`<p class="xs mut mt12">${icon('info', 13)} Run <b>supabase_v44_edit_details.sql</b> so that Reject stops a number from asking again.</p>` : '';
+  if (!B.length) return '';
+  return h`<div class="row mt16"><button class="btn sm ghost" data-act="showBlocked">${icon(V.showBl ? 'chevD' : 'chevR', 15)} Rejected numbers (${B.length})</button></div>
+    ${V.showBl ? h`<p class="xs mut" style="margin:6px 0 8px">These numbers cannot send a new request. Allow again to let them ask.</p><div class="card pad0">${join(B, x => h`<div class="sx-rq">${UI.avatar(x.name || x.mobile, x.mobile)}<div class="grow" style="min-width:150px"><b>${x.name || 'Unknown'}</b><div class="xs mut"><span class="mono">${fmt.mobile(x.mobile)}</span> · rejected ${fmt.ago(x.at)}${x.note ? ' · ' + x.note : ''}</div></div>
+      ${can ? h`<div class="ops"><button class="btn sm" data-act="allow" data-m="${x.mobile}" data-busy="">${icon('undo', 15)} Allow again</button></div>` : ''}</div>`)}</div>` : ''}`;
+}
+async function allowNum(mobile, btn) {
+  await UI.busy(btn, async () => {
+    const r = await AX.api.call('cbt_admin_edit', 'req_allow', { mobile });
+    if (!r.ok) return UI.err(r);
+    if (Array.isArray(V.blocked)) V.blocked = V.blocked.filter(x => x.mobile !== mobile);
+    UI.toast(fmt.mobile(mobile) + ' can ask for access again');
+    drawRequests();
+  });
 }
 async function approve(id, btn) {
   const go = async () => {
@@ -451,17 +474,30 @@ async function approve(id, btn) {
   };
   return btn ? UI.busy(btn, go) : go();
 }
-async function reject(ids) {
-  ids = ids.filter(Boolean); if (!ids.length) return;
+// mode 'reject' (default): remove + stop the number from asking again (v44) · 'delete': only remove
+async function reject(ids, mode) {
+  ids = (ids || []).filter(Boolean); if (!ids.length) return;
+  if (!V.D) { const r = await load(false); if (!r.ok) return UI.err(r.r); }
+  const stop = mode !== 'delete';
   const one = ids.length === 1 && V.D.students.find(s => s.id === ids[0]);
-  const ok = await UI.confirm({ title: one ? 'Reject the request from ' + nameOf(one) + '?' : 'Reject ' + ids.length + ' requests?', text: 'The request is removed. They can ask again from the website.', yes: 'Reject', tone: 'danger' });
+  const who = one ? 'the request from ' + nameOf(one) : ids.length + ' requests';
+  const ok = await UI.confirm(stop
+    ? { title: 'Reject ' + who + '?', text: 'The request is removed and ' + (one ? 'this number' : 'these numbers') + ' cannot ask again. You can allow it again under “Rejected numbers”.', yes: 'Reject', tone: 'danger' }
+    : { title: 'Delete ' + who + '?', text: 'The request is removed from the list. They can still ask again from the website — use Reject to stop that.', yes: 'Delete', tone: 'danger' });
   if (!ok) return;
-  let n = 0;
-  for (const id of ids) { const r = await AX.api.admin('student_delete', { id }); if (r.ok) { n++; V.rsel.delete(id); } else if (ids.length === 1) UI.err(r); }
-  if (n) UI.toast(n === 1 ? 'Request removed' : n + ' requests removed');
+  let n = 0, miss = false;
+  for (const id of ids) {
+    let r = stop && !miss ? await AX.api.call('cbt_admin_edit', 'req_reject', { id }) : { ok: false, error: 'missing' };
+    if (!r.ok && r.error === 'missing') { if (stop) miss = true; r = await AX.api.admin('student_delete', { id }); }
+    if (r.ok) { n++; V.rsel.delete(id); } else if (ids.length === 1) UI.err(r);
+  }
+  if (n) UI.toast(stop && !miss ? (n === 1 ? 'Request rejected · this number cannot ask again' : n + ' requests rejected') : (n === 1 ? 'Request deleted' : n + ' requests deleted'));
+  if (miss) UI.toast('Run supabase_v44_edit_details.sql so that Reject stops a number from asking again.', { tone: 'warn' });
+  V.blocked = undefined;
   if (DR && ids.includes(DR.id)) DR.api.close();
   changed();
 }
+AX.rejectRequest = reject;
 async function approveMany(ids, btn) {
   ids = ids.filter(Boolean); if (!ids.length) return;
   const ok = await UI.confirm({ title: 'Approve ' + fmt.plural(ids.length, 'request') + '?', text: 'Each student gets an access code. You will see all the codes next, with a button to send each one.', yes: 'Approve all' });
@@ -491,7 +527,7 @@ function showCode(name, mobile, code, title) {
       <p class="xs mut mt8">Telegram: the message is copied first — paste it in the chat that opens.</p>`,
     foot: h`<a class="btn soft" href="${AX.u.wa(mobile, msg)}" target="_blank" rel="noopener">${icon('whatsapp', 16)} WhatsApp</a><a class="btn" href="${AX.u.tg(mobile)}" target="_blank" rel="noopener" data-act="tg">${icon('telegram', 16)} Telegram</a><button class="btn" data-act="copy">${icon('copy', 16)} Copy message</button><span class="sp"></span><button class="btn pri" data-close>Done</button>`,
     sticky: true,
-    onOpen(el) { AX.act(el, { async copy() { if (await AX.u.copy(msg)) UI.toast('Message copied'); }, tg() { AX.u.copy(msg); UI.toast('Message copied — paste it in Telegram'); } }); }
+    onOpen(el) { AX.act(el, { async copy() { if (await AX.u.copy(msg)) UI.toast('Message copied'); }, tg() { AX.u.copy(AX.u.tgText(msg)); UI.toast('Message copied — paste it in Telegram'); } }); }
   });
 }
 function codesModal(title, rows) {
@@ -510,8 +546,8 @@ function addStudent() {
   let mode = 'one';
   UI.modal({ title: 'Add students', sub: 'They get an access code at once. Send it on WhatsApp or Telegram.', size: 'wide',
     body: h`<div class="seg" style="margin-bottom:16px" id="am-seg"><button type="button" class="on" data-m="one">${icon('user', 15)} One student</button><button type="button" data-m="many">${icon('users', 15)} Many at once</button></div>
-      <form id="am1" class="form-grid" autocomplete="off" onsubmit="return false">${AX.f.input({ name: 'name', label: 'Full name', placeholder: 'Rahul Sharma', max: 60 })}${AX.f.input({ name: 'mobile', label: 'Mobile number', type: 'tel', inputmode: 'numeric', placeholder: '10-digit number', max: 16 })}</form>
-      <form id="am2" class="hide" onsubmit="return false">${AX.f.textarea({ name: 'lines', label: 'One student per line: name, mobile', rows: 7, placeholder: 'Rahul Sharma, 9876543210\nPriya Singh, 9123456780' })}<div class="hint xs mut mt8" id="am2c">Paste from a spreadsheet or WhatsApp. Each line needs a name and a 10-digit number.</div></form>`,
+      <form id="am1" class="form-grid" autocomplete="off">${AX.f.input({ name: 'name', label: 'Full name', placeholder: 'Rahul Sharma', max: 60 })}${AX.f.input({ name: 'mobile', label: 'Mobile number', type: 'tel', inputmode: 'numeric', placeholder: '10-digit number', max: 16 })}</form>
+      <form id="am2" class="hide">${AX.f.textarea({ name: 'lines', label: 'One student per line: name, mobile', rows: 7, placeholder: 'Rahul Sharma, 9876543210\nPriya Singh, 9123456780' })}<div class="hint xs mut mt8" id="am2c">Paste from a spreadsheet or WhatsApp. Each line needs a name and a 10-digit number.</div></form>`,
     foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="go" data-busy="Creating…">${icon('key', 16)} <span id="am-go">Create & get code</span></button>`,
     onOpen(el, close) {
       const f1 = el.querySelector('#am1'), f2 = el.querySelector('#am2');
@@ -601,9 +637,19 @@ async function openStudent(x, tab) {
   });
   if (onPage && !location.hash.includes(s.id)) history.replaceState(null, '', '#/students/' + s.id);
   drawDrawer();
+  loadInfo();
   if (AX.can('integrity')) cheat().then(r => { if (DR && r.ok) { DR.cheat = r; drawDrawer(); } });
 }
 AX.openStudent = (x, tab) => openStudent(x, tab);
+// v44: email, mobile number history and corrected store orders of the open student
+async function loadInfo() {
+  if (!DR) return;
+  const id = DR.id, r = await AX.api.call('cbt_admin_edit', 'info', { id });
+  if (!DR || DR.id !== id) return;
+  DR.info = r.ok ? r : { _err: r.error || 'server' };
+  drawDrawer();
+}
+const infoOk = () => DR && DR.info && !DR.info._err;
 
 function statusPill(s, su) {
   return su ? UI.pill('Suspended', 'bad', true) : s.status === 'blocked' ? UI.pill('Blocked', 'bad', true) : s.status === 'pending' ? UI.pill('Access request', 'gold', true) : seenCls(s) === 'live' ? h`<span class="pill ok"><span class="live-dot"></span> Online now</span>` : UI.pill('Active', 'ok', true);
@@ -620,10 +666,12 @@ function drawDrawer() {
         <a class="ibtn sm line" href="${AX.u.wa(s.mobile, 'Hi ' + first(s) + ', ')}" target="_blank" rel="noopener" aria-label="WhatsApp" title="WhatsApp">${icon('whatsapp', 15)}</a>
         <a class="ibtn sm line" href="${AX.u.tg(s.mobile)}" target="_blank" rel="noopener" aria-label="Telegram" title="Telegram">${icon('telegram', 15)}</a>
         <button class="ibtn sm line" data-copy="${s.mobile}" aria-label="Copy number" title="Copy number">${icon('copy', 15)}</button></div>
+      ${infoOk() && DR.info.changes.length ? h`<div class="xs mt8" style="color:var(--gold)">${icon('refresh', 12)} Number changed ${fmt.ago(DR.info.changes[0].at)} · old: <span class="mono">${fmt.mobile(DR.info.changes[0].old)}</span></div>` : ''}
+      ${infoOk() && DR.info.email ? h`<div class="xs mut mt4">${icon('inbox', 12)} ${DR.info.email}</div>` : ''}
       <div class="xs mut mt8">Joined ${fmt.date(s.created)} · ${seenTxt(s)} · ${s.devices || 0}/${s.max_devices || 2} phones</div></div></div>`);
   const counts = { results: R.length || '', payments: M ? M.n || '' : '' };
   AX.set(el.querySelector('#s3-body'), h`<nav class="s3-tabs" role="tablist">${join(TABS, ([k, l, ic]) => h`<button type="button" role="tab" class="${DR.tab === k ? 'on' : ''}" data-act="tab" data-v="${k}" aria-selected="${DR.tab === k ? 'true' : 'false'}">${icon(ic, 16)}<span>${l}</span>${counts[k] ? h`<em>${counts[k]}</em>` : ''}</button>`)}</nav>
-    ${s.status === 'pending' ? h`<div class="callout gold" style="margin-bottom:16px">${icon('userPlus')}<div class="grow"><b>Access request</b><div class="sm">Requested ${fmt.ago(s.created)}. Approve to create their access code.</div>${AX.can('students', 'manage') ? h`<div class="row mt8"><button class="btn sm pri" data-act="dApprove" data-busy="">${icon('check', 15)} Approve & get code</button><button class="btn sm danger" data-act="dReject">Reject</button></div>` : ''}</div></div>` : ''}
+    ${s.status === 'pending' ? h`<div class="callout gold" style="margin-bottom:16px">${icon('userPlus')}<div class="grow"><b>Access request</b><div class="sm">Requested ${fmt.ago(s.created)}. Approve to create their access code.</div>${AX.can('students', 'manage') ? h`<div class="row mt8"><button class="btn sm pri" data-act="dApprove" data-busy="">${icon('check', 15)} Approve & get code</button><button class="btn sm ghost" data-act="dDelReq">${icon('trash', 15)} Delete</button><button class="btn sm danger" data-act="dReject">${icon('ban', 15)} Reject</button></div>` : ''}</div></div>` : ''}
     <div id="s3-tab">${tabHtml(s, DR.tab, su, M, R)}</div>`);
 }
 function tabHtml(s, tab, su, M, R) {
@@ -649,7 +697,8 @@ function tabHtml(s, tab, su, M, R) {
       ${V.D.paid.length ? h`<div class="card flat" style="padding:4px 16px">${join(V.D.paid, x => { const on = (s.access || []).includes(x.id); return h`<div class="s3-li"><span class="av sm" style="--c:${AX.u.hue(x.id)}">${icon('layers', 15)}</span><div class="grow"><b class="ell" style="display:block">${x.title}</b><div class="xs mut">${x.price_label || 'Paid series'}${x.active === false ? ' · hidden' : ''}</div></div>
           <label class="sw"><input type="checkbox" data-act="dAcc" data-ser="${x.id}" ${on ? raw('checked') : ''} ${can ? '' : raw('disabled')} aria-label="Access to ${x.title}"><i></i></label></div>`; })}</div>`
         : h`<div class="card flat">${UI.empty({ icon: 'layers', title: 'No paid series yet', text: 'Create one in Test studio. Free series are open to everyone.' })}</div>`}
-      ${free.length ? h`<div class="xs mut mt12">${icon('info', 13)} Open to everyone: ${free.map(x => x.title).join(', ')}</div>` : ''}`;
+      ${free.length ? h`<div class="xs mut mt12">${icon('info', 13)} Open to everyone: ${free.map(x => x.title).join(', ')}</div>` : ''}
+      ${mediumHtml(s, can)}`;
   }
   if (tab === 'results') {
     if (!AX.can('results')) return h`<div class="card flat">${UI.empty({ tone: 'lock', icon: 'lock', title: 'Needs Results access', text: 'Ask the owner for Results access to see this student’s scores.' })}</div>`;
@@ -664,7 +713,7 @@ function tabHtml(s, tab, su, M, R) {
     const pm = AX.can('payments', 'manage'), L = [...M.sto.map(o => ({ k: 'store', o, at: AX.money.dayMs(o.at) })), ...M.man.map(x => ({ k: Number(x.amount) === 0 || x.method === 'free' ? 'free' : 'man', x, at: AX.money.dayMs(x.paid_on) }))].sort((a, b) => b.at - a.at);
     return h`<div class="row wrap" style="margin-bottom:12px"><div class="grow"><div class="xs mut">Total paid</div><div class="s3-amt" style="font-size:28px">${M.total ? fmt.inr(M.total) : M.n ? 'Free' : '₹0'}</div></div>${pm ? h`<button class="btn pri sm" data-act="dPay">${icon('plus', 15)} Add payment</button>` : ''}</div>
       ${L.length ? h`<div class="card flat" style="padding:4px 16px">${join(L, r => r.k === 'store'
-          ? h`<div class="s3-li"><div class="grow"><div class="row gap6 wrap">${AX.money.chip(r)}<b class="ell">${r.o.item_title || 'Store order'}</b></div><div class="xs mut mt4">${fmt.date(r.at)} · <button class="btn xs ghost mono" style="height:20px;padding:0 4px" data-act="dOrder" data-code="${r.o.code}">${r.o.code}</button></div></div><span class="s3-amt">${fmt.inr(r.o.amount)}</span></div>`
+          ? h`<div class="s3-li"><div class="grow"><div class="row gap6 wrap">${AX.money.chip(r)}<b class="ell">${r.o.item_title || 'Store order'}</b></div><div class="xs mut mt4">${fmt.date(r.at)} · <button class="btn xs ghost mono" style="height:20px;padding:0 4px" data-act="dOrder" data-code="${r.o.code}">${r.o.code}</button>${ordFix(r.o.code) ? h` · <span style="color:var(--gold)">was ${fmt.inr(ordFix(r.o.code).amount_was)}${ordFix(r.o.code).amount_note ? ' · ' + ordFix(r.o.code).amount_note : ''}</span>` : ''}</div></div><span class="s3-amt">${fmt.inr(r.o.amount)}</span>${AX.can('store', 'manage') ? h`<button class="ibtn sm" data-act="dOrdAmt" data-code="${r.o.code}" aria-label="Correct the amount" title="Correct the amount">${icon('edit', 16)}</button>` : ''}</div>`
           : h`<div class="s3-li"><div class="grow"><div class="row gap6 wrap">${AX.money.chip(r)}<b>${AX.money.PSHORT[r.x.method] || r.x.method}</b></div><div class="xs mut mt4">${fmt.date(r.at)}${r.x.note ? ' · ' + r.x.note : ''}</div></div><span class="s3-amt">${Number(r.x.amount) ? fmt.inr(r.x.amount) : 'Free'}</span>${pm ? h`<button class="ibtn sm" data-act="dPayEdit" data-id="${r.x.id}" aria-label="Edit payment">${icon('edit', 16)}</button>` : ''}</div>`)}</div>`
         : h`<div class="card flat">${UI.empty({ icon: 'wallet', title: 'No payment recorded', text: 'Joined before the store? Add what they paid.', action: pm ? h`<button class="btn sm" data-act="dPay">${icon('plus', 15)} Add payment</button>` : '' })}</div>`}`;
   }
@@ -678,7 +727,14 @@ function tabHtml(s, tab, su, M, R) {
         <p class="xs faint mt12">The code message tells students it works on up to 2 phones.</p></div>`;
   }
   // account
-  return h`${can ? h`<form class="card flat" id="s3-name" onsubmit="return false"><div class="card-h">${icon('user', 16)}<h3>Details</h3></div><div class="row top wrap"><div class="grow" style="min-width:200px">${AX.f.input({ name: 'name', label: 'Full name', value: nameOf(s), max: 60 })}</div><button class="btn" style="margin-top:24px" data-act="dName" data-busy="Saving…">${icon('check', 16)} Save</button></div></form>` : ''}
+  const I = infoOk() ? DR.info : null, v44 = !(DR.info && DR.info._err === 'missing');
+  return h`${can ? h`<form class="card flat" id="s3-name"><div class="card-h">${icon('user', 16)}<h3>Details</h3></div>
+      <div class="form-grid">${AX.f.input({ name: 'name', label: 'Full name', value: nameOf(s), max: 60 })}
+        ${v44 ? AX.f.input({ name: 'mobile', label: 'Mobile number', type: 'tel', inputmode: 'numeric', value: s.mobile, max: 16 }) : ''}
+        ${v44 ? AX.f.input({ name: 'email', label: 'Email (optional)', type: 'email', value: I ? I.email : '', placeholder: I ? 'name@example.com' : 'Loading…', max: 120, disabled: !I }) : ''}</div>
+      <p class="xs mut mt8">${v44 ? 'A new mobile number changes everywhere at once — app, store orders, payments, notifications. Their phones stay signed in and the access code stays the same.' : 'Run supabase_v44_edit_details.sql to change the mobile number and email here.'}</p>
+      <div class="row mt12"><span class="grow"></span><button class="btn pri" data-act="dName" data-busy="Saving…">${icon('check', 16)} Save details</button></div></form>` : ''}
+    ${I && I.changes.length ? h`<div class="card flat mt16"><div class="card-h">${icon('refresh', 16)}<h3>Mobile number history</h3></div>${join(I.changes, c => h`<div class="s3-li"><div class="grow"><div class="mono sm"><span class="mut" style="text-decoration:line-through">${fmt.mobile(c.old)}</span> → <b>${fmt.mobile(c.new)}</b></div><div class="xs mut">${fmt.dt(c.at)} · changed by ${c.by === 'student' ? 'the student (app)' : 'admin'}</div></div><button class="ibtn sm" data-copy="${c.old}" aria-label="Copy old number" title="Copy old number">${icon('copy', 15)}</button></div>`)}</div>` : ''}
     <div class="card flat mt16"><div class="card-h">${icon('key', 16)}<h3>Access code</h3></div>
       <p class="sm mut">Codes are stored scrambled, so the current one cannot be shown. A new code signs ${first(s)} out of all phones.</p>
       <div class="row wrap mt12">${can ? h`<button class="btn" data-act="dCode">${icon('key', 16)} ${s.status === 'pending' ? 'Approve & get code' : 'New access code'}</button>` : ''}<button class="btn ghost" data-act="dMsg">${icon('whatsapp', 16)} Send login message (current code)</button></div></div>
@@ -690,18 +746,48 @@ function tabHtml(s, tab, su, M, R) {
         : h`<p class="sm mut">Block the app with a notice and a Support button (e.g. for cheating).</p>${AX.can('integrity', 'manage') ? h`<div class="row mt12"><button class="btn danger" data-act="dSusp">${icon('shield', 16)} Suspend…</button></div>` : ''}`}</div>` : ''}
     ${can ? h`<div class="card flat mt16 s3-dz"><div class="card-h" style="color:var(--bad)">${icon('trash', 16)}<h3>Delete student</h3></div><p class="sm mut">Deletes ${nameOf(s)} permanently. Their results are deleted too. Payments stay in the ledger.</p><div class="row mt12"><button class="btn danger solid" data-act="dDel">${icon('trash', 16)} Delete permanently</button></div></div>` : ''}`;
 }
+const ordFix = code => infoOk() ? (DR.info.orders || []).find(o => o.code === code) : null;
 function resRow(x, full) {
   const p = pct(x);
   return h`<div class="s3-li"><span class="pill ${tone(p)}" style="min-width:52px;justify-content:center">${p}%</span><div class="grow"><b class="ell" style="display:block">${x.title}</b><div class="xs mut">${fmt.dt(x.at)} · ${x.score}/${x.max}${full ? ' · ✓' + x.correct + ' ✗' + x.wrong + ' –' + x.skipped + ' · ' + Math.round((x.used || 0) / 60) + ' min' : ''}</div></div>
     ${x.late ? UI.pill('Late', 'warn') : ''}${full && AX.openAnalytics && x.test_id ? h`<button class="ibtn sm" data-act="dAna" data-id="${x.test_id}" aria-label="Test analytics" title="Test analytics">${icon('chart', 16)}</button>` : ''}${full && AX.can('results', 'manage') ? h`<button class="ibtn sm" data-act="dResDel" data-id="${x.id}" aria-label="Delete result" title="Delete result">${icon('trash', 16)}</button>` : ''}</div>`;
 }
+// v41: the student's medium (English / हिंदी) per series; a test already running keeps its language
+function mediumHtml(s, can) {
+  if (!DR) return '';
+  if (DR.media === undefined) {
+    DR.media = null;
+    Promise.all([AX.api.call('cbt_admin_lang', 'student_get', { id: s.id }), AX.lang.load()]).then(([r]) => { if (DR && DR.id === s.id) { DR.media = r.ok ? r.media || {} : { _err: r.error || 'server' }; if (DR.tab === 'access') drawDrawer(); } });
+  }
+  const M = DR.media;
+  const ser = V.D.series.filter(x => AX.lang.mode(x.id) === 'bi' || (M && M[x.id]));
+  const head = h`<div class="section-t">${icon('globe', 15)} Medium · English / हिंदी</div>`;
+  if (!M) return h`${head}<div class="card flat tight sm mut">Loading…</div>`;
+  if (M._err) return h`${head}<div class="card flat tight sm mut">${M._err === 'missing' ? 'Run supabase_v41_medium.sql in Supabase to use Hindi medium.' : 'Could not load the medium.'}</div>`;
+  const sel = (k, v, label) => h`<select class="inp sm" style="max-width:150px" data-md="${k}" ${can ? '' : raw('disabled')} aria-label="Medium for ${label}"><option value="" ${!v ? raw('selected') : ''}>Not chosen</option><option value="en" ${v === 'en' ? raw('selected') : ''}>English</option><option value="hi" ${v === 'hi' ? raw('selected') : ''}>हिंदी</option></select>`;
+  return h`${head}<p class="xs mut" style="margin:0 0 8px">Chosen by the student on the store or in the app. A test is given in Hindi only when all its questions have Hindi; a running test never changes language.</p>
+    <div class="card flat" style="padding:4px 16px">
+      ${join(ser, x => h`<div class="s3-li"><span class="av sm" style="--c:${AX.u.hue(x.id)}">${icon('layers', 15)}</span><div class="grow"><b class="ell" style="display:block">${x.title}</b><div class="xs mut">${AX.lang.mode(x.id) === 'bi' ? 'English + हिंदी series' : 'English series'}</div></div>${sel(x.id, M[x.id], x.title)}</div>`)}
+      <div class="s3-li"><span class="av sm" style="--c:#0ea5e9">${icon('globe', 15)}</span><div class="grow"><b style="display:block">Default</b><div class="xs mut">For a series without its own choice</div></div>${sel('default', M.default, 'default')}</div></div>`;
+}
 function wireDrawer(el) {
+  el.addEventListener('change', async e => {
+    const t = e.target; if (!t.dataset || t.dataset.md == null || !DR) return;
+    const k = t.dataset.md, lang = t.value; t.disabled = true;
+    const r = await AX.api.call('cbt_admin_lang', 'student_set', { id: DR.id, k, lang });
+    t.disabled = false;
+    if (!r.ok) { UI.err(r); drawDrawer(); return; }
+    if (DR.media && !DR.media._err) { if (lang) DR.media[k] = lang; else delete DR.media[k]; }
+    UI.toast('Medium saved' + (lang ? ' · ' + AX.lang.NAME[lang] : ''));
+  });
   const cur = () => V.D.students.find(x => x.id === (DR && DR.id));
   let max = null;
   AX.act(el, {
     tab(b) { DR.tab = b.dataset.v; max = null; drawDrawer(); el.querySelector('.m-b').scrollTop = 0; },
     dApprove: b => approve(DR.id, b),
     dReject: () => reject([DR.id]),
+    dDelReq: () => reject([DR.id], 'delete'),
+    dOrdAmt: b => AX.editOrderAmount && AX.editOrderAmount(b.dataset.code),
     dAcc: b => { b.checked = !b.checked; toggleAccess(DR.id, b.dataset.ser); },
     dPay: () => AX.addPayment && AX.addPayment({ studentId: DR.id }),
     dPayEdit: b => AX.addPayment && AX.addPayment({ paymentId: b.dataset.id }),
@@ -725,15 +811,34 @@ function wireDrawer(el) {
     },
     async dName(b) {
       const s = cur(), f = el.querySelector('#s3-name'); AX.f.clearErrors(f);
-      const name = String(AX.f.read(f).name || '').trim().replace(/\s+/g, ' ');
+      const d = AX.f.read(f), name = String(d.name || '').trim().replace(/\s+/g, ' ');
       if (name.length < 2) return AX.f.error(f, 'name', 'Enter a name');
-      await UI.busy(b, async () => { const r = await act('student_update', { id: s.id, name, max_devices: s.max_devices || 2 }); if (r.ok) { s.name = name; UI.toast('Saved'); drawDrawer(); changed(); } });
+      if (d.mobile == null) {   // v44 not installed: name only, as before
+        return UI.busy(b, async () => { const r = await act('student_update', { id: s.id, name, max_devices: s.max_devices || 2 }); if (r.ok) { s.name = name; UI.toast('Saved'); drawDrawer(); changed(); } });
+      }
+      const mobile = String(d.mobile || '').replace(/\D/g, '').slice(-10), email = String(d.email || '').trim();
+      if (!/^[6-9]\d{9}$/.test(mobile)) return AX.f.error(f, 'mobile', 'Enter a valid 10-digit mobile number.');
+      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return AX.f.error(f, 'email', 'Enter a valid email, or leave it empty.');
+      const other = mobile !== s.mobile && V.D.students.find(x => x.mobile === mobile && x.id !== s.id);
+      if (other && other.status !== 'pending') return AX.f.error(f, 'mobile', 'This number belongs to ' + nameOf(other) + '. Delete or change that account first.');
+      if (mobile !== s.mobile && !(await UI.confirm({ title: 'Change the mobile number?', text: fmt.mobile(s.mobile) + ' → ' + fmt.mobile(mobile) + '. It changes everywhere: sign-in, store orders, payments and notifications. The old number is kept in the history.' + (other ? ' The waiting access request from this number is removed.' : ''), yes: 'Change number' }))) return;
+      await UI.busy(b, async () => {
+        const r = await AX.api.call('cbt_admin_edit', 'student_save', Object.assign({ id: s.id, name, mobile }, infoOk() ? { email } : {}));
+        if (!r.ok) {
+          if (r.error === 'taken') return AX.f.error(f, 'mobile', 'This number already has another account.');
+          if (r.error === 'mobile') return AX.f.error(f, 'mobile', 'Enter a valid 10-digit mobile number.');
+          if (r.error === 'email') return AX.f.error(f, 'email', 'Enter a valid email, or leave it empty.');
+          if (r.error === 'name') return AX.f.error(f, 'name', 'Enter a name');
+          return UI.err(r);
+        }
+        const moved = r.mobile && r.mobile !== s.mobile;
+        s.name = r.name || name; if (r.mobile) s.mobile = r.mobile;
+        UI.toast(moved ? 'Saved · new number ' + fmt.mobile(s.mobile) : 'Saved', moved ? { action: { label: 'Send message', fn: () => msgSheet(s) } } : {});
+        changed(['payments', 'store']); loadInfo();
+      });
     },
     dCode: () => newCode(cur()),
-    dMsg: () => { const s = cur(); const msg = stuMsg({ name: nameOf(s), mobile: s.mobile, keep: true });
-      UI.modal({ title: 'Login message', sub: 'Uses their current code — they already know it.', size: 'narrow', body: h`<div class="well s3-msg">${msgHtml(msg)}</div>`,
-        foot: h`<a class="btn soft" href="${AX.u.wa(s.mobile, msg)}" target="_blank" rel="noopener">${icon('whatsapp', 16)} WhatsApp</a><a class="btn" href="${AX.u.tg(s.mobile)}" target="_blank" rel="noopener" data-act="tg">${icon('telegram', 16)} Telegram</a><button class="btn" data-act="cp">${icon('copy', 16)} Copy</button><span class="sp"></span><button class="btn pri" data-close>Done</button>`,
-        onOpen(m) { AX.act(m, { async cp() { if (await AX.u.copy(msg)) UI.toast('Message copied'); }, tg() { AX.u.copy(msg); UI.toast('Message copied — paste it in Telegram'); } }); } }); },
+    dMsg: () => msgSheet(cur()),
     async dBlock(b) {
       const s = cur(), block = s.status !== 'blocked';
       if (block && !(await UI.confirm({ title: 'Block ' + nameOf(s) + '?', text: 'They cannot sign in until you unblock them. Their results and access stay.', yes: 'Block', tone: 'danger' }))) return;
@@ -756,7 +861,7 @@ function wireDrawer(el) {
 function suspendForm(s) {
   const DUR = [['', 'Until I lift it'], ['24', '24 hours'], ['72', '3 days'], ['168', '7 days'], ['720', '30 days']];
   UI.modal({ title: 'Suspend ' + nameOf(s), sub: 'The app and website show a full-screen notice with a Support button instead of the tests. Nothing else is deleted.', size: 'narrow',
-    body: h`<form id="sf" class="col gap16" onsubmit="return false">${AX.f.select({ name: 'hours', label: 'How long', value: '', options: DUR.map(([value, label]) => ({ value, label })) })}${AX.f.textarea({ name: 'reason', label: 'Message the student sees', rows: 4, max: 500, value: 'You were found cheating in the test "". Your ID is suspended. Talk to the support team within 24 hours to solve this.' })}</form>`,
+    body: h`<form id="sf" class="col gap16">${AX.f.select({ name: 'hours', label: 'How long', value: '', options: DUR.map(([value, label]) => ({ value, label })) })}${AX.f.textarea({ name: 'reason', label: 'Message the student sees', rows: 4, max: 500, value: 'You were found cheating in the test "". Your ID is suspended. Talk to the support team within 24 hours to solve this.' })}</form>`,
     foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn danger solid" data-act="go" data-busy="Suspending…">${icon('shield', 16)} Suspend now</button>`,
     onOpen(el, close) { AX.act(el, { async go(b) {
       const d = AX.f.read(el.querySelector('#sf'));

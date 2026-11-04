@@ -5,7 +5,7 @@ IC.users='<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0M16 4.
 /* ---------- promo slider (managed from Admin → Banners) ---------- */
 let PROMO=null,PRT=null,PRI=0,PRHOLD=0;
 function promoDefault(){
-  const s=esc(CFG.SITE_NAME||'CBT Test Series');
+  const s=esc(CFG.SITE_NAME||'Aspiron Education');
   return [
     {id:'d1',title:'All India Test Series 2027',text:'Real NEET pattern · All-India rank · Detailed analysis',link:'#/series',label:'Explore tests',c:'a'},
     {id:'d2',title:s,text:'Practise daily, revise your mistakes and track your progress',link:'#/series',label:'Start practising',c:'b'},
@@ -19,7 +19,8 @@ async function promoLoad(){
 }
 function promoSlides(){return PROMO&&PROMO.length?PROMO:promoDefault()}
 function promoSlide(x,i){
-  const u=x.link||'',ext=/^https?:\/\//i.test(u);
+  // only web links (http/https) or a page of this app (#/…): never javascript: or other kinds of links
+  const u=/^https?:\/\/|^#\//i.test(x.link||'')?x.link:'',ext=/^https?:\/\//i.test(u);
   const on=u?(ext?`href="${esc(u)}" target="_blank" rel="noopener noreferrer"`:`href="${esc(u)}"`):'';
   const inner=x.img&&/^data:image\/|^https:\/\//.test(x.img)?`<img src="${x.img}" alt="${esc(x.title||'')}" loading="${i?'lazy':'eager'}" draggable="false">`
    :`<div class="pmtx pv${x.c||'abc'[i%3]}"><div class="pmb"><b>${esc(x.title||'')}</b>${x.text?`<span>${esc(x.text)}</span>`:''}${u?`<em>${esc(x.label||'Open')} →</em>`:''}</div><i class="pmo1"></i><i class="pmo2"></i></div>`;

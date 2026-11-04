@@ -131,7 +131,8 @@ async function tabAll(ctx) {
       ${sel('t', [['', 'All tests'], ...opts.map(o => [o.k, o.label])], S.f.t, 'Test', 'rs-t')}
       ${sel('range', RANGES.map(([k]) => [k, rangeLabel(k)]), S.f.range, 'Date')}
       ${sel('sort', SORTS, S.f.sort, 'Sort')}
-    </div><div id="rs-sum" class="mt12"></div><div id="rs-list" class="mt12"></div>`);
+      <button type="button" class="btn sm ${hideMob() ? 'pri' : 'ghost'}" data-act="hidemob" title="Hide mobile numbers (for screenshots)">${icon('eye', 15)} ${hideMob() ? 'Mobile hidden' : 'Hide mobile'}</button>
+    </div><div id="rs-sum" class="mt12"></div><div id="rs-list" class="mt12 ${hideMob() ? 'rs-hidemob' : ''}"></div>`);
   const draw = () => {
     if (!ctx.alive()) return;
     const L = filtered(rs), any = S.f.q || S.f.t || S.f.range !== 'all';
@@ -141,22 +142,22 @@ async function tabAll(ctx) {
     if (!rs.length) return AX.set('#rs-list', h`<div class="card">${UI.empty({ icon: 'fileText', title: 'No results yet', text: 'Results show here as soon as students submit a test.' })}</div>`);
     if (!L.length) return AX.set('#rs-list', h`<div class="card">${UI.empty({ icon: 'search', title: 'No results match', text: 'Try another name, test or date.', action: h`<button class="btn sm" data-act="clear">Clear filters</button>` })}</div>`);
     const V = L.slice(0, S.show), del = canDel(), flg = canFlag();
-    const acts = (x, fl) => h`${flg ? h`<button class="ibtn sm rs-fl ${fl ? 'on' : ''}" data-act="flag" data-id="${x.id}" title="${fl ? 'Tagged as cheating' : 'Report cheating'}" aria-label="Report cheating">${icon('flag', 15)}</button>` : ''}${del ? h`<button class="ibtn sm rs-del" data-act="del" data-id="${x.id}" title="Delete result" aria-label="Delete result">${icon('trash', 15)}</button>` : ''}`;
+    const acts = (x, fl) => h`<button class="ibtn sm" data-act="sheet" data-id="${x.id}" title="Answer sheet" aria-label="Answer sheet">${icon('list', 15)}</button>${flg ? h`<button class="ibtn sm rs-fl ${fl ? 'on' : ''}" data-act="flag" data-id="${x.id}" title="${fl ? 'Tagged as cheating' : 'Report cheating'}" aria-label="Report cheating">${icon('flag', 15)}</button>` : ''}${del ? h`<button class="ibtn sm rs-del" data-act="del" data-id="${x.id}" title="Delete result" aria-label="Delete result">${icon('trash', 15)}</button>` : ''}`;
     const ans = x => h`<span class="t-ok">✓ ${x.correct}</span> <span class="t-bad">✗ ${x.wrong}</span> <span class="mut">– ${x.skipped}</span>`;
     const more = L.length > V.length ? h`<div class="row mt12" style="justify-content:center"><button class="btn sm" data-act="more">Show ${Math.min(100, L.length - V.length)} more</button><span class="xs mut">${fmt.num(V.length)} of ${fmt.num(L.length)}</span></div>` : '';
     if (UI.isPhone()) {
       AX.set('#rs-list', h`<div class="card pad0 list">${join(V, x => { const p = pctRow(x), fl = isFlagged(x); return h`<div class="rs-li">
-          <div class="row top"><button class="rs-stu grow" data-act="stu" data-m="${x.mobile}">${UI.avatar(x.student, x.mobile, 'sm')}<span class="grow"><b class="ell">${x.student}</b><span class="xs mut mono">${fmt.mobile(x.mobile)}</span></span></button>${pctTag(p)}</div>
+          <div class="row top"><button class="rs-stu grow" data-act="stu" data-m="${x.mobile}">${UI.avatar(x.student, x.mobile, 'sm')}<span class="grow"><b class="ell">${x.student}</b><span class="xs mut mono rs-mob">${fmt.mobile(x.mobile)}</span></span></button>${pctTag(p)}</div>
           <div class="rs-lt"><span class="ell b">${x.title}</span>${fl ? UI.pill('🚩 Cheating', 'bad') : ''}</div>
           <div class="row"><div class="grow xs mut rs-lm"><span class="num"><b class="tx2">${x.score}</b>/${x.max}</span><span class="num">${ans(x)}</span><span>${mins(x.used)} min</span>${x.late ? UI.pill('Late', 'warn') : ''}<span>${fmt.dt(x.at)}</span></div>${acts(x, fl)}</div></div>`; })}</div>${more}`);
     } else {
-      AX.set('#rs-list', h`<div class="tbl-wrap"><table class="tbl rs-tbl"><thead><tr><th>Student</th><th>Test</th><th class="r">Score</th><th>%</th><th>✓ ✗ Skipped</th><th>Time</th><th>Date</th>${del || flg ? h`<th class="r"><span class="sr">Actions</span></th>` : ''}</tr></thead><tbody>
+      AX.set('#rs-list', h`<div class="tbl-wrap"><table class="tbl rs-tbl"><thead><tr><th>Student</th><th>Test</th><th class="r">Score</th><th>%</th><th>✓ ✗ Skipped</th><th>Time</th><th>Date</th><th class="r"><span class="sr">Actions</span></th></tr></thead><tbody>
         ${join(V, x => { const p = pctRow(x), fl = isFlagged(x); return h`<tr class="${fl ? 'rs-flagged' : ''}">
-          <td><button class="rs-stu" data-act="stu" data-m="${x.mobile}">${UI.avatar(x.student, x.mobile, 'sm')}<span class="grow"><b class="ell">${x.student}</b><span class="xs mut mono">${fmt.mobile(x.mobile)}</span></span></button></td>
+          <td><button class="rs-stu" data-act="stu" data-m="${x.mobile}">${UI.avatar(x.student, x.mobile, 'sm')}<span class="grow"><b class="ell">${x.student}</b><span class="xs mut mono rs-mob">${fmt.mobile(x.mobile)}</span></span></button></td>
           <td class="rs-tc"><div class="ell b6" title="${x.title}">${x.title}</div>${fl ? h`<div class="mt4">${UI.pill('🚩 Cheating', 'bad')}</div>` : ''}</td>
           <td class="r num nowrap"><b>${x.score}</b><span class="mut">/${x.max}</span></td><td>${pctTag(p)}</td>
           <td class="num nowrap">${ans(x)}</td><td class="nowrap">${mins(x.used)} min${x.late ? h` ${UI.pill('Late', 'warn')}` : ''}</td>
-          <td class="xs tx2 nowrap">${fmt.dt(x.at)}</td>${del || flg ? h`<td class="r nowrap">${acts(x, fl)}</td>` : ''}</tr>`; })}</tbody></table></div>${more}`);
+          <td class="xs tx2 nowrap">${fmt.dt(x.at)}</td><td class="r nowrap">${acts(x, fl)}</td></tr>`; })}</tbody></table></div>${more}`);
     }
   };
   draw();
@@ -164,8 +165,14 @@ async function tabAll(ctx) {
   AX.act(ctx.el, {
     retry: () => ctx.reload(),
     more() { S.show += 100; draw(); },
+    hidemob(b) {
+      const on = !hideMob(); AX.ls.set('rs_hidemob', on);
+      b.className = 'btn sm ' + (on ? 'pri' : 'ghost'); AX.set(b, h`${icon('eye', 15)} ${on ? 'Mobile hidden' : 'Hide mobile'}`);
+      const l = ctx.el.querySelector('#rs-list'); if (l) l.classList.toggle('rs-hidemob', on);
+    },
     clear() { S.f = { q: '', t: '', range: 'all', from: null, to: null, sort: S.f.sort }; S.show = 100; ctx.reload(); },
     stu: el => openStu(el.dataset.m),
+    sheet(el) { openSheet(el.dataset.id, y => { const x = find(el.dataset.id); if (x) Object.assign(x, y); AX.cache.drop('results'); AX.emit('data:changed'); draw(); }); },
     flag(el) { const x = find(el.dataset.id); if (x) AX.integrity.report(Object.assign({}, x, { test_id: tidOf(x) })); },
     async del(el) {
       const x = find(el.dataset.id); if (!x) return;
@@ -194,6 +201,51 @@ async function tabAll(ctx) {
   const off = AX.on('integrity:changed', () => { if (!ctx.alive()) return off(); flagLoad().then(draw); });
   const ph = document.getElementById('ax-ph');
   if (ph) AX.act(ph, { csv() { const L = filtered(rs); if (!L.length) return UI.toast('Nothing to export', { tone: 'warn' }); csvResults(L); UI.toast('Downloaded ' + fmt.plural(L.length, 'result')); } });
+}
+
+/* ---------- answer sheet of one attempt (v49): what the student chose, the key today, re-grade ---------- */
+const LT = ['A', 'B', 'C', 'D'];
+const hideMob = () => !!AX.ls.get('rs_hidemob', false);
+async function openSheet(id, onRegrade) {
+  const r = await AX.api.call('cbt_admin_sheet', 'get', { id });
+  if (!r.ok) return r.error === 'missing'
+    ? UI.toast('Run supabase_v49_answer_sheet.sql in Supabase first (then v35 again).', { tone: 'warn' }) : UI.err(r);
+  const R = r.result, N = r.now, Q = r.questions || [], hi = R.lang === 'hi';
+  const st = q => q.mine == null || q.key == null ? 'skip' : q.mine === q.key ? 'ok' : 'bad';
+  const changed = N.correct !== R.correct || N.wrong !== R.wrong || +N.score !== +R.score;
+  let F = 'all';
+  const diag = () => h`${changed ? h`<div class="callout warn">${icon('alert')}<div class="sm"><b>The answer key or marks changed after this attempt.</b> Saved: ${R.score}/${R.max} (✓ ${R.correct} ✗ ${R.wrong}). With today's key: <b>${N.score}/${N.max}</b> (✓ ${N.correct} ✗ ${N.wrong}).${canDel() ? ' Press Re-grade to save the new score.' : ''}</div></div>`
+      : h`<div class="callout ok">${icon('checkCircle')}<div class="sm"><b>The saved score matches today's answer key.</b> The options below are exactly what the student's phone sent at the submit. If the student says an answer was right, compare it with the correct option — the answer key itself may be wrong.</div></div>`}
+    ${hi ? h`<div class="callout info mt8">${icon('info')}<div class="sm">Written in <b>हिंदी</b>. The answer key is shared with English: if the Hindi options are in another order than the English ones, a right Hindi answer counts as wrong. The Hindi text is shown with each question.</div></div>` : ''}
+    ${(r.edits || []).length ? h`<div class="callout info mt8">${icon('history')}<div class="sm">The test was saved again after this attempt: ${join(r.edits, (e, i) => h`${i ? ', ' : ''}<span class="nowrap">${fmt.dt(e.at)} (${e.who})</span>`)}.</div></div>` : ''}`;
+  const opt = (q, j, txt) => { const k = j === q.key, m = j === q.mine; return h`<div class="as-o ${k ? 'k' : ''} ${m && !k ? 'm' : ''}"><b>${LT[j]}</b><span class="grow">${txt || '—'}</span>${m ? UI.pill('Student', k ? 'ok' : 'bad') : ''}${k ? UI.pill('Correct', 'ok') : ''}</div>`; };
+  const list = () => { const L = Q.map((q, i) => [q, i]).filter(([q]) => F === 'all' || st(q) === F); return L.length ? join(L, ([q, i]) => { const s = st(q); return h`<div class="as-q ${s}">
+      <div class="row"><b>Q${i + 1}</b>${q.sec ? h`<span class="xs mut">${q.sec}</span>` : ''}<span class="grow"></span>${q.time != null ? h`<span class="xs mut">${q.time}s</span>` : ''}${UI.pill(s === 'ok' ? 'Right' : s === 'bad' ? 'Wrong' : q.key == null ? 'No key' : 'Skipped', s === 'ok' ? 'ok' : s === 'bad' ? 'bad' : '')}</div>
+      ${hi && q.hq ? h`<div class="sm mt4">${q.hq}</div>` : ''}<div class="sm ${hi && q.hq ? 'xs mut' : ''} mt4">${q.q || (q.img ? '[picture]' : '')}</div>
+      <div class="mt8">${join([0, 1, 2, 3], j => opt(q, j, hi && q.hoptions && q.hoptions[j] ? q.hoptions[j] + ' · ' + (q.options[j] || '') : q.options[j]))}</div></div>`; }) : h`<div class="xs mut">Nothing here.</div>`; };
+  const cnt = k => Q.filter(q => st(q) === k).length;
+  UI.modal({
+    title: 'Answer sheet', sub: r.student.name + ' · ' + fmt.mobile(r.student.mobile) + ' · ' + r.test.title + ' · ' + fmt.dt(R.at) + (hi ? ' · हिंदी' : ' · English'), size: 'wide',
+    body: h`<div id="as-d">${diag()}</div>
+      ${(r.attempts || []).length > 1 ? h`<div class="xs mut mt8">${fmt.plural(r.attempts.length, 'attempt')} of this test: ${join(r.attempts, (a, i) => h`${i ? ' · ' : ''}<span class="nowrap ${a.id === R.id ? 'b6' : ''}">${fmt.dt(a.at)} ${a.score}/${a.max}</span>`)}</div>` : ''}
+      <div class="row wrap gap6 mt12" id="as-f">${join([['all', 'All', Q.length], ['bad', 'Wrong', cnt('bad')], ['ok', 'Right', cnt('ok')], ['skip', 'Skipped', cnt('skip')]], ([k, l, n]) => h`<button type="button" class="btn xs ${k === F ? 'pri' : 'ghost'}" data-act="asf" data-k="${k}">${l} ${n}</button>`)}</div>
+      <div class="as-l mt12" id="as-l">${list()}</div>`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Close</button>${changed && canDel() ? h`<button class="btn pri" data-act="asre">${icon('refresh', 16)} Re-grade with today's key</button>` : ''}`,
+    onOpen(el, close) {
+      AX.act(el, {
+        asf(b) { F = b.dataset.k; el.querySelectorAll('#as-f .btn').forEach(x => x.className = 'btn xs ' + (x.dataset.k === F ? 'pri' : 'ghost')); AX.set(el.querySelector('#as-l'), list()); },
+        async asre(b) {
+          if (!(await UI.confirm({ title: 'Re-grade this attempt?', text: 'Score ' + R.score + ' → ' + N.score + ' (counted with today\'s answer key). Rank and the student\'s result change too.', yes: 'Re-grade' }))) return;
+          await UI.busy(b, async () => {
+            const y = await AX.api.call('cbt_admin_sheet', 'regrade', { id });
+            if (!y.ok) return UI.err(y);
+            close(); UI.toast('Re-graded: ' + y.score + '/' + y.max);
+            if (onRegrade) onRegrade({ score: y.score, max: y.max, correct: y.correct, wrong: y.wrong, skipped: y.skipped });
+          });
+        }
+      });
+    }
+  });
 }
 
 /* ---------- per-test stats (grouped by test id; results without one fall back to the title) ---------- */
@@ -334,6 +386,210 @@ async function tabInsights(ctx) {
   if (ph) AX.act(ph, { incsv() { const P = [...inStats(rs, sts, I.range).people].sort((a, b) => b.avg - a.avg); dl('insights-' + I.range + 'days.csv', [['Name', 'Mobile', 'Tests', 'Average %', 'Best %', 'Change %', 'Last test'], ...P.map(p => [p.name, p.mobile, p.n, p.avg, p.best, p.trend, new Date(p.last).toLocaleDateString('en-IN')])]); UI.toast('Downloaded ' + fmt.plural(P.length, 'student')); } });
 }
 
+/* ---------- result image to post in the channel: rank, name, time, score (no mobile numbers) ---------- */
+// O = { marks, time, rw, pct, ser } — what to show next to rank and name (never the mobile number)
+// T = theme: { bg1, bg2, tx, ac, font, head, foot } (see PUB_THEMES)
+function cardCanvas(title, ser, L, O, T) {
+  T = Object.assign({}, PUB_THEMES[0], T || {});
+  const W = 1080, P = 56, RH = 84, top = 250, H = top + L.length * RH + 96;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), F = (PUB_FONTS.find(f => f[0] === T.font) || PUB_FONTS[0])[2];
+  const tx = a => hexA(T.tx, a);
+  const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, T.bg1); bg.addColorStop(1, T.bg2);
+  g.fillStyle = bg; g.fillRect(0, 0, W, H);
+  const fit = (t, w, font) => { g.font = font; t = String(t || ''); if (g.measureText(t).width <= w) return t; while (t && g.measureText(t + '…').width > w) t = t.slice(0, -1); return t + '…'; };
+  // columns from the right edge: [label, width, value, main colour?]
+  const C = [];
+  if (O.marks) C.push(['SCORE', 190, x => x.score + ' / ' + x.max, 1]);
+  if (O.pct) C.push(['%', 110, x => (x.max ? Math.round(x.score * 100 / x.max) : 0) + '%', !O.marks]);
+  if (O.rw) C.push(['✓  ✗', 150, x => x.correct + '  ' + x.wrong]);
+  if (O.time) C.push(['TIME', 150, x => fsec(x.used)]);
+  const xs = []; let right = W - P; C.forEach(col => { xs.push(right); right -= col[1] + 24; });
+  const nameW = right - (P + 120);
+  g.fillStyle = T.ac; g.fillText(fit(T.head != null ? T.head : ((window.CBT_CONFIG || {}).SITE_NAME || 'Results').toUpperCase(), W - 2 * P, '700 26px ' + F), P, 78);
+  g.fillStyle = T.tx; g.fillText(fit(title, W - 2 * P, '800 50px ' + F), P, 142);
+  g.fillStyle = tx(.7); g.fillText(fit('Top ' + L.length + (O.ser && ser ? ' · ' + ser : '') + ' · ' + new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }), W - 2 * P, '500 28px ' + F), P, 192);
+  g.fillStyle = tx(.5); g.font = '600 22px ' + F;
+  g.fillText('RANK', P, top - 16); g.fillText('NAME', P + 120, top - 16);
+  g.textAlign = 'right'; C.forEach((col, i) => g.fillText(col[0], xs[i], top - 16)); g.textAlign = 'left';
+  const medal = ['#fbbf24', '#cbd5e1', '#f59e0b'];
+  L.forEach((x, i) => {
+    const y = top + i * RH, cy = y + RH / 2;
+    g.fillStyle = i % 2 ? tx(.035) : tx(.08);
+    g.beginPath(); if (g.roundRect) g.roundRect(P - 16, y + 6, W - 2 * P + 32, RH - 12, 18); else g.rect(P - 16, y + 6, W - 2 * P + 32, RH - 12); g.fill();
+    if (x.rank <= 3) { g.fillStyle = medal[x.rank - 1]; g.beginPath(); g.arc(P + 30, cy, 26, 0, 7); g.fill(); g.fillStyle = '#1f2937'; } else g.fillStyle = T.tx;
+    g.font = '800 28px ' + F; g.textAlign = 'center'; g.fillText(String(x.rank), P + 30, cy + 10); g.textAlign = 'left';
+    g.fillStyle = T.tx; g.fillText(fit(x.name, nameW, '700 31px ' + F), P + 120, cy + 11);
+    g.textAlign = 'right';
+    C.forEach((col, k) => { g.fillStyle = col[3] ? T.ac : tx(.75); g.font = (col[3] ? '800 31px ' : '500 27px ') + F; g.fillText(col[2](x), xs[k], cy + 10); });
+    g.textAlign = 'left';
+  });
+  g.fillStyle = tx(.45); g.fillText(fit(T.foot != null ? T.foot : 'Congratulations to all toppers!', W - 2 * P, '500 22px ' + F), P, H - 40);
+  return c;
+}
+const PUB_THEMES = [
+  { id: 'teal', name: 'Teal night', bg1: '#0b1a2e', bg2: '#0d3b3a', tx: '#ffffff', ac: '#5eead4' },
+  { id: 'royal', name: 'Royal blue', bg1: '#0f1b4d', bg2: '#1e3a8a', tx: '#ffffff', ac: '#93c5fd' },
+  { id: 'purple', name: 'Purple', bg1: '#2e1065', bg2: '#6d28d9', tx: '#ffffff', ac: '#f0abfc' },
+  { id: 'sunset', name: 'Sunset', bg1: '#7c2d12', bg2: '#be185d', tx: '#ffffff', ac: '#fde68a' },
+  { id: 'forest', name: 'Green', bg1: '#052e16', bg2: '#166534', tx: '#ffffff', ac: '#bef264' },
+  { id: 'black', name: 'Black & gold', bg1: '#0a0a0a', bg2: '#262626', tx: '#ffffff', ac: '#facc15' },
+  { id: 'light', name: 'White', bg1: '#ffffff', bg2: '#e0f2fe', tx: '#0f172a', ac: '#0369a1' },
+  { id: 'paper', name: 'Cream', bg1: '#fffbeb', bg2: '#fde68a', tx: '#422006', ac: '#b45309' }
+];
+const PUB_FONTS = [
+  ['sans', 'Clean', '"Segoe UI", Roboto, "Noto Sans", "Noto Sans Devanagari", Arial, sans-serif'],
+  ['round', 'Rounded', '"Nunito", "Varela Round", "Trebuchet MS", "Noto Sans Devanagari", sans-serif'],
+  ['serif', 'Classic', 'Georgia, "Times New Roman", "Noto Serif Devanagari", serif'],
+  ['mono', 'Typewriter', '"Courier New", Courier, "Noto Sans Devanagari", monospace']
+];
+const hexA = (hex, a) => { const m = /^#?([0-9a-f]{6})$/i.exec(hex || ''); if (!m) return 'rgba(255,255,255,' + a + ')'; const n = parseInt(m[1], 16); return 'rgba(' + (n >> 16) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; };
+// each series keeps its own look (saved on this device)
+// the picture as a one-page PDF (the canvas as JPEG inside; no library needed)
+function jpegPdf(cv) {
+  const jpg = atob(cv.toDataURL('image/jpeg', 0.92).split(',')[1]), w = cv.width, h = cv.height;
+  const pw = 595.28, ph = Math.round(pw * h / w * 100) / 100, draw = 'q ' + pw + ' 0 0 ' + ph + ' 0 0 cm /Im0 Do Q';
+  const objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + pw + ' ' + ph + '] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>',
+    '<< /Type /XObject /Subtype /Image /Width ' + w + ' /Height ' + h + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpg.length + ' >>\nstream\n' + jpg + '\nendstream',
+    '<< /Length ' + draw.length + ' >>\nstream\n' + draw + '\nendstream'];
+  let out = '%PDF-1.4\n%\xe2\xe3\xcf\xd3\n'; const at = [];
+  objs.forEach((o, i) => { at.push(out.length); out += (i + 1) + ' 0 obj\n' + o + '\nendobj\n'; });
+  const x = out.length;
+  out += 'xref\n0 ' + (objs.length + 1) + '\n0000000000 65535 f \n' + at.map(n => String(n).padStart(10, '0') + ' 00000 n \n').join('') +
+    'trailer\n<< /Size ' + (objs.length + 1) + ' /Root 1 0 R >>\nstartxref\n' + x + '\n%%EOF';
+  const b = new Uint8Array(out.length); for (let i = 0; i < out.length; i++) b[i] = out.charCodeAt(i) & 255;
+  return new Blob([b], { type: 'application/pdf' });
+}
+// a steady colour per series for its tests in the picker
+const pubGrad = id => { let n = 0; for (const ch of String(id || '')) n = (n * 31 + ch.charCodeAt(0)) >>> 0; const t = PUB_THEMES[n % 6]; return 'linear-gradient(135deg,' + t.bg2 + ',' + t.bg1 + ')'; };
+const pubThemeKey = ser => 'rs_pubtheme:' + (ser || '-');
+// Public result list: pick how many toppers and what to show; the picture never has mobile numbers
+function topCard(title, ser, rows) {
+  if (!rows.length) return UI.toast('No students yet', { tone: 'warn' });
+  const O = Object.assign({ n: 10, marks: true, time: true, rw: false, pct: false, ser: true }, AX.ls.get('rs_pub', {}));
+  const T = Object.assign({}, PUB_THEMES[0], AX.ls.get(pubThemeKey(ser), {}));
+  let c = null, url = '';
+  const L = () => rows.slice(0, Math.max(1, Math.min(100, O.n || 10)));
+  const name = () => (title || 'result').replace(/[^\w]+/g, '_') + '_top' + L().length + '.png';
+  const draw = el => { AX.ls.set('rs_pub', O); AX.ls.set(pubThemeKey(ser), T); c = cardCanvas(title, ser, L(), O, T); url = c.toDataURL('image/png'); el.querySelector('#pub-img').src = url; el.querySelector('#pub-n').textContent = 'Top ' + L().length + ' of ' + rows.length; };
+  const chk = (k, l) => h`<label class="pub-chip"><input type="checkbox" data-k="${k}" ${O[k] ? raw('checked') : ''}><span>${icon('check', 13)}${l}</span></label>`;
+  const isTh = t => t.bg1 === T.bg1 && t.bg2 === T.bg2 && t.tx === T.tx && t.ac === T.ac;
+  UI.modal({
+    title: 'Public result list', sub: 'Choose how many toppers and what to show, then download the picture for your channel. Mobile numbers are never shown.', size: 'wide',
+    body: h`<div class="pub-bar">
+        <div class="pub-seg" role="group" aria-label="How many toppers">${join([10, 15, 25, 50, 100].filter((n, i) => !i || n <= rows.length || rows.length > [10, 15, 25, 50][i - 1]), n => h`<button type="button" class="${O.n === n ? 'on' : ''}" data-act="pn" data-n="${n}">Top ${n}</button>`)}</div>
+        <label class="pub-num"><span>Custom</span><input class="inp sm num" id="pub-c" type="number" min="1" max="100" value="${O.n}" aria-label="How many toppers"></label>
+        <span class="xs mut" id="pub-n"></span></div>
+      <div class="pub-th" id="pub-th">
+        <button type="button" class="pub-thh" data-act="pth" aria-expanded="false" aria-controls="pub-thb"><b>Design studio</b><span class="xs mut">Colours, font &amp; text</span><span class="grow"></span><span class="pub-chev">${icon('chevD', 18)}</span></button>
+        <div class="pub-thb" id="pub-thb">
+        <div class="pub-sec"><div class="pub-lb">Theme <span>${ser ? 'saved for ' + ser : 'saved on this device'}</span></div>
+          <div class="pub-sws">${join(PUB_THEMES, t => h`<button type="button" class="pub-sw ${isTh(t) ? 'on' : ''}" data-act="pset" data-id="${t.id}"><i style="background:linear-gradient(135deg,${t.bg1},${t.bg2});color:${t.ac}">Aa<em>${icon('check', 12)}</em></i><span>${t.name}</span></button>`)}</div></div>
+        <div class="pub-sec"><div class="pub-lb">Your colours</div>
+          <div class="pub-cls">${join([['bg1', 'Background 1'], ['bg2', 'Background 2'], ['tx', 'Text'], ['ac', 'Highlight']], ([k, l]) => h`<label class="pub-cl"><input type="color" data-c="${k}" value="${T[k]}"><span>${l}</span></label>`)}</div></div>
+        <div class="pub-sec"><div class="pub-lb">Font</div>
+          <div class="pub-fns">${join(PUB_FONTS, f => h`<button type="button" class="pub-fn ${(T.font || 'sans') === f[0] ? 'on' : ''}" data-act="pfont" data-f="${f[0]}"><b style="font-family:${raw(f[2])}">Aa</b><span>${f[1]}</span></button>`)}</div></div>
+        <div class="pub-sec"><div class="pub-lb">Text on the picture</div>
+          <div class="pub-tx"><label><span>Top line</span><input class="inp sm" data-t="head" maxlength="60" placeholder="Your institute name" value="${T.head != null ? T.head : ''}"></label>
+            <label><span>Bottom line</span><input class="inp sm" data-t="foot" maxlength="80" placeholder="Congratulations to all toppers!" value="${T.foot != null ? T.foot : ''}"></label></div></div>
+        <div class="row"><span class="grow"></span><button type="button" class="btn xs ghost" data-act="preset">${icon('refresh', 13)} Reset to default</button></div></div></div>
+      <div class="pub-chips"><span class="pub-lb">Show</span>${chk('marks', 'Marks')}${chk('time', 'Time taken')}${chk('rw', 'Right / wrong')}${chk('pct', 'Percentage')}${chk('ser', 'Series name')}</div>
+      <div class="pub-pv"><img id="pub-img" alt="Result picture"></div>`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Close</button>${navigator.canShare ? h`<button class="btn" data-act="cshare">${icon('external', 16)} Share</button>` : ''}<button class="btn pri" data-act="cdl" aria-haspopup="menu">${icon('download', 16)} Download ${icon('chevD', 15)}</button>`,
+    onOpen(el) {
+      draw(el);
+      const pick = n => { O.n = Math.max(1, Math.min(100, n || 10)); el.querySelector('#pub-c').value = O.n; el.querySelectorAll('[data-act="pn"]').forEach(b => b.classList.toggle('on', +b.dataset.n === O.n)); draw(el); };
+      el.querySelector('#pub-c').addEventListener('change', e => pick(+e.target.value));
+      el.querySelectorAll('input[type=checkbox][data-k]').forEach(i => i.addEventListener('change', () => { O[i.dataset.k] = i.checked; draw(el); }));
+      const sync = () => { el.querySelectorAll('input[data-c]').forEach(i => { i.value = T[i.dataset.c]; });
+        el.querySelectorAll('.pub-fn').forEach(b => b.classList.toggle('on', b.dataset.f === (T.font || 'sans')));
+        el.querySelectorAll('.pub-sw').forEach(b => b.classList.toggle('on', isTh(PUB_THEMES.find(t => t.id === b.dataset.id))));
+        el.querySelectorAll('input[data-t]').forEach(i => { i.value = T[i.dataset.t] != null ? T[i.dataset.t] : ''; }); };
+      el.querySelectorAll('input[data-c]').forEach(i => i.addEventListener('input', () => { T[i.dataset.c] = i.value; sync(); draw(el); }));
+      el.querySelectorAll('input[data-t]').forEach(i => i.addEventListener('input', AX.u.debounce(() => { T[i.dataset.t] = i.value.trim() ? i.value : null; draw(el); }, 200)));
+      AX.act(el, {
+        pn: b => pick(+b.dataset.n),
+        pth(b) { const open = el.querySelector('#pub-th').classList.toggle('open'); b.setAttribute('aria-expanded', open); },
+        pfont(b) { T.font = b.dataset.f; sync(); draw(el); },
+        pset(b) { const t = PUB_THEMES.find(x => x.id === b.dataset.id); if (!t) return; Object.assign(T, { bg1: t.bg1, bg2: t.bg2, tx: t.tx, ac: t.ac }); sync(); draw(el); },
+        preset() { Object.keys(T).forEach(k => delete T[k]); Object.assign(T, PUB_THEMES[0]); sync(); draw(el); },
+        cdl(b) {
+          const base = name().replace(/\.png$/, '');
+          UI.menu(b, [{ head: 'Download as' },
+            { label: 'Picture', hint: 'PNG', icon: 'image', fn() { const a = document.createElement('a'); a.href = url; a.download = base + '.png'; document.body.appendChild(a); a.click(); a.remove(); UI.toast('Picture downloaded'); } },
+            { label: 'PDF', hint: 'PDF', icon: 'fileText', fn() { AX.u.download(base + '.pdf', jpegPdf(c), 'application/pdf'); UI.toast('PDF downloaded'); } },
+            { label: 'Excel / Google Sheets', hint: 'CSV', icon: 'grid', fn() {
+              dl(base + '.csv', [[title + (ser ? ' · ' + ser : '')], ['Rank', 'Name', 'Score', 'Max', 'Percentage', 'Correct', 'Wrong', 'Skipped', 'Time'],
+                ...L().map(x => [x.rank, x.name, x.score, x.max, (x.max ? Math.round(x.score * 100 / x.max) : 0) + '%', x.correct, x.wrong, x.skipped, fsec(x.used)])]);
+              UI.toast('Sheet downloaded'); } }]);
+        },
+        cshare() { c.toBlob(async bl => { const f = new File([bl], name(), { type: 'image/png' }); try { if (navigator.canShare({ files: [f] })) await navigator.share({ files: [f], title }); else UI.toast('Sharing is not available here — use Download', { tone: 'warn' }); } catch (e) {} }, 'image/png'); }
+      });
+    }
+  });
+}
+
+/* ---------- a test's students in rank order (r = cbt_admin2 analytics) ---------- */
+async function rankedRows(id, r) {
+  const rk = await AX.api.call('cbt_admin_ranks', 'get', { id }), RK = {};
+  if (rk && rk.ok) (rk.ranks || []).forEach(x => { RK[x.mobile] = x; });
+  const rows = [...(r.rows || [])].sort((a, b) => ((RK[a.mobile] ? RK[a.mobile].rank : 1e9) - (RK[b.mobile] ? RK[b.mobile].rank : 1e9))
+      || (+b.score - +a.score) || ((+a.wrong || 0) - (+b.wrong || 0)) || ((+a.used || 0) - (+b.used || 0)) || String(a.name).localeCompare(String(b.name)))
+    .map((x, i) => Object.assign({}, x, { rank: i + 1 }));
+  return { rows, RK };
+}
+// "Public list" from the page header: straight to the picture of one test
+async function publicList(id) {
+  UI.toast('Loading the result…');
+  const r = await AX.api.call('cbt_admin2', 'analytics', { id });
+  if (!r.ok) return UI.err(r);
+  const { rows } = await rankedRows(id, r), tt = catTest(id);
+  topCard(r.title || (tt && tt.title) || 'Test', seriesTitle(tt), rows);
+}
+// pick the test first (newest attempted first; the test chosen in the Results filter comes first)
+async function pickPublic() {
+  const [rr] = await Promise.all([AX.data.results(), AX.data.catalog().then(c => { if (c && c.ok) S.cat = c; })]);
+  const m = new Map();
+  ((rr && rr.results) || []).forEach(x => { if (!x.test_id) return; const o = m.get(x.test_id); if (o) { o.n++; o.at = Math.max(o.at, x.at); } else m.set(x.test_id, { id: x.test_id, title: x.title, n: 1, at: x.at }); });
+  const L = [...m.values()].sort((a, b) => (b.id === S.f.t) - (a.id === S.f.t) || b.at - a.at);
+  if (!L.length) return UI.toast('No results yet', { tone: 'warn' });
+  if (L.length === 1) return publicList(L[0].id);
+  // series first (newest used first), then search: a long list stays easy to find in
+  const serOf = x => { const t = catTest(x.id); return t ? t.series_id || '' : ''; };
+  const SR = []; L.forEach(x => { const k = serOf(x); if (!SR.some(s => s.id === k)) SR.push({ id: k, title: seriesTitle(catTest(x.id)) || 'Other tests' }); });
+  const P = { ser: AX.ls.get('rs_pubser', ''), q: '' };
+  if (!SR.some(s => s.id === P.ser)) P.ser = SR.length > 1 ? SR[0].id : '';
+  const day0 = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); })();
+  const grp = at => at >= day0 ? 'Today' : at >= day0 - DAY ? 'Yesterday' : at >= day0 - 6 * DAY ? 'This week' : at >= day0 - 30 * DAY ? 'This month' : 'Older';
+  const row = (x, q) => { const t = catTest(x.id), st = seriesTitle(t);
+    return h`<button type="button" class="pub-row" data-act="pubt" data-id="${x.id}"><span class="pub-ic" style="background:${raw(pubGrad(t ? t.series_id : x.id))}">${icon('trophy', 17)}</span>
+      <span class="grow"><b class="ell">${t ? t.title : x.title}</b><span class="pub-meta">${q && st ? h`<span class="ell">${st}</span>` : ''}<span>${icon('users', 12)} ${x.n}</span><span>${fmt.dt(x.at)}</span></span></span>${icon('chevR', 16)}</button>`; };
+  const list = () => {
+    const q = P.q.trim().toLowerCase();
+    const F = L.filter(x => (q ? true : !P.ser || serOf(x) === P.ser) && (!q || ((catTest(x.id) || x).title || '').toLowerCase().includes(q)));
+    if (!F.length) return h`<div class="pub-empty">${icon('search', 22)}<span>No test matches “${P.q}”.</span></div>`;
+    const V = F.slice(0, 100), G = [];
+    V.forEach(x => { const g = grp(x.at); const o = G.find(y => y.g === g); if (o) o.L.push(x); else G.push({ g, L: [x] }); });
+    return h`${join(G, o => h`<div class="pub-g">${o.g} <span>${o.L.length}</span></div>${join(o.L, x => row(x, q))}`)}${F.length > 100 ? h`<div class="xs mut" style="padding:10px 4px">Showing 100 of ${F.length} — type a name to find the rest.</div>` : ''}`;
+  };
+  UI.modal({
+    title: 'Public result list', sub: 'Pick a test series and a test — then choose the toppers and download the picture.',
+    body: h`<div class="inp-wrap search">${icon('search', 16)}<input class="inp" id="pub-q" type="search" placeholder="Search a test in any series" autocomplete="off" aria-label="Search test"></div>
+      ${SR.length > 1 ? h`<div class="pub-sr" id="pub-sr">${join(SR, x => h`<button type="button" class="pub-pill ${P.ser === x.id ? 'on' : ''}" data-act="pubs" data-id="${x.id}"><span class="ell">${x.title}</span><em>${L.filter(y => serOf(y) === x.id).length}</em></button>`)}</div>` : ''}
+      <div class="pub-list" id="pub-l">${list()}</div>`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Close</button>`,
+    onOpen(el, close) {
+      const redraw = () => AX.set(el.querySelector('#pub-l'), list());
+      el.querySelector('#pub-q').addEventListener('input', AX.u.debounce(e => { P.q = e.target.value; const sr = el.querySelector('#pub-sr'); if (sr) sr.classList.toggle('dim', !!P.q.trim()); redraw(); }, 150));
+      AX.act(el, {
+        pubt(b) { close(); publicList(b.dataset.id); },
+        pubs(b) { P.ser = b.dataset.id; AX.ls.set('rs_pubser', P.ser); el.querySelectorAll('[data-act="pubs"]').forEach(x => x.classList.toggle('on', x.dataset.id === P.ser)); b.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' }); redraw(); }
+      });
+    }
+  });
+}
+
 /* ---------- one test's analytics ---------- */
 const LET = 'ABCD';
 async function analytics(el, id, o) {
@@ -347,8 +603,13 @@ async function analytics(el, id, o) {
     return;
   }
   const t = catTest(id), ser = seriesTitle(t), title = r.title || (t && t.title) || 'Test';
-  const A = { sort: 'no', allTop: false };
-  const qs = r.questions || [], rows = r.rows || [], sus = qs.filter(q => q.suspect);
+  const A = { sort: 'no', top: 10 };
+  const qs = r.questions || [], sus = qs.filter(q => q.suspect);
+  // rank: higher score first, then less time; numbered 1, 2, 3 … (no repeated or missing numbers)
+  // v50: the server's rank order (marks, fewer wrong, Biology, Chemistry, Physics, less time, submitted first);
+  // students it does not rank (late, after the result time) follow, by marks then time. Numbered 1, 2, 3 … without ties
+  const { rows, RK } = await rankedRows(id, r);
+  if (!el.isConnected || (o.ctx && !o.ctx.alive())) return;
   if (o.drawer) o.drawer.head(h`<h2 class="ell">${title}</h2><div class="m-s">Test analytics${ser ? ' · ' + ser : ''}</div>`);
   if (o.onTitle) o.onTitle(title, ser);
   const csv = () => {
@@ -377,9 +638,17 @@ async function analytics(el, id, o) {
     AX.set(el.querySelector('#an-qs'), L.length ? join(L, qCard) : h`<div class="card">${UI.empty({ icon: 'fileText', title: 'No questions' })}</div>`);
   };
   const drawTop = () => {
-    const T = A.allTop ? rows : rows.slice(0, 10);
-    AX.set(el.querySelector('#an-top'), T.length ? h`${join(T, x => { const pp = x.max ? Math.round(x.score * 100 / x.max) : 0; return h`<div class="li click" data-act="stu" data-m="${x.mobile}">${rankTag((x.rank || 1) - 1)}<div class="grow"><div class="t ell">${x.name}</div><div class="s"><span class="num">✓${x.correct} ✗${x.wrong} –${x.skipped}</span> · ${mins(x.used)} min${x.attempts > 1 ? ' · ' + x.attempts + ' attempts' : ''}</div></div><div class="rs-end"><b class="num">${x.score}<span class="mut" style="font-weight:600">/${x.max}</span></b><span class="xs ${'t-' + tone(pp)}">${pp}%</span></div></div>`; })}
-      ${rows.length > 10 ? h`<div style="padding:8px 12px 12px"><button class="btn xs ghost" data-act="alltop">${A.allTop ? 'Show top 10' : 'Show all ' + rows.length}</button></div>` : ''}` : h`<div class="rs-none">No students yet.</div>`);
+    const T = A.top ? rows.slice(0, A.top) : rows;
+    AX.set(el.querySelector('#an-top'), T.length ? h`<div class="row wrap gap6" style="padding:4px 12px 8px">${join([[10, 'Top 10'], [50, 'Top 50'], [100, 'Top 100'], [0, 'All']].filter(([n]) => n === 10 || n < rows.length || (!n && rows.length > 10)), ([n, l]) => h`<button type="button" class="btn xs ${A.top === n ? 'pri' : 'ghost'}" data-act="topn" data-n="${n}">${l}</button>`)}<span class="grow"></span><button type="button" class="btn xs pri" data-act="card">${icon('download', 13)} Public list</button></div>
+      ${join(T, x => { const pp = x.max ? Math.round(x.score * 100 / x.max) : 0; return h`<div class="li click" data-act="row" data-m="${x.mobile}" title="Open the answer sheet">${rankTag(x.rank - 1)}<div class="grow"><div class="t ell">${x.name}</div><div class="s"><span class="num">✓${x.correct} ✗${x.wrong} –${x.skipped}</span> · ${fsec(x.used)}${x.attempts > 1 ? ' · ' + x.attempts + ' attempts' : ''}</div></div><div class="rs-end"><b class="num">${x.score}<span class="mut" style="font-weight:600">/${x.max}</span></b><span class="xs ${'t-' + tone(pp)}">${pp}%</span></div></div>`; })}` : h`<div class="rs-none">No students yet.</div>`);
+  };
+  // a row → the answer sheet of the attempt the rank counts (the student's first in this test)
+  const openRow = async m => {
+    if (RK[m]) return openSheet(RK[m].result_id, () => { AX.cache.drop('results'); AX.emit('data:changed'); });
+    const rr = await AX.data.results();
+    const L = ((rr && rr.results) || []).filter(x => x.mobile === m && x.test_id === id).sort((a, b) => a.at - b.at);
+    if (!L.length) return openStu(m);
+    openSheet(L[0].id, () => { AX.cache.drop('results'); AX.emit('data:changed'); });
   };
   AX.set(el, h`<div class="an-wrap">
     <div class="an-tiles">${join([['Students', fmt.num(r.students), 'users', ''], ['Average', avg, 'target', 'vio'], ['Highest', h`${r.high}<small>/${r.max}</small>`, 'trophy', 'gold'], ['Lowest', r.low, 'minus', 'bad'], ['Avg time', fsec(r.avg_time), 'clock', 'info'], ['Attempts', fmt.num(r.attempts), 'fileText', '']], x => UI.kpi({ label: x[0], value: x[1], icon: x[2], tone: x[3] }))}</div>
@@ -394,7 +663,9 @@ async function analytics(el, id, o) {
     sort(b) { A.sort = b.dataset.v; b.parentElement.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); drawQs(); },
     more(p) { p.classList.toggle('open'); },
     openq: b => openQ(Number(b.dataset.i)),
-    alltop() { A.allTop = !A.allTop; drawTop(); },
+    topn(b) { A.top = Number(b.dataset.n); drawTop(); },
+    row: b => openRow(b.dataset.m),
+    card: () => topCard(title, ser, rows),
     stu: b => openStu(b.dataset.m),
     csv, full() { if (o.drawer) o.drawer.close(); }
   });
@@ -408,8 +679,10 @@ AX.openAnalytics = (id) => {
 async function pageAnalytics(ctx, id) {
   const t0 = catTest(id);
   const headFor = (title, ser) => ctx.head({ title: title || 'Test analytics', sub: 'Test analytics' + (ser ? ' · ' + ser : '') + ' — how students answered each question.', crumb: 'Test analytics',
-    actions: h`<a class="btn sm ghost" href="#/results/tests">${icon('arrowL', 15)} All tests</a>` });
+    actions: h`<a class="btn sm ghost" href="#/results/tests">${icon('arrowL', 15)} All tests</a><button class="btn sm pri" data-act="pub">${icon('download', 15)} Public list</button>` });
   headFor(t0 && t0.title, seriesTitle(t0));
+  const ph = document.getElementById('ax-ph');
+  if (ph) AX.act(ph, { pub: () => publicList(id) });
   await analytics(ctx.el, id, { ctx, onTitle: headFor });
 }
 
@@ -430,9 +703,9 @@ AX.mod({
     const refresh = h`<button class="btn sm ghost" data-act="refresh">${icon('refresh', 15)} Refresh</button>`;
     ctx.head({ title: 'Results & analytics', sub: SUB[tab], tab,
       tabs: [{ id: 'all', title: 'Results', icon: 'list', href: '#/results' }, { id: 'tests', title: 'Tests', icon: 'bars' }, { id: 'insights', title: 'Insights', icon: 'sparkle' }],
-      actions: tab === 'all' ? h`${refresh}<button class="btn sm" data-act="csv">${icon('download', 15)} Export CSV</button>` : tab === 'insights' ? h`${refresh}<button class="btn sm" data-act="incsv">${icon('download', 15)} Report CSV</button>` : refresh });
+      actions: tab === 'all' ? h`${refresh}<button class="btn sm" data-act="csv">${icon('download', 15)} Export CSV</button><button class="btn sm pri" data-act="pub">${icon('download', 15)} Public list</button>` : tab === 'insights' ? h`${refresh}<button class="btn sm" data-act="incsv">${icon('download', 15)} Report CSV</button><button class="btn sm pri" data-act="pub">${icon('download', 15)} Public list</button>` : h`${refresh}<button class="btn sm pri" data-act="pub">${icon('download', 15)} Public list</button>` });
     const ph = document.getElementById('ax-ph');
-    if (ph) AX.act(ph, { refresh() { AX.cache.drop('results'); if (tab === 'insights') AX.cache.drop('students'); ctx.reload(); } });
+    if (ph) AX.act(ph, { refresh() { AX.cache.drop('results'); if (tab === 'insights') AX.cache.drop('students'); ctx.reload(); }, pub: () => pickPublic() });
     if (tab === 'tests') return tabTests(ctx);
     if (tab === 'insights') return tabInsights(ctx);
     return tabAll(ctx);

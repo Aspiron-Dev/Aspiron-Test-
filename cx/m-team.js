@@ -17,7 +17,7 @@ const ROLES = [
 ];
 // readable names for the activity log
 const ACT = {
-  'session:sign_in': 'Signed in', 'session:sign_out': 'Signed out',
+  'session:sign_in': 'Signed in', 'session:sign_out': 'Signed out', 'cbt_admin_security:seen': 'Marked security alerts as seen',
   'cbt_admin:student_add': 'Added a student', 'cbt_admin:student_approve': 'Approved an access request', 'cbt_admin:student_code': 'Made a new access code',
   'cbt_admin:student_block': 'Blocked / unblocked a student', 'cbt_admin:student_devices_reset': 'Reset devices', 'cbt_admin:student_update': 'Edited a student',
   'cbt_admin:student_delete': 'Deleted a student', 'cbt_admin:grant': 'Changed series access', 'cbt_admin:series_save': 'Saved a series', 'cbt_admin:series_delete': 'Deleted a series',
@@ -39,7 +39,7 @@ const ACT = {
   'cbt_admin_cheat:flag': 'Tagged cheating', 'cbt_admin_cheat:unflag': 'Removed a cheating tag', 'cbt_admin_cheat:suspend': 'Suspended a student', 'cbt_admin_cheat:lift': 'Lifted a suspension',
   'cbt_admin_pyq:bulk': 'Added PYQ questions', 'cbt_admin_pyq:update': 'Edited a PYQ question', 'cbt_admin_pyq:delete': 'Deleted a PYQ question', 'cbt_admin_pyq:delete_paper': 'Deleted a PYQ paper',
   'cbt_admin_team:user_save': 'Saved a team member', 'cbt_admin_team:user_delete': 'Removed a team member', 'cbt_admin_team:session_revoke': 'Signed out a session',
-  'cbt_admin_2fa:start': 'Started two-step set-up', 'cbt_admin_2fa:confirm': 'Turned on two-step sign-in', 'cbt_admin_2fa:off': 'Turned off two-step sign-in',
+  'cbt_admin_files:set': 'Set when a file opens', 'cbt_admin_2fa:start': 'Started two-step set-up', 'cbt_admin_2fa:confirm': 'Turned on two-step sign-in', 'cbt_admin_2fa:off': 'Turned off two-step sign-in',
   'cbt_admin_2fa:recovery': 'Made new recovery codes', 'cbt_admin_2fa:reset': "Reset a member's two-step sign-in",
   'cbt_admin_team:sessions_revoke': 'Signed out sessions', 'cbt_admin_team:owner_password': 'Changed the owner password', 'cbt_admin_team:self_password': 'Changed own password', 'cbt_admin_team:self_revoke': 'Signed out own session'
 };
@@ -51,7 +51,7 @@ const isOnline = s => s.active && Date.now() - Date.parse(s.last_seen) < 180000;
 async function load(force) {
   if (!force && T.at && Date.now() - T.at < 15000) return { ok: true };
   const [r, z] = await Promise.all([AX.api.call('cbt_admin_team', 'get'), AX.api.call('cbt_admin_2fa', 'status')]);
-  if (r.ok) { T.users = r.users || []; T.sessions = r.sessions || []; T.audit = r.audit || []; T.current = r.current; T.at = Date.now(); T.tfa = (z.ok && z.members) || {}; T.tfaOwner = !!(z.ok && z.enabled); }
+  if (r.ok) { T.users = r.users || []; T.sessions = r.sessions || []; T.audit = r.audit || []; T.current = r.current; T.at = Date.now(); T.tfa = (z.ok && z.members) || {}; T.tfaOwner = !!(z.ok && z.enabled); T.req2fa = !!r.team_2fa_required; }
   return r;
 }
 
@@ -66,11 +66,12 @@ AX.mod({
     if (!AX.isOwner()) return renderSelf(ctx);
     const tab = ctx.parts[0] || 'members';
     ctx.head({ title: 'Team & access', sub: 'Give each person only the access they need. Every change is checked by the database and written to the activity log.',
-      tabs: [{ id: 'members', title: 'Members', icon: 'users' }, { id: 'sessions', title: 'Where signed in', icon: 'device' }, { id: 'activity', title: 'Activity log', icon: 'history' }, { id: 'security', title: 'Password', icon: 'key' }], tab,
+      tabs: [{ id: 'members', title: 'Members', icon: 'users' }, { id: 'sessions', title: 'Where signed in', icon: 'device' }, { id: 'activity', title: 'Activity log', icon: 'history' }, { id: 'alerts', title: 'Security alerts', icon: 'shield' }, { id: 'security', title: 'Password', icon: 'key' }], tab,
       actions: tab === 'members' ? h`<button class="btn pri" data-act="add">${icon('userPlus', 17)} Add member</button>` : tab === 'sessions' ? h`<button class="btn danger" data-act="outAll">${icon('logout', 16)} Sign out everyone else</button>` : '' });
     const ph = document.getElementById('ax-ph');
     if (ph && !ph.__w) { ph.__w = 1; AX.act(ph, { add: () => editMember(null, ctx), outAll: () => revokeAll(ctx) }); }
     if (tab === 'security') return security(ctx);
+    if (tab === 'alerts') return alerts(ctx);
     AX.set(ctx.el, UI.skeleton(4));
     const r = await load(true);
     if (!ctx.alive()) return;
@@ -79,7 +80,13 @@ AX.mod({
     if (tab === 'activity') return activity(ctx);
     members(ctx);
   },
-  attention() { return []; },
+  // owner only: serious security alerts not opened yet (supabase_v47_alerts_results.sql)
+  async attention() {
+    if (!AX.isOwner() || AX.session.legacy) return [];
+    const r = await AX.api.call('cbt_admin_security', 'count');
+    const n = r.ok ? r.unseen || 0 : 0;
+    return n ? [{ title: 'Security alerts', sub: 'Wrong passwords, lock-outs, team or 2FA changes', count: n, go: '#/team/alerts', icon: 'shield', tone: 'bad', badge: true }] : [];
+  },
   search(q) {
     if (!AX.isOwner() || AX.session.legacy) return [];
     return T.users.filter(u => (u.name + ' ' + u.username).toLowerCase().includes(q)).map(u => ({ g: 'Team', title: u.name, sub: '@' + u.username, icon: 'team', go: '#/team/members' }));
@@ -99,6 +106,7 @@ function members(ctx) {
     </div>
     <div class="section-t">Owner</div>
     <div class="card row" style="gap:14px">${UI.avatar('Owner', 'owner', 'lg')}<div class="grow"><div class="row gap6"><b class="lg">You</b>${UI.pill('Owner', 'gold')}${T.tfaOwner ? UI.pill('2-step on', 'ok') : h`<a class="pill warn" href="#/settings">2-step off · turn on</a>`}</div><div class="sm mut">Full access to everything, including this page. Signed in on ${fmt.plural(act.filter(s => !s.user_id).length, 'device')}.</div></div><a class="btn sm" href="#/team/sessions">${icon('device', 15)} Devices</a></div>
+    <div class="card row wrap mt12" style="gap:12px"><div class="grow"><b>Require two-step sign-in for the team</b><div class="xs mut">Until a member turns it on (Settings → Two-step sign-in) they can only do that. ${T.users.filter(u => (T.tfa || {})[u.id]).length} of ${T.users.length} members have it on.</div></div>${AX.f.switch({ name: 't2fa', value: !!T.req2fa, label: T.req2fa ? 'Required' : 'Optional' })}</div>
     <div class="section-t">Team members</div>
     ${T.users.length ? h`<div class="grid g2">${join(T.users, u => {
       const ss = T.sessions.filter(s => s.user_id === u.id && s.active);
@@ -109,6 +117,14 @@ function members(ctx) {
         <div class="divider"></div>
         <div class="row xs mut wrap"><span>${icon('clock', 13)} Last sign-in ${u.last_login ? fmt.ago(u.last_login) : 'never'}</span><span>·</span><span>${fmt.plural(ss.length, 'device')}</span><span class="grow"></span><button class="btn xs" data-act="edit" data-id="${u.id}">${icon('edit', 13)} Edit access</button></div></div>`;
     })}</div>` : h`<div class="card">${UI.empty({ icon: 'team', title: 'No team members yet', text: 'Add a person, give them a username and password, and choose exactly what they can see or change. You stay the only owner.', action: h`<button class="btn pri" data-act="add">${icon('userPlus', 17)} Add first member</button>` })}</div>`}`);
+  const sw = ctx.el.querySelector('[name=t2fa]');
+  if (sw) sw.addEventListener('change', async e => {
+    const on = e.target.checked;
+    if (on && !T.tfaOwner) { e.target.checked = false; return UI.toast('Turn on two-step sign-in for yourself first (Settings).', { tone: 'warn' }); }
+    const r = await AX.api.call('cbt_admin_team', 'team_2fa', { on });
+    if (!r.ok) { e.target.checked = !on; return UI.err(r); }
+    T.req2fa = on; UI.toast(on ? 'Two-step sign-in is now required for the team' : 'Two-step sign-in is optional for the team'); T.at = 0; ctx.reload();
+  });
   AX.act(ctx.el, {
     add: () => editMember(null, ctx),
     edit: el => editMember(T.users.find(u => u.id === el.dataset.id), ctx),
@@ -129,6 +145,20 @@ function genPw() { const a = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ234
 // same rule as the database (adm_pw_weak): 10+ characters, letters and numbers, not an obvious word
 const weak = p => p.length < 10 || !/[A-Za-z]/.test(p) || !/\d/.test(p) || /password|passw0rd|aspiron|admin|qwerty|12345678|abcdefgh/i.test(p);
 const WEAK = 'At least 10 characters with letters and numbers (not “aspiron”, “admin”, “password”…)';
+const BREACHED = 'This password has appeared in a data leak. Please choose another one.';
+// true = the password is in the haveibeenpwned.com list of leaked passwords; only the first 5 characters of its
+// SHA-1 are sent, never the password. If the check cannot run (offline), it does not block.
+async function breached(p) {
+  try {
+    const hb = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(p));
+    const hx = [...new Uint8Array(hb)].map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 5000);
+    const r = await fetch('https://api.pwnedpasswords.com/range/' + hx.slice(0, 5), { signal: ac.signal, headers: { 'Add-Padding': 'true' } });
+    clearTimeout(tm);
+    if (!r.ok) return false;
+    return (await r.text()).split('\n').some(l => { const [suf, n] = l.trim().split(':'); return suf === hx.slice(5) && +n > 0; });
+  } catch (e) { return false; }
+}
 async function resetTfa(u, ctx) {
   if (!(await UI.confirm({ title: 'Reset two-step sign-in for ' + u.name + '?', text: 'Do this only if they lost their phone. They can then sign in with the password alone and should turn two-step sign-in on again in Settings.', yes: 'Reset', tone: 'danger' }))) return;
   const r = await AX.api.call('cbt_admin_2fa', 'reset', { user_id: u.id });
@@ -172,6 +202,7 @@ function editMember(u, ctx) {
           if (d.name.length < 2) return AX.f.error(f, 'name', 'Enter the full name');
           if (!/^[a-z0-9._-]{3,30}$/.test(d.username) || d.username === 'owner') return AX.f.error(f, 'username', '3–30 letters, numbers, dot, dash or underscore');
           if ((isNew || d.password) && weak(String(d.password))) return AX.f.error(f, 'password', WEAK);
+          if ((isNew || d.password) && await breached(String(d.password))) return AX.f.error(f, 'password', BREACHED);
           if (!Object.keys(perms).length && !(await UI.confirm({ title: 'No access selected', text: 'This member will be able to sign in but will not see any section. Save anyway?', yes: 'Save anyway' }))) return;
           await UI.busy(btn, async () => {
             const r = await AX.api.call('cbt_admin_team', 'user_save', { id: isNew ? null : u.id, name: d.name, username: d.username, password: d.password || '', perms, note: d.note || '', active: isNew ? true : !!d.active });
@@ -243,7 +274,7 @@ function sessions(ctx) {
     <div class="grow"><div class="row gap6 wrap"><b>${s.device || 'Unknown device'}</b>${s.id === T.current ? UI.pill('This device', 'pri') : ''}${isOnline(s) ? h`<span class="pill ok"><span class="live-dot"></span> Active now</span>` : ''}</div>
       <div class="xs mut">${s.who}${s.user_id ? '' : ' (owner)'} · ${s.ip ? 'IP ' + s.ip + ' · ' : ''}signed in ${fmt.ago(s.created_at)}${s.active ? ' · last active ' + fmt.ago(s.last_seen) : ' · ended ' + fmt.ago(s.revoked_at || s.expires_at) + (s.revoked_by ? ' by ' + s.revoked_by : ' (expired)')}</div></div>
     ${s.active && s.id !== T.current ? h`<button class="btn sm danger" data-act="out" data-id="${s.id}">${icon('logout', 14)} Sign out</button>` : ''}</div>`;
-  AX.set(ctx.el, h`<div class="callout info">${icon('info')}<div class="sm">This is every place the admin console is signed in. If you see a device you do not recognise, sign it out and change that person's password. A session also ends by itself after 7 days without use.</div></div>
+  AX.set(ctx.el, h`<div class="callout info">${icon('info')}<div class="sm">This is every place the admin console is signed in. If you see a device you do not recognise, sign it out and change that person's password. A session also ends by itself after 30 days without use (180 days at most).</div></div>
     <div class="section-t">Signed in now · ${act.length}</div>
     <div class="card pad0 list">${act.length ? join(act, row) : UI.empty({ icon: 'device', title: 'No other sessions' })}</div>
     ${ended.length ? h`<div class="section-t">Recently ended</div><div class="card pad0 list" style="opacity:.8">${join(ended, row)}</div>` : ''}`);
@@ -285,6 +316,32 @@ function activity(ctx) {
   AX.act(ctx.el, { who: el => AX.go('team/activity', Object.assign({ f }, el.value ? { who: el.value } : {})) }, 'change');
 }
 
+/* ---------- security alerts (owner) ---------- */
+const SEC = {
+  owner_wrong_password: 'Wrong owner password', team_wrong_password: 'Wrong team password', wrong_2fa: 'Wrong two-step code',
+  sign_in_locked: 'Sign-in locked (10 wrong tries)', sign_in_paused: 'Sign-in paused (100 wrong passwords in an hour)',
+  '2fa_locked': 'Two-step code locked', '2fa_off': 'Two-step sign-in turned off', recovery_code_used: 'Recovery code used',
+  team_changed: 'Team member added / changed / removed', owner_password_changed: 'Owner password changed',
+  new_place_sign_in: 'Sign-in from a new place', member_access_or_money: 'Member gave access / changed orders or payments',
+  refused: 'Refused (no permission)', student_locked: 'Student locked out (wrong codes)', busy: 'Student sent too many requests'
+};
+const secName = k => k.startsWith('many:') ? 'Many: ' + (SEC[k.slice(5)] || k.slice(5)).toLowerCase() : SEC[k] || k;
+async function alerts(ctx) {
+  const days = +(ctx.q.d || 7);
+  AX.set(ctx.el, UI.skeleton(4));
+  const r = await AX.api.call('cbt_admin_security', 'get', { days });
+  if (!ctx.alive()) return;
+  if (!r.ok) { AX.set(ctx.el, UI.errorBox(r, 'supabase_v47_alerts_results.sql')); AX.act(ctx.el, { retry: () => ctx.reload() }); return; }
+  const L = r.events || [], C = Object.entries(r.counts || {}).sort((a, b) => b[1] - a[1]);
+  AX.set(ctx.el, h`<div class="callout ${r.unseen ? 'bad' : 'info'}">${icon(r.unseen ? 'alert' : 'shieldCheck')}<div class="sm">${r.unseen ? h`<b>${fmt.plural(r.unseen, 'new alert')}.</b> Check each one. Not you? Sign everyone else out (Where signed in), change the password and see SECURITY_RUNBOOK.md.` : 'No new alerts.'} Serious alerts also send you a GitHub e-mail ("Security alerts" check failed).</div></div>
+    <div class="row wrap gap16" style="margin:16px 0"><div class="chips">${join([[1, '24 hours'], [7, '7 days'], [30, '30 days']], ([k, l]) => h`<a class="chip ${days === k ? 'on' : ''}" href="${AX.link('team/alerts', { d: k })}">${l}</a>`)}</div>
+      <span class="grow"></span>${r.unseen ? h`<button class="btn sm" data-act="seen">${icon('check', 15)} Mark all as seen</button>` : ''}</div>
+    ${C.length ? h`<div class="card pad0 list">${join(C, ([k, n]) => h`<div class="li"><div class="grow"><div class="t">${secName(k)}</div></div><span class="pill ${k.startsWith('many:') || ['sign_in_locked', 'sign_in_paused', '2fa_locked', '2fa_off', 'recovery_code_used', 'team_changed', 'owner_password_changed'].includes(k) ? 'bad' : ''}">${n}</span></div>`)}</div>` : ''}
+    <div class="card mt16">${L.length ? h`<div class="timeline">${join(L, a => h`<div class="tl-i ${a.level === 'high' ? 'bad' : a.level === 'info' ? 'mut' : 'gold'}"><div class="row wrap gap6"><b>${secName(a.kind)}</b>${a.who ? h`<span class="tx2">${a.who}</span>` : ''}${a.detail ? h`<span class="pill">${a.detail}</span>` : ''}${(a.level === 'high' || a.level === 'warn') && !a.seen ? UI.pill('New', a.level === 'high' ? 'bad' : 'warn') : ''}</div><div class="xs mut">${fmt.day(a.at)} ${fmt.time(a.at)}${a.ip ? ' · ' + a.ip : ''}</div></div>`)}</div>`
+      : UI.empty({ icon: 'shieldCheck', title: 'Nothing in this period', text: 'Wrong passwords, lock-outs, refused actions and team changes show up here.' })}</div>`);
+  AX.act(ctx.el, { async seen(b) { await UI.busy(b, async () => { const x = await AX.api.call('cbt_admin_security', 'seen'); if (!x.ok) return UI.err(x); UI.toast('Marked as seen'); AX.emit('data:changed'); ctx.reload(); }); } });
+}
+
 /* ---------- owner password ---------- */
 function score(p) { let s = 0; if (p.length >= 10) s++; if (p.length >= 14) s++; if (/[a-z]/.test(p) && /[A-Z]/.test(p)) s++; if (/\d/.test(p)) s++; if (/[^A-Za-z0-9]/.test(p)) s++; return Math.min(4, s); }
 function security(ctx) {
@@ -302,6 +359,7 @@ function security(ctx) {
   AX.act(f, { async save(btn) {
     AX.f.clearErrors(f); const d = AX.f.read(f);
     if (!d.current) return AX.f.error(f, 'current', 'Enter your current password');
+    if (!weak(d.new_pw) && score(d.new_pw) >= 3 && await breached(d.new_pw)) return AX.f.error(f, 'new_pw', BREACHED);
     if (weak(d.new_pw) || score(d.new_pw) < 3) return AX.f.error(f, 'new_pw', 'Use at least 10 characters with letters, numbers and a symbol');
     if (d.new_pw !== d.again) return AX.f.error(f, 'again', 'The two passwords are different');
     await UI.busy(btn, async () => {
@@ -333,6 +391,7 @@ async function renderSelf(ctx) {
     async pw(btn) {
       const f = ctx.el.querySelector('#sp'); AX.f.clearErrors(f); const d = AX.f.read(f);
       if (weak(d.new_pw)) return AX.f.error(f, 'new_pw', WEAK);
+      if (await breached(d.new_pw)) return AX.f.error(f, 'new_pw', BREACHED);
       if (d.new_pw !== d.again) return AX.f.error(f, 'again', 'The two passwords are different');
       await UI.busy(btn, async () => { const x = await AX.api.call('cbt_admin_team', 'self_password', { current: d.current, new_pw: d.new_pw }); if (!x.ok) return x.error === 'current_pw' ? AX.f.error(f, 'current', 'The current password is wrong') : x.error === 'short' ? AX.f.error(f, 'new_pw', WEAK) : UI.err(x); f.reset(); UI.toast('Password changed. Other devices were signed out.'); });
     }

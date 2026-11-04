@@ -15,10 +15,8 @@ const DAY = 864e5;
 const m10 = m => String(m || '').replace(/\D/g, '').slice(-10);
 const firstName = n => String(n || '').trim().split(/\s+/)[0] || 'there';
 const SITE = () => CFG.SITE_NAME || 'our test series';
-const MSGLINE = '━━━━━━━━━━━━━━━━';
 const siteUrl = () => location.href.replace(/[#?].*$/, '').replace(/[^/]*\.html$/, '');
 const siteBase = () => /^https:\/\//.test(CFG.SHORT_URL || '') ? String(CFG.SHORT_URL).replace(/\/?$/, '/') : siteUrl();
-const stuLink = () => /^https:\/\//.test(CFG.SHORT_URL || '') ? CFG.SHORT_URL : siteUrl();
 const storeUrl = () => siteBase() + 'store.html';
 const ms = t => AX.fmt.ms(t) || 0;
 const SEGS = [
@@ -38,7 +36,7 @@ S.seg = o => o.status === 'paid' ? 'done' : o.status === 'rejected' ? 'rej' : (o
 S.cur = null;
 // store data + students (if allowed). Never throws.
 S.load = async (force) => {
-  const [r, st] = await Promise.all([AX.data.store(force), AX.can('students') ? AX.data.students(force) : Promise.resolve(null)]);
+  const [r, st] = await Promise.all([AX.data.store(force), AX.can('students') ? AX.data.students(force) : Promise.resolve(null), AX.amsg.load(force)]);
   if (!r || !r.ok) return r || { ok: false, error: 'server' };
   const D = { ok: true, settings: r.settings || {}, items: r.items || [], orders: r.orders || [], students: st && st.ok ? (st.students || []) : null, stErr: st && !st.ok ? st : null };
   S.cur = D;
@@ -51,23 +49,12 @@ S.requests = D => (D.students || []).filter(s => s.status === 'pending').sort((a
 S.changed = () => { ['store', 'payments', 'students'].forEach(k => AX.cache.drop(k)); AX.emit('data:changed'); AX.emit('orders:changed'); };
 
 /* ---------- message templates (exact texts that are known to work) ---------- */
-S.stuMsg = ({ name, title, order, mobile, code, keep }) => {
-  const tg = /^https:\/\/t\.me\//.test(CFG.TG_CHANNEL || '') ? CFG.TG_CHANNEL : '';
-  const c = code ? code.slice(0, 4) + '-' + code.slice(4) : '';
-  return [`Hi *${name}* 👋`, '',
-    title ? `Your payment for *"${title}"* is verified ✅` : `Your access to *${CFG.SITE_NAME || 'the test series'}* is approved ✅`,
-    ...(order ? [`🧾 Order: *${order}*`] : []),
-    MSGLINE,
-    ...(tg ? ['📢 *Join our Telegram channel*', tg, MSGLINE] : []),
-    '📱 *Open website*', stuLink(), '',
-    '🔑 *Login with*', `Mobile: *${mobile}*`, code ? `Access code: *${c}*` : keep ? 'Access code: *your current code*' : 'Access code: ______',
-    MSGLINE,
-    title ? '🔓 Your series is unlocked. All the best! 💪' : 'All the best for your preparation! 💪',
-    '_Keep your code private. It works on up to 2 phones._'].join('\n');
-};
+// the approval message: per test series (cx/amsg.js); sid = the series that is unlocked
+S.stuMsg = o => AX.amsg.make(o);
+S.sidOf = o => (((S.cur && S.cur.items) || []).find(x => x.id === o.item_id) || {}).series_id || null;
 S.ordMsg = o => {
   const f = firstName(o.name), sg = S.seg(o);
-  if (sg === 'done') return S.stuMsg({ name: o.name, title: o.item_title, order: o.code, mobile: o.mobile });
+  if (sg === 'done') return S.stuMsg({ sid: S.sidOf(o), name: o.name, title: o.item_title, order: o.code, mobile: o.mobile });
   if (sg === 'verify') return `Hi ${f} 👋\nWe have received your payment details for "${o.item_title}" (order ${o.code}).\nWe are checking it now and will send your login details shortly. 🙏`;
   if (sg === 'rej') return `Hi ${f}, we could not match your payment for "${o.item_title}" (order ${o.code}).\nPlease send the payment screenshot and the UTR number again, and we will check it at once.`;
   return `Hi ${f} 👋\nYou started buying "${o.item_title}" (${fmt.inr(o.amount)}) on ${SITE()}, but the payment is not complete yet.\nAny doubt about the series or the payment? Just reply here — we are happy to help. 😊\nComplete it here: ${storeUrl()}#p=${o.item_id || ''}\nOrder code: ${o.code}`;
@@ -94,7 +81,7 @@ S.contacted = async (code) => {
 };
 // one delegated handler for contact links (Telegram copies the message first — it cannot be prefilled)
 S.onContact = (el) => {
-  if (el.dataset.tg && el.dataset.msg) { AX.u.copy(el.dataset.msg).then(ok => { if (ok) UI.toast('Message copied — paste it in Telegram'); }); }
+  if (el.dataset.tg && el.dataset.msg) { AX.u.copy(AX.u.tgText(el.dataset.msg)).then(ok => { if (ok) UI.toast('Message copied — paste it in Telegram'); }); }
   if (el.dataset.code) S.contacted(el.dataset.code);
 };
 
@@ -119,7 +106,7 @@ S.approve = async (code) => {
   if (!D.ok) return UI.err(D);
   const o = D.orders.find(x => x.code === code);
   if (!o) return UI.toast('This order is not in the list any more. Refresh the page.', { tone: 'warn' });
-  const cat = await AX.data.catalog();
+  const [cat] = await Promise.all([AX.data.catalog(), AX.amsg.load()]);
   const it = D.items.find(x => x.id === o.item_id), sid = it && it.series_id;
   const ser = sid && cat && cat.ok ? (cat.series || []).find(s => s.id === sid) : null;
   const twin = S.paidTwin(o, D.orders);
@@ -166,7 +153,7 @@ S.approve = async (code) => {
   } else warn('Order left as “Payment done” so you can try again');
   S.changed();
   S.doneSheet({ title: unlocked ? 'Approved' : 'Partly done', name: o.name, mobile: o.mobile, code: o.code, steps, acc,
-    msg: S.stuMsg({ name: o.name, title: o.item_title, order: o.code, mobile: o.mobile, code: acc, keep: !acc }) });
+    msg: S.stuMsg({ sid, name: o.name, title: o.item_title, order: o.code, mobile: o.mobile, code: acc, keep: !acc }) });
 };
 // result sheet: steps, the new code (shown once), message + WhatsApp / Telegram / Copy
 S.doneSheet = ({ title, name, mobile, code, steps, acc, msg, sub }) => {
@@ -177,9 +164,9 @@ S.doneSheet = ({ title, name, mobile, code, steps, acc, msg, sub }) => {
       ${acc ? h`<div class="code-big mt16">${acc.slice(0, 4)}-${acc.slice(4)}</div><p class="xs mut mt8" style="text-align:center">Send this code now — for safety it is stored scrambled and cannot be shown again.</p>` : ''}
       <div class="lbl mt16" style="margin-bottom:6px">Message for the student</div>
       <div class="well oc-msg">${S.msgHtml(msg)}</div>
-      <p class="xs faint mt8">Telegram cannot fill in the message, so it is copied first — paste it in the chat that opens.</p>`,
-    foot: h`<button class="btn" data-act="copy">${icon('copy', 16)} Copy</button><a class="btn soft" href="${L.wa}" target="_blank" rel="noopener">${icon('whatsapp', 16)} WhatsApp</a><a class="btn soft" href="${L.tg}" target="_blank" rel="noopener" data-act="copy">${icon('telegram', 16)} Telegram</a><span class="sp"></span><button class="btn pri" data-close>Done</button>`,
-    onOpen(el) { AX.act(el, { copy() { AX.u.copy(msg).then(x => UI.toast(x ? 'Message copied' : 'Copy failed', x ? {} : { tone: 'bad' })); } }); }
+      <p class="xs faint mt8">Telegram cannot fill in the message, so it is copied first (with Telegram's bold, no stars) — paste it in the chat that opens.</p>`,
+    foot: h`<button class="btn" data-act="copy">${icon('copy', 16)} Copy</button><a class="btn soft" href="${L.wa}" target="_blank" rel="noopener">${icon('whatsapp', 16)} WhatsApp</a><a class="btn soft" href="${L.tg}" target="_blank" rel="noopener" data-act="tg">${icon('telegram', 16)} Telegram</a><span class="sp"></span><button class="btn pri" data-close>Done</button>`,
+    onOpen(el) { AX.act(el, { copy() { AX.u.copy(msg).then(x => UI.toast(x ? 'Message copied' : 'Copy failed', x ? {} : { tone: 'bad' })); }, tg() { AX.u.copy(AX.u.tgText(msg)).then(x => UI.toast(x ? 'Message copied — paste it in Telegram' : 'Copy failed', x ? {} : { tone: 'bad' })); } }); }
   });
 };
 S.setStatus = async (code, status, opt = {}) => {
@@ -201,11 +188,50 @@ S.approveReq = async (id) => {
     msg: S.stuMsg({ name: r.name, mobile: r.mobile, code: r.code }), sub: (r.name || '') + ' · ' + fmt.mobile(r.mobile || '') + ' · give the paid series from an order or the student’s page' });
 };
 S.rejectReq = async (s) => {
+  if (AX.rejectRequest) return AX.rejectRequest([s.id]);   // Students: Reject stops the number from asking again (v44)
   if (!(await UI.confirm({ title: 'Reject ' + (s.name || 'this request') + '?', text: 'The request is removed. They can ask again from the website.', yes: 'Reject request', tone: 'danger' }))) return;
   const r = await AX.api.admin('student_delete', { id: s.id });
   if (!r.ok) return UI.err(r);
   UI.toast('Request removed'); S.changed();
 };
+
+/* ---------- correct an order's amount (v44): e.g. ₹399 in the order, ₹250 really paid ---------- */
+S.editAmount = async (code) => {
+  if (!AX.can('store', 'manage')) return UI.toast('Needs full access to Store & orders.', { tone: 'warn' });
+  const D = S.cur && S.cur.orders.some(x => x.code === code) ? S.cur : await S.load(false);
+  const o = D && D.ok && D.orders.find(x => x.code === code);
+  if (!o) return UI.toast('Order ' + code + ' was not found.', { tone: 'warn' });
+  UI.modal({ title: 'Correct the amount', sub: (o.item_title || 'Order') + ' · ' + o.code + ' · ' + (o.name || ''), size: 'narrow',
+    body: h`<form id="oa" class="col gap16">${AX.f.input({ name: 'amount', label: 'Amount really paid (₹)', type: 'tel', inputmode: 'numeric', value: o.amount, max: 8 })}
+      ${AX.f.input({ name: 'note', label: 'Note (optional)', value: o.amount_note || '', placeholder: 'e.g. paid ₹250 on UPI, discount', max: 200 })}
+      <p class="xs mut">${o.amount_was != null ? 'First amount: ' + fmt.inr(o.amount_was) + '. ' : ''}Totals in Payments, Students and Promotions use the new amount at once. The first amount is kept and shown crossed out.</p></form>`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="go" data-busy="Saving…">${icon('check', 16)} Save amount</button>`,
+    onOpen(el, close) { AX.act(el, { async go(b) {
+      const f = el.querySelector('#oa'); AX.f.clearErrors(f);
+      const d = AX.f.read(f), amt = String(d.amount || '').replace(/\D/g, '');
+      if (!amt || Number(amt) > 1000000) return AX.f.error(f, 'amount', 'Enter the amount in rupees (0 to 10,00,000).');
+      await UI.busy(b, async () => {
+        const r = await AX.api.call('cbt_admin_edit', 'order_edit', { code: o.code, amount: Number(amt), note: String(d.note || '').trim() });
+        if (!r.ok) return r.error === 'amount' ? AX.f.error(f, 'amount', 'Enter a valid amount.') : UI.err(r, 'supabase_v44_edit_details.sql');
+        close(); UI.toast('Amount saved · ' + fmt.inr(Number(amt))); S.changed();
+      });
+    } }); } });
+};
+AX.editOrderAmount = code => S.editAmount(code);
+
+/* ---------- delete an order for good (v44), whatever its status ---------- */
+S.deleteOrder = async (code) => {
+  if (!AX.can('store', 'manage')) return UI.toast('Needs full access to Store & orders.', { tone: 'warn' });
+  const o = S.cur && S.cur.orders.find(x => x.code === code); if (!o) return;
+  const paid = o.status === 'paid';
+  if (!(await UI.confirm({ title: 'Delete order ' + o.code + '?', tone: 'danger', yes: 'Delete order',
+    text: (o.name || 'Student') + ' · ' + (o.item_title || '') + ' · ' + fmt.inr(o.amount) + '. The order is removed for good.' + (paid ? ' Its payment stops counting in Payments and totals. The series stays unlocked — remove it on the student’s page if needed.' : '') }))) return;
+  const r = await AX.api.call('cbt_admin_edit', 'order_delete', { code: o.code });
+  if (!r.ok) return UI.err(r.error === 'action' ? { ok: false, error: 'missing' } : r, 'supabase_v44_edit_details.sql');
+  S.cur.orders = S.cur.orders.filter(x => x.code !== o.code);
+  UI.toast('Order ' + o.code + ' deleted'); S.changed();
+};
+AX.deleteOrder = code => S.deleteOrder(code);
 
 /* ---------- note ---------- */
 S.note = async (code) => {
@@ -219,6 +245,7 @@ S.note = async (code) => {
 S.openStudent = (mobile) => { if (AX.openStudent) AX.openStudent(m10(mobile)); else AX.go('students', { q: m10(mobile) }); };
 
 /* ---------- order card ---------- */
+let OLANG = {};
 function orderCard(o, D, full) {
   const sg = S.seg(o), P = SEG_PILL[sg], man = AX.can('store', 'manage'), apv = S.canApprove();
   const dup = S.dupUtr(o, D.orders), twin = sg !== 'done' && S.paidTwin(o, D.orders), msg = S.ordMsg(o);
@@ -229,13 +256,14 @@ function orderCard(o, D, full) {
     : h`<button class="btn sm ghost" data-act="undo" data-code="${o.code}">${icon('undo', 15)} Undo</button>`;
   return h`<article class="card oc s-${sg}" data-code="${o.code}">
     <header class="row top">${UI.avatar(o.name, o.mobile || o.code)}<div class="grow"><button class="oc-name ell" data-act="open" data-code="${o.code}">${o.name || 'Student'}</button><div class="xs mut ell">${fmt.mobile(m10(o.mobile))} · ${fmt.ago(o.created_at)}</div></div>${UI.pill(P[0], P[1], true)}</header>
-    <div class="oc-item"><div class="grow"><div class="xs mut">${icon('book', 13)} Series${it && !it.series_id ? h` · <span style="color:var(--warn)">not linked</span>` : ''}</div><b class="oc-t">${o.item_title || '—'}</b></div><div class="oc-amt">${fmt.inr(o.amount)}</div></div>
+    <div class="oc-item"><div class="grow"><div class="xs mut">${icon('book', 13)} Series${it && !it.series_id ? h` · <span style="color:var(--warn)">not linked</span>` : ''}</div><b class="oc-t">${o.item_title || '—'}</b>${(o.lang || OLANG[o.code]) ? h` <span class="pill ${(o.lang || OLANG[o.code]) === 'hi' ? 'vio' : ''}" title="Medium chosen at Buy — set for the student when you unlock">${icon('globe', 12)} ${(o.lang || OLANG[o.code]) === 'hi' ? 'हिंदी medium' : 'English medium'}</span>` : ''}</div><div class="oc-amt">${fmt.inr(o.amount)}${o.amount_was != null ? h`<div class="xs mut" style="font-weight:600;text-decoration:line-through" title="${o.amount_note || 'Amount corrected'}">${fmt.inr(o.amount_was)}</div>` : ''}${man ? h`<button class="btn xs ghost" data-act="amt" data-code="${o.code}" title="Correct the amount">${icon('edit', 13)} Amount</button>` : ''}</div></div>
     ${o.payer || o.utr ? h`<div class="oc-pay"><div><div class="k">Paid from</div><div class="v">${o.payer || '—'}</div></div><div><div class="k">UTR</div><div class="v row gap4"><span class="mono ell">${o.utr || '—'}</span>${o.utr ? UI.copyBtn(o.utr) : ''}</div></div></div>` : ''}
     <div class="xs mut row wrap gap6"><span class="mono">${o.code}</span>${o.paid_at ? h`<span>· details sent ${fmt.ago(o.paid_at)}</span>` : ''}${full ? h`<span>· ordered ${fmt.dt(o.created_at)}</span>` : ''}</div>
+    ${(+o.coupon_off || +o.wallet_used) ? h`<div class="callout ${+o.wallet_used ? 'gold' : 'info'} sm">${icon(+o.wallet_used ? 'wallet' : 'tag', 16)}<div>Price ${fmt.inr(o.list_price || (+o.amount + (+o.coupon_off || 0) + (+o.wallet_used || 0)))}${+o.coupon_off ? h` · coupon <b class="mono">${o.coupon_code}</b> −${fmt.inr(o.coupon_off)}` : ''}${+o.wallet_used ? h` · <b>wallet −${fmt.inr(o.wallet_used)}</b>` : ''} · UPI ${fmt.inr(o.amount)}${+o.wallet_used ? h`<div class="xs mut">Wallet money comes from Refer &amp; earn. Approve only if the student is the owner of ${fmt.mobile(m10(o.mobile))} (e.g. they message you from that number).</div>` : ''}</div></div>` : ''}
     ${dup ? h`<div class="callout bad sm">${icon('alert', 16)}<div>This UTR is also in another order — check carefully.</div></div>` : ''}
     ${twin ? h`<div class="callout warn sm">${icon('info', 16)}<div>Already approved for this series in order <b class="mono">${twin.code}</b>. Approving again counts the money twice.</div></div>` : ''}
     ${o.contact_n || o.note ? h`<div class="oc-fol">${o.contact_n ? h`<div class="row gap6">${icon('phone', 14)}<span>Contacted ${o.contact_n}× · last ${fmt.ago(o.contacted_at)}</span></div>` : ''}${o.note ? h`<div class="row top gap6">${icon('edit', 14)}<span class="oc-note">${o.note}</span></div>` : ''}</div>` : ''}
-    <footer class="oc-f"><div class="oc-con">${S.contactBar(o.mobile, msg, o.code)}${man ? h`<button class="ibtn line" data-act="note" data-code="${o.code}" title="Note" aria-label="Note">${icon('edit', 17)}</button>` : ''}</div><div class="oc-act">${acts}</div></footer>
+    <footer class="oc-f"><div class="oc-con">${S.contactBar(o.mobile, msg, o.code)}${man ? h`<button class="ibtn line" data-act="note" data-code="${o.code}" title="Note" aria-label="Note">${icon('edit', 17)}</button><button class="ibtn line" data-act="odel" data-code="${o.code}" title="Delete this order" aria-label="Delete this order" style="color:var(--bad)">${icon('trash', 17)}</button>` : ''}</div><div class="oc-act">${acts}</div></footer>
   </article>`;
 }
 function reqCard(s, D) {
@@ -243,7 +271,7 @@ function reqCard(s, D) {
   return h`<article class="card oc s-req">
     <header class="row top">${UI.avatar(s.name, s.mobile)}<div class="grow"><b class="ell" style="display:block;font-size:15px">${s.name || 'Student'}</b><div class="xs mut">${fmt.mobile(m10(s.mobile))} · asked ${fmt.ago(s.created)}</div></div>${UI.pill('Access request', 'info', true)}</header>
     ${o ? h`<div class="callout info sm">${icon('cart', 16)}<div>Also has a store order: <b>${o.item_title}</b> · ${fmt.inr(o.amount)} · ${o.status === 'paid' ? 'approved' : (o.payer || o.utr) ? 'payment done' : 'not paid'} <a href="#" data-act="open" data-code="${o.code}">Open</a></div></div>` : h`<p class="sm mut">New student from the website. Approve to make their access code, then give the paid series from an order or their page.</p>`}
-    <footer class="oc-f"><div class="oc-con">${S.contactBar(s.mobile, S.reqMsg(s), '')}</div><div class="oc-act">${man ? h`<button class="btn sm ghost" data-act="rreject" data-id="${s.id}">${icon('x', 15)} Reject</button><button class="btn sm pri" data-act="rapprove" data-id="${s.id}" data-busy="Approving…">${icon('key', 15)} Approve & get code</button>` : ''}</div></footer>
+    <footer class="oc-f"><div class="oc-con">${S.contactBar(s.mobile, S.reqMsg(s), '')}</div><div class="oc-act">${man ? h`<button class="btn sm ghost" data-act="rdel" data-id="${s.id}" title="Remove the request (they can ask again)">${icon('trash', 15)} Delete</button><button class="btn sm ghost" data-act="rreject" data-id="${s.id}" title="Remove and stop this number from asking again">${icon('ban', 15)} Reject</button><button class="btn sm pri" data-act="rapprove" data-id="${s.id}" data-busy="Approving…">${icon('key', 15)} Approve & get code</button>` : ''}</div></footer>
   </article>`;
 }
 // actions shared by the list and the order drawer
@@ -266,9 +294,12 @@ function cardActs(root, after) {
         text: 'The payment stops counting. The series stays unlocked and the access code does not change — remove the series on the student’s page if needed.' }))) return;
       await S.setStatus(o.code, 'pending', { msg: 'Moved back to pending', undo: false }); if (after) after();
     },
-    login(el) { const o = find(el.dataset.code); if (o) AX.u.copy(S.stuMsg({ name: o.name, title: o.item_title, order: o.code, mobile: o.mobile })).then(x => UI.toast(x ? 'Login message copied — add the access code before sending' : 'Copy failed')); },
+    login(el) { const o = find(el.dataset.code); if (o) AX.u.copy(S.stuMsg({ sid: S.sidOf(o), name: o.name, title: o.item_title, order: o.code, mobile: o.mobile })).then(x => UI.toast(x ? 'Login message copied — add the access code before sending' : 'Copy failed')); },
     student: el => S.openStudent(el.dataset.m),
     note: el => S.note(el.dataset.code),
+    amt: el => S.editAmount(el.dataset.code),
+    odel: el => S.deleteOrder(el.dataset.code),
+    rdel(el) { const s = (S.cur.students || []).find(x => x.id === el.dataset.id); if (!s) return; if (AX.rejectRequest) return AX.rejectRequest([s.id], 'delete'); S.rejectReq(s); },
     rapprove: el => UI.busy(el, () => S.approveReq(el.dataset.id)),
     rreject(el) { const s = (S.cur.students || []).find(x => x.id === el.dataset.id); if (s) S.rejectReq(s); }
   });
@@ -344,7 +375,8 @@ AX.mod({
       actions: h`<a class="btn ghost" href="store.html" target="_blank" rel="noopener">${icon('external', 16)} Store</a><button class="btn" data-act="csv">${icon('download', 16)} CSV</button><button class="btn" data-act="refresh">${icon('refresh', 16)} Refresh</button>` });
     const ph = document.getElementById('ax-ph');
     if (ph) AX.act(ph, { refresh: b => UI.busy(b, async () => { await S.load(true); if (ctx.alive()) paint(); }), csv: () => csv() });
-    const D0 = await S.load(true);
+    const [D0, ML] = await Promise.all([S.load(true), AX.api.call('cbt_admin_lang', 'orders')]);
+    if (ML && ML.ok) OLANG = ML.items || {};   // v41: medium chosen at Buy (English / हिंदी)
     if (!ctx.alive()) return;
     if (!D0.ok) { AX.set(ctx.el, UI.errorBox(D0, 'supabase_v13_store.sql')); AX.act(ctx.el, { retry: () => ctx.reload() }); return; }
     AX.set(ctx.el, h`<div id="oc-k"></div><div class="oc-segs mt16" id="oc-s" role="tablist" aria-label="Order status"></div>

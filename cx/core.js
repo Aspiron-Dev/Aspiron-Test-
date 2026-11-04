@@ -10,6 +10,10 @@ const CFG = window.CBT_CONFIG || {};
 const AX = window.AX = window.AX || {};
 AX.cfg = CFG;
 AX.url = String(CFG.SUPABASE_URL || '').replace(/\/+$/, '');
+// R9: the page allows no inline script (CSP), so forms never submit (no onsubmit="return false" needed)
+// and buttons marked data-reload reload the page
+document.addEventListener('submit', e => e.preventDefault(), true);
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('[data-reload]')) location.reload(); });
 
 /* ---------- safe HTML: AX.h`<b>${name}</b>` escapes every value; AX.raw() / nested AX.h are kept ---------- */
 class Safe { constructor(s) { this.s = s; } toString() { return this.s; } }
@@ -122,7 +126,8 @@ AX.api = {
     }
     if (j == null || typeof j !== 'object') return { ok: true, data: j };
     if (j.ok === false && opt.auth !== false && AUTH_ERR.includes(j.error)) AX.emit('auth:lost', j.error);
-    if (j.ok === false && j.error === 'locked' && opt.auth !== false) AX.emit('auth:lost', 'locked');
+    // 'locked' from a password check inside Team & access (wrong current password) is not a lost sign-in
+    if (j.ok === false && j.error === 'locked' && opt.auth !== false && fn !== 'cbt_admin_team') AX.emit('auth:lost', 'locked');
     return j;
   },
   // cbt_admin-style call: AX.api.call('cbt_admin_store', 'get', {…})
@@ -189,6 +194,7 @@ AX.errText = (r, what) => {
     disabled: 'This team account is paused by the owner.', not_set: 'The admin password is not set yet.',
     need_2fa: 'Two-step sign-in is on: sign in with your password and code.', current_pw: 'The password is wrong.',
     otp_invalid: 'Wrong code. Use the newest code in your authenticator app.', otp_locked: 'Too many wrong codes. Try again in 15 minutes.',
+    need_2fa_setup: 'The owner requires two-step sign-in. Turn it on in Settings → Two-step sign-in first.',
     session: 'Sign out and sign in again first.', setup_expired: 'The set-up took too long. Please start again.',
     pw_locked: 'Too many wrong passwords. Try again in 15 minutes.',
     bad_request: 'The server rejected this request' + (r && r.detail ? ': ' + r.detail : '.')
@@ -311,6 +317,42 @@ AX.u = {
           const c = document.createElement('canvas'); c.width = w; c.height = h;
           const x = c.getContext('2d'); if (type === 'image/jpeg') { x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); }
           x.drawImage(img, 0, 0, w, h); resolve(c.toDataURL(type, quality));
+        };
+        img.src = r.result;
+      };
+      r.readAsDataURL(file);
+    });
+  },
+  // poster / banner / cover → exactly 16:9 JPEG (default 1280 × 720), kept under `limit` characters.
+  // A picture that is already about 16:9 is only resized. Any other shape is NOT cut: the whole picture is
+  // placed in the middle and the empty sides are filled with a blurred, darker copy of it.
+  poster(file, { w = 1280, h = 720, limit = 260000 } = {}) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onerror = () => reject(new Error('read'));
+      r.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('image'));
+        img.onload = () => {
+          const iw = img.naturalWidth || 1, ih = img.naturalHeight || 1;
+          const draw = (W, H) => {
+            const c = document.createElement('canvas'); c.width = W; c.height = H;
+            const x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
+            x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+            if (Math.abs(iw / ih - W / H) / (W / H) <= 0.03) { x.drawImage(img, 0, 0, W, H); return c; }
+            // background: the picture covering the frame, shrunk to a tiny size and blown up again (= blur)
+            const cs = Math.max(W / iw, H / ih), t = document.createElement('canvas'); t.width = 32; t.height = Math.max(1, Math.round(32 * H / W));
+            const tx = t.getContext('2d'), k = t.width / W;
+            tx.drawImage(img, (W - iw * cs) / 2 * k, (H - ih * cs) / 2 * k, iw * cs * k, ih * cs * k);
+            x.drawImage(t, 0, 0, W, H); x.fillStyle = 'rgba(0,0,0,.25)'; x.fillRect(0, 0, W, H);
+            const fs = Math.min(W / iw, H / ih), dw = iw * fs, dh = ih * fs;
+            x.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+            return c;
+          };
+          let c = draw(w, h), q = 0.85, out = c.toDataURL('image/jpeg', q);
+          while (out.length > limit && q > 0.45) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+          if (out.length > limit) { c = draw(Math.round(w * 0.7), Math.round(h * 0.7)); out = c.toDataURL('image/jpeg', 0.6); }
+          resolve(out);
         };
         img.src = r.result;
       };

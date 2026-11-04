@@ -17,7 +17,7 @@ const bigI=(n,k)=>`<div class="bigi ${k||'pri'}">${I(n)}</div>`;
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const inr=n=>'₹'+Number(n||0).toLocaleString('en-IN');
 const plural=(n,w)=>{n=Number(n)||0;return `${n} ${w}${n>1?'s':''}`};
-let ST={settings:{},items:[]},ORD=null,IT=null,LOADED=0;   // LOADED: 0 = loading, 1 = ready, -1 = could not load
+let ST={settings:{},items:[]},ORD=null,IT=null,LOADED=0,LANGS=new Set();   // LANGS: items sold in English + हिंदी (v41)   // LOADED: 0 = loading, 1 = ready, -1 = could not load
 const LSg=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(_){return d}};
 const LSs=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(_){}};
 const LSd=k=>{try{localStorage.removeItem(k)}catch(_){}};
@@ -78,6 +78,7 @@ function meSave(n,m,c){
   // "You will be notified" belongs to a number: redraw those buttons for the new one
   $$('[data-soon]').forEach(e=>{const x=ST.items.find(i=>i.id===e.dataset.soon);if(x)e.outerHTML=buyBtn(x,e.dataset.k)});
   if(MEM.course!==was)courseGo();
+  WAL=null;rfJoin();
 }
 // the name everywhere: menu, menu bar, greeting, Profile
 function meUi(){
@@ -149,7 +150,7 @@ function meSaveGo(){
 
 /* ---------- pages: Home · Search · Reviews · Help · Profile. Home is the first history entry; another page goes on
    top of it (one entry), so the phone's Back button comes back to Home. ---------- */
-const VIEWS={home:'Home',search:'Search',reviews:'Reviews',help:'Help',me:'Profile'},VK=Object.keys(VIEWS);
+const VIEWS={home:'Home',search:'Search',reviews:'Reviews',help:'Help',me:'Profile',refer:'Refer & earn'},VK=Object.keys(VIEWS);
 let VW='',VH=false;const VS={};   // the page shown; VH = it has its own history entry; VS = where each page was scrolled to
 const vHash=()=>{const m=location.hash.match(/^#\/(\w+)/);return m&&VIEWS[m[1]]?m[1]:'home'};
 function go(v,focus){
@@ -168,9 +169,9 @@ function show(v){
   // the new page slides in from the side of the menu item that was tapped
   if(was&&!RM){el.style.setProperty('--dx',Math.sign(VK.indexOf(v)-VK.indexOf(was))*22+'px');el.classList.remove('vin');void el.offsetWidth;el.classList.add('vin')}
   $('#crumb').textContent=VIEWS[v];
-  document.title=(v==='home'?'Store':VIEWS[v]+' · Store')+' · '+(CFG.SITE_NAME||'CBT Test Series');
+  document.title=(v==='home'?'Store':VIEWS[v]+' · Store')+' · '+(CFG.SITE_NAME||'Aspiron Education');
   navUi();
-  if(v==='search')sDraw();else if(v==='me')meDraw();
+  if(v==='search')sDraw();else if(v==='me')meDraw();else if(v==='refer')rfDraw(true);
   scrollTo(0,v==='home'?VS.home||0:0);
   if(v==='home')requestAnimationFrame(railsInit);
 }
@@ -179,15 +180,18 @@ function navUi(){
   $$('.ni[data-go],.me[data-go],.dock [data-go]').forEach(a=>{const on=a.dataset.go===VW;a.classList.toggle('on',on);if(on)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
   const n=$('.nav .ni.on'),ind=$('.nav .ind');
   if(ind){ind.classList.toggle('on',!!n);if(n)ind.style.setProperty('--y',n.offsetTop+'px')}
-  const dk=$('.dock');if(dk)dk.style.setProperty('--k',Math.max(0,VK.indexOf(VW)));
+  const dk=$('.dock');if(dk)dk.style.setProperty('--k',VW==='refer'?4:Math.max(0,VK.indexOf(VW)));
+  $$('.dock [data-go=me]').forEach(a=>a.classList.toggle('on',VW==='me'||VW==='refer'));
 }
 function qFocus(){const q=$('#q');if(q)q.focus({preventScroll:true})}
 // a link straight to a page (#/reviews …) or a series (#x=…): Home goes under it, so Back comes to Home instead of leaving
 function under(st,hash){try{history.replaceState(null,'',location.pathname+location.search);history.pushState(st,'',hash);if(st.v)VH=true;else XH=true}catch(_){}}
 
 async function load(){
-  const nm=CFG.SITE_NAME||'CBT Test Series';$$('[data-sname]').forEach(e=>e.textContent=nm);
-  const r=await rpc('cbt_store');
+  const nm=CFG.SITE_NAME||'Aspiron Education';$$('[data-sname]').forEach(e=>e.textContent=nm);
+  const [r,lg,of]=await Promise.all([rpc('cbt_store'),rpc('cbt_store_langs'),rpc('cbt_store_offers')]);
+  if(of&&of.ok)CPN=of.coupons!==false;
+  if(lg&&lg.ok)LANGS=new Set((lg.items||[]).map(String));
   if(!r.ok){
     LOADED=-1;$('#kpis').hidden=true;
     $('#list').innerHTML=emptyHtml(r.error==='network'?'alert':'rocket',r.error==='network'?'No internet':'Store is opening soon',r.error==='network'?'Check your connection and refresh.':'Please check back in a little while.',r.error==='network'?'bad':'gold');
@@ -199,7 +203,7 @@ async function load(){
   if(!ST.items.length){$('#kpis').hidden=true;$('#list').innerHTML=emptyHtml('rocket','New test series coming soon','Please check back in a little while.','gold');sDraw();rvAllDraw();return}
   draw(true);if(VW==='search')sDraw();if(VW==='me')meDraw();
   loadSch();loadRv();loadXp();
-  if(ME()){liveCheck();jump()}
+  if(ME()){liveCheck();jump();rfJoin()}
 }
 const emptyHtml=(ic,t,p,k,more)=>`<div class="card empty ${k||''}"><div class="e-ic">${I(ic)}</div><h4>${t}</h4><p>${p}</p>${more||''}</div>`;
 // a shared link (#p=…) shows that series on Home (or opens it, if it is not there); an Explore link (#x=…) opens its page
@@ -291,7 +295,7 @@ function priceHtml(x,short){
 function cardHtml(x,i){
   const off=offPct(x),ph=!okImg(x.image),bdg=x.badge||(x.buy_on===false?'Coming soon':'');
   return `<article class="sc" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,7)}"><div class="sc-m${ph?' isph':''}" data-view="${esc(x.id)}">${bdg?`<span class="tag${x.buy_on===false&&!x.badge?' soon':''}">${esc(bdg)}</span>`:''}${off?`<span class="tag off">${off}% off</span>`:''}${mediaHtml(x)}</div>
-   <div class="sc-b"><h3 class="sc-t${ph?' sr':''}">${esc(x.title)}</h3><div class="rlw" data-rline="${esc(x.id)}">${rLine(x.id)}</div>${x.subtitle?`<p class="sc-s">${esc(x.subtitle)}</p>`:''}
+   <div class="sc-b"><h3 class="sc-t${ph?' sr':''}">${esc(x.title)}</h3>${LANGS.has(x.id)?`<div class="lgs">${I('globe')}English + हिंदी medium</div>`:''}<div class="rlw" data-rline="${esc(x.id)}">${rLine(x.id)}</div>${x.subtitle?`<p class="sc-s">${esc(x.subtitle)}</p>`:''}
    ${priceHtml(x,1)}
    <div class="sc-a"><button class="btn line" data-explore="${esc(x.id)}">${I('compass')}Explore</button>${buyBtn(x,1)}</div></div></article>`;
 }
@@ -456,6 +460,7 @@ function xpDesc(x){
   const d=String((XD[x.id]||{}).description||'').trim(),F=x.features||[],s=secName(x);
   return `<div class="ximg${okImg(x.image)?'':' isph'}">${mediaHtml(x)}</div>
    ${CN[x.course]||s?`<div class="xcat">${CN[x.course]?`<span class="pill pri">${CN[x.course]}</span>`:''}${s?`<span class="pill">${esc(s)}</span>`:''}</div>`:''}<h2 class="xt">${esc(x.title)}</h2>${x.subtitle?`<p class="xsub">${esc(x.subtitle)}</p>`:''}
+   ${LANGS.has(x.id)?`<div class="lgx">${I('globe')}<div><b>Available in English and हिंदी</b><span>Choose your medium when you buy — every test comes in that language. · खरीदते समय माध्यम चुनें, हर टेस्ट उसी भाषा में मिलेगा।</span></div></div>`:''}
    <div data-rvmini="${esc(x.id)}">${rvMini(x.id)}</div>
    <div class="xprice">${priceHtml(x)}<p>${I('shield')}Pay with any UPI app · every order has its own code</p></div>
    ${d?`<h4 class="xh">About this test series</h4><div class="xdesc">${esc(d)}</div>`:''}
@@ -538,23 +543,34 @@ function attachRef(order,mobile){
   const r=LSg('store_ref',null);
   if(order&&r&&REF_OK.test(r.c)&&Date.now()-r.at<30*864e5)rpc('cbt_promo_attach',{p_order:order,p_code:r.c,p_mobile:mobile||''});
 }
-async function buy(id){
+// a series sold in English + हिंदी: the medium is asked first and kept with the order (the tests come in it)
+function langSheet(id){
+  const x=ST.items.find(i=>i.id===id);if(!x)return;
+  ovSet(modal({t:x.title,s:'Choose your medium · अपना माध्यम चुनें',cls:'narrow',
+   body:`<div class="lgo"><button class="lgb" data-lang="en" data-lid="${esc(id)}"><span class="lgl">A</span><b>English medium</b><small>All tests in English</small></button>
+    <button class="lgb" data-lang="hi" data-lid="${esc(id)}"><span class="lgl">अ</span><b>हिंदी माध्यम</b><small>सभी टेस्ट हिंदी में</small></button></div>
+    <p class="sm mut center mt12">One price for both. You can change the medium later in the app.</p>`}));
+}
+async function buy(id,lang){
   IT=ST.items.find(i=>i.id===id);if(!IT)return;
   if(IT.buy_on===false)return soonSheet(id);
-  const me=ME();if(!me)return meSheet(()=>buy(id));
+  const me=ME();if(!me)return meSheet(()=>buy(id,lang));
+  const bi=LANGS.has(id);
+  if(bi&&!lang)return langSheet(id);
   const last=LSg('store_ord',null);
-  // same series + same number ordered in the last 24 h → continue that order instead of making a new code
-  if(last&&last.item===id&&last.mobile===me.mobile&&Date.now()-last.at<864e5){attachRef(last.code,last.mobile);ORD=last;return payStep()}
+  // same series + same number (+ same medium) ordered in the last 24 h → continue that order instead of making a new code
+  if(last&&last.item===id&&last.mobile===me.mobile&&Date.now()-last.at<864e5&&(!bi||last.lang===lang)){attachRef(last.code,last.mobile);ORD=last;return payStep()}
   const n=++BUYN;
   sheet(1,`<div class="ld"><span class="spin"></span><span>Getting your payment details…</span></div><div class="skel qrsk"></div>`);
-  const r=await rpc('cbt_store_order',{p_item:IT.id,p_name:me.name,p_mobile:me.mobile});
+  let r=bi?await rpc('cbt_store_order_lang',{p_item:IT.id,p_name:me.name,p_mobile:me.mobile,p_lang:lang}):null;
+  if(!r||r.error==='missing')r=await rpc('cbt_store_order',{p_item:IT.id,p_name:me.name,p_mobile:me.mobile});
   if(n!==BUYN||!$('.ov'))return;   // closed or another series tapped meanwhile
   if(!r.ok){
     const t=r.error==='busy'?'Too many tries. Please wait a while and try again.':r.error==='network'?'No internet. Please try again.':r.error==='item'?'This series is not available right now.':r.error==='mobile'||r.error==='name'?'Please check your name and mobile number.':'Something went wrong. Please try again.';
     return sheet(1,`${bigI('alert','bad')}<p class="center lg b">${t}</p>
      <p class="for">For ${esc(me.name)} · ${esc(me.mobile)} · <a href="#" data-redo>change</a></p>`,`<button class="btn pri lg block" data-buy="${esc(id)}">${I('next')}Try again</button>`);
   }
-  ORD={item:IT.id,code:r.code,amount:r.amount,title:r.title,name:me.name,mobile:me.mobile,at:Date.now()};LSs('store_ord',ORD);attachRef(r.code,me.mobile);
+  ORD={item:IT.id,code:r.code,amount:r.amount,title:r.title,name:me.name,mobile:me.mobile,at:Date.now(),lang:bi?lang:''};LSs('store_ord',ORD);attachRef(r.code,me.mobile);
   payStep();
 }
 const upiLink=()=>{const s=ST.settings,e=encodeURIComponent;return `upi://pay?pa=${s.upi}&pn=${e(s.payee||'')}&am=${ORD.amount}&cu=INR&tn=${e(ORD.code)}`};
@@ -567,7 +583,10 @@ const cpBtn=(v,what)=>`<button class="btn xs soft" data-copy="${esc(v)}" data-wh
 function payStep(){
   if(!upiOk())return sheet(1,`${bigI('alert','bad')}<h3 class="center">Payment is paused</h3><p class="sm mut center mt8">Please message support. Do not pay anywhere else.</p>`,`<a class="btn tg lg block" target="_blank" rel="noopener" href="${esc(tgLink(''))}">${I('tg')}Message support</a>`);
   const s=ST.settings,mob=isMob();
-  sheet(1,`<div class="amt"><span>Amount to pay</span><b>${inr(ORD.amount)}</b></div>
+  if(OFFER!==false&&!ORD.payer&&!WAL)walLoad().then(()=>{if($('#offer')&&(OFFER===false||(WAL&&WAL.balance>0)))offerUi()});
+  if(+ORD.amount===0)return walletPaidStep();
+  sheet(1,`<div class="amt"><span>Amount to pay</span><b>${inr(ORD.amount)}</b>${priceSplit()}</div>
+   <div id="offer">${offerHtml()}</div>
    <div class="qrw"><div class="qr"><img src="${qrMake(upiLink()).createDataURL(8,2)}" alt="UPI QR code"></div><p class="sm mut">Scan with GPay, PhonePe, Paytm or any UPI app</p></div>
    <div class="callout warn">${I('alert')}<span>Before paying, check that the name shown in your UPI app is <b>${esc(s.payee)}</b>. Pay only to the UPI ID below.</span></div>
    <div class="kvl"><div><span>UPI ID</span><b>${esc(s.upi)}</b>${cpBtn(s.upi,'UPI ID copied')}</div>
@@ -578,6 +597,111 @@ function payStep(){
    <p class="for">For ${esc(ORD.name)} · ${esc(ORD.mobile)} · <a href="#" data-redo>change</a></p>`,
    `${mob?`<button class="btn pri lg block two" data-saveqr>${I('dl')}<span class="bl"><b>Save QR to pay</b><small>Then: UPI app → Scan → Gallery → this QR</small></span></button>`:''}
     <button class="btn ${mob?'line':'pri'} lg block" data-step="paid">${I('check')}I have already paid ${I('next')}</button>`);
+}
+/* ---------- coupon code + wallet (supabase_v52): applied on the server to this order; the page never sets a price ---------- */
+let OFFER=null,WAL=null,CPN=true;   // CPN = the coupon box is on (Admin → Coupons & Refer → Coupons)
+   // OFFER false = the server has no coupons yet (v52 not run) · WAL = {balance, code, …} of this number
+async function walLoad(make){
+  const m=ME();if(!m)return null;
+  const r=await rpc('cbt_refer_me',{p_mobile:m.mobile,p_name:make?m.name:null});
+  if(r.ok){WAL=r;if(OFFER===null)OFFER=true}else if(r.error==='missing'){OFFER=false;WAL=null}
+  return r;
+}
+const listP=()=>+ORD.list_price||(+ORD.amount+(+ORD.coupon_off||0)+(+ORD.wallet_used||0));
+// under the amount: the full price and what came off it
+function priceSplit(){
+  const cut=(+ORD.coupon_off||0)+(+ORD.wallet_used||0);if(!cut)return '';
+  return `<div class="split"><s>${inr(listP())}</s>${ORD.coupon_off?`<span class="pill ok">${I('gift')}${esc(ORD.coupon_code||'Coupon')} −${inr(ORD.coupon_off)}</span>`:''}${ORD.wallet_used?`<span class="pill pri">${I('card')}Wallet −${inr(ORD.wallet_used)}</span>`:''}</div>`;
+}
+function offerHtml(){
+  if(OFFER===false||ORD.payer)return '';
+  const bal=WAL?(+WAL.balance||0):0,used=+ORD.wallet_used||0,can=bal+used;
+  if(!CPN&&!ORD.coupon_code&&can<=0)return '';
+  return `<div class="offer">
+   ${!CPN&&!ORD.coupon_code?'':ORD.coupon_code?`<div class="cpok">${I('gift')}<span class="grow"><b class="code">${esc(ORD.coupon_code)}</b> applied · you save ${inr(ORD.coupon_off)}</span><button class="btn xs line" data-cpx>Remove</button></div>`
+    :`<div class="cpn"><div class="inp-wrap grow">${I('gift')}<input class="inp" id="cpi" maxlength="24" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Have a coupon code?" aria-label="Coupon code"></div><button class="btn line" data-cpgo>Apply</button></div>`}
+   ${can>0?`<button type="button" class="walb${used?' on':''}" role="switch" aria-checked="${!!used}" data-wal><span class="hic ok">${I('card')}</span><span class="grow"><b>Use wallet balance</b><small>${used?`${inr(used)} used · ${inr(Math.max(0,can-used))} left`:`${inr(can)} available from Refer &amp; earn`}</small></span><span class="tgl" aria-hidden="true"></span></button>`:''}
+   <div class="err" id="cper" role="alert"></div></div>`;
+}
+function offerUi(){const b=$('#offer');if(b)b.innerHTML=offerHtml()}
+const OFERR={coupon:'This coupon code does not work for this test series.',coupon_off:'Coupons are not available right now.',coupon_expired:'This coupon has ended.',coupon_soon:'This coupon has not started yet.',
+  locked:'This order can no longer change. Close and tap Buy now again.',order:'This order was not found. Close and tap Buy now again.',busy:'Too many tries. Please wait a while and try again.',
+  network:'No internet. Please try again.',item:'This series is not available right now.'};
+async function offerGo(coupon,wallet,btn){
+  const er=$('#cper');if(er)er.textContent='';
+  if(btn){btn.disabled=true;btn.dataset.t=btn.innerHTML;btn.innerHTML='<span class="spin"></span>'}
+  const r=await rpc('cbt_store_order_apply',{p_code:ORD.code,p_mobile:ORD.mobile,p_coupon:coupon||'',p_wallet:!!wallet});
+  if(btn&&btn.isConnected){btn.disabled=false;btn.innerHTML=btn.dataset.t}
+  if(!r.ok){
+    if(r.error==='missing'){OFFER=false;offerUi();return}
+    if(r.error==='coupon_off'){CPN=false;offerUi();toast(OFERR.coupon_off,'alert','bad');return}
+    const e=$('#cper');if(e)e.textContent=OFERR[r.error]||'Something went wrong. Please try again.';shake($('#cpi')||$('.walb'));
+    if(r.error==='order'||r.error==='locked')LSd('store_ord');
+    return;
+  }
+  Object.assign(ORD,{amount:r.amount,list_price:r.list_price,coupon_code:r.coupon_code||'',coupon_off:r.coupon_off||0,wallet_used:r.wallet_used||0});
+  if(WAL)WAL.balance=r.wallet_left;
+  LSs('store_ord',ORD);
+  toast(coupon&&r.coupon_off?`Coupon applied · you save ${inr(r.coupon_off)}`:wallet?`Wallet used · ${inr(r.wallet_used)}`:'Updated',coupon?'gift':'card');
+  payStep();
+}
+function cpGo(btn){const i=$('#cpi'),v=i?i.value.trim().toUpperCase():'';if(!v){const e=$('#cper');if(e)e.textContent='Type the coupon code first.';shake(i);return}offerGo(v,+ORD.wallet_used>0,btn)}
+/* the wallet pays the whole price: no UPI — the order goes to the admin for approval as it is */
+function walletPaidStep(){
+  sheet(1,`${bigI('card','ok')}<h3 class="center">Paid from your wallet</h3><p class="sm mut center mt4">${inr(listP())} ${ORD.coupon_off?`− coupon ${inr(ORD.coupon_off)} `:''}− wallet ${inr(ORD.wallet_used)} = <b>₹0 to pay</b></p>
+   <div class="offer mt16"><button type="button" class="walb on" role="switch" aria-checked="true" data-wal><span class="hic ok">${I('card')}</span><span class="grow"><b>Use wallet balance</b><small>${inr(ORD.wallet_used)} used · tap to pay by UPI instead</small></span><span class="tgl" aria-hidden="true"></span></button><div class="err" id="cper" role="alert"></div></div>
+   <div class="kvl"><div><span>Order code</span><b class="code">${esc(ORD.code)}</b>${cpBtn(ORD.code,'Code copied')}</div></div>
+   <p class="for">For ${esc(ORD.name)} · ${esc(ORD.mobile)}</p>`,
+   `<button class="btn pri lg block" id="wgo" data-walgo>${I('check')}Confirm order ${I('next')}</button>`);
+}
+async function walGo(){
+  const b=$('#wgo');if(b){b.disabled=true;b.innerHTML='<span class="spin"></span>Saving…'}
+  const r=await rpc('cbt_store_paid',{p_code:ORD.code,p_mobile:ORD.mobile,p_payer:'Wallet balance',p_utr:''});
+  if(!r.ok&&r.error==='network'){if(b){b.disabled=false;b.innerHTML=`${I('check')}Confirm order ${I('next')}`}return toast('No internet. Please try again.','alert','bad')}
+  ORD.payer='Wallet balance';ORD.utr='';LSs('store_ord',ORD);vStep();
+}
+
+/* ---------- Refer & earn: store.html?r=<code>. The link opens the store; a new student who buys gives the sharer the
+   reward (₹25) in the wallet. The wallet cannot be withdrawn — it is used at checkout. ---------- */
+const RC_OK=/^[a-z]{2,10}[0-9]{5,7}$/;
+function captureRc(){
+  const c=(new URLSearchParams(location.search).get('r')||'').trim().toLowerCase();
+  if(RC_OK.test(c))LSs('store_rc',{c,at:Date.now()});
+}
+// once per number: tell the server who shared the link (it accepts only new students; it answers the same every time)
+function rfJoin(){
+  const m=ME(),r=LSg('store_rc',null);
+  if(!m||!r||!RC_OK.test(r.c)||Date.now()-r.at>30*864e5||r.done===m.mobile)return;
+  rpc('cbt_refer_join',{p_ref:r.c,p_mobile:m.mobile,p_name:m.name}).then(x=>{if(x&&x.ok){r.done=m.mobile;LSs('store_rc',r)}});
+}
+const rfUrl=c=>location.href.split(/[?#]/)[0]+'?r='+encodeURIComponent(c);
+const rfMsg=c=>`${(CFG.SITE_NAME||'Aspiron Education')} — NEET / JEE test series with real exam pattern and All-India rank. I use it. Join with my link:\n${rfUrl(c)}`;
+let RFN=0;
+async function rfDraw(fetch){
+  const box=$('#rfbox'),m=ME();if(!box||!m)return;
+  if(fetch||!WAL||!WAL.code){
+    if(!WAL||!WAL.code)box.innerHTML='<div class="skel box"></div><div class="skel box mt16"></div>';
+    const n=++RFN,r=await walLoad(true);if(n!==RFN||VW!=='refer')return;
+    if(!r.ok){box.innerHTML=emptyHtml(r.error==='network'?'alert':'gift',r.error==='missing'?'Refer & earn is coming soon':r.error==='network'?'No internet':'Could not load',r.error==='missing'?'Please check back in a little while.':'Please try again.',r.error==='missing'?'gold':'bad',r.error==='missing'?'':`<button class="btn pri" data-rfre>${I('next')}Try again</button>`);return}
+  }
+  const w=WAL,rw=inr(w.reward||25),url=rfUrl(w.code);
+  box.innerHTML=`<div class="card rfhero"><span class="rfic">${I('gift')}</span><div class="grow"><span class="eyebrow">${w.active===false?'Paused for now':'Share & earn'}</span><h2>Get ${rw} for every friend who buys</h2><p>Share your link. When a new student opens it and buys any test series, ${rw} comes to your wallet. Use it to buy your next test series.</p></div></div>
+   <div class="card rflink"><div class="card-h"><span class="hic">${I('share')}</span><div class="grow"><h3>Your link</h3><p class="sub">It opens this store · code <b class="code">${esc(w.code)}</b></p></div></div>
+    <div class="rfu"><span class="mono">${esc(url)}</span>${cpBtn(url,'Link copied')}</div>
+    <div class="row wrap rfa"><button class="btn pri" data-rfshare>${I('share')}Share link</button>${waUrlShare(rfMsg(w.code))}<button class="btn line" data-copy="${esc(rfMsg(w.code))}" data-what="Message copied">${I('copy')}Copy message</button></div></div>
+   <div class="rfk">${[['user','Friends joined',w.joined,''],['bag','Friends bought',w.bought,'ok'],['gift','Total earned',inr(w.earned),'gold'],['card','Wallet balance',inr(w.balance),'pri']].map(([ic,l,v,k])=>`<div class="card rfn ${k}"><span>${I(ic)}${l}</span><b>${v}</b></div>`).join('')}</div>
+   <div class="card"><div class="card-h"><span class="hic vio">${I('info')}</span><h3>How it works</h3></div>
+    <ol class="tl"><li><i>1</i><div><b>Share your link</b><p>On WhatsApp, Telegram or anywhere. It opens the store.</p></div></li>
+     <li><i>2</i><div><b>Your friend buys a test series</b><p>Only new students count. Joining alone does not give money — the purchase does.</p></div></li>
+     <li><i>3</i><div><b>${rw} comes to your wallet</b><p>After we approve their payment. One reward for each friend.</p></div></li>
+     <li><i>4</i><div><b>Use it at checkout</b><p>Turn on “Use wallet balance” when you pay. Wallet money cannot be withdrawn to a bank or UPI.</p></div></li></ol></div>
+   <p class="sm faint center mt16">${I('lock')} Your wallet belongs to ${esc(m.mobile)}.</p>`;
+}
+function waUrlShare(t){return `<a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(t)}">${I('wa')}WhatsApp</a>`}
+async function rfShare(){
+  if(!WAL||!WAL.code)return;const t=rfMsg(WAL.code);
+  if(navigator.share){try{await navigator.share({title:CFG.SITE_NAME||'Test series',text:t});return}catch(e){if(e&&e.name==='AbortError')return}}
+  copy(t,'Message copied');
 }
 /* "Save QR to pay": the QR as a picture in the gallery. UPI apps pay a QR chosen from the gallery like a scanned one,
    while a pay link from a website to a personal UPI ID is often blocked (Google Pay: "exceeded the bank limit"). */
@@ -602,7 +726,7 @@ async function saveQr(){
   setTimeout(()=>{const b=$('[data-step=paid]');if(b)b.classList.add('nudge')},800);
 }
 // message for the support chat (Telegram / WhatsApp); the student sends the payment screenshot with it
-function tgText(){return `Payment done ✅\nOrder code: ${ORD.code}\nSeries: ${ORD.title}\nAmount: ${inr(ORD.amount)}\nStudent name: ${ORD.name}\nMobile: ${ORD.mobile}\nPaid from account of: ${ORD.payer||'-'}\nUTR / Transaction ID: ${ORD.utr||'-'}\n📎 Payment screenshot attached`}
+function tgText(){return `Payment done ✅\nOrder code: ${ORD.code}\nSeries: ${ORD.title}${ORD.lang?`\nMedium: ${ORD.lang==='hi'?'Hindi (हिंदी)':'English'}`:''}${ORD.coupon_off||ORD.wallet_used?`\nPrice: ${inr(listP())}${ORD.coupon_off?`\nCoupon: ${ORD.coupon_code} (−${inr(ORD.coupon_off)})`:''}${ORD.wallet_used?`\nWallet used: ${inr(ORD.wallet_used)}`:''}`:''}\nAmount: ${inr(ORD.amount)}\nStudent name: ${ORD.name}\nMobile: ${ORD.mobile}\nPaid from account of: ${ORD.payer||'-'}\nUTR / Transaction ID: ${ORD.utr||'-'}\n📎 Payment screenshot attached`}
 /* step 2: who paid (account holder name) + UTR, saved with the order */
 function paidStep(){
   sheet(2,`${bigI('receipt','ok')}<h3 class="center">Payment details</h3>
@@ -653,7 +777,7 @@ function vStep(){
   const tg=tgUser(),wa=waUrl(''),msg=tgText(),v=x=>x?esc(x):'<i class="nil">—</i>';
   sheet(3,`<div class="sum">
    <div class="sumh"><div class="grow"><b>Summary</b><span>Please check your details once</span></div><button class="btn sm line" data-edit>${I('edit')}Edit</button></div>
-   <dl><div><dt>Series name</dt><dd>${esc(ORD.title)}</dd></div><div><dt>Amount</dt><dd>${inr(ORD.amount)}</dd></div></dl>
+   <dl><div><dt>Series name</dt><dd>${esc(ORD.title)}</dd></div>${ORD.lang?`<div><dt>Medium</dt><dd>${ORD.lang==='hi'?'हिंदी':'English'}</dd></div>`:''}${ORD.coupon_off?`<div><dt>Coupon</dt><dd>${esc(ORD.coupon_code)} · −${inr(ORD.coupon_off)}</dd></div>`:''}${ORD.wallet_used?`<div><dt>Wallet used</dt><dd>${inr(ORD.wallet_used)}</dd></div>`:''}<div><dt>Amount</dt><dd>${inr(ORD.amount)}</dd></div></dl>
    <dl><div><dt>Student name</dt><dd>${esc(ORD.name)}</dd></div><div><dt>Mobile no.</dt><dd>${esc(ORD.mobile)}</dd></div></dl>
    <dl><div><dt>Order code</dt><dd class="code">${esc(ORD.code)}</dd></div><div><dt>Paid from account of</dt><dd>${v(ORD.payer)}</dd></div><div><dt>UTR / Transaction ID</dt><dd class="code">${v(ORD.utr)}</dd></div></dl>
    <p class="sumok">${I('ok')}Payment done</p></div>
@@ -681,10 +805,11 @@ async function editSave(){
   const b=$('#esave');b.disabled=true;b.innerHTML='<span class="spin"></span>Saving…';er.textContent='';
   const fail=t=>{if($('#esave')){b.disabled=false;b.innerHTML=`${I('check')}Save`;er.textContent=t}};
   if(n!==ORD.name||m!==ORD.mobile){
-    const r=await rpc('cbt_store_order',{p_item:ORD.item,p_name:n,p_mobile:m});
+    let r=ORD.lang?await rpc('cbt_store_order_lang',{p_item:ORD.item,p_name:n,p_mobile:m,p_lang:ORD.lang}):null;
+    if(!r||r.error==='missing')r=await rpc('cbt_store_order',{p_item:ORD.item,p_name:n,p_mobile:m});
     if(!r.ok)return fail(r.error==='busy'?'Too many tries. Please wait a while and try again.':r.error==='network'?'No internet. Please try again.':'Could not save. Please try again.');
     meSave(n,m);
-    Object.assign(ORD,{code:r.code,amount:r.amount,title:r.title,name:n,mobile:m,at:Date.now()});attachRef(r.code,m);
+    Object.assign(ORD,{code:r.code,amount:r.amount,title:r.title,name:n,mobile:m,at:Date.now(),list_price:0,coupon_code:'',coupon_off:0,wallet_used:0});attachRef(r.code,m);
   }
   const r=await rpc('cbt_store_paid',{p_code:ORD.code,p_mobile:ORD.mobile,p_payer:py,p_utr:pu});
   if(!r.ok&&r.error==='network'){LSs('store_ord',ORD);return fail('No internet. Please try again.')}
@@ -702,7 +827,8 @@ function meDraw(){
   box.innerHTML=`<div class="card pf"><span class="av lg">${esc(m.name[0].toUpperCase())}</span><div class="grow"><h2>${esc(m.name)}</h2><p class="mono">${esc(m.mobile)}</p><span class="pill pri">${I(c==='jee'?'atom':'steth')}${CN[c]}</span></div><button class="btn line sm" data-me>${I('edit')}Edit</button></div>
    ${o?`<div class="card ord"><div class="card-h"><span class="hic gold">${I('receipt')}</span><div class="grow"><h3>Your order</h3><p class="sub">Made ${ago(o.at)} · continue within 24 hours</p></div></div>
      <div class="ordb"><div class="grow"><b>${esc(o.title)}</b><span>${inr(o.amount)} · Order code <b class="code">${esc(o.code)}</b></span></div>
-     ${o.payer?`<button class="btn pri" data-ordv>${I('shield')}Verify payment</button>`:`<button class="btn pri" data-buy="${esc(o.item)}">${I('card')}Continue payment</button>`}</div></div>`:''}
+     ${o.payer?`<button class="btn pri" data-ordv>${I('shield')}Verify payment</button>`:(o.lang?`<button class="btn pri" data-lid="${esc(o.item)}" data-lang="${esc(o.lang)}">${I('card')}Continue payment</button>`:`<button class="btn pri" data-buy="${esc(o.item)}">${I('card')}Continue payment</button>`)}</div></div>`:''}
+   <button class="card rfpro" data-go="refer"><span class="hic gold">${I('gift')}</span><span class="grow"><b>Refer &amp; earn</b><small>Share your link · get money in your wallet for every friend who buys${WAL&&WAL.balance?` · wallet ${inr(WAL.balance)}`:''}</small></span>${I('cr')}</button>
    <div class="pgrid">
     <div class="card"><div class="card-h"><span class="hic">${I('target')}</span><div class="grow"><h3 id="pcl">Your course</h3><p class="sub">You see the test series of this course.</p></div></div>${crsHtml(c,'course','pcl')}</div>
     <div class="card"><div class="card-h"><span class="hic vio">${I('auto')}</span><div class="grow"><h3 id="ptl">Theme</h3><p class="sub">Auto follows your phone's setting.</p></div></div>
@@ -836,6 +962,7 @@ document.addEventListener('click',e=>{
   else if('me' in d)meSheet();
   else if('mesave' in d)meSaveGo();
   else if(d.buy){closeSheet();buy(d.buy)}
+  else if(d.lang&&d.lid){closeSheet();buy(d.lid,d.lang)}
   else if('ordv' in d){const o=lastOrd();if(o){ORD=o;IT=ST.items.find(i=>i.id===o.item);vStep()}}
   else if(d.explore)explore(d.explore);
   else if(d.soon)soonSheet(d.soon);
@@ -852,7 +979,7 @@ document.addEventListener('click',e=>{
   else if('rvx' in d){const c=t.closest('.rv');if(c){const o=c.classList.toggle('open');t.textContent=o?'Show less':'Read more';t.setAttribute('aria-expanded',o)}}
   else if(d.share)share(d.share,!!t.closest('.xp'));
   else if('close' in d)closeSheet();
-  else if('redo' in d){e.preventDefault();const id=IT.id;meSheet(()=>{LSd('store_ord');closeSheet();buy(id)})}
+  else if('redo' in d){e.preventDefault();const id=IT.id,lg=ORD&&ORD.lang||undefined;meSheet(()=>{LSd('store_ord');closeSheet();buy(id,lg)})}
   else if(d.copy)copy(d.copy,d.what);
   else if('saveqr' in d)saveQr();
   else if('verify' in d){try{navigator.clipboard.writeText(tgText())}catch(_){}}
@@ -862,6 +989,12 @@ document.addEventListener('click',e=>{
   else if(d.step==='paid')paidStep();
   else if(d.step==='back1')payStep();
   else if('paidgo' in d)paidGo();
+  else if('cpgo' in d)cpGo(t);
+  else if('cpx' in d)offerGo('',+ORD.wallet_used>0,t);
+  else if('wal' in d)offerGo(ORD.coupon_code||'',!(+ORD.wallet_used>0),null);
+  else if('walgo' in d)walGo();
+  else if('rfshare' in d)rfShare();
+  else if('rfre' in d)rfDraw(true);
 });
 const hasMe=()=>document.documentElement.classList.contains('has-me');
 document.addEventListener('keydown',e=>{
@@ -870,6 +1003,7 @@ document.addEventListener('keydown',e=>{
   // "/" opens Search (computers)
   if(e.key==='/'&&!/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)&&!$('.ov')&&!$('#xp')&&hasMe()){e.preventDefault();go('search',1);return}
   if(e.key!=='Enter'||/^(BUTTON|A|SUMMARY)$/.test(e.target.tagName))return;   // a focused button: its own tap does it
+  if(e.target&&e.target.id==='cpi'){e.preventDefault();cpGo($('[data-cpgo]'));return}
   if($('#esave'))editSave();
   else if(!hasMe()&&$('#gate'))gateGo();
   else if($('#go'))meSaveGo();
@@ -894,7 +1028,7 @@ addEventListener('scroll',()=>{
 {const mq=matchMedia('(prefers-color-scheme: light)'),f=()=>{if(!themeSaved())themeSet('')};try{mq.addEventListener('change',f)}catch(_){try{mq.addListener(f)}catch(e){}}}
 
 themeMeta();themeUi();courseUi();meUi();
-captureRef();
+captureRef();captureRc();
 {const v=vHash();if(v!=='home'){if(!history.state)under({v:1},'#/'+v);else VH=!!history.state.v}show(v)}   // the page from the link, else Home
 if(!ME()){$$('.app,.dock').forEach(e=>e.inert=true);if(matchMedia('(hover:hover)').matches)setTimeout(()=>{const n=$('#gn');if(n)n.focus()},400)}
 else if(!RM){document.body.classList.add('boot');setTimeout(()=>document.body.classList.remove('boot'),1200)}

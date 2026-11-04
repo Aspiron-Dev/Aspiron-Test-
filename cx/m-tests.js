@@ -38,7 +38,7 @@ AX.css('tests', `
 .ts-sc{display:flex;flex-direction:column;cursor:pointer;transition:transform var(--std) var(--ease),border-color var(--std)}
 .ts-sc:hover{transform:translateY(-3px);border-color:var(--pri-line)}
 .ts-sc.off .ts-cv{filter:saturate(.35)}
-.ts-cv{--c:#14b8a6;position:relative;aspect-ratio:16/7;overflow:hidden;display:grid;place-items:center;background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--c) 90%,#fff) 0%,var(--c) 45%,color-mix(in srgb,var(--c) 45%,#020617) 100%)}
+.ts-cv{--c:#14b8a6;position:relative;aspect-ratio:16/9;overflow:hidden;display:grid;place-items:center;background:radial-gradient(120% 140% at 0% 0%,color-mix(in srgb,var(--c) 90%,#fff) 0%,var(--c) 45%,color-mix(in srgb,var(--c) 45%,#020617) 100%)}
 .ts-cv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .ts-mono{font-family:var(--font-display);font-size:38px;font-weight:600;color:rgba(255,255,255,.94);letter-spacing:-.02em;text-shadow:0 4px 18px rgba(0,0,0,.25)}
 .ts-cvp{position:absolute;left:10px;top:10px;right:10px;display:flex;gap:6px;flex-wrap:wrap;z-index:1}
@@ -53,7 +53,7 @@ AX.css('tests', `
 .ts-hero{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr)}
 .ts-hero .ts-cv{aspect-ratio:auto;min-height:190px;height:100%}
 .ts-hb{padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0}
-@media (max-width:760px){.ts-hero{grid-template-columns:minmax(0,1fr)}.ts-hero .ts-cv{aspect-ratio:16/7;min-height:0}}
+@media (max-width:760px){.ts-hero{grid-template-columns:minmax(0,1fr)}.ts-hero .ts-cv{aspect-ratio:16/9;min-height:0}}
 .ts-fold{margin-top:16px}
 .ts-fh{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 16px;border-bottom:1px solid var(--line);background:var(--solid-2);min-width:0}
 .ts-fh .fi{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--gold-soft);color:var(--gold);flex:none}
@@ -68,7 +68,7 @@ AX.css('tests', `
 .ts-ro .r b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px}
 .ts-ro .r .n{width:22px;color:var(--faint);font-weight:800;font-size:12px}
 .ts-cvbox{border-radius:16px;overflow:hidden;border:1px solid var(--line)}
-.ts-cvbox .ts-cv{aspect-ratio:16/7}
+.ts-cvbox .ts-cv{aspect-ratio:16/9}
 .ts-file{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
 .ts-file:first-child{border-top:0}
 @media (max-width:620px){.ts-ta .wide{display:none}.ts-tool .search{max-width:none}}
@@ -117,6 +117,8 @@ async function draw(skel, keepFocus) {
   if (!ctx.alive()) return;
   if (!cat || !cat.ok) { ctx.head({ title: 'Test studio' }); AX.set(ctx.el, UI.errorBox(cat || {})); return; }
   C = cat; if (!C.practice) C.practice = new Set();
+  await AX.lang.load();   // medium of each series + Hindi of each test (v41); an error only hides the badges
+  if (!ctx.alive()) return;
   const f = document.getElementById('ts-q'), had = keepFocus && f && document.activeElement === f, pos = had ? f.selectionStart : 0;
   if (CUR.view === 'series') vSeries(ctx); else if (CUR.view === 'all') vAll(ctx); else vLib(ctx);
   if (had) { const n = document.getElementById('ts-q'); if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) {} } }
@@ -144,7 +146,7 @@ function vLib(ctx) {
     </div>
     ${drafts.length ? h`<div class="card pad0 mt16"><div class="card-h" style="padding:14px 16px 4px">${icon('history')}<h3>Unpublished drafts on this device</h3><span class="grow"></span><span class="xs mut">Kept automatically</span></div><div class="list">${join(drafts, d => h`<div class="li"><span class="ts-ic gold">${icon('edit', 17)}</span><div class="grow"><div class="t ell">${d.title}</div><div class="s">${d.id ? 'Changes to a published test' : 'New test'} · ${fmt.plural(d.count, 'question')} · saved ${fmt.ago(d.at)}</div></div><button class="btn xs ghost" data-act="dropDraft" data-k="${d.key}">Discard</button><button class="btn xs soft" data-act="draft" data-k="${d.key}" data-id="${d.id || ''}">Continue</button></div>`)}</div></div>` : ''}
     <div class="ts-tool"><div class="inp-wrap search">${icon('search', 16)}<input class="inp sm" id="ts-q" type="search" placeholder="Find a series or test…" value="${CUR.q}" autocomplete="off" aria-label="Find a series or test"></div><span class="grow"></span>
-      ${m && C.series.length > 1 ? h`<button class="btn sm ghost" data-act="reorderS">${icon('sort', 15)} Reorder series</button>` : ''}</div>
+      <button class="btn sm ghost" data-act="amsgAll">${icon('msg', 15)} Approval messages</button>${m && C.series.length > 1 ? h`<button class="btn sm ghost" data-act="reorderS">${icon('sort', 15)} Reorder series</button>` : ''}</div>
     ${C.series.length ? h`<div class="ts-grid">${join(ser, card)}${m && !q ? h`<button class="ts-new" data-act="newSeries"><span class="e-ic">${icon('plus', 22)}</span>New series<span class="xs mut" style="font-weight:600">e.g. NEET Test Series 2027</span></button>` : ''}</div>
       ${!ser.length ? h`<div class="card">${UI.empty({ icon: 'search', title: 'Nothing matches', text: 'Try another name.' })}</div>` : ''}`
       : h`<div class="card">${UI.empty({ icon: 'layers', title: 'No series yet', text: 'Create your first series, for example “NEET Test Series”. Then add folders and tests to it.', action: m ? h`<button class="btn pri" data-act="newSeries">${icon('plus', 16)} Create a series</button>` : '' })}</div>`}
@@ -157,7 +159,7 @@ function card(s) {
     ${cover(s)}
     <div class="ts-sb"><div class="ts-t">${s.title}</div>${s.description ? h`<div class="xs mut ell">${s.description}</div>` : ''}
       <div class="ts-cnt">${fmt.plural(F.length, 'folder')} · ${fmt.plural(T.length, 'test')} · ${fmt.num(T.reduce((a, t) => a + (t.questions || 0), 0))} questions</div>
-      <div class="row gap6 wrap">${live ? h`<span class="pill ok"><span class="live-dot"></span> ${live} live</span>` : ''}${sch ? UI.pill(sch + ' scheduled', 'info') : ''}${dr ? UI.pill(dr + ' draft' + (dr > 1 ? 's' : '')) : ''}${pr ? UI.pill(pr + ' to fix', 'warn') : ''}${(s.files || []).length ? UI.pill(fmt.plural(s.files.length, 'file'), '') : ''}</div></div>
+      <div class="row gap6 wrap">${live ? h`<span class="pill ok"><span class="live-dot"></span> ${live} live</span>` : ''}${sch ? UI.pill(sch + ' scheduled', 'info') : ''}${dr ? UI.pill(dr + ' draft' + (dr > 1 ? 's' : '')) : ''}${pr ? UI.pill(pr + ' to fix', 'warn') : ''}${(s.files || []).length ? UI.pill(fmt.plural(s.files.length, 'file'), '') : ''}${AX.lang.mode(s.id) === 'bi' ? UI.pill('English + हिंदी', 'vio') : ''}</div></div>
     <div class="ts-sf">${canM() ? h`<button class="btn xs soft" data-act="newTestIn" data-sid="${s.id}">${icon('plus', 13)} Test</button>` : ''}<span class="grow"></span><span class="xs mut">Open ${icon('chevR', 13)}</span>
       <button class="ibtn sm" data-act="sMenu" data-id="${s.id}" aria-label="More for ${s.title}">${icon('moreV', 16)}</button></div></article>`;
 }
@@ -202,7 +204,9 @@ function vSeries(ctx) {
       <div class="ts-hb"><div class="row wrap gap6">${s.is_free ? UI.pill('Free for everyone', 'ok') : UI.pill('Paid · ' + (s.price_label || 'unlock per student'), 'gold')}${s.active === false ? UI.pill('Hidden from students', 'warn') : UI.pill('Visible to students', 'pri')}<span class="pill">Order ${s.sort_order || 0}</span></div>
         <div class="row wrap gap20"><div><div class="disp" style="font-size:26px">${T.length}</div><div class="xs mut">tests</div></div><div><div class="disp" style="font-size:26px">${F.length}</div><div class="xs mut">folders</div></div><div><div class="disp" style="font-size:26px">${fmt.num(T.reduce((a, t) => a + (t.questions || 0), 0))}</div><div class="xs mut">questions</div></div><div><div class="disp" style="font-size:26px">${fmt.num(T.reduce((a, t) => a + (t.results || 0), 0))}</div><div class="xs mut">attempts</div></div></div>
         <div class="row wrap gap6">${st.filter(x => x.k === 'live').length ? h`<span class="pill ok"><span class="live-dot"></span> ${st.filter(x => x.k === 'live').length} live now</span>` : ''}${st.filter(x => x.k === 'sched').length ? UI.pill(st.filter(x => x.k === 'sched').length + ' scheduled', 'info') : ''}${(s.files || []).length ? join(s.files, f => UI.pill(f.title + ' · ' + f.kind)) : h`<span class="xs mut">No syllabus or schedule files yet.</span>`}</div>
-        ${m ? h`<div class="row wrap gap6"><button class="btn sm" data-act="media" data-id="${s.id}">${icon('image', 15)} Cover & files</button><button class="btn sm" data-act="newFolder" data-sid="${s.id}">${icon('folder', 15)} New folder</button>${F.length > 1 ? h`<button class="btn sm ghost" data-act="reorderF" data-sid="${s.id}">${icon('sort', 15)} Reorder folders</button>` : ''}</div>` : ''}</div></div>
+        ${m ? h`<div class="row wrap gap6"><button class="btn sm" data-act="media" data-id="${s.id}">${icon('image', 15)} Cover & files</button><button class="btn sm" data-act="newFolder" data-sid="${s.id}">${icon('folder', 15)} New folder</button>${F.length > 1 ? h`<button class="btn sm ghost" data-act="reorderF" data-sid="${s.id}">${icon('sort', 15)} Reorder folders</button>` : ''}</div>` : ''}
+        ${medLine(s, T)}
+        <div class="row wrap gap6"><button class="btn sm" data-act="amsg" data-id="${s.id}">${icon('msg', 15)} Approval message & Telegram</button>${AX.can('messaging', 'manage') ? h`<button class="btn sm" data-act="sNotice" data-id="${s.id}">${icon('bell', 15)} Notice to this series</button><button class="btn sm" data-act="sPush" data-id="${s.id}">${icon('send', 15)} Phone notification</button>` : ''}</div></div></div>
     ${T.length > 6 ? h`<div class="ts-tool"><div class="inp-wrap search">${icon('search', 16)}<input class="inp sm" id="ts-q" type="search" placeholder="Find a test in this series…" value="${CUR.q}" autocomplete="off" aria-label="Find a test"></div></div>` : ''}
     ${!T.length && !F.length ? h`<div class="card mt16">${UI.empty({ icon: 'fileText', title: 'Nothing here yet', text: 'Add a folder (for example “Phase 1” or “Day 1”) or create the first test.', action: m ? h`<div class="row wrap" style="justify-content:center"><button class="btn pri" data-act="newTestIn" data-sid="${s.id}">${icon('plus', 16)} New test</button><button class="btn" data-act="newFolder" data-sid="${s.id}">${icon('folder', 16)} New folder</button></div>` : '' })}</div>` : ''}
     ${join(F, f => { const ft = fT(testsOf(s.id, f.id)); if (q && !ft.length) return ''; return h`<section class="card pad0 ts-fold"><div class="ts-fh"><span class="fi">${icon('folder', 17)}</span><div class="grow"><div class="row gap6 wrap"><b class="ell">${f.title}</b>${f.active === false ? UI.pill('Hidden', 'warn') : ''}</div><div class="xs mut">${fmt.plural(testsOf(s.id, f.id).length, 'test')}</div></div>
@@ -211,12 +215,38 @@ function vSeries(ctx) {
     ${root.length && fT(root).length ? h`<section class="card pad0 ts-fold"><div class="ts-fh"><span class="fi" style="background:var(--pri-soft);color:var(--pri)">${icon('fileText', 17)}</span><div class="grow"><b>${F.length ? 'Not in a folder' : 'Tests'}</b><div class="xs mut">${fmt.plural(root.length, 'test')}</div></div>${m && root.length > 1 ? h`<button class="btn xs ghost" data-act="reorderT" data-sid="${s.id}" data-fid="">${icon('sort', 13)} Reorder</button>` : ''}</div>
       <div class="list">${join(fT(root), t => testRow(t))}</div></section>` : ''}`);
 }
+// the series' medium and how many of its tests have Hindi
+function medLine(s, T) {
+  const bi = AX.lang.mode(s.id) === 'bi', L = AX.lang.last(), ready = T.filter(t => AX.lang.state(t.id) === 'ready').length;
+  const todo = T.filter(t => t.active !== false && AX.lang.state(t.id) !== 'ready').length;
+  if (!L.ok) return L.error === 'missing' ? h`<div class="xs mut">${icon('globe', 13)} Hindi medium: run <span class="mono">supabase_v41_medium.sql</span> in Supabase to turn it on.</div>` : '';
+  return h`<div class="ts-med row wrap gap6"><span class="pill ${bi ? 'vio' : ''}">${icon('globe', 13)} ${bi ? 'English + हिंदी medium' : 'English medium only'}</span>
+    <span class="xs mut">${bi || ready ? ready + ' of ' + fmt.plural(T.length, 'test') + ' ready in Hindi' + (bi && todo ? ' · ' + todo + ' still English only (Hindi students get them in English)' : '') : 'Students all get English.'}</span>
+    ${canM() ? h`<button class="btn xs ghost" data-act="sMedium" data-id="${s.id}">${icon('edit', 13)} Change</button>` : ''}</div>`;
+}
+async function mediumModal(s) {
+  let mode = AX.lang.mode(s.id);
+  const opt = (v, t, d) => h`<label class="ts-mo ${mode === v ? 'on' : ''}"><input type="radio" name="md" value="${v}" ${mode === v ? raw('checked') : ''}><span><b>${t}</b><span class="xs mut">${d}</span></span></label>`;
+  UI.modal({
+    title: 'Medium · ' + s.title, sub: 'Which languages this series is sold and given in.', size: 'narrow',
+    body: h`<div class="col gap6">${opt('en', 'English only', 'Every student gets the tests in English. The store does not ask for a medium.')}
+      ${opt('bi', 'English + हिंदी (one series, two mediums)', 'The store asks “English or हिंदी” at Buy. Each student gets the tests in their medium; add the Hindi text of each test in the test builder (Questions → हिंदी).')}</div>
+      <div class="callout info mt12">${icon('info')}<div class="xs">A test without complete Hindi is given in English to everyone. The medium of a running test never changes.</div></div>`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="mdSave">${icon('check', 16)} Save</button>`,
+    onOpen(el, close) {
+      el.addEventListener('change', e => { if (e.target.name === 'md') { mode = e.target.value; el.querySelectorAll('.ts-mo').forEach(x => x.classList.toggle('on', x.querySelector('input').checked)); } });
+      AX.act(el, { async mdSave(b) { await UI.busy(b, async () => { const r = await AX.lang.setSeries(s.id, mode); if (!r.ok) return UI.err(r); close(); UI.toast('Medium saved'); draw(false); }); } });
+    }
+  });
+}
+AX.css('tests-medium', `.ts-mo{display:flex;gap:10px;align-items:flex-start;padding:12px;border-radius:14px;border:1px solid var(--line);background:var(--solid-2);cursor:pointer}
+.ts-mo.on{border-color:var(--pri);background:var(--pri-soft)}.ts-mo input{margin-top:3px;accent-color:var(--pri-2)}.ts-mo>span{display:flex;flex-direction:column;gap:2px}`);
 function testRow(t, wide) {
   const s = status(t, C.practice), m = canM(), p = C.practice.has(String(t.id));
   const ser = wide ? C.series.find(x => x.id === t.series_id) : null, fo = wide ? C.folders.find(f => f.id === t.folder_id) : null;
   return h`<div class="li ts-tr" data-act="openT" data-id="${t.id}">
     <span class="ts-ic ${s.tone}">${icon(s.icon, 18)}</span>
-    <div class="grow"><div class="row gap6 wrap"><b class="ell" style="max-width:100%">${t.title}</b>${stPill(s)}${p && s.k !== 'practice' ? UI.pill('Practice', 'vio') : ''}${t.free_preview ? UI.pill('Free preview', 'pri') : ''}${t.problems ? UI.pill(t.problems + ' to fix', 'warn') : ''}${t.reports ? UI.pill(fmt.plural(t.reports, 'report'), 'bad') : ''}</div>
+    <div class="grow"><div class="row gap6 wrap"><b class="ell" style="max-width:100%">${t.title}</b>${stPill(s)}${p && s.k !== 'practice' ? UI.pill('Practice', 'vio') : ''}${t.free_preview ? UI.pill('Free preview', 'pri') : ''}${AX.lang.pill(t.id)}${t.problems ? UI.pill(t.problems + ' to fix', 'warn') : ''}${t.reports ? UI.pill(fmt.plural(t.reports, 'report'), 'bad') : ''}</div>
       <div class="ts-meta">${ser ? ser.title + (fo ? ' · ' + fo.title : '') + ' · ' : ''}${fmt.plural(t.questions || 0, 'question')} · ${t.duration} min · +${t.correct} / −${t.wrong} · ${fmt.plural(t.results || 0, 'attempt')} · ${s.sub}</div></div>
     <div class="ts-ta">${AX.can('results') ? h`<button class="ibtn sm wide" data-act="ana" data-id="${t.id}" aria-label="Analytics" title="Analytics">${icon('chart', 16)}</button>` : ''}${m ? h`<button class="btn xs wide" data-act="editT" data-id="${t.id}">${icon('edit', 13)} Edit</button>` : ''}<button class="ibtn sm" data-act="tMenu" data-id="${t.id}" aria-label="More for ${t.title}">${icon('moreV', 16)}</button></div></div>`;
 }
@@ -243,10 +273,15 @@ const ACTS = {
   newTestIn: el => AX.openTest(null, { seriesId: el.dataset.sid, folderId: el.dataset.fid || '' }),
   openS: el => AX.go('tests/s/' + el.dataset.id),
   openT: el => AX.openTest(el.dataset.id),
-  editT: el => AX.openTest(el.dataset.id, { step: 2 }),
+  editT: el => AX.openTest(el.dataset.id, { step: 'check' }),
   ana: el => openAna(el.dataset.id),
   shareS: el => AX.shareSeries(el.dataset.id),
   editS: el => seriesModal(S_(el.dataset.id)),
+  amsg: el => AX.amsg.edit(el.dataset.id),
+  sMedium: el => mediumModal(S_(el.dataset.id)),
+  amsgAll: () => AX.amsg.manage(),
+  sNotice: el => AX.newNotice({ series: [el.dataset.id] }),
+  sPush: el => AX.pushTo({ series: [el.dataset.id] }),
   media: el => mediaDrawer(el.dataset.id),
   newFolder: el => folderModal(el.dataset.sid, null),
   reorderS: () => reorder('Reorder series', C.series.slice().sort(bySort).map(s => ({ id: s.id, t: s.title, s: s.sort_order })), (x, n) => AX.api.admin('series_save', { id: x.id, sort_order: n })),
@@ -270,6 +305,10 @@ function sMenu(el, s) {
     m && { label: 'New folder', icon: 'folder', fn: () => folderModal(s.id, null) },
     m && { label: 'Edit series', icon: 'edit', fn: () => seriesModal(s) },
     m && { label: 'Cover & files', icon: 'image', fn: () => mediaDrawer(s.id) },
+    m && { label: 'Medium (English / हिंदी)', icon: 'globe', fn: () => mediumModal(s) },
+    { label: 'Approval message & Telegram', icon: 'msg', fn: () => AX.amsg.edit(s.id) },
+    AX.can('messaging', 'manage') && { label: 'Notice to this series', icon: 'bell', fn: () => AX.newNotice({ series: [s.id] }) },
+    AX.can('messaging', 'manage') && { label: 'Phone notification to this series', icon: 'send', fn: () => AX.pushTo({ series: [s.id] }) },
     { label: 'Share link', icon: 'link', fn: () => AX.shareSeries(s.id) },
     m && { sep: true },
     m && { label: 'Delete series', icon: 'trash', tone: 'danger', fn: () => delSeries(s) }
@@ -290,11 +329,12 @@ function fMenu(el, f) {
 function tMenu(el, t) {
   const m = canM(), p = C.practice.has(String(t.id));
   UI.menu(el, [{ head: t.title },
-    { label: m ? 'Edit questions' : 'View questions', icon: m ? 'edit' : 'eye', fn: () => AX.openTest(t.id, { step: 2 }) },
-    m && { label: 'Details & marking', icon: 'settings', fn: () => AX.openTest(t.id, { step: 1 }) },
-    m && { label: 'Schedule & access', icon: 'calendar', fn: () => AX.openTest(t.id, { step: 4 }) },
+    { label: m ? 'Edit questions' : 'View questions', icon: m ? 'edit' : 'eye', fn: () => AX.openTest(t.id, { step: 'check' }) },
+    m && { label: 'Details & marking', icon: 'settings', fn: () => AX.openTest(t.id, { step: 'details' }) },
+    m && { label: 'Time & publish', icon: 'calendar', fn: () => AX.openTest(t.id, { step: 'publish' }) },
     AX.can('results') && { label: 'Analytics', icon: 'chart', fn: () => openAna(t.id) },
     { label: 'Share link', icon: 'link', fn: () => AX.shareTest(t.id) },
+    AX.isOwner() && { label: 'PDF notes link', icon: 'fileText', fn: () => pdfLink(t) },
     m && { sep: true },
     m && { label: p ? 'Turn practice mode off' : 'Turn practice mode on', icon: 'zap', fn: () => setPractice(t, !p) },
     m && { label: t.active === false ? 'Show to students' : 'Hide from students', icon: t.active === false ? 'eye' : 'eyeOff', fn: async () => { const r = await metaSave(t, { active: t.active === false }); if (!r.ok) return UI.err(r); changed(t.active === false ? 'Visible to students' : 'Hidden from students'); } },
@@ -311,7 +351,8 @@ function metaSave(t, patch) {
     title: t.title, duration: t.duration, correct: t.correct, wrong: t.wrong, sort_order: +t.sort_order || 0, lock_back: !!t.lock_back, free_preview: !!t.free_preview, active: t.active !== false }, patch || {}));
 }
 async function setPractice(t, on) {
-  if (on && t.result_at) return UI.toast('Practice tests show answers at once: clear the result time or turn practice off', { tone: 'bad', ms: 6000, action: { label: 'Edit schedule', fn: () => AX.openTest(t.id, { step: 4 }) } });
+  if (on && t.result_at) return UI.toast('Practice tests show answers at once: clear the result time or turn practice off', { tone: 'bad', ms: 6000, action: { label: 'Edit schedule', fn: () => AX.openTest(t.id, { step: 'publish' }) } });
+  if (on && ms(t.closes_at) > Date.now() && !(await UI.confirm({ title: 'Practice mode on a live test?', text: 'Until the live end (' + fmt.dt(t.closes_at) + ') students get no instant answers: the answer key stays hidden like a live test.', yes: 'Turn on', no: 'Cancel' }))) return;
   const r = await AX.api.call('cbt_admin_practice', 'set', { id: t.id, on });
   if (!r.ok) return on ? UI.toast('Practice mode needs the v5 SQL update in Supabase', { tone: 'bad' }) : UI.err(r);
   changed(on ? 'Practice mode on: answers show after each question' : 'Practice mode off');
@@ -519,16 +560,16 @@ AX.shareTest = async id => {
 /* ---------- cover & files ---------- */
 function mediaDrawer(sid) {
   if (!canM()) return;
-  let kind = 'syllabus', file = null, busy = false;
+  let kind = 'syllabus', file = null, busy = false, OPENS = {};
   const body = () => {
     const s = S_(sid); if (!s) return UI.empty({ icon: 'layers', title: 'Series not found' });
     const cv = COV.get(sid);
     return h`<div class="section-t" style="margin-top:0">Cover photo</div>
       <div class="ts-cvbox">${cover(s)}</div>
-      <p class="xs mut mt8">Shown on the series card for students and in the store. A wide photo works best (about 16 : 7). It is compressed automatically.</p>
+      <p class="xs mut mt8">Shown on the series card for students and in the store. Use a 16 : 9 photo (1280 × 720 px). Other shapes are fitted into 16 : 9 without cutting, and compressed automatically.</p>
       <div class="row wrap mt12"><button class="btn soft" data-act="cvUp">${icon('upload', 16)} ${s.has_cover ? 'Change photo' : 'Upload photo'}</button>${s.has_cover ? h`<button class="btn ghost danger" data-act="cvRm">${icon('trash', 15)} Remove</button>${cv === undefined ? '' : UI.pill('Cover set', 'ok')}` : ''}</div>
       <div class="section-t">Syllabus, schedule & notes</div>
-      <div class="card flat tight">${(s.files || []).length ? join(s.files, f => h`<div class="ts-file"><span class="ts-ic ${f.kind === 'schedule' ? 'info' : f.kind === 'notes' ? 'vio' : 'gold'}">${icon(/\.pdf$/i.test(f.name || '') ? 'pdf' : 'image', 18)}</span><div class="grow"><b class="ell" style="display:block">${f.title}</b><div class="xs mut">${f.kind} · ${Math.round((f.size || 0) / 1024)} KB${f.name ? ' · ' + f.name : ''}</div></div><button class="btn xs danger" data-act="fDel" data-id="${f.id}">${icon('trash', 13)} Delete</button></div>`) : h`<div class="xs mut">No files yet. Students can open these from the series page.</div>`}</div>
+      <div class="card flat tight">${(s.files || []).length ? join(s.files, f => h`<div class="ts-file"><span class="ts-ic ${f.kind === 'schedule' ? 'info' : f.kind === 'notes' ? 'vio' : 'gold'}">${icon(/\.pdf$/i.test(f.name || '') ? 'pdf' : 'image', 18)}</span><div class="grow"><b class="ell" style="display:block">${f.title}</b><div class="xs mut">${f.kind} · ${Math.round((f.size || 0) / 1024)} KB${f.name ? ' · ' + f.name : ''}</div>${OPENS[f.id] ? h`<div class="xs mt4">${UI.pill((OPENS[f.id] > Date.now() ? 'Opens ' : 'Opened ') + fmt.dt(OPENS[f.id]), OPENS[f.id] > Date.now() ? 'warn' : 'ok')}</div>` : ''}</div><button class="btn xs" data-act="fOpen" data-id="${f.id}" title="Students can open it only from this time">${icon('clock', 13)} ${OPENS[f.id] ? 'Change' : 'Opens at'}</button><button class="btn xs danger" data-act="fDel" data-id="${f.id}">${icon('trash', 13)} Delete</button></div>`) : h`<div class="xs mut">No files yet. Students can open these from the series page.</div>`}</div>
       <div class="card flat mt12"><div class="card-h">${icon('upload')}<h3>Upload a file</h3></div><div class="col gap16">
         <div class="fld"><label for="mf-t">Name shown to students</label><input class="inp" id="mf-t" maxlength="80" placeholder="e.g. Full syllabus"></div>
         <div class="fld"><label>Type</label><div class="seg" id="mf-k">${join([['syllabus', 'Syllabus'], ['schedule', 'Schedule'], ['notes', 'Notes']], ([v, l]) => h`<button type="button" class="${kind === v ? 'on' : ''}" data-v="${v}">${l}</button>`)}</div></div>
@@ -543,13 +584,15 @@ function mediaDrawer(sid) {
       const redraw = () => { api.set(body()); };
       const refresh = async () => { AX.cache.drop('catalog'); const c = await AX.data.catalog(true); if (c && c.ok) C = c; redraw(); AX.emit('data:changed'); AX.emit('tests:changed'); };
       if (S_(sid) && S_(sid).has_cover && !COV.has(sid)) loadCovers().then(() => { if (el.isConnected) redraw(); });
+      // v43: when each file opens for students (e.g. solutions only after the test)
+      AX.api.call('cbt_admin_files', 'get', { series_id: sid }).then(r => { if (r && r.ok) { OPENS = r.files || {}; if (el.isConnected) redraw(); } });
       el.addEventListener('click', e => { const b = e.target.closest('#mf-k button'); if (!b) return; kind = b.dataset.v; el.querySelectorAll('#mf-k button').forEach(x => x.classList.toggle('on', x === b)); });
       AX.act(el, {
         async cvUp(b) {
           const f = await AX.u.pickFile('image/*'); if (!f) return;
           await UI.busy(b, async () => {
             let d = null;
-            try { d = AX.compressDataUrl ? await AX.compressDataUrl(await AX.u.fileToDataURL(f), 900, 0.78) : await AX.u.compressImage(f, { max: 900, quality: 0.78 }); } catch (e) { d = null; }
+            try { d = await AX.u.poster(f); } catch (e) { d = null; }
             if (!d) return UI.toast('Could not save the photo', { tone: 'bad' });
             const r = await AX.api.admin('series_cover', { id: sid, cover: d });
             if (!r.ok) return r.error === 'image' ? UI.toast('This photo is too large. Try a smaller one.', { tone: 'bad' }) : UI.err(r);
@@ -566,11 +609,21 @@ function mediaDrawer(sid) {
             COV.set(sid, ''); UI.toast('Cover removed'); await refresh(); paintCover(sid);
           });
         },
+        async fOpen(b) {
+          const v = await UI.pickDateTime({ value: OPENS[b.dataset.id] || null, title: 'Students can open this file from', clear: true });
+          if (v === undefined) return;
+          await UI.busy(b, async () => {
+            const r = await AX.api.call('cbt_admin_files', 'set', { id: b.dataset.id, at: v });
+            if (!r.ok) return r.error === 'missing' ? UI.toast('Run supabase_v43_test_rules.sql in Supabase first', { tone: 'bad' }) : UI.err(r);
+            if (v) OPENS[b.dataset.id] = v; else delete OPENS[b.dataset.id];
+            UI.toast(v ? 'Opens ' + fmt.dt(v) : 'Opens at once'); redraw();
+          });
+        },
         async fDel(b) {
           if (!(await UI.confirm({ title: 'Delete this file?', text: 'Students will no longer see it on the series page.', yes: 'Delete', tone: 'danger' }))) return;
           await UI.busy(b, async () => { const r = await AX.api.admin('file_delete', { id: b.dataset.id }); if (!r.ok) return UI.err(r); UI.toast('File deleted'); await refresh(); });
         },
-        async fPick() { const f = await AX.u.pickFile('application/pdf,image/*'); if (!f) return; const t = el.querySelector('#mf-t').value; file = f; redraw(); el.querySelector('#mf-t').value = t || f.name.replace(/\.[a-z0-9]+$/i, ''); },
+        async fPick() { const f = await AX.u.pickFile('application/pdf,image/png,image/jpeg,image/webp'); if (!f) return; const t = el.querySelector('#mf-t').value; file = f; redraw(); el.querySelector('#mf-t').value = t || f.name.replace(/\.[a-z0-9]+$/i, ''); },
         async fUp(b) {
           if (busy) return;
           const er = el.querySelector('#mf-e'), set = (p, t) => { el.querySelector('#mf-p').classList.remove('hide'); el.querySelector('#mf-p i').style.width = p + '%'; el.querySelector('#mf-s').textContent = t; };
@@ -600,5 +653,21 @@ function mediaDrawer(sid) {
       });
     }
   });
+}
+/* ---------- PDF notes link per test (Google Drive) — supabase_v51_test_pdf.sql, owner only ---------- */
+const PDF_RE = /^https:\/\/(drive|docs)\.google\.com\/[A-Za-z0-9/_?=&%.#~+-]+$/;
+async function pdfLink(t) {
+  const g = await AX.api.call('cbt_admin_test_pdf', 'get');
+  if (!g || !g.ok) { if (g && g.error === 'missing') UI.toast('Run supabase_v51_test_pdf.sql in Supabase first.', { tone: 'warn' }); else UI.err(g); return; }
+  const cur = (g.items || {})[String(t.id)] || {};
+  const v = await UI.prompt({ title: 'PDF notes link', label: 'Google Drive link', value: cur.url || '', required: false,
+    placeholder: 'https://drive.google.com/file/d/…/view',
+    hint: 'Share the file as "Anyone with the link → Viewer". Students see a PDF button next to this test. Leave empty to remove.' });
+  if (v == null) return;
+  const url = String(v).trim();
+  if (url && (url.length > 500 || !PDF_RE.test(url))) { UI.toast('Only drive.google.com or docs.google.com links.', { tone: 'bad' }); return; }
+  const r = await AX.api.call('cbt_admin_test_pdf', url ? 'set' : 'remove', url ? { id: String(t.id), url } : { id: String(t.id) });
+  if (!r || !r.ok) { UI.err(r); return; }
+  UI.toast(url ? 'PDF link saved' : 'PDF link removed');
 }
 })();

@@ -411,8 +411,10 @@ function sheet(h,id){
 }
 IC.edit='<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/>';
 const ACC={cyber:['Cyber Blue','linear-gradient(135deg,#22d3ee,#6366f1)'],green:['Emerald','linear-gradient(135deg,#059669,#34d399)'],royal:['Royal Purple','linear-gradient(135deg,#7c3aed,#c084fc)'],blue:['Classic Blue','linear-gradient(135deg,#1c5fe0,#3b9bff)'],rose:['Rose','linear-gradient(135deg,#e11d48,#fb7185)'],gray:['Slate','linear-gradient(135deg,#334155,#94a3b8)']};
+/* palette for design v2 (Aspiron Lux): Black → Gold, Yellow, Emerald; Light → Graphite, Gold, Blue Ice */
+const ACC2={gold:['Champagne gold','#c9a96e'],yellow:['Yellow','#e3c34d'],green:['Emerald','#5fb38a'],ice:['Blue ice','#9cc7e0'],grey:['Graphite','#8e8e93'],rose:['Rose','#d98b95']};
 function openLook(only){
-  const md=curMode(),ac=document.documentElement.dataset.accent||'cyber';
+  const v2=isV2(),A=v2?ACC2:ACC,md=curMode(),ac=document.documentElement.dataset.accent||(v2?'gold':'cyber');
   const cur=document.querySelector('#layer .bsheet[data-id="look"]');
   if(cur){cur.querySelectorAll('.mode').forEach(b=>b.classList.toggle('on',b.dataset.m===md));cur.querySelectorAll('.accb').forEach(b=>b.classList.toggle('on',b.dataset.a===ac));return}
   if(only)return;
@@ -421,8 +423,19 @@ function openLook(only){
    <div class="eyebrow" style="margin:0 0 10px">Mode</div>
    <div class="modegrid">${M.map(m=>`<button class="mode ${md===m[0]?'on':''}" data-m="${m[0]}" onclick="setMode('${m[0]}')"><i style="background:${m[2]}"></i>${m[1]}</button>`).join('')}</div>
    <div class="eyebrow" style="margin:18px 0 10px">Colour palette</div>
-   <div class="pgrid">${Object.keys(ACC).map(a=>`<button class="accb ${ac===a?'on':''}" data-a="${a}" onclick="setAccent('${a}')"><i style="background:${ACC[a][1]}"></i><span>${ACC[a][0]}</span></button>`).join('')}</div>
-   <p class="sm mut" style="margin:14px 0 0">Saved on this phone.</p>`,'look');
+   <div class="pgrid">${Object.keys(A).map(a=>`<button class="accb ${ac===a?'on':''}" data-a="${a}" onclick="setAccent('${a}')"><i style="background:${A[a][1]}"></i><span>${A[a][0]}</span></button>`).join('')}</div>
+   <p class="sm mut" style="margin:14px 0 0">Saved on this phone. Your tests, results and profile are not affected by the look.</p>`,'look');
+}
+/* switch between the new look and the old one. Only the look changes: no data is moved or deleted. */
+function setDesign(d){
+  const h=document.documentElement,v=d==='classic'?'classic':'v2';
+  LS.set('cbt_ds',v);
+  themeSwap(()=>{
+    h.dataset.ds=v;
+    h.dataset.accent=v==='v2'?(LS.get('cbt_accent_v2','gold')||'gold'):(LS.get('cbt_accent','cyber')||'cyber');
+    if(AUTH&&!INTEST&&document.body.classList.contains('hasnav'))setNav(navTab(location.hash||'#/'));
+    syncTheme();closeModal();openLook();
+  });
 }
 function pfField(k,l,t,ph,v){return `<label class="pfl">${l}</label><input class="pfi" id="pf_${k}" type="${t}" placeholder="${ph}" value="${esc(v||'')}" autocomplete="off">`}
 function openProfile(){
@@ -442,7 +455,7 @@ function openProfile(){
    <div class="sm mut" style="margin:8px 0 12px">Saved on this phone only.</div>
    <button class="btn block" onclick="pfSaveAll()">${ic('check')} Save profile</button>
    <div class="row" style="margin-top:10px"><button class="btn ghost" style="flex:1" onclick="closeModal();location.hash='#/b'">${ic('star')} Saved (${BM.size})</button><button class="btn ghost" style="flex:1" onclick="openLook()">${ic('palette')} Theme</button></div>
-   <div class="badges" style="margin:14px 0">${P.badges.map(b=>`<div class="bdg ${b.on?'on':''}"><b>${b.i}</b>${b.t}</div>`).join('')}</div>
+   <div style="height:12px"></div>
    ${wa?`<a class="btn soft block" style="text-decoration:none;margin-bottom:8px" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Contact admin</a>`:''}
    <button class="btn danger block" onclick="closeModal();signOut()">Sign out</button>`,'prof');
 }
@@ -512,19 +525,25 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 ;(window.__p=window.__p||{})['app6']=1;
 
 /* ===== v17: Settings / About / Terms sheets, bell-only notices, phone notifications ===== */
-const SN=()=>esc(CFG.SITE_NAME||'CBT Test Series');
+const SN=()=>esc(CFG.SITE_NAME||'Aspiron Education');
 function stRow(i,t,d,f,right){return `<button class="strow" onclick="${f}"><span class="stic">${ic(i,20)}</span><span class="grow"><b>${t}</b>${d?`<small>${d}</small>`:''}</span>${right||ic('right',18)}</button>`}
 function openSettings(){
   const np=npOn();
   sheet(`<h2 class="sht">Settings</h2><div class="shl"></div>
    ${stRow('user','Profile Settings','Name, photo, class and target exam','openProfile()')}
    ${stRow('palette','Theme &amp; Colours','Light, dark and colour palette','openLook()')}
+   ${stRow('vol','Opening Sound',sndOn()?SND_ON:SND_OFF,'sndToggle()',`<span class="tkoff${sndOn()?' on':''}" id="sndsw"><i></i></span>`)}
    ${stRow('bell','Phone Notifications',np?'On · new notices appear on your phone':'Get new notices in your phone’s notification bar','npToggle()',`<span class="tkoff${np?' on':''}" id="npsw"><i></i></span>`)}
    ${stRow('calendar','Exam Countdown','Set your exam date','closeModal();cdEdit()')}
    ${isStandalone()?'':stRow('download','Install App','Add to your home screen','closeModal();installApp()')}
    ${stRow('file','Terms &amp; Conditions','','openTerms()')}
    <button class="btn danger block" style="margin-top:14px" onclick="closeModal();signOut()">${ic('logout')} Logout</button>`,'set');
 }
+/* sound of the start-up animation (index.html): on by default; it plays only where the phone allows (installed app) */
+IC.vol='<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 010 7"/><path d="M18.5 5.5a9 9 0 010 13"/>';
+const SND_ON='On · soft sound with the opening animation',SND_OFF='Off · the app opens silently';
+const sndOn=()=>LS.get('cbt_snd',true)!==false;
+function sndToggle(){const on=!sndOn();LS.set('cbt_snd',on);const sw=document.getElementById('sndsw');if(sw){sw.classList.toggle('on',on);const sm=sw.parentNode.querySelector('small');if(sm)sm.textContent=on?SND_ON:SND_OFF}toast(on?'Opening sound on':'Opening sound off')}
 function openAbout(){
   sheet(`<h2 class="sht">About Us</h2><div class="shl"></div><div class="legal">
    <p><b>${SN()}</b> is an online test series platform for NEET, JEE and board exam students. Our goal is simple: give every student real exam-like practice, honest analysis and the habit of regular revision.</p>
@@ -543,7 +562,7 @@ function openTerms(){
    <h4>3. Fair attempts</h4><p>Attempt tests honestly. Using unfair means, multiple accounts, scripts or tampering with the app may lead to your result being cancelled and your account being suspended.</p>
    <h4>4. Results and ranks</h4><p>Scores, ranks, percentiles and predictions are given to help you prepare. They are indicative only and do not guarantee any result in the actual exam.</p>
    <h4>5. Fees and access</h4><p>If a course or test series is paid, its access period and fee are as communicated to you at the time of joining. Fees once paid are not refundable unless clearly stated otherwise.</p>
-   <h4>6. Your data</h4><p>We store your name, mobile number and test attempts to run the platform and show your results. Profile details and photo you add are saved on your own phone. We do not sell your personal data to anyone.</p>
+   <h4>6. Your data</h4><p>To run the platform we store online: your name, mobile number (and earlier numbers if it was changed), e-mail if you give it, your test attempts, answers and results, saved questions and reports, the phones you sign in from and your notification settings. Your profile photo stays on your own phone. This data is used only to give you tests, results and ranks, keep accounts safe and send the notices you asked for. Only our team can see it; we do not sell or share it. To correct your details or to have your account and data deleted, contact us (section 11): the admin then removes it. Payment records are kept as required for accounts.</p>
    <h4>7. Notifications</h4><p>We may send you notices about tests, results and updates inside the app and, if you allow it, as phone notifications. You can turn phone notifications off any time in Settings.</p>
    <h4>8. Availability</h4><p>We try to keep the platform running at all times, but it may sometimes be unavailable due to maintenance or network issues. Answers given while offline are saved on your phone and sent when you are back online.</p>
    <h4>9. Independence</h4><p>${n} is an independent educational platform and is not linked to NTA, NCERT, CBSE or any exam authority. Exam names are used only to describe the syllabus.</p>
@@ -580,5 +599,5 @@ async function npCheck(){
   }catch(e){}
 }
 {const _al=annLoad;annLoad=async function(f){const r=await _al(f);npCheck();return r}}
-setInterval(()=>{if(AUTH&&!INTEST)annLoad(true)},60000);
+setInterval(()=>{if(AUTH&&!INTEST&&!document.hidden)annLoad(true)},600000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&AUTH)annLoad(true)});

@@ -71,14 +71,30 @@ let SOFF=0, BM=new Set(), SEC=null, FILEURL={}, opTimer=null;
 let CAT=null, T=null, P=null, timer=null, INTEST=false, palOpen=false, warned=false, RV=null, retryT=null, RET='#/', LOGINERR='';
 
 /* ---------- api ---------- */
+// When many students use the site at the same moment the server can answer "busy" (429 / 502 / 503 / 504) or drop a
+// connection. Requests that are safe to send twice are then tried again after a short random wait, so the phones
+// do not all come back at the same second.
+const RPC_RETRY=new Set(['cbt_catalog','cbt_start','cbt_save','cbt_leaderboard','cbt_overall','cbt_insights','cbt_review','cbt_mistakes',
+  'cbt_bookmarks','cbt_notice','cbt_banners','cbt_suspension','cbt_my_flags','cbt_pyq_summary','cbt_pyq_chapter','cbt_alert_list','cbt_cover','cbt_file_part']);
 async function rpc(fn,args,noAuth){
-  const body=noAuth?args:Object.assign({p_mobile:AUTH.mobile,p_code:AUTH.code,p_device:DEV},args||{});
-  const ac=new AbortController(),tmo=setTimeout(()=>ac.abort(),25000);
-  try{
-    const r=await fetch(API+'/rest/v1/rpc/'+fn,{signal:ac.signal,method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!r.ok)return{ok:false,error:'server',status:r.status};
-    return await r.json();
-  }catch(e){return{ok:false,error:'network'}}finally{clearTimeout(tmo)}
+  const body=JSON.stringify(noAuth?args:Object.assign({p_mobile:AUTH.mobile,p_code:AUTH.code,p_device:DEV},args||{}));
+  for(let n=0;;n++){
+    const ac=new AbortController(),tmo=setTimeout(()=>ac.abort(),25000);let r;
+    try{
+      const x=await fetch(API+'/rest/v1/rpc/'+fn,{signal:ac.signal,method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body});
+      r=x.ok?await x.json():x.status===429?(await x.json().catch(()=>null))||{ok:false,error:'server',status:429}:{ok:false,error:'server',status:x.status};
+    }catch(e){r={ok:false,error:'network',timeout:ac.signal.aborted}}finally{clearTimeout(tmo)}
+    const busy=r&&r.ok===false&&((r.error==='server'&&[429,502,503,504].includes(r.status))||(r.error==='network'&&!r.timeout&&navigator.onLine!==false));
+    if(!busy||n>=2||!RPC_RETRY.has(fn))return r;
+    await new Promise(k=>setTimeout(k,(1500<<n)*(0.5+Math.random())));
+  }
+}
+// The phone keeps a sign-in token (supabase_v42), not the access code. A code kept by an older version is swapped once.
+const isTok=c=>/^st1\./.test(c||'');
+async function upgradeAuth(){
+  if(!AUTH||isTok(AUTH.code))return;
+  const r=await rpc('cbt_login',{p_mobile:AUTH.mobile,p_code:AUTH.code,p_device:DEV},true);
+  if(r&&r.ok&&isTok(r.token)&&AUTH){AUTH.code=r.token;LS.set('cbt_auth',AUTH)}
 }
 const AUTHERR=['invalid','blocked','pending','device_limit','device'];
 function errText(r){
@@ -89,6 +105,7 @@ function errText(r){
     case 'locked':return `Too many wrong attempts. Please try again in ${r.wait||15} minutes.`;
     case 'device_limit':return 'This code is already in use on 2 devices. Sign in on one of those phones, or ask us to reset your devices.';
     case 'device':return 'You were signed out because your devices were reset. Please sign in again.';
+    case 'busy':return 'Too many requests in a short time. Please wait a few minutes and try again.';
     case 'network':return 'No internet connection. Please check and try again.';
     default:return 'Something went wrong. Please try again.';
   }
@@ -104,27 +121,37 @@ function authErr(r){
 
 /* ---------- theme / header / helpers ---------- */
 function updateTheme(){$('#thm').innerHTML=ic('palette');syncTheme()}
-function themeSwap(fn){try{if(document.startViewTransition&&!matchMedia('(prefers-reduced-motion:reduce)').matches){document.startViewTransition(fn);return}}catch(e){}fn()}
+function themeSwap(fn){try{if(document.startViewTransition&&!matchMedia('(prefers-reduced-motion:reduce)').matches&&document.documentElement.dataset.lite!=='1'){document.startViewTransition(fn);return}}catch(e){}fn()}
 function applyMode(t){const h=document.documentElement;h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';else delete h.dataset.oled}
 function curMode(){const D=document.documentElement.dataset;return D.theme==='light'?'light':D.oled==='1'?'oled':'dark'}
 function setMode(t){LS.set('cbt_theme',t);themeSwap(()=>{applyMode(t);syncTheme();openLook(1)})}
-function setAccent(a){LS.set('cbt_accent',a);themeSwap(()=>{document.documentElement.dataset.accent=a;syncTheme();openLook(1)})}
+/* design v2 (Aspiron Lux, design-v2.css) is the default; 'classic' = the old look. Each keeps its own colour choice. */
+function isV2(){return document.documentElement.dataset.ds!=='classic'}
+/* header logo glow: index.html defines --brand-glow (used for the glow and the shine); here the root value is set
+   to the colour the student picked in Theme settings. Runs from syncTheme(), so after every colour / mode change. */
+function brandGlow(){try{const h=document.documentElement,c=getComputedStyle(h).getPropertyValue('--pri').trim();if(c)h.style.setProperty('--brand-glow',c)}catch(e){}}
+function setAccent(a){LS.set(isV2()?'cbt_accent_v2':'cbt_accent',a);themeSwap(()=>{document.documentElement.dataset.accent=a;syncTheme();openLook(1)})}
 function updateHeader(){
   mnuUpdate();
   {const bl=document.getElementById('bell');if(bl){bl.innerHTML=ic('bell',20);bl.style.display=AUTH?'':'none'}}
   $('#lg').innerHTML=ic('target',20);
-  $('#sn').textContent=CFG.SITE_NAME||'CBT Test Series';{const sp=document.getElementById('spn');if(sp)sp.textContent=CFG.SITE_NAME||'CBT Test Series'}document.title=CFG.SITE_NAME||'CBT Test Series';
+  $('#sn').textContent=CFG.SITE_NAME||'Aspiron Education';document.title=CFG.SITE_NAME||'Aspiron Education';
   pfHdr();
 }
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2800)}
 function modal(h){$('#layer').innerHTML=`<div class="modal" onclick="if(event.target===this)closeModal()"><div class="box">${h}</div></div>`}
 function closeModal(){$('#layer').innerHTML=''}
 const NAVIT=[['dash','#/','Home','grid'],['series','#/series','Tests','file'],['mk','#/m','Mistakes','notebook'],['bm','#/b','Saved','bmark'],['results','#/r','Results','trophy'],['tr','#/t','Tracker','pulse']];
+/* new design: 5 tabs. Library = Mistakes, Saved, PYQ, notes, tools. Me = results, tracker, notices, profile, theme (app21.js). Classic keeps NAVIT. */
+const NAVIT2=[['dash','#/','Home','home'],['series','#/series','Tests','file'],['lib','#/lib','Library','book'],['store','store.html','Store','bag'],['me','#/me','Me','user']];
+function navI(){return isV2()?NAVIT2:NAVIT}
 function setNav(tab){
   const bn=$('#bnav');
-  if(!bn.children.length)bn.innerHTML=NAVIT.map(x=>`<button data-k="${x[0]}" onclick="location.hash='${x[1]}'">${ic(x[3],22)}${x[2]}</button>`).join('');
+  const N=navI(),ds=isV2()?'v2':'classic';
+  if(ds==='v2'){tab={results:'me',tr:'me',mk:'lib',bm:'lib'}[tab]||tab;const hh=location.hash||'';if(/^#\/(n|t|r|me)$/.test(hh)||/^#\/h\//.test(hh))tab='me';else if(/^#\/(lib|notes|m|b)$/.test(hh)||/^#\/pyq/.test(hh))tab='lib'}
+  if(!bn.children.length||bn.dataset.ds!==ds){bn.dataset.ds=ds;bn.style.setProperty('--n',N.length);bn.innerHTML=N.map(x=>`<button data-k="${x[0]}" aria-label="${x[2]}" onclick="${x[1][0]==='#'?`location.hash='${x[1]}'`:`location.href='${x[1]}'`}">${ic(x[3],22)}${ds==='v2'?`<span>${x[2]}</span>`:x[2]}</button>`).join('')}
   bn.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.k===tab));
-  bn.style.setProperty('--i',Math.max(0,NAVIT.findIndex(x=>x[0]===tab)));
+  bn.style.setProperty('--i',Math.max(0,N.findIndex(x=>x[0]===tab)));
   document.body.classList.add('hasnav');
 }
 let ROUTING=0,PGDX=0;
@@ -175,7 +202,7 @@ async function doLogin(){
     if(r.error==='device_limit'&&typeof devPick==='function'&&await devPick(m,c,true))return;
     if(r.error==='device_limit'&&!$('#devhelp'))$('#er').insertAdjacentHTML('afterend',`<button id="devhelp" class="btn soft block" style="margin-bottom:10px" onclick="supportSheet('Hi, please reset the devices on my account. Mobile: ${m}')">📱 Ask for device reset</button>`);
     return}
-  AUTH={mobile:m,code:c,name:r.name};LS.set('cbt_auth',AUTH);LS.del('cbt_dping');updateHeader();CAT=null;
+  AUTH={mobile:m,code:isTok(r.token)?r.token:c,name:r.name};LS.set('cbt_auth',AUTH);LS.del('cbt_dping');updateHeader();CAT=null;
   await flushPending();
   location.hash='#/';route();
 }
@@ -198,8 +225,8 @@ async function doRequest(){
   const r=await rpc('cbt_request_access',{p_name:n,p_mobile:m},true);
   if(!r.ok){$('#er').textContent=r.error==='blocked'?'Your access has been blocked. Please contact the admin.':r.error==='busy'?'Too many pending requests right now. Please try again later.':errText(r);b.disabled=false;b.textContent='Send request';return}
   const wa=waLink(`Hi, I am ${n} (${m}). I have requested access to ${CFG.SITE_NAME||'the test series'}.`);
-  const msg=r.status==='approved'?`<h2>You are already approved</h2><p class="mut">Go back and sign in with your access code. If you lost your code, ask the admin for a new one.</p>`
-    :`<h2>Request sent ✓</h2><p class="mut">The admin will review your request. After approval you will receive an access code on your mobile. Then come back here and sign in.</p>`;
+  // the server gives the same answer for every number (it never says whether a number already has an account)
+  const msg=`<h2>Request received ✓</h2><p class="mut">If this number is new, the admin will review your request and send you an access code. If you already have an account, go back and sign in with your code; lost it? Message the admin for a new one.</p>`;
   $('#rq').innerHTML=`<div class="logo" style="background:var(--ok)">${ic('check',26)}</div>${msg}
     ${wa?`<a class="btn soft block" style="margin:8px 0;text-decoration:none" href="${wa}" target="_blank" rel="noopener">${ic('msg')} Message the admin</a>`:''}
     <button class="btn block" onclick="login()">Back to sign in</button>`;
@@ -208,7 +235,10 @@ function signOut(){
   modal(`<h2>Sign out?</h2><p class="mut">You will need your access code to sign in again. Tests in progress stay saved on this device.</p>
   <div class="row"><button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn danger" style="flex:1" onclick="doSignOut()">Sign out</button></div>`);
 }
-function doSignOut(){closeModal();MKC=null;BMC=null;PREF=0;AUTH=null;ANN=null;LS.del('cbt_auth');CAT=null;login()}
+function doSignOut(){
+  // the token stops working on the server a few seconds later (the phone first turns its notifications off with it)
+  if(AUTH&&isTok(AUTH.code)){const a={p_mobile:AUTH.mobile,p_code:AUTH.code,p_device:DEV};setTimeout(()=>rpc('cbt_logout',a,true),5000)}
+  closeModal();MKC=null;BMC=null;PREF=0;AUTH=null;ANN=null;LS.del('cbt_auth');CAT=null;login()}
 
 /* ---------- catalog / routing ---------- */
 let CATAT=0;
@@ -223,8 +253,8 @@ async function loadCat(silent){
   return true;
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&AUTH&&!INTEST&&CAT&&Date.now()-CATAT>30000)route()});
-const navTab=h=>/^#\/(s|f)\//.test(h)||h==='#/series'?'series':/^#\/h\//.test(h)||h==='#/r'?'results':h==='#/m'?'mk':h==='#/b'?'bm':h==='#/t'?'tr':'dash';
-const NAVRK=h=>{const t=NAVIT.findIndex(x=>x[0]===navTab(h));return /^#\/(s|f|h)\//.test(h)||h==='#/n'?t+0.5:t};
+const navTab=h=>/^#\/(s|f)\//.test(h)||h==='#/series'?'series':isV2()&&(/^#\/(r|me|t|n)$/.test(h)||/^#\/h\//.test(h))?'me':isV2()&&/^#\/(lib|notes|m|b|pyq)(\/|$)/.test(h)?'lib':/^#\/h\//.test(h)||h==='#/r'?'results':h==='#/m'?'mk':h==='#/b'?'bm':h==='#/t'?'tr':'dash';
+const NAVRK=h=>{const t=navI().findIndex(x=>x[0]===navTab(h));return /^#\/(s|f|h)\//.test(h)||h==='#/n'?t+0.5:t};
 let LASTRK=null;
 function pgAnim(ap){
   if(!PGDX){ap.classList.remove('pg');return}
@@ -232,7 +262,7 @@ function pgAnim(ap){
   ap.classList.remove('pg');void ap.offsetWidth;ap.classList.add('pg');
   clearTimeout(ap._pt);ap._pt=setTimeout(()=>ap.classList.remove('pg'),360);
 }
-const RMOT=()=>matchMedia('(prefers-reduced-motion:reduce)').matches;
+const RMOT=()=>matchMedia('(prefers-reduced-motion:reduce)').matches||document.documentElement.dataset.lite==='1';
 async function route(){
   if(INTEST||!AUTH)return;
   const h0=location.hash||'#/',rk=NAVRK(h0);let dir=0;

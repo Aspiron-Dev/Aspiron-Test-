@@ -1,14 +1,14 @@
 {
   "id": "./",
-  "name": "CBT Test",
-  "short_name": "CBT Test",
-  "description": "Online CBT mock tests with analysis",
+  "name": "Aspiron Education",
+  "short_name": "Aspiron Education",
+  "description": "Aspiron Education: online CBT mock tests for NEET and JEE with results, rank and analysis",
   "start_url": "./index.html",
   "scope": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f3f6f9",
-  "theme_color": "#1d6fe8",
+  "background_color": "#f8f6f1",
+  "theme_color": "#f8f6f1",
   "icons": [
     {
       "src": "icon-192.png",
@@ -32,7 +32,7 @@
   "related_applications": [
     {
       "platform": "webapp",
-      "url": "https://aspiron-dev.github.io/Aspiron-Test-/manifest.webmanifest"
+      "url": "https://aspironeducation.com/manifest.webmanifest"
     }
   ],
   "prefer_related_applications": false

@@ -90,6 +90,47 @@ function parse(text,keyText){
   });
   return{questions,keyFound:Object.keys(key).length};
 }
-const api={parse,parseKey,splitKey,splitOpts,sectionName};
+// explanations / solutions text -> {map:{n:text}, ans:{n:0-3}, count}
+// each starts at a line "12." / "Q12)" / "Sol. 12:" / "Explanation 12 -" …; numbers must go up by 1–3, so a list
+// "1. … 2. …" inside an explanation is kept as part of it. "(B)" or "Ans: B" right after the number is read as the answer.
+function parseExplain(t){
+  t=String(t||'').replace(/\r/g,'');
+  const re=/^\s*(?:(?:Q(?:ues(?:tion)?)?|Sol(?:ution)?|S|Exp(?:lanation)?|Hint|Ans(?:wer)?)\s*\.?\s*(?:no\.?\s*)?)?(\d{1,3})\s*[\.\):\-–]\s*(.*)$/i;
+  // "Q12 (b) …" / "Sol 12 …": with a Q / Sol word in front the number needs no "." after it
+  const re2=/^\s*(?:Q(?:ues(?:tion)?)?|Sol(?:ution)?)\s*\.?\s*(?:no\.?\s*)?(\d{1,3})\s+(\S.*)$/i;
+  // "12 (b) …": a number followed straight by the option letter in brackets
+  const re3=/^\s*(\d{1,3})\s+(\(\s*[A-Da-d1-4]\s*\).*)$/;
+  const blocks=[];let cur=null,last=0;
+  for(const ln of t.split('\n')){
+    const m=ln.match(re)||ln.match(re2)||ln.match(re3);const n=m?+m[1]:0;
+    // a "Q" / "Sol" word in front is a sure heading, so a few skipped solutions do not stop the rest
+    const gap=/^\s*(?:Q|Sol)/i.test(ln)?20:3;
+    if(m&&n>last&&(last===0?n<=gap:n<=last+gap)){cur={n,lines:[m[2]]};blocks.push(cur);last=n;continue}
+    if(cur)cur.lines.push(ln);
+  }
+  const map={},ans={};let count=0;
+  for(const b of blocks){
+    let x=b.lines.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+    const a=x.match(/^(?:(?:correct\s*)?(?:ans(?:wer)?|key|option)\s*(?:is)?\s*[:.\-–]?\s*\(?\s*([A-Da-d1-4])\s*\)?|\(\s*([A-Da-d1-4])\s*\))(?=[\s.,:;\-–)]|$)[\s.,:;\-–)]*/i);
+    if(a){const c=a[1]||a[2];ans[b.n]=/\d/.test(c)?+c-1:c.toLowerCase().charCodeAt(0)-97;if(!/^correct/i.test(a[0]))x=x.slice(a[0].length).trim()}
+    x=x.replace(/^(?:sol(?:ution)?|exp(?:lanation)?|hint)\s*[:.\-–]\s*/i,'').trim();
+    if(x||ans[b.n]!=null){map[b.n]=x;count++}
+  }
+  return{map,ans,count};
+}
+// a Hindi paper → the form parse() reads: Devanagari digits १२३ → 123, "प्रश्न 1:" / "प्र. 1 -" / "1:" → "1.",
+// options (अ)(ब)(स)(द) or (क)(ख)(ग)(घ) (also "अ." "अ)") → (A)(B)(C)(D), "उत्तर कुंजी" already starts a key
+function normHi(t){
+  t=String(t||'').replace(/\r/g,'').replace(/[०-९]/g,d=>String(d.charCodeAt(0)-0x966));
+  t=t.replace(/^(\s*)(?:प्रश्न|प्र\.?)\s*(?:संख्या|सं\.?)?\s*[-–:.]?\s*(\d{1,3})\s*[:.)\-–]?\s*/gm,'$1$2. ');
+  t=t.replace(/^(\s*\d{1,3})\s*[:\-–]\s+/gm,'$1. ');
+  const O=[['अ','क','A'],['ब','ख','B'],['स','ग','C'],['द','घ','D']];
+  for(const [a,b,L] of O){
+    t=t.replace(new RegExp('(^|\\s)\\(\\s*(?:'+a+'|'+b+')\\s*\\)','g'),'$1('+L+')');
+    t=t.replace(new RegExp('(^|\\s)(?:'+a+'|'+b+')\\s*[.)](?=\\s)','g'),'$1('+L+')');
+  }
+  return t;
+}
+const api={parse,parseKey,splitKey,splitOpts,sectionName,parseExplain,normHi};
 if(typeof module!=='undefined')module.exports=api;else root.CBTParser=api;
 })(this);

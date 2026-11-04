@@ -151,10 +151,12 @@ function orders(l) {
   UI.drawer({ title: 'Orders via ' + l.code, sub: l.name, body: UI.skeleton(4),
     async onOpen(el, close, api) {
       let L = [];
+      // R8: an order from the promoter's own number (the contact saved for this link) = possible self-referral
+      const own = (l.contact || '').replace(/\D/g, ''), self = o => own.length >= 10 && own.slice(-10) === String(o.mobile || '').replace(/\D/g, '').slice(-10);
       const draw = () => {
         const counted = L.filter(o => o.status === 'paid' && o.valid !== false).length;
         api.set(h`<div class="row wrap gap6" style="margin-bottom:14px">${UI.pill(fmt.plural(L.length, 'order'), '')}${UI.pill(counted + ' paid and counted', 'ok')}${UI.pill(fmt.inr(L.filter(o => o.status === 'paid' && o.valid !== false).reduce((s, o) => s + (Number(o.rate) || 0), 0)) + ' commission', 'gold')}</div>
-          ${L.length ? h`<div class="card pad0 list">${join(L, o => h`<div class="li pr-or ${o.valid === false ? 'off' : ''}">${UI.avatar(o.name || 'Student', o.mobile, 'sm')}<div class="grow"><div class="row gap6 wrap"><b class="ell">${o.name || 'Student'}</b>${UI.pill(o.status === 'paid' ? 'Paid' : o.status === 'rejected' ? 'Rejected' : 'Pending', o.status === 'paid' ? 'ok' : o.status === 'rejected' ? 'bad' : '')}${o.valid === false ? UI.pill('Not counted', 'warn') : ''}</div>
+          ${L.length ? h`<div class="card pad0 list">${join(L, o => h`<div class="li pr-or ${o.valid === false ? 'off' : ''}">${UI.avatar(o.name || 'Student', o.mobile, 'sm')}<div class="grow"><div class="row gap6 wrap"><b class="ell">${o.name || 'Student'}</b>${UI.pill(o.status === 'paid' ? 'Paid' : o.status === 'rejected' ? 'Rejected' : 'Pending', o.status === 'paid' ? 'ok' : o.status === 'rejected' ? 'bad' : '')}${o.valid === false ? UI.pill('Not counted', 'warn') : ''}${self(o) ? UI.pill('Promoter\'s own number', 'bad') : ''}</div>
               <div class="xs mut">${fmt.mobile(AX.sto ? AX.sto.m10(o.mobile) : o.mobile)} · ${fmt.date(o.at)}${o.code ? ' · ' + o.code : ''}</div>
               <div class="xs tx2">${o.item_title} · ${fmt.inr(o.amount)}${o.status === 'paid' && o.rate != null ? ' · commission ' + fmt.inr(o.rate) : ''}</div>${o.note ? h`<div class="xs mut">Note: ${o.note}</div>` : ''}</div>
             ${m ? h`<button class="btn xs ${o.valid === false ? 'soft' : 'ghost'}" data-act="valid" data-code="${o.code}">${o.valid === false ? h`${icon('check', 13)} Count again` : h`${icon('ban', 13)} Not counted`}</button>` : ''}</div>`)}</div>`

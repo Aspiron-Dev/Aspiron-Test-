@@ -1,0 +1,69 @@
+# Backup restore drill (SECURITY_REPORT.md, item 79): once a month (and on demand) the newest encrypted backup made by
+# db-backup.yml is downloaded, unlocked with BACKUP_PASSWORD and restored into a THROW-AWAY PostgreSQL inside the runner.
+# The job passes only if the key tables come back with rows. The log never shows data or counts, only OK / FAILED.
+name: Backup restore drill
+on:
+  schedule:
+    - cron: '41 4 1 * *'        # the 1st of every month, 10:11 AM India time
+  workflow_dispatch: {}
+permissions:
+  contents: read
+  actions: read                 # to find and download the backup artifact
+concurrency: { group: restore-drill, cancel-in-progress: false }
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_PASSWORD: throwaway-restore-db }
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 20
+    env: { PGHOST: localhost, PGUSER: postgres, PGPASSWORD: throwaway-restore-db }
+    steps:
+      - name: Check the secret
+        env: { B: '${{ secrets.BACKUP_PASSWORD }}' }
+        run: '[ -n "$B" ] || { echo "::error::BACKUP_PASSWORD is not set"; exit 1; }'
+      - name: Find the newest successful backup
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          set -euo pipefail
+          id=$(gh api "repos/${{ github.repository }}/actions/workflows/db-backup.yml/runs?status=success&per_page=1" --jq '.workflow_runs[0].id')
+          [ -n "$id" ] && [ "$id" != "null" ] || { echo "::error::No successful backup run found"; exit 1; }
+          echo "RUN_ID=$id" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@v8
+        with:
+          run-id: ${{ env.RUN_ID }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/bk
+      - name: Install PostgreSQL 17 tools (same as the backup)
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17 >/dev/null
+      - name: Unlock and restore into the throw-away database
+        env: { PASS: '${{ secrets.BACKUP_PASSWORD }}' }
+        run: |
+          set -euo pipefail
+          umask 077
+          B=/usr/lib/postgresql/17/bin
+          W=$(mktemp -d); trap 'rm -rf "$W" "${{ runner.temp }}/bk"' EXIT
+          f=$(find "${{ runner.temp }}/bk" -type f -name '*.dump.gpg' | head -1)
+          [ -n "$f" ] || { echo "::error::No .dump.gpg in the artifact"; exit 1; }
+          printf '%s' "$PASS" > "$W/p"
+          gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-file "$W/p" -d -o "$W/db.dump" "$f" || { echo "::error::Could not unlock the backup (wrong BACKUP_PASSWORD?)"; exit 1; }
+          rm -f "$W/p"
+          $B/createdb restore
+          # Supabase roles and the extensions schema the functions refer to
+          $B/psql -q -X -d restore -c "do \$\$ declare r text; begin foreach r in array array['anon','authenticated','service_role','authenticator','supabase_admin'] loop
+            begin execute format('create role %I nologin', r); exception when duplicate_object then null; end; end loop; end \$\$;
+            create schema if not exists extensions; create extension if not exists pgcrypto schema extensions;"
+          # objects that belong to Supabase itself may not restore here; that is expected and not counted
+          $B/pg_restore --no-owner -d restore "$W/db.dump" > "$W/restore.log" 2>&1 || true
+          echo "pg_restore notes: $(grep -c 'ERROR' "$W/restore.log" || true) (Supabase-only objects)"
+          ok=$($B/psql -At -X -d restore -c "select (select count(*) > 0 from cbt_private.students) and (select count(*) > 0 from cbt_private.tests)
+                                               and (select count(*) > 0 from cbt_private.series) and to_regprocedure('public.cbt_login(text,text,text)') is not null")
+          [ "$ok" = "t" ] || { echo "::error::Restore check FAILED: key tables or functions are missing"; exit 1; }
+          echo "Restore drill OK: students, series, tests and the sign-in function came back from the newest backup."

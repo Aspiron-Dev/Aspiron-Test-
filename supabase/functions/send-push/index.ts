@@ -6,9 +6,11 @@
 //   VAPID_PRIVATE  – the private key (never put this in GitHub)
 //   VAPID_SUBJECT  – optional but recommended, e.g. mailto:you@yourmail.com (a real address; Apple can refuse example.com)
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase automatically.
+//   SB_SECRET_KEY  – optional (R7): a new "sb_secret_…" key (Settings → API Keys). When set it is used instead of the
+//                    legacy service_role key, so the legacy keys can be turned off. Check: mode "info" → secret_key: true.
 // Deploy with "Verify JWT" OFF (the site calls it with the public key only; the admin password is checked here).
 //
-// Body: { pw, title, body, url?, tag?, series?, after?, limit? }   (pw = admin password / session, checked with cbt_admin 'ping')
+// Body: { pw, title, body, url?, tag?, series?, after?, limit? }   (pw = an admin panel sign-in session "as1.…", checked with cbt_admin 'ping')
 //   series = test series ids → only students of those series (supabase_v36_notice_audience.sql); empty = everyone.
 //   limit  = phones per call. The admin panel sends `limit` and calls again with `after` = the returned `next` until `done`,
 //            so a big list never runs past the function's time limit (that used to stop sending part-way).
@@ -19,16 +21,20 @@
 // Body: { mode: "info", vapid? } → { v: 2, vapid: secrets set?, key_ok: does `vapid` match VAPID_PUBLIC? } (no password; no secrets returned)
 
 import webpush from "npm:web-push@3.6.7";
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 
 const cors = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+// browsers may call this function only from these sites (secret ALLOWED_ORIGINS, comma separated, e.g. when a custom
+// domain is added). The minute job calls it from the database, where CORS does not apply.
+const ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") || "https://aspironeducation.com,https://www.aspironeducation.com,https://aspiron-dev.github.io").split(",").map((s) => s.trim().replace(/\/+$/, "")).filter(Boolean);
 const json = (o: unknown, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
 
 const PAGE_MAX = 200;    // phones per call at most
+// only the real push services get a request; any other saved address is skipped (no requests to other servers)
+const PUSH_HOST = /^https:\/\/(fcm\.googleapis\.com|android\.googleapis\.com|updates\.push\.services\.mozilla\.com|web\.push\.apple\.com|[a-z0-9.-]+\.push\.apple\.com|[a-z0-9.-]+\.notify\.windows\.com)\//i;
 const DUE_ALERTS = 100;  // "LIVE now" alerts per worker per minute
 const AT_ONCE = 25;      // notifications in flight at the same time
 
@@ -46,14 +52,20 @@ async function handle(req: Request): Promise<Response> {
 
   const pub = Deno.env.get("VAPID_PUBLIC") || "", priv = Deno.env.get("VAPID_PRIVATE") || "";
   if (b.mode === "info") return json({ ok: true, v: 2, vapid: !!(pub && priv), key_ok: typeof b.vapid === "string" ? b.vapid === pub : null,
-    secrets: { VAPID_PUBLIC: !!pub, VAPID_PRIVATE: !!priv, VAPID_SUBJECT: !!Deno.env.get("VAPID_SUBJECT") } });
+    secrets: { VAPID_PUBLIC: !!pub, VAPID_PRIVATE: !!priv, VAPID_SUBJECT: !!Deno.env.get("VAPID_SUBJECT") },
+    secret_key: (Deno.env.get("SB_SECRET_KEY") || "").startsWith("sb_secret_") });
 
-  const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+  // R7: the new secret key when it is set, else the legacy service_role key
+  const sk = Deno.env.get("SB_SECRET_KEY") || "";
+  const db = createClient(Deno.env.get("SUPABASE_URL")!, sk.startsWith("sb_secret_") ? sk : Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 
   if (b.mode === "due") return dueAlerts(db, pub, priv, Number(b.w) || 1);
 
-  // admin password check (same password / session as the admin panel)
-  const { data: auth, error: aerr } = await db.rpc("cbt_admin", { p_pw: String(b.pw || ""), p_action: "ping", p_data: {} });
+  // admin check: only a sign-in session of the admin panel ("as1.…"). A bare password is refused here, so nobody can
+  // guess passwords through this function (every guess would count against this function's own address)
+  const pw = String(b.pw || "");
+  if (!/^as1\.[0-9a-f-]{36}\.[0-9a-f]{64}$/.test(pw)) return json({ ok: false, error: "invalid" }, 401);
+  const { data: auth, error: aerr } = await db.rpc("cbt_admin", { p_pw: pw, p_action: "ping", p_data: {} });
   if (aerr || !auth || !(auth as { ok?: boolean }).ok) return json({ ok: false, error: (auth as { error?: string })?.error || "invalid" }, 401);
 
   if (!pub || !priv) return vapidMissing();
@@ -76,7 +88,7 @@ async function handle(req: Request): Promise<Response> {
   for (;;) {
     const page = await targets(db, series, after, limit);
     if (page.error) return json({ ok: false, error: page.error, detail: page.detail }, 500);
-    const list = page.rows;
+    const list = page.rows.filter((s) => PUSH_HOST.test(s.endpoint));
     total += list.length;
     await sendMany(list.map((s) => ({ s, payload, ttl: 86400 })), st);
     if (list.length) after = list[list.length - 1].endpoint;
@@ -89,13 +101,20 @@ async function handle(req: Request): Promise<Response> {
 }
 
 Deno.serve(async (req) => {
+  let res: Response;
   try {
-    return await handle(req);
+    res = await handle(req);
   } catch (e) {
     const msg = String((e as Error)?.message || e).slice(0, 300);
     console.error("send-push crashed:", msg);
-    return json({ ok: false, error: "crash", detail: msg }, 500);
+    res = json({ ok: false, error: "crash" }, 500);   // the reason stays in the function's Logs, not in the answer
   }
+  // CORS: only an allowed site gets the Allow-Origin header (no wildcard, no echo of any other origin)
+  const origin = req.headers.get("origin") || "";
+  const h = new Headers(res.headers);
+  h.set("Vary", "Origin");
+  if (ORIGINS.includes(origin)) h.set("Access-Control-Allow-Origin", origin);
+  return new Response(res.body, { status: res.status, headers: h });
 });
 
 // the VAPID keys are two secrets; say which one is missing (in the Logs tab and in the admin "Check setup" answer)
@@ -199,7 +218,8 @@ async function dueAlerts(db: DB, pub: string, priv: string, worker: number) {
   if (!due.length) return json({ ok: true, alerts: 0, sent: 0 });
 
   const mobiles = [...new Set(due.map((d) => d.mobile))];
-  const { data: subs } = await db.from("cbt_push_subs").select("endpoint,mobile,p256dh,auth").in("mobile", mobiles);
+  const { data: all } = await db.from("cbt_push_subs").select("endpoint,mobile,p256dh,auth").in("mobile", mobiles);
+  const subs = ((all || []) as Sub[]).filter((s) => PUSH_HOST.test(s.endpoint));
 
   const st: Stats = { sent: 0, removed: 0, failed: 0, codes: {}, sample: [], dead: [], why: new Set() };
   // per alert: delivered to at least one phone? / only passing problems?

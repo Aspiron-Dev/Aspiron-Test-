@@ -296,7 +296,7 @@ function editItem(x0) {
             ${AX.f.input({ name: 'badge', label: 'Badge (optional)', value: x.badge, max: 24, placeholder: 'e.g. Bestseller' })}
             <div class="fld"><label>Card colour</label><div class="st-sw" role="radiogroup">${join(COLORS, ([k, l, c]) => h`<button type="button" class="${x.color === k ? 'on' : ''}" data-col="${k}" style="--cc:${c}" title="${l}" aria-label="${l}"></button>`)}</div><input type="hidden" name="color" value="${x.color}"></div>
           </div>
-          <div class="fld"><label>Photo on the store card</label><div class="row st-photo" id="st-ph">${photo()}</div>
+          <div class="fld"><label>Photo on the store card <span class="xs mut">· 16 : 9 (1280 × 720 px)</span></label><div class="row st-photo" id="st-ph">${photo()}</div>
             <div class="row wrap gap6"><button type="button" class="btn sm" data-act="img">${icon('upload', 14)} Upload</button><button type="button" class="btn sm" data-act="imgser">${icon('image', 14)} Use series cover</button><button type="button" class="btn sm ghost" data-act="imgrm">${icon('trash', 14)} Remove</button></div></div>
         </section>
         <section class="col gap16"><div class="st-sh">${icon('unlock', 16)} Unlocks</div>
@@ -322,7 +322,7 @@ function editItem(x0) {
       f.addEventListener('input', pv); f.addEventListener('change', pv);
       f.addEventListener('click', e => { const b = e.target.closest('[data-col]'); if (!b) return; f.querySelector('[name=color]').value = b.dataset.col; f.querySelectorAll('[data-col]').forEach(z => z.classList.toggle('on', z === b)); pv(); });
       AX.act(el, {
-        async img() { const fl = await AX.u.pickFile('image/*'); if (!fl) return; const d = await compress(await AX.u.fileToDataURL(fl), 900, .78); if (!d) return UI.toast('Could not read the photo', { tone: 'bad' }); img = d; ph(); },
+        async img() { const fl = await AX.u.pickFile('image/*'); if (!fl) return; let d = null; try { d = await AX.u.poster(fl); } catch (e) { d = null; } if (!d) return UI.toast('Could not read the photo', { tone: 'bad' }); img = d; ph(); },
         async imgser(b) { const sid = f.querySelector('[name=series_id]').value; if (!sid) return UI.toast('Choose the series first (Unlocks)', { tone: 'warn' }); await UI.busy(b, async () => { const c = await seriesCover(sid); if (c) { img = c; ph(); UI.toast('Cover photo taken from the series'); } else UI.toast('This series has no cover photo', { tone: 'warn' }); }); },
         imgrm() { img = ''; ph(); },
         async fill(b) {
@@ -658,7 +658,7 @@ AX.css('store', `
 .st-card:hover{border-color:var(--pri-line)}
 .st-card.off .st-top{opacity:.5;filter:grayscale(.6)}
 .st-top{position:relative}
-.st-cv{--cc:#2563eb;position:relative;aspect-ratio:16/8;display:grid;place-items:center;overflow:hidden;background:linear-gradient(135deg,color-mix(in srgb,var(--cc) 70%,#fff) 0%,var(--cc) 55%,color-mix(in srgb,var(--cc) 70%,#000) 100%);color:#fff}
+.st-cv{--cc:#2563eb;position:relative;aspect-ratio:16/9;display:grid;place-items:center;overflow:hidden;background:linear-gradient(135deg,color-mix(in srgb,var(--cc) 70%,#fff) 0%,var(--cc) 55%,color-mix(in srgb,var(--cc) 70%,#000) 100%);color:#fff}
 .st-cv img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .st-cv span{font-family:var(--font-display);font-size:44px;font-weight:600;opacity:.9;text-shadow:0 4px 18px rgba(0,0,0,.25)}
 .st-cv.sm{width:52px;height:40px;aspect-ratio:auto;border-radius:10px;flex:none}

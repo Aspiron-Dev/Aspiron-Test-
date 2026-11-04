@@ -2,6 +2,7 @@
 <html lang="en" data-theme="light" data-accent="blue">
 <head>
 <meta charset="utf-8">
+<script>/* never inside another site's frame (clickjacking) */if(window.top!==window.self){try{window.top.location.replace(window.location.href)}catch(e){}document.documentElement.style.display='none'}</script>
 <script>(function(){
  /* Admin access key gate: without the private key (never stored in GitHub, only its SHA-256) the page shows "404". */
  var H='6845fc7a6a7ca826e80c1b4deef95d4d70f70cd99d6b8120722efe88183492fe';
@@ -18,7 +19,7 @@
 })();
 </script>
 <meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com blob:; worker-src 'self' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com; connect-src 'self' https://*.supabase.co https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://tessdata.projectnaptha.com data: blob:; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; frame-src 'self' blob: data:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com blob:; worker-src 'self' blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com; connect-src 'self' https://*.supabase.co https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://tessdata.projectnaptha.com data: blob:; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; frame-src 'self' blob: data:; object-src 'none'; base-uri 'none'; form-action 'none'; upgrade-insecure-requests">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#1e1b4b">
@@ -899,7 +900,7 @@ button.sdk{cursor:pointer}.sdk span{font-size:12px;font-weight:700;color:var(--m
 </style>
 <script>try{var t=JSON.parse(localStorage.getItem('cbt_theme'));if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;var a=JSON.parse(localStorage.getItem('cbt_accent'));if(a)document.documentElement.dataset.accent=a}catch(e){}</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['admin1', 'admin2', 'admin3', 'admin4'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
-<script src="config.js?v=8"></script>
+<script src="config.js?v=10"></script>
 </head>
 <body>
 <header class="hdr"><div class="hdr-in">
@@ -913,9 +914,9 @@ button.sdk{cursor:pointer}.sdk span{font-size:12px;font-weight:700;color:var(--m
 <div id="layer"></div>
 
 <script src="lib/pdfjs-3.11.174/pdf.min.js"></script>
-<script src="parser.js?v=2"></script>
+<script src="parser.js?v=5"></script>
 <script src="admin1.js?v=20" onerror="(window.__miss=window.__miss||[]).push('admin1.js')"></script>
-<script src="admin2.js?v=14" onerror="(window.__miss=window.__miss||[]).push('admin2.js')"></script>
+<script src="admin2.js?v=15" onerror="(window.__miss=window.__miss||[]).push('admin2.js')"></script>
 <script src="admin3.js?v=18" onerror="(window.__miss=window.__miss||[]).push('admin3.js')"></script>
 <script src="admin4.js?v=14" onerror="(window.__miss=window.__miss||[]).push('admin4.js')"></script>
 <script src="admin5.js?v=3" onerror="(window.__miss=window.__miss||[]).push('admin5.js')"></script>

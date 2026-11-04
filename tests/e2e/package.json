@@ -1,0 +1,9 @@
+{
+  "name": "aspiron-security-e2e",
+  "private": true,
+  "description": "Browser tests (tests/e2e) against a throw-away test database. Not part of the website.",
+  "dependencies": {
+    "pg": "8.13.1",
+    "playwright": "1.56.1"
+  }
+}
