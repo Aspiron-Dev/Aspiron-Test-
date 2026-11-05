@@ -1,6 +1,9 @@
 
 const $=s=>document.querySelector(s);
-const LS={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const LS={get(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}},set(k,v){let t;try{t=JSON.stringify(v)}catch(e){return false}
+    try{localStorage.setItem(k,t);return true}catch(e){
+      // storage full: drop only what can be downloaded again (series covers, store list, PYQ summaries), then try once more
+      try{const ks=[];for(let i=0;i<localStorage.length;i++){const n=localStorage.key(i);if(n&&/^(cbt_cov_|cbt_shop$|cbt_pq_sum_)/.test(n))ks.push(n)}ks.forEach(n=>localStorage.removeItem(n));localStorage.setItem(k,t);return true}catch(e2){return false}}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=sec=>{sec=Math.max(0,Math.round(sec));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return (h?h+':':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')};
 const uuid=()=>(crypto.randomUUID?crypto.randomUUID():'id-'+Date.now()+'-'+Math.random().toString(16).slice(2));

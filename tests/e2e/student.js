@@ -148,6 +148,23 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   const rqTxt = await p.textContent('#rq');
   ok(/Request received/.test(rqTxt) && !/already approved/i.test(rqTxt), 'access request: same message for an existing number');
   await c.close();
+  // 7. profile + exam countdown kept on the account (v56): a fresh browser gets them back, a removed countdown stays removed
+  await q(`update cbt_private.students set keep='{}', devices='{}', fail_count=0, locked_until=0 where mobile='9000000002'`);
+  const signIn = async pg => { await pg.goto(BASE + 'index.html'); await pg.waitForSelector('#ph'); await pg.fill('#ph', '9000000002'); await pg.fill('#cd', 'BBBB2222'); await pg.click('#lbtn'); await pg.waitForTimeout(3000); };
+  let c2, p2, errs2;
+  ({ c, p, errs } = await mk()); await signIn(p);
+  await p.evaluate(() => { pfSave({ school: 'Aspiron Coaching', city: 'Kota', exam: 'NEET', photo: 'data:image/jpeg;base64,/9j/4AAQ' });
+    LS.set(cdKey(), { name: 'NEET 2027', date: '2027-05-03T00:00:00.000Z', start: Date.now(), units: ['days', 'hours'] }); });
+  await p.waitForTimeout(3000);
+  const kp = (await q(`select keep from cbt_private.students where mobile='9000000002'`))[0].keep;
+  ok(kp.pf && kp.pf.city === 'Kota' && kp.cd && kp.cd.name === 'NEET 2027', 'profile + countdown: saved on the account');
+  ({ c: c2, p: p2, errs: errs2 } = await mk()); await signIn(p2); await p2.waitForTimeout(1500);
+  const back = await p2.evaluate(() => ({ pf: pfGet(), cd: cdGet() }));
+  ok(back.pf.city === 'Kota' && /^data:image\/jpeg/.test(back.pf.photo || '') && back.cd && back.cd.name === 'NEET 2027', 'profile + countdown: a fresh browser gets them back after sign-in');
+  await p2.evaluate(() => LS.del(cdKey())); await p2.waitForTimeout(2500);
+  await p.reload(); await p.waitForSelector('#app'); await p.waitForTimeout(3500);
+  ok(!(await p.evaluate(() => cdGet())), 'countdown: removed on one phone, it is gone on the other too (and not sent back)');
+  ok(!errs.length && !errs2.length, 'no page errors (profile + countdown) ' + errs.concat(errs2).join(' | ')); await c.close(); await c2.close();
   await br.close(); server.close(); await db.end();
   console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

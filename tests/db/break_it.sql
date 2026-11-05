@@ -553,6 +553,41 @@ select pg_temp.chk('22f generator: answers sent after the time is over are not c
   (public.cbt_gen_submit('9000000001','AAAA1111','dev-aaaaaaaa',:'gq',:'gans'::jsonb)->'test'->>'skipped')::int = 5);
 reset role;
 
+-- ===== 23. profile + countdown kept on the account (v56): only the owner, only clean values =====
+set role anon;
+select pg_temp.chk('23a keep: nothing without a valid sign-in',
+  coalesce((public.cbt_keep('9000000002','WRONG999','dev-bbbbbbbb','get')->>'ok')::boolean, false) is not true
+  and coalesce((public.cbt_keep('9000000002','WRONG999','dev-bbbbbbbb','save','{"pf":{"city":"X"}}')->>'ok')::boolean, false) is not true);
+select public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','save',
+  '{"pf":{"school":"Aspiron <b>School</b>","city":"Kota","exam":"NEET","cls":"Class 12","photo":"data:image/jpeg;base64,/9j/4AAQ","evil":"x"},
+    "cd":{"name":"NEET 2027","date":"2027-05-03T00:00:00.000Z","start":1767225600000,"units":["days","hours","bogus","days"]}}') as ksave \gset
+select pg_temp.chk('23b keep: saved details come back after sign-in',
+  (:'ksave'::jsonb->>'ok')::boolean
+  and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'pf'->>'city' = 'Kota'
+  and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'cd'->>'name' = 'NEET 2027'
+  and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'pf'->>'photo' like 'data:image/jpeg;base64,%');
+select pg_temp.chk('23c keep: markup is stripped, unknown fields and units are dropped',
+  public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'pf'->>'school' = 'Aspiron bSchool/b'
+  and not (public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'pf' ? 'evil')
+  and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'cd'->'units' = '["days","hours"]'::jsonb);
+select pg_temp.chk('23d keep: another student sees nothing of it',
+  coalesce(public.cbt_keep('9000000002','BBBB2222','dev-bbbbbbbb','get')->'pf', 'null'::jsonb) = 'null'::jsonb
+  and coalesce(public.cbt_keep('9000000002','BBBB2222','dev-bbbbbbbb','get')->'cd', 'null'::jsonb) = 'null'::jsonb);
+select public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','save',
+  '{"pf":{"photo":"javascript:alert(1)","city":"Kota"},"cd":{"name":"Bad","date":"not-a-date"}}') as ksave2 \gset
+select pg_temp.chk('23e keep: a photo that is not a picture and a bad date are refused',
+  not (public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'pf' ? 'photo')
+  and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'cd'->>'name' = 'NEET 2027');
+select pg_temp.chk('23f keep: the countdown can be removed, and stays removed (cdgone)',
+  (public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','save','{"cd":null}')->>'ok')::boolean
+  and coalesce(public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'cd', 'null'::jsonb) = 'null'::jsonb
+  and (public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->>'cdgone')::boolean
+  and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'pf'->>'city' = 'Kota');
+select pg_temp.chk('23g keep: a huge value is refused',
+  public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','save', jsonb_build_object('pf', jsonb_build_object('about', repeat('x', 200000))))->>'ok' = 'true'
+  and length(public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'pf'->>'about') <= 300);
+reset role;
+
 -- ===== report =====
 \t off
 \a
