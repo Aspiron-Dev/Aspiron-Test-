@@ -43,6 +43,9 @@ S.load = async (force) => {
   return D;
 };
 S.dupUtr = (o, L) => { const u = String(o.utr || '').trim(); return !!u && (L || []).some(x => x.code !== o.code && String(x.utr || '').trim() === u); };
+// v52: the same student + series has another order with a coupon / wallet (made in 2 days) — they may have paid that amount
+S.offerTwin = (o, L) => +o.coupon_off || +o.wallet_used ? null : (L || []).find(x => x.code !== o.code && (+x.coupon_off > 0 || +x.wallet_used > 0) && m10(x.mobile) === m10(o.mobile)
+  && x.item_id === o.item_id && Math.abs(AX.fmt.ms(x.created_at) - AX.fmt.ms(o.created_at)) < 2 * 864e5) || null;
 S.paidTwin = (o, L) => (L || []).find(x => x.code !== o.code && x.status === 'paid' && m10(x.mobile) === m10(o.mobile) && x.item_id === o.item_id) || null;
 S.requests = D => (D.students || []).filter(s => s.status === 'pending').sort((a, b) => ms(b.created) - ms(a.created));
 // after any order / student change: every view that shows money follows at once
@@ -261,6 +264,7 @@ function orderCard(o, D, full) {
     <div class="xs mut row wrap gap6"><span class="mono">${o.code}</span>${o.paid_at ? h`<span>· details sent ${fmt.ago(o.paid_at)}</span>` : ''}${full ? h`<span>· ordered ${fmt.dt(o.created_at)}</span>` : ''}</div>
     ${(+o.coupon_off || +o.wallet_used) ? h`<div class="callout ${+o.wallet_used ? 'gold' : 'info'} sm">${icon(+o.wallet_used ? 'wallet' : 'tag', 16)}<div>Price ${fmt.inr(o.list_price || (+o.amount + (+o.coupon_off || 0) + (+o.wallet_used || 0)))}${+o.coupon_off ? h` · coupon <b class="mono">${o.coupon_code}</b> −${fmt.inr(o.coupon_off)}` : ''}${+o.wallet_used ? h` · <b>wallet −${fmt.inr(o.wallet_used)}</b>` : ''} · UPI ${fmt.inr(o.amount)}${+o.wallet_used ? h`<div class="xs mut">Wallet money comes from Refer &amp; earn. Approve only if the student is the owner of ${fmt.mobile(m10(o.mobile))} (e.g. they message you from that number).</div>` : ''}</div></div>` : ''}
     ${dup ? h`<div class="callout bad sm">${icon('alert', 16)}<div>This UTR is also in another order — check carefully.</div></div>` : ''}
+    ${(() => { const t = sg !== 'done' && S.offerTwin(o, D.orders); return t ? h`<div class="callout warn sm">${icon('tag', 16)}<div>This order is at the full price. The same student also has order <b class="mono">${t.code}</b> at <b>${fmt.inr(t.amount)}</b>${+t.coupon_off ? h` with coupon <b class="mono">${t.coupon_code}</b>` : ''}${+t.wallet_used ? h` · wallet ${fmt.inr(t.wallet_used)}` : ''}. If they paid ${fmt.inr(t.amount)}, tap <b>Amount</b> and set ${fmt.inr(t.amount)}, or approve that order instead.</div></div>` : ''; })()}
     ${twin ? h`<div class="callout warn sm">${icon('info', 16)}<div>Already approved for this series in order <b class="mono">${twin.code}</b>. Approving again counts the money twice.</div></div>` : ''}
     ${o.contact_n || o.note ? h`<div class="oc-fol">${o.contact_n ? h`<div class="row gap6">${icon('phone', 14)}<span>Contacted ${o.contact_n}× · last ${fmt.ago(o.contacted_at)}</span></div>` : ''}${o.note ? h`<div class="row top gap6">${icon('edit', 14)}<span class="oc-note">${o.note}</span></div>` : ''}</div>` : ''}
     <footer class="oc-f"><div class="oc-con">${S.contactBar(o.mobile, msg, o.code)}${man ? h`<button class="ibtn line" data-act="note" data-code="${o.code}" title="Note" aria-label="Note">${icon('edit', 17)}</button><button class="ibtn line" data-act="odel" data-code="${o.code}" title="Delete this order" aria-label="Delete this order" style="color:var(--bad)">${icon('trash', 17)}</button>` : ''}</div><div class="oc-act">${acts}</div></footer>

@@ -127,6 +127,16 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   ok(/aman00002/.test(await p.textContent('#rfbox')) && /₹50/.test(await p.textContent('#rfbox')), 'refer page: own link and wallet balance');
   ok(!(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth)), 'refer page: no sideways scroll on a phone');
   ok(!errs.length, 'no page errors (coupon / wallet / refer) ' + errs.join(' | ')); await c.close();
+  // 5c. Edit name on the summary makes a new order: the coupon stays on it (same amount in the summary and in Orders)
+  ({ c, p, errs } = await mk());
+  await p.addInitScript(() => { if (!sessionStorage.getItem('s')) { sessionStorage.setItem('s', 1); localStorage.setItem('store_me', JSON.stringify({ name: 'Janvi', mobile: '9988360846', course: 'neet' })); } });
+  await p.goto(BASE + 'store.html'); await p.waitForTimeout(2500);
+  await p.click('[data-buy]'); await p.waitForSelector('#cpi'); await p.fill('#cpi', 'DIWALI'); await p.click('[data-cpgo]'); await p.waitForTimeout(1200);
+  await p.click('[data-step=paid]'); await p.waitForSelector('#py'); await p.fill('#py', 'janvi'); await p.click('[data-paidgo]'); await p.waitForSelector('[data-edit]');
+  await p.click('[data-edit]'); await p.waitForSelector('#en'); await p.fill('#en', 'Janvi Sharma'); await p.click('#esave'); await p.waitForTimeout(2000);
+  const eo = (await q(`select amount, coupon_off from public.cbt_store_orders where mobile='9988360846' and name='Janvi Sharma'`))[0];
+  ok(eo && eo.amount === 400 && eo.coupon_off === 99 && (await p.textContent('.sum')).includes('₹400'), 'coupon: kept on the new order after Edit name (summary and order ₹400)');
+  ok(!errs.length, 'no page errors (edit keeps coupon) ' + errs.join(' | ')); await c.close();
   // 6. checklist C/D in the app: banner link, file view, access request message
   ({ c, p, errs } = await mk());
   await p.goto(BASE + 'index.html'); await p.waitForSelector('#ph');
