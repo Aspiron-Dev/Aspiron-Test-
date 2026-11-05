@@ -93,6 +93,7 @@ check `errors` is empty, `H.unknown` lists no unexpected calls, and `H.overflow(
 | promos | m-promos.js | Promotions | Commerce / 30 | promotions |
 | messages | m-messaging.js | Broadcasts | Engagement / 10 | messaging |
 | reviews | m-reviews.js | Reviews | Engagement / 20 | reviews |
+| social | m-social.js | Social media | Engagement / 30 | messaging |
 | team | m-team.js | Team & access | Workspace / 10 | any (owner tabs) |
 | settings | m-settings.js | Settings | Workspace / 20 | any |
 

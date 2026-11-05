@@ -588,6 +588,46 @@ select pg_temp.chk('23g keep: a huge value is refused',
   and length(public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'pf'->>'about') <= 300);
 reset role;
 
+-- ===== 24. social media links (supabase_v57_social.sql) =====
+set role anon;
+select pg_temp.chk('24a social: the public list has only the links that are On',
+  (select count(*) = 3 and bool_and(l->>'platform' in ('instagram', 'telegram', 'whatsapp_channel'))
+     from jsonb_array_elements(public.cbt_social()->'links') l));
+-- (each save is its own statement: a check in the same statement would still see the rows from before the save)
+select coalesce((public.cbt_admin_social('wrong-password','save','{"links":[{"platform":"facebook","url":"https://facebook.com/x","shown":true}]}')->>'ok')::boolean, false) as soc0 \gset
+select pg_temp.chk('24b social: nobody changes links without signing in', not :'soc0'::boolean
+  and not exists (select 1 from jsonb_array_elements(public.cbt_social()->'links') l where l->>'platform' = 'facebook'));
+reset role;
+select pg_temp.chk('24c social: anon cannot read the table directly', not has_table_privilege('anon', 'cbt_private.social_links', 'SELECT'));
+select public.cbt_admin_social(:'ow2','save','{"links":[{"platform":"instagram","url":"https://evil.example/instagram.com","shown":true}]}')->>'error' = 'url'
+  and public.cbt_admin_social(:'ow2','save','{"links":[{"platform":"facebook","url":"javascript:alert(1)","shown":true}]}')->>'error' = 'url'
+  and public.cbt_admin_social(:'ow2','save','{"links":[{"platform":"youtube","url":"https://youtube.com@evil.example/","shown":true}]}')->>'error' = 'url'
+  and public.cbt_admin_social(:'ow2','save','{"links":[{"platform":"x","url":"https://x.com/a\"><script>","shown":true}]}')->>'error' = 'url'
+  and public.cbt_admin_social(:'ow2','save','{"links":[{"platform":"telegram","url":"https://t.me/ok","shown":true},{"platform":"myspace","url":"https://myspace.com/a","shown":true}]}')->>'error' = 'platform'
+  as soc_bad \gset
+select pg_temp.chk('24d social: a link to another site, javascript: or a user@host trick is refused, nothing saved', :'soc_bad'::boolean
+  and (select url from cbt_private.social_links where platform = 'instagram') = 'https://www.instagram.com/aspironeducation/'
+  and (select url from cbt_private.social_links where platform = 'telegram') = 'https://t.me/AspironEducation'
+  and not exists (select 1 from cbt_private.social_links where platform in ('facebook', 'youtube', 'x', 'myspace')));
+select pg_temp.chk('24e social: a platform turned On needs a link',
+  public.cbt_admin_social(:'ow2','save','{"links":[{"platform":"linkedin","url":"","shown":true}]}')->>'error' = 'url_needed');
+select public.cbt_admin_social(:'ow2','save','{"links":[{"platform":"facebook","url":"https://www.facebook.com/aspiron","shown":true},{"platform":"telegram","url":"https://t.me/AspironEducation","shown":false}]}')->>'ok' as soc1 \gset
+select pg_temp.chk('24f social: the owner adds a link and turns one Off; the public list follows', :'soc1' = 'true'
+  and (select array_agg(l->>'platform' order by l->>'platform') from jsonb_array_elements(public.cbt_social()->'links') l) = array['facebook', 'instagram', 'whatsapp_channel']
+  and (select url from cbt_private.social_links where platform = 'telegram') = 'https://t.me/AspironEducation');
+select public.cbt_admin_team(:'ow2','user_save','{"name":"Social viewer","username":"socview1","password":"Tr7k-9mQz-pLx5","perms":{"messaging":"view"}}')->>'ok';
+select public.cbt_admin_team(:'ow2','user_save','{"name":"Social manager","username":"socman1","password":"Tr7k-9mQz-pLx6","perms":{"messaging":"manage"}}')->>'ok';
+select public.cbt_admin_login('socview1','Tr7k-9mQz-pLx5','S')->>'token' as svt \gset
+select public.cbt_admin_login('socman1','Tr7k-9mQz-pLx6','S')->>'token' as smt \gset
+select public.cbt_admin_social(:'svt','get','{}')->>'ok' = 'true'
+  and public.cbt_admin_social(:'svt','save','{"links":[{"platform":"telegram","url":"https://t.me/AspironEducation","shown":true}]}')->>'error' = 'forbidden'
+  and public.cbt_admin_social(:'stt','get','{}')->>'error' = 'forbidden' as soc_perm \gset
+select pg_temp.chk('24g social: Broadcasts view-only can look but not save; no Broadcasts access cannot even look', :'soc_perm'::boolean
+  and (select not shown from cbt_private.social_links where platform = 'telegram'));
+select public.cbt_admin_social(:'smt','save','{"links":[{"platform":"telegram","url":"https://t.me/AspironEducation","shown":true}]}')->>'ok' as soc2 \gset
+select pg_temp.chk('24h social: Broadcasts full access can save', :'soc2' = 'true'
+  and (select shown from cbt_private.social_links where platform = 'telegram'));
+
 -- ===== report =====
 \t off
 \a

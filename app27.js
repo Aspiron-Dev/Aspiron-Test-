@@ -41,7 +41,13 @@ function webItems(cls,close){
       return `<a class="${cls}${on?' on':''}" href="${to}"${on?' aria-current="page"':''}${close?' onclick="closeModal()"':''}>${inner}</a>`;
     }
     return `<button class="${cls}" onclick="${close?'closeModal();':''}${to.f}">${inner}</button>`;
-  }).join('')).join('')+`<div class="sbd"></div><button class="${cls} out" onclick="${close?'closeModal();':''}signOut()">${ic('logout',sz)}<span>Logout</span></button>`;
+  }).join('')).join('')+webSoc()+`<div class="sbd"></div><button class="${cls} out" onclick="${close?'closeModal();':''}signOut()">${ic('logout',sz)}<span>Logout</span></button>`;
+}
+/* "Follow us" icons (Admin → Social media; config.js): in the phone menu, the side menu and the footer. Nothing when none is on. */
+function webSoc(foot){
+  const h=typeof socialLinksHTML==='function'?socialLinksHTML():'';
+  if(!h)return '';
+  return foot?`<nav class="wf-soc" aria-label="Follow us">${h}</nav>`:`<div class="wgh">Follow us</div><div class="wsoc">${h}</div>`;
 }
 
 /* phone: the 3-line menu keeps its profile top and gets the grouped list */
@@ -68,7 +74,7 @@ function webFoot(){
   let f=document.getElementById('wfoot');
   if(!webTab()){if(f)f.remove();return}
   if(!f){f=document.createElement('footer');f.id='wfoot';f.className='wfoot';const a=document.getElementById('app');a.parentNode.insertBefore(f,a.nextSibling)}
-  f.innerHTML=`<div class="wf-in"><span>© ${new Date().getFullYear()} Aspiron Education</span><nav aria-label="Policies"><a href="store">Store</a><a href="contact">Contact Us</a><a href="terms">Terms &amp; Conditions</a><a href="privacy">Privacy Policy</a><a href="refund">Refund Policy</a></nav>${(typeof socialLinksHTML==='function'&&socialLinksHTML())?`<nav aria-label="Follow us">${socialLinksHTML()}</nav>`:''}</div>`;
+  f.innerHTML=`<div class="wf-in"><span>© ${new Date().getFullYear()} Aspiron Education</span><nav aria-label="Policies"><a href="store">Store</a><a href="contact">Contact Us</a><a href="terms">Terms &amp; Conditions</a><a href="privacy">Privacy Policy</a><a href="refund">Refund Policy</a></nav>${webSoc(true)}</div>`;
 }
 function webSync(){try{webSide();webFoot();document.body.classList.toggle('wout',!AUTH)}catch(e){}}
 {const _uh=updateHeader;updateHeader=function(){const r=_uh.apply(this,arguments);webSync();return r}}
@@ -77,4 +83,7 @@ function webSync(){try{webSide();webFoot();document.body.classList.toggle('wout'
 addEventListener('hashchange',()=>setTimeout(webSync,0));
 WEB_BIG.addEventListener&&WEB_BIG.addEventListener('change',webSync);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',webSync,{once:true});else webSync();
+/* social links: fetched once per visit; when they change, the footer, side menu and an open phone menu follow */
+document.addEventListener('social:change',()=>{webSync();const l=document.querySelector('#layer .drl');if(l)l.innerHTML=webItems('dri',true)});
+if(typeof socialLoad==='function')socialLoad();
 ;(window.__p=window.__p||{})['app27']=1;
