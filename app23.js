@@ -283,9 +283,9 @@ function tsBuy(sid){
   const o=tsOff(it);
   $('#layer').innerHTML=`<div class="tsgo"><div class="tsgoin"><span class="tsgoi">${ic('shieldok',30)}</span><b>Opening secure checkout</b>
     <p>${esc(s.title)} · ${tsInr(it.price)}${o?` <s>${tsInr(it.mrp)}</s>`:''}</p><i class="tsgob"><em></em></i><small>Pay with any UPI app · for ${esc(maskMob(AUTH.mobile))}</small></div></div>`;
-  setTimeout(()=>{location.href='store.html#b='+it.id},RMOT()?0:900);
+  setTimeout(()=>{location.href='store#b='+it.id},RMOT()?0:900);
 }
-function tsSoon(sid){const s=CAT.series.find(x=>x.id===sid),it=itemOf(s);if(tsId(it))location.href='store.html#x='+it.id}
+function tsSoon(sid){const s=CAT.series.find(x=>x.id===sid),it=itemOf(s);if(tsId(it))location.href='store#x='+it.id}
 function tsAsk(sid){
   const s=CAT.series.find(x=>x.id===sid)||{};
   const wa=waLink(`Hi, I am ${AUTH.name} (${AUTH.mobile}). I want to buy "${s.title}".`);

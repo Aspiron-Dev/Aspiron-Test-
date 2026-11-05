@@ -77,7 +77,7 @@ async function creStore(){await tab('store');if(!CA.series.length)await loadCata
 const APPS=[
   ['Students','c-stu',[['students','All students',"tab('students')"],['approvals','Approvals',"tab('approvals')"],['live','Live',"tab('live')"],['results','Results',"tab('results')"],['insights','Insights',"tab('insights')"],['plus','Add student',"addModal()"],['key','New code',"apvCodeFor()"],['dl','Export CSV',"exportStudents()"]]],
   ['Create','c-cre',[['create','New test',"tab('create')"],['content','Tests & series',"tab('content')"],['banners','Banners',"tab('banners')"],['notices','Announce',"tab('notices')"],['pyq','PYQ Bank',"tab('pyq')"],['store','Store item',"creStore()"]]],
-  ['Store','c-sto',[['store','Store & orders',"tab('store')"],['site','Store page',"window.open('store.html','_blank','noopener')"],['link','Copy store link',"copyText(new URL('store.html',location.href).href)"]]],
+  ['Store','c-sto',[['store','Store & orders',"tab('store')"],['site','Store page',"window.open('store.html','_blank','noopener')"],['link','Copy store link',"copyText(new URL('store',location.href).href)"]]],
   ['Reports & app','c-app',[['reports','Reports',"tab('reports')"],['search','Search',"openFind()"],['gear','Settings',"settings()"],['site','Student site',"window.open('index.html','_blank','noopener')"],['install','Install app',"installAdmin()",'data-ainst'],['out','Sign out',"signOutAdmin()"]]],
 ];
 function appsHtml(){

@@ -147,7 +147,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   const view = await p.$$eval('.modal a', a => a.map(x => x.textContent.trim()));
   ok(!view.some(t => /View/.test(t)), 'HTML file offered only as a download, never opened: ' + view.join('|'));
   await p.evaluate(() => { try { closeModal(); } catch (e) {} location.hash = '#/refer'; }); await p.waitForTimeout(2000);
-  ok(/store\.html\?r=paid00002$/.test(await p.textContent('.rfu span')), 'app refer page: the link opens the store with the student\'s code');
+  ok(/store\?r=paid00002$/.test(await p.textContent('.rfu span')), 'app refer page: the link opens the store with the student\'s code');
   ok(!errs.length, 'no page errors (checklist C/D) ' + errs.join(' | ')); await c.close();
   ({ c, p, errs } = await mk());
   await p.goto(BASE + 'index.html'); await p.waitForSelector('#ph');

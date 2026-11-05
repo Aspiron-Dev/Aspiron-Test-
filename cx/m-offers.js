@@ -102,7 +102,7 @@ function coupons(el) {
     edit: b => editCode(b.dataset.code),
     msg: b => {
       const g = G.find(x => x.code === b.dataset.code); if (!g) return;
-      const t = `🎉 Use coupon *${g.code}* on our store till ${fmt.dt(g.ends)}:\n` + g.L.map(c => `• ${item(c.item_id).title} — ${offTxt(c)}`).join('\n') + `\n${storeBase()}store.html`;
+      const t = `🎉 Use coupon *${g.code}* on our store till ${fmt.dt(g.ends)}:\n` + g.L.map(c => `• ${item(c.item_id).title} — ${offTxt(c)}`).join('\n') + `\n${storeBase()}store`;
       AX.u.copy(t).then(() => UI.toast('Message copied'));
     },
     async rmcode(b) {
@@ -189,7 +189,7 @@ function refer(el) {
           ${m ? h`<div class="row end"><button type="button" class="btn pri" data-act="rsave" data-busy="Saving…">${icon('check', 16)} Save</button></div>` : ''}
         </form></div>
       <div class="card"><div class="card-h">${icon('info')}<h3 class="grow">How it works</h3></div>
-        <ol class="of-how"><li>Every student gets a link on the store and in the app (Me → Refer &amp; earn): <span class="mono">store.html?r=name12345</span> (first name + last 5 digits). It opens the store.</li>
+        <ol class="of-how"><li>Every student gets a link on the store and in the app (Me → Refer &amp; earn): <span class="mono">store?r=name12345</span> (first name + last 5 digits). It opens the store.</li>
           <li>A <b>new</b> number that orders from the link is counted as <b>joined</b> — no money for joining.</li>
           <li>When you approve that order (paid at least the minimum above), the sharer gets the reward in the wallet. Undo / reject / delete takes it back.</li>
           <li>The wallet is used only by its owner, signed in to the student app. An order never gets approved if the wallet money was already used elsewhere.</li>
@@ -230,7 +230,7 @@ function detail(mobile) {
       if (!el.isConnected) return;
       if (!r.ok) return api.set(h`<div class="callout bad">${icon('alert')}<div>${errText(r)}</div></div>`);
       const st = o => UI.pill(o.status === 'paid' ? 'Approved' : o.status === 'rejected' ? 'Rejected' : 'Pending', o.status === 'paid' ? 'ok' : o.status === 'rejected' ? 'bad' : '');
-      api.set(h`<div class="row wrap gap6" style="margin-bottom:14px">${UI.pill('Wallet ' + fmt.inr(r.balance), 'gold')}${r.code ? h`<span class="pill mono">${r.code}</span>` : ''}${r.code ? UI.copyBtn(storeBase() + 'store.html?r=' + r.code, 'Copy link') : ''}</div>
+      api.set(h`<div class="row wrap gap6" style="margin-bottom:14px">${UI.pill('Wallet ' + fmt.inr(r.balance), 'gold')}${r.code ? h`<span class="pill mono">${r.code}</span>` : ''}${r.code ? UI.copyBtn(storeBase() + 'store?r=' + r.code, 'Copy link') : ''}</div>
         <div class="section-t">Students who joined (${r.links.length})</div>
         ${r.links.length ? h`<div class="card flat pad0 list">${join(r.links, l => h`<div class="li">${UI.avatar(l.name || 'Student', l.mobile, 'sm')}<div class="grow"><b class="ell">${l.name || 'Student'}</b><div class="xs mut">${fmt.mobile(l.mobile)} · joined ${fmt.date(l.at)}</div></div>${l.bought ? UI.pill('Bought', 'ok') : UI.pill('Not bought yet', '')}</div>`)}</div>` : h`<p class="sm mut">Nobody yet.</p>`}
         <div class="section-t">Wallet money in</div>
