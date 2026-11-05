@@ -57,7 +57,7 @@ Live database Claude ko nahi dikhta. Jo kaam pehle hi ho chuka ho, use seedha ti
   - Refund ka niyam (jaise "series start hone se 7 din pehle tak poora refund, koi test attempt karne ke baad refund nahi")
   - Grievance officer ka naam + email (DPDP Act 2023 ke liye)
   - GST number (agar hai)
-- [ ] **3.2 🤖 Legal pages, public address par:** `privacy.html`, `terms.html`, `refund.html`, `contact.html`, aur Delivery policy
+- [x] **3.2 🤖 Legal pages, public address par:** ✅ bane: privacy.html, terms.html, refund.html (refund + delivery), contact.html. Baaki: email (aaj) aur address milte hi Contact page me jodna. `privacy.html`, `terms.html`, `refund.html`, `contact.html`, aur Delivery policy
   (digital product ka access kab milta hai, ye payment gateway maangte hain). App aur store me inke links lagenge.
   App ke andar wale Terms aur privacy notice inhi se match karenge. 👤 Ek baar CA / lawyer se padhwa lena.
 - [ ] **3.3 👤 Homepage ke liye content do:**
