@@ -31,15 +31,19 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Faster opening:** Google Fonts no longer hold up the first paint, and the service worker serves every file that has a `?v=` number straight from the phone (fetched once per new number). **So a changed script or style must get a new `?v=` number, or phones keep the old copy.** Pages themselves still always come from the network first.
 - **App icons:** `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png` show the logo symbol on ivory. Phones that installed the app pick up the new icon and name by themselves (Android can take a day or so).
 
-## Test series look (`app24.js`)
-- **Browse:** a swipeable **featured** row on top (bestsellers first, dots, moves by itself every 5 s until touched; stops for
-  reduced motion) and **left–right shelves** per store section, then Free practice and "More test series". Search, a picked
-  chip or My tests show the normal list. A section with only one series joins "More test series".
-- **Series page:** large cover with parallax, back / share, status (Purchased / price / rating), a stats card
-  (tests, attempted, average, best, % done), the next or live test, then tabs **Folders · All tests · Material**.
-  Folders are coloured tiles with progress (or LIVE). Reviews stay at the bottom for students who own the series.
-- **Folder page:** coloured header with the series name, progress and the folder's tests. Access rules are unchanged
-  (the old lock banner, Explore / Buy now and server checks still apply).
+## Test series design (`app24.js`)
+- **Covers:** the whole photo at 16:9 — never cropped and never covered by text (a soft blur of the same photo fills the
+  sides when its shape is different). A series without a photo gets a clean mark (exam + class), not its title again.
+- **Test series list:** every series once. Store sections are swipe rows on a phone and a grid on a computer; search or a
+  chip shows one list. Each card: cover, exam · class, rating, title, short line, tests / folders / next date, price,
+  Details and Buy now. **My tests:** purchased series with progress and the next test.
+- **Series page:** cover and details side by side on a computer, progress (owned / free) or the price with Buy now
+  (locked), the next or live test, then four separate tabs: **Tests** (folders, then tests outside folders) ·
+  **Schedule** (dated tests: live now, upcoming, earlier) · **Material** (files) · **Reviews** (rating, reviews and the
+  student's own review — shown only here).
+- **Folder page:** folder header, progress, its tests, previous / next folder.
+- Colours, radii and shadows come from tokens (`--x-*` on `:root`, built from the theme tokens), so every mode and
+  palette works. Access rules are unchanged: locked tests, files and PDFs stay closed on the server.
 
 ## Test series page like a store (`app23.js`, `supabase_v54_store_map.sql`, `store.js`)
 - **Test series** (`#/series`): search bar, **exam (NEET / JEE) and class (11 / 12 / Dropper)** — first taken from the student's
