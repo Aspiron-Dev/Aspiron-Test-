@@ -13,6 +13,9 @@ html.web body.wout .wfoot,html.web body.wside .wfoot{display:block}
 .wf-in nav{display:flex;flex-wrap:wrap;gap:6px 18px}
 .wf-in a{color:var(--mut);text-decoration:none;font-weight:600}
 .wf-in a:hover{color:var(--pri)}
+.soc-row{display:inline-flex;gap:10px;align-items:center;flex-wrap:wrap}
+.soc-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;border:1px solid var(--bd);color:var(--mut);text-decoration:none}
+.soc-btn:hover{color:var(--pri);border-color:var(--pri)}
 body.intest .wfoot{display:none!important}
 
 #wside{display:none}

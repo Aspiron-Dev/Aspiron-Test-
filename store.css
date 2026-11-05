@@ -269,6 +269,9 @@ html[data-course=jee] .cseg .thumb{transform:translateX(100%)}
 .foot a{font-weight:700}
 .foot .pol{flex-basis:100%;text-align:center}
 .foot .pol a{font-weight:600}
+.soc-row{display:inline-flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
+.soc-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);color:var(--mut);text-decoration:none}
+.soc-btn:hover{color:var(--pri);border-color:var(--pri)}
 .dock{display:none}
 @media (max-width:1100px) and (min-width:760px){
   .app{grid-template-columns:var(--rail) minmax(0,1fr)}

@@ -24,13 +24,22 @@ window.CBT_CONFIG = {
 };
 
 // Social links, joined with " · ". Returns "" when none are filled in, so nothing shows until a link is added.
+// Round icon buttons (inline SVG, colour follows the text colour). Inline SVG is allowed by the page CSP.
 window.socialLinksHTML = function () {
   const S = (window.CBT_CONFIG && CBT_CONFIG.SOCIAL) || {};
-  const names = { youtube: "YouTube", instagram: "Instagram", telegram: "Telegram", facebook: "Facebook", whatsapp_channel: "WhatsApp Channel" };
-  return Object.keys(names)
+  const sv = (body) => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
+  const icons = {
+    instagram: { label: "Instagram", svg: sv('<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".6" fill="currentColor"/>') },
+    facebook:  { label: "Facebook",  svg: sv('<path d="M15 3h-2.5C10.6 3 9.5 4.3 9.5 6.5V10H7v3h2.5v8h3v-8H15l.5-3h-3V7c0-.8.3-1.2 1.2-1.2H15z"/>') },
+    youtube:   { label: "YouTube",   svg: sv('<rect x="2" y="5" width="20" height="14" rx="4"/><path d="M10 9.5v5l4.5-2.5z" fill="currentColor"/>') },
+    telegram:  { label: "Telegram",  svg: sv('<path d="M21 4 3 11l6 2 2 6 3-4 5 4z"/><path d="M9 13l7-6"/>') },
+    whatsapp_channel: { label: "WhatsApp Channel", svg: sv('<path d="M3 20.5l1.2-3.9A8.5 8.5 0 1 1 7.6 19z"/><path d="M9 8.8c0 2.6 2.6 5.2 5.2 5.2l.9-1.3-2-1-.7.7c-.9-.4-1.8-1.3-2.2-2.2l.7-.7-1-2z"/>') }
+  };
+  const btns = Object.keys(icons)
     .filter(k => /^https:\/\/[^\s"'<>]+$/.test(S[k] || ""))
-    .map(k => `<a href="${S[k]}" target="_blank" rel="noopener">${names[k]}</a>`)
-    .join(" · ");
+    .map(k => `<a class="soc-btn" href="${S[k]}" target="_blank" rel="noopener" aria-label="${icons[k].label}" title="${icons[k].label}">${icons[k].svg}</a>`)
+    .join("");
+  return btns ? `<span class="soc-row">${btns}</span>` : "";
 };
 // Fills every element marked data-social (store footer, contact page) and hides it when empty.
 document.addEventListener("DOMContentLoaded", function () {
