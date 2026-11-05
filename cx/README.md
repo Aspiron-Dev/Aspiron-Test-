@@ -86,6 +86,7 @@ check `errors` is empty, `H.unknown` lists no unexpected calls, and `H.overflow(
 | reports | m-reports.js | Question reports | Academics / 40 | content |
 | integrity | m-integrity.js | Integrity | Academics / 50 | integrity |
 | pyq | m-pyq.js | PYQ bank | Academics / 60 | content |
+| qbank | m-qbank.js | Question bank | Academics / 62 | content |
 | orders | m-orders.js | Orders | Commerce / 10 | store |
 | store | m-store.js | Store | Commerce / 20 | store |
 | offers | m-offers.js | Coupons & Refer | Commerce / 25 | store |

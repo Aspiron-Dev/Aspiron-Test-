@@ -329,6 +329,7 @@ create or replace function cbt_private.admin_need(p_fn text, p_act text) returns
     when 'cbt_admin_coupons'        then case when p_act = 'get' then 'store:view' else 'store:manage' end   -- v52
     when 'cbt_admin_refer'          then case when p_act in ('get', 'detail') then 'store:view' else 'store:manage' end   -- v52
     when 'cbt_admin_refer_min'      then case when p_act = 'get' then 'store:view' else 'store:manage' end   -- v53
+    when 'cbt_admin_qbank'          then case when p_act in ('stats', 'list', 'get') then 'content:view' else 'content:manage' end   -- v55
   end
 $$;
 revoke all on function cbt_private.admin_need(text, text) from public, anon, authenticated;

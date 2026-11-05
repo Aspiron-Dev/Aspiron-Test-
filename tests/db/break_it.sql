@@ -529,6 +529,30 @@ select pg_temp.chk('21b store map: a signed-in student gets the item of the seri
   public.cbt_store_map('9000000002','BBBB2222','dev-bbbbbbbb')->'map'->>'11111111-1111-1111-1111-111111111111' = 'cccccccc-0000-0000-0000-000000000001');
 reset role;
 
+-- ===== 22. question bank + test generator (v55): answers stay on the server until the student has answered =====
+insert into cbt_private.qbank (subject, chapter, q, options, answer, explanation, src) select 'bio', 'cell', 'BankQ' || g, '["w","x","y","z"]', g % 4, 'SECRET-EXPL', null from generate_series(1, 8) g;
+set role anon;
+select pg_temp.chk('22a bank: practice questions come without answers or explanations',
+  public.cbt_qb_next('9000000001','AAAA1111','dev-aaaaaaaa','{}')->>'ok' = 'true'
+  and not ((public.cbt_qb_next('9000000001','AAAA1111','dev-aaaaaaaa','{}')->'items')::text ~ '"(answer|explanation|a|e)":|SECRET-EXPL'));
+select public.cbt_gen_create('9000000001','AAAA1111','dev-aaaaaaaa','{"title":"Mine","n":5,"dur":10,"f":{}}')->>'id' as gq \gset
+select pg_temp.chk('22b generator: the running test has no answers', not ((public.cbt_gen_start('9000000001','AAAA1111','dev-aaaaaaaa',:'gq'))::text ~ '"(answer|explanation|a|e)":|SECRET-EXPL'));
+select pg_temp.chk('22c generator: another student cannot open, save, submit or see it',
+  public.cbt_gen_start('9000000002','BBBB2222','dev-bbbbbbbb',:'gq')->>'error' = 'not_found'
+  and public.cbt_gen_save('9000000002','BBBB2222','dev-bbbbbbbb',:'gq','{}')->>'ok' = 'false'
+  and public.cbt_gen_submit('9000000002','BBBB2222','dev-bbbbbbbb',:'gq','{}')->>'error' = 'not_found'
+  and public.cbt_gen_result('9000000002','BBBB2222','dev-bbbbbbbb',:'gq')->>'error' = 'not_found');
+select pg_temp.chk('22d generator: no answers before submitting', public.cbt_gen_result('9000000001','AAAA1111','dev-aaaaaaaa',:'gq')->>'error' = 'not_done');
+select public.cbt_gen_create('9000000001','AAAA1111','dev-aaaaaaaa',('{"n":5,"dur":10,"at":' || ((extract(epoch from now()) * 1000)::bigint + 86400000) || '}')::jsonb)->>'id' as gl \gset
+select pg_temp.chk('22e generator: a scheduled test does not open before its time', public.cbt_gen_start('9000000001','AAAA1111','dev-aaaaaaaa',:'gl')->>'error' = 'not_open');
+reset role;
+update cbt_private.gen_tests set started_at = started_at - 3600000, ends_at = ends_at - 3600000 where id = :'gq';
+select jsonb_object_agg(q::text, 0) as gans from unnest((select qids from cbt_private.gen_tests where id = :'gq')) q \gset
+set role anon;
+select pg_temp.chk('22f generator: answers sent after the time is over are not counted',
+  (public.cbt_gen_submit('9000000001','AAAA1111','dev-aaaaaaaa',:'gq',:'gans'::jsonb)->'test'->>'skipped')::int = 5);
+reset role;
+
 -- ===== report =====
 \t off
 \a
