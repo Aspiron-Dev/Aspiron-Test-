@@ -14,7 +14,7 @@ const FIELD = { name: 'name', code: 'code', exists: 'code', commission: 'commiss
 const errText = r => ERR[r && r.error] || (r && r.error === 'forbidden' ? AX.errText(r) : 'Could not save. Try again.');
 const can = () => AX.can('promotions', 'manage');
 const base = () => (AX.sto && AX.sto.siteBase ? AX.sto.siteBase() : location.href.replace(/[#?].*$/, '').replace(/[^/]*\.html$/, ''));
-const url = code => base() + 'store.html?ref=' + encodeURIComponent(code);
+const url = code => base() + 'store?ref=' + encodeURIComponent(code);
 const ymd = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const fromYmd = s => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || '')); return m ? new Date(+m[1], +m[2] - 1, +m[3]).getTime() : AX.fmt.ms(s); };
 const suggest = n => String(n || '').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);

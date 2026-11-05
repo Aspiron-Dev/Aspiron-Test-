@@ -380,7 +380,7 @@ AX.u = {
   sms: (mobile, text) => 'sms:+91' + String(mobile || '').replace(/\D/g, '').slice(-10) + (text ? '?body=' + encodeURIComponent(text) : ''),
   tel: mobile => 'tel:+91' + String(mobile || '').replace(/\D/g, '').slice(-10),
   site: () => String(CFG.SHORT_URL || '').replace(/\/?$/, '/'),
-  storeUrl: () => AX.u.site() + 'store.html'
+  storeUrl: () => AX.u.site() + 'store'
 };
 
 /* ---------- icons (one outline family, 24px grid) ---------- */

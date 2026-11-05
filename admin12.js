@@ -13,7 +13,7 @@ XTRA.push('store');TTL.store='Store';
 {const _m=openMore;openMore=function(){_m();const g=document.querySelector('#layer .mgrid2');if(g&&!g.querySelector('[data-sto]'))g.insertAdjacentHTML('afterbegin',`<button class="mitem" data-sto onclick="closeModal();tab('store')">${ai('store',20)}<span>Store</span><em class="nb"></em></button>`)}}
 
 let SS={settings:{},items:[],orders:[],of:'pending'};
-const stoUrl=()=>new URL('store.html',location.href).href;
+const stoUrl=()=>new URL('store',location.href).href;
 const SCOL=[['blue','Blue'],['green','Green'],['purple','Purple'],['orange','Orange'],['red','Red'],['dark','Dark']];
 async function loadStore(){
   const p=$('#pn_store');if(!p)return;

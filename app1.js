@@ -146,7 +146,7 @@ function modal(h){$('#layer').innerHTML=`<div class="modal" onclick="if(event.ta
 function closeModal(){$('#layer').innerHTML=''}
 const NAVIT=[['dash','#/','Home','grid'],['series','#/series','Tests','file'],['mk','#/m','Mistakes','notebook'],['bm','#/b','Saved','bmark'],['results','#/r','Results','trophy'],['tr','#/t','Tracker','pulse']];
 /* new design: 5 tabs. Library = Mistakes, Saved, PYQ, notes, tools. Me = results, tracker, notices, profile, theme (app21.js). Classic keeps NAVIT. */
-const NAVIT2=[['dash','#/','Home','home'],['series','#/series','Tests','file'],['lib','#/lib','Library','book'],['store','store.html','Store','bag'],['me','#/me','Me','user']];
+const NAVIT2=[['dash','#/','Home','home'],['series','#/series','Tests','file'],['lib','#/lib','Library','book'],['store','store','Store','bag'],['me','#/me','Me','user']];
 function navI(){return isV2()?NAVIT2:NAVIT}
 function setNav(tab){
   const bn=$('#bnav');

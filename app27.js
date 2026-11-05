@@ -16,10 +16,10 @@ function webGroups(){
   const g=[
     ['Study',[['home','Home','#/'],['file','Test Series','#/series'],['book','Library','#/lib'],['pyq','PYQ Analysis','#/pyq',1],['bank','Question Bank','#/qb',1],['wand','Test Generator','#/gen',1]]],
     ['My progress',[['trophy','Results & Ranks','#/r'],['notebook','Mistake Notebook','#/m'],['bmark','Saved Questions','#/b'],['pulse','Study Tracker','#/t']]],
-    ['Explore',[['bag','Store','store.html'],['gift','Refer & Earn','#/refer'],['bell','Notifications','#/n'],['calendar','Exam Countdown',{f:'cdEdit()'}]]],
+    ['Explore',[['bag','Store','store'],['gift','Refer & Earn','#/refer'],['bell','Notifications','#/n'],['calendar','Exam Countdown',{f:'cdEdit()'}]]],
     ['Help & settings',[['sun','Theme Settings',{f:'openLook()'}],['gear','Settings',{f:'openSettings()'}],['info','About Us',{f:'openAbout()'}],['mail','Contact Us',{f:'supportSheet()'}]]]
   ];
-  if(webTab())g.push(['Policies',[['doc','Terms & Conditions','terms.html'],['shield','Privacy Policy','privacy.html'],['receipt','Refund Policy','refund.html']]]);
+  if(webTab())g.push(['Policies',[['doc','Terms & Conditions','terms'],['shield','Privacy Policy','privacy'],['receipt','Refund Policy','refund']]]);
   return g;
 }
 // which menu entry the current page belongs to
@@ -68,7 +68,7 @@ function webFoot(){
   let f=document.getElementById('wfoot');
   if(!webTab()){if(f)f.remove();return}
   if(!f){f=document.createElement('footer');f.id='wfoot';f.className='wfoot';const a=document.getElementById('app');a.parentNode.insertBefore(f,a.nextSibling)}
-  f.innerHTML=`<div class="wf-in"><span>© ${new Date().getFullYear()} Aspiron Education</span><nav aria-label="Policies"><a href="store.html">Store</a><a href="contact.html">Contact Us</a><a href="terms.html">Terms &amp; Conditions</a><a href="privacy.html">Privacy Policy</a><a href="refund.html">Refund Policy</a></nav>${(typeof socialLinksHTML==='function'&&socialLinksHTML())?`<nav aria-label="Follow us">${socialLinksHTML()}</nav>`:''}</div>`;
+  f.innerHTML=`<div class="wf-in"><span>© ${new Date().getFullYear()} Aspiron Education</span><nav aria-label="Policies"><a href="store">Store</a><a href="contact">Contact Us</a><a href="terms">Terms &amp; Conditions</a><a href="privacy">Privacy Policy</a><a href="refund">Refund Policy</a></nav>${(typeof socialLinksHTML==='function'&&socialLinksHTML())?`<nav aria-label="Follow us">${socialLinksHTML()}</nav>`:''}</div>`;
 }
 function webSync(){try{webSide();webFoot();document.body.classList.toggle('wout',!AUTH)}catch(e){}}
 {const _uh=updateHeader;updateHeader=function(){const r=_uh.apply(this,arguments);webSync();return r}}
