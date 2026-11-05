@@ -11,17 +11,24 @@ const QB={meta:null,metaAt:0,f:null,run:null,list:null,listAt:0,now:0,off:0,form
 const QB_LV=[['easy','Easy'],['medium','Medium'],['hard','Hard']];
 const QB_TY=[['mcq','Multiple choice'],['statement','Statement based'],['match','Match the following'],['fill','Fill in the blanks'],['assertion','Assertion & reason']];
 const QB_SR=[['ncert','NCERT based'],['pyq','Previous year (PYQ)'],['extra','Extra · out of NCERT']];
-const QB_SUB={phy:'Physics',chem:'Chemistry',bio:'Biology'};
+const QB_SUB={phy:'Physics',chem:'Chemistry',bio:'Biology',math:'Mathematics'};
 const qbUid=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(String(s||''));
 const qbSub=s=>QB_SUB[s]||(s?String(s).replace(/\b\w/g,c=>c.toUpperCase()):'General');
-function qbChap(s,c){
-  if(!c)return 'Other';
-  try{const S=window.PYQ_SYL&&PYQ_SYL.NEET;const sb=S&&S.subjects.find(x=>x.id===s);const ch=sb&&sb.chapters.find(x=>x.id===c);if(ch)return ch.name}catch(e){}
-  return c;
-}
-function qbChapCls(s,c){try{const sb=PYQ_SYL.NEET.subjects.find(x=>x.id===s);const ch=sb&&sb.chapters.find(x=>x.id===c);return ch?ch.cls:99}catch(e){return 99}}
+const qbSyl=()=>{try{return window.qbSubjects?qbSubjects():PYQ_SYL.NEET.subjects}catch(e){return []}};
+const qbChapObj=(s,c)=>{const sb=qbSyl().find(x=>x.id===s);return sb&&sb.chapters.find(x=>x.id===c)};
+function qbChap(s,c){if(!c)return 'Other';const ch=qbChapObj(s,c);return ch?ch.name:c}
+function qbChapCls(s,c){const ch=qbChapObj(s,c);return ch?ch.cls:99}
 const qbLbl=(L,k)=>(L.find(x=>x[0]===k)||[k,k])[1];
-const qbEmptyF=()=>({s:[],c:[],t:[],l:[],y:[],o:[]});
+const qbEmptyF=()=>({ex:'',s:[],c:[],t:[],l:[],y:[],o:[]});
+/* NEET → Physics, Chemistry, Biology; JEE → Physics, Chemistry, Maths (first from the student's profile) */
+function qbExamDef(){
+  try{const p=typeof pfGet==='function'?pfGet():{};if(p.exam==='JEE'||p.exam==='NEET')return p.exam}catch(e){}
+  try{const t=AUTH&&LS.get('cbt_tsf_'+AUTH.mobile,null);if(t&&t.ex==='jee')return 'JEE';if(t&&t.ex==='neet')return 'NEET'}catch(e){}
+  return 'NEET';
+}
+const qbExSubs=F=>(window.QB_EXAMS&&QB_EXAMS[F.ex])||['phy','chem','bio'];
+/* the filter actually used: no subject chosen = every subject of the exam */
+function qbEff(F){const e={s:F.s.length?F.s.slice():qbExSubs(F),c:F.c.slice(),t:F.t.slice(),l:F.l.slice(),y:F.y.slice(),o:F.o.slice()};return e}
 function qbErr(r){
   if(r&&r.error==='busy')return 'You have practised a lot this hour. Take a short break and continue in a few minutes.';
   if(r&&r.error==='too_many')return 'You already have 30 tests waiting. Take or delete some of them first.';
@@ -52,55 +59,96 @@ function qbCount(rows,f,skip){
 }
 function qbGroup(rows,f,key,skip){const m={};rows.forEach(r=>{if(skip&&!skip(r))return;const k=r[key];m[k]=(m[k]||0)+r.n});return m}
 
-/* filter builder: the same for practice and the test generator. root = element id; F = filter object (changed in place) */
-let QBF=null,QBFON=null,QBOPEN={};
+/* filter builder: the same for practice and the test generator. Exam switch, subject chips, then drop-downs
+   (Chapters, Topics, Level, Question type, Source) — tap to open, tick as many as you like. */
+let QBF=null,QBFON=null,QBDD='',QBQ='';
+function qbDdHead(key,title,sum,n){
+  return `<button type="button" class="qbddh ${QBDD===key?'on':''}" data-dd="${key}"><span class="grow"><b>${title}</b><small>${esc(sum)}</small></span>${n?`<span class="qbddn">${n}</span>`:''}<span class="qbchev ${QBDD===key?'on':''}">${ic(typeof IC.chevd==='string'?'chevd':'down',18)}</span></button>`;
+}
+function qbOpt(g,k,label,n,on,sub){
+  return `<label class="qbopt ${on?'on':''}" data-q="${esc(String(label).toLowerCase())}"><input type="checkbox" data-g="${g}" data-k="${esc(k)}" ${on?'checked':''}><span class="qbbox">${ic('check',13)}</span><span class="grow">${esc(label)}${sub?`<small>${esc(sub)}</small>`:''}</span>${n!=null?`<i class="${n?'':'z'}">${n}</i>`:''}</label>`;
+}
 function qbFilterHtml(F){
-  const rows=QB.meta.rows;
-  const subs=qbGroup(rows,F,'s');
-  const subKeys=Object.keys(subs).sort((a,b)=>(QB_SUB[a]?0:1)-(QB_SUB[b]?0:1)||a.localeCompare(b));
-  const chip=(grp,k,label,n,on)=>`<button type="button" class="qbc ${on?'on':''}" data-g="${grp}" data-k="${esc(k)}" ${n===0&&!on?'disabled':''}>${on?ic('check',13):''}${esc(label)}${n!=null?`<i>${n}</i>`:''}</button>`;
-  // chapters of the chosen subjects (or all), grouped by subject
-  const chS=F.s.length?F.s:subKeys;
-  const chHtml=chS.map(s=>{
-    const m=qbGroup(rows,F,'c',r=>r.s===s&&qbHas(F.l,r.l)&&qbHas(F.y,r.y)&&qbHas(F.o,r.o));
-    const ks=Object.keys(m).sort((a,b)=>qbChapCls(s,a)-qbChapCls(s,b)||qbChap(s,a).localeCompare(qbChap(s,b)));
-    if(!ks.length)return '';
-    const nOn=ks.filter(k=>F.c.includes(k)).length,open=QBOPEN[s]||nOn>0;
-    return `<div class="qbsg"><button type="button" class="qbsh" data-open="${esc(s)}"><b>${esc(qbSub(s))}</b><span class="mut sm">${nOn?nOn+' chosen':'All '+ks.length+' chapters'}</span><span class="qbchev ${open?'on':''}">${ic(typeof IC.chevd==='string'?'chevd':'down',16)}</span></button>
-      ${open?`<div class="qbcs">${ks.map(k=>chip('c',k,qbChap(s,k),m[k],F.c.includes(k))).join('')}</div>`:''}</div>`;
-  }).join('');
+  const rows=QB.meta.rows,E=qbEff(F),subs=qbExSubs(F);
+  const cnt=(skip,extra)=>{const f=Object.assign({},E,extra);return qbCount(rows,f,skip)};
+  const sumOf=(A,L)=>!A.length?'All':A.map(k=>qbLbl(L,k)).join(', ');
+  // subjects of the exam
+  const subHtml=subs.map(k=>{const on=F.s.includes(k),n=cnt(null,{s:[k],c:[],t:[]});return `<button type="button" class="qbc ${on?'on':''}" data-g="s" data-k="${k}">${on?ic('check',13):''}${esc(qbSub(k))}<i>${n}</i></button>`}).join('');
+  // chapters: every chapter of the syllabus of the chosen subjects (or of the exam)
+  const chS=E.s,chRows=[];
+  chS.forEach(s=>{const sb=qbSyl().find(x=>x.id===s);if(!sb)return;
+    [11,12].forEach(cl=>{const L=sb.chapters.filter(c=>c.cls===cl&&!c.old);if(!L.length)return;
+      chRows.push(`<div class="qbgh">${esc(qbSub(s))} · Class ${cl}</div>`);
+      L.forEach(c=>chRows.push(qbOpt('c',c.id,c.name,cnt(null,{c:[c.id],s:[s],t:[]}),F.c.includes(c.id))))})});
+  const chSum=F.c.length?`${F.c.length} chapter${F.c.length>1?'s':''} chosen`:'All chapters';
+  const chChips=F.c.length?`<div class="qbpick">${F.c.map(c=>{const s=(qbSyl().find(x=>x.chapters.some(y=>y.id===c))||{}).id;return `<button type="button" class="qbx" data-g="c" data-k="${esc(c)}">${esc(qbChap(s,c))} ${ic('x',12)}</button>`}).join('')}<button type="button" class="qbx clr" data-clr="c">Clear all</button></div>`:'';
   // topics of the chosen chapters
-  let tpHtml='';
-  if(F.c.length&&F.c.length<=6){
-    const m=qbGroup(rows,F,'t',r=>F.c.includes(r.c)&&qbHas(F.s,r.s)&&r.t);
-    const ks=Object.keys(m).sort();
-    if(ks.length)tpHtml=`<div class="qbl">Topics <span class="mut sm">(optional — none chosen = all topics)</span></div><div class="qbcs">${ks.map(k=>chip('t',k,k,m[k],F.t.includes(k))).join('')}</div>`;
+  let tpBlock='';
+  if(F.c.length){
+    const tR=[];F.c.forEach(c=>{const s=(qbSyl().find(x=>x.chapters.some(y=>y.id===c))||{}).id;const ch=qbChapObj(s,c);if(!ch||!ch.topics.length)return;
+      tR.push(`<div class="qbgh">${esc(ch.name)}</div>`);ch.topics.forEach(t=>tR.push(qbOpt('t',t.name,t.name,cnt(null,{t:[t.name]}),F.t.includes(t.name))))});
+    if(tR.length)tpBlock=`<div class="qbdd">${qbDdHead('t','Topics',F.t.length?F.t.join(', '):'All topics of these chapters',F.t.length)}${QBDD==='t'?`<div class="qbddb">${qbAllClr('t')}${tR.join('')}</div>`:''}</div>`;
   }
-  const cnt=(key,k)=>qbCount(rows,Object.assign({},F,{[key]:[k]}),key);
-  return `<div class="qbl">Subjects <span class="mut sm">(choose one or more to mix)</span></div>
-   <div class="qbcs">${subKeys.map(k=>chip('s',k,qbSub(k),subs[k],F.s.includes(k))).join('')}</div>
-   <div class="qbl">Chapters <span class="mut sm">(none chosen = all chapters)</span></div>${chHtml||'<p class="sm mut">No chapters yet.</p>'}
-   ${tpHtml}
-   <div class="qbl">Level</div><div class="qbcs">${QB_LV.map(([k,l])=>chip('l',k,l,cnt('l',k),F.l.includes(k))).join('')}</div>
-   <div class="qbl">Question type</div><div class="qbcs">${QB_TY.map(([k,l])=>chip('y',k,l,cnt('y',k),F.y.includes(k))).join('')}</div>
-   <div class="qbl">Source</div><div class="qbcs">${QB_SR.map(([k,l])=>chip('o',k,l,cnt('o',k),F.o.includes(k))).join('')}</div>`;
+  const simple=(key,title,L)=>`<div class="qbdd">${qbDdHead(key,title,sumOf(F[key],L),F[key].length)}${QBDD===key?`<div class="qbddb">${qbAllClr(key)}${L.map(([k,l])=>qbOpt(key,k,l,cnt(null,{[key]:[k]}),F[key].includes(k))).join('')}</div>`:''}</div>`;
+  return `<div class="qbexr"><span class="qbl" style="margin:0">Exam</span><div class="seg qbex">${['NEET','JEE'].map(x=>`<button type="button" data-ex="${x}" class="${F.ex===x?'on':''}">${x}</button>`).join('')}</div></div>
+   <div class="qbl">Subjects <span class="mut sm">— tap one or more to mix · none = all</span></div>
+   <div class="qbcs">${subHtml}</div>
+   <div class="qbdds">
+    <div class="qbdd">${qbDdHead('c','Chapters',chSum,F.c.length)}${QBDD==='c'?`<div class="qbddb"><input type="search" class="qbsrch" placeholder="Search chapters…" value="${esc(QBQ)}">${qbAllClr('c')}${chRows.join('')||'<p class="sm mut">Choose a subject first.</p>'}</div>`:chChips}</div>
+    ${tpBlock}
+    ${simple('l','Level',QB_LV)}
+    ${simple('y','Question type',QB_TY)}
+    ${simple('o','Source',QB_SR)}
+   </div>`;
+}
+const qbAllClr=g=>`<div class="qbac"><button type="button" data-all="${g}">Select all</button><button type="button" data-clr="${g}">Clear</button><span class="grow"></span><button type="button" class="qbdone" data-dd="">Done</button></div>`;
+function qbAllOf(g){
+  const F=QBF;
+  if(g==='l')return QB_LV.map(x=>x[0]);if(g==='y')return QB_TY.map(x=>x[0]);if(g==='o')return QB_SR.map(x=>x[0]);
+  if(g==='c'){const q=QBQ.toLowerCase();const out=[];qbEff(F).s.forEach(s=>{const sb=qbSyl().find(x=>x.id===s);if(sb)sb.chapters.forEach(c=>{if(!c.old&&(!q||c.name.toLowerCase().includes(q)))out.push(c.id)})});return out}
+  if(g==='t'){const out=[];F.c.forEach(c=>{const s=(qbSyl().find(x=>x.chapters.some(y=>y.id===c))||{}).id,ch=qbChapObj(s,c);if(ch)ch.topics.forEach(t=>out.push(t.name))});return out}
+  return [];
+}
+function qbFilterDraw(el){
+  const b=el.querySelector('.qbddb'),st=b?b.scrollTop:0;
+  el.innerHTML=qbFilterHtml(QBF);
+  const b2=el.querySelector('.qbddb');if(b2)b2.scrollTop=st;
+  const sr=el.querySelector('.qbsrch');if(sr)qbSearch(el,sr.value);
+}
+function qbSearch(el,v){
+  QBQ=v;const q=v.trim().toLowerCase();
+  el.querySelectorAll('.qbddb .qbopt').forEach(o=>{o.style.display=!q||o.dataset.q.includes(q)?'':'none'});
+  el.querySelectorAll('.qbddb .qbgh').forEach(h=>{let n=h.nextElementSibling,any=false;while(n&&n.classList.contains('qbopt')){if(n.style.display!=='none')any=true;n=n.nextElementSibling}h.style.display=any?'':'none'});
+}
+function qbTidy(){   // drop chapters / topics that no longer belong to the chosen subjects / chapters
+  const F=QBF,subs=qbEff(F).s;
+  F.s=F.s.filter(s=>qbExSubs(F).includes(s));
+  F.c=F.c.filter(c=>subs.some(s=>{const sb=qbSyl().find(x=>x.id===s);return sb&&sb.chapters.some(y=>y.id===c)}));
+  const tps=new Set(qbAllOf('t'));F.t=F.t.filter(t=>tps.has(t));
 }
 function qbFilterMount(id,F,onChange){
   QBF=F;QBFON=onChange;
+  if(!F.ex)F.ex=qbExamDef();
+  qbTidy();
   const el=document.getElementById(id);if(!el)return;
-  el.innerHTML=qbFilterHtml(F);
+  qbFilterDraw(el);
   if(el.__w)return;el.__w=1;
+  const changed=()=>{qbTidy();qbFilterDraw(el);QBFON&&QBFON()};
+  el.addEventListener('input',e=>{if(e.target.classList.contains('qbsrch'))qbSearch(el,e.target.value)});
+  el.addEventListener('change',e=>{
+    const c=e.target.closest('input[type=checkbox][data-g]');if(!c)return;
+    const A=QBF[c.dataset.g],k=c.dataset.k,i=A.indexOf(k);
+    if(c.checked&&i<0)A.push(k);else if(!c.checked&&i>=0)A.splice(i,1);
+    changed();
+  });
   el.addEventListener('click',e=>{
-    const o=e.target.closest('[data-open]');
-    if(o){QBOPEN[o.dataset.open]=!QBOPEN[o.dataset.open];if(!QBOPEN[o.dataset.open]){/* keep chosen chapters */}el.innerHTML=qbFilterHtml(QBF);return}
-    const b=e.target.closest('.qbc');if(!b||b.disabled)return;
-    const g=b.dataset.g,k=b.dataset.k,A=QBF[g];const i=A.indexOf(k);
-    if(i>=0)A.splice(i,1);else A.push(k);
-    if(g==='s'){   // a subject removed: drop its chapters
-      const keep=new Set(QB.meta.rows.filter(r=>qbHas(QBF.s,r.s)).map(r=>r.c));QBF.c=QBF.c.filter(c=>keep.has(c));
-    }
-    if(g==='s'||g==='c'){const keep=new Set(QB.meta.rows.filter(r=>qbHas(QBF.c,r.c)&&qbHas(QBF.s,r.s)).map(r=>r.t));QBF.t=QBF.t.filter(t=>keep.has(t))}
-    el.innerHTML=qbFilterHtml(QBF);QBFON&&QBFON();
+    const t=e.target;
+    const ex=t.closest('[data-ex]');if(ex){if(QBF.ex!==ex.dataset.ex){QBF.ex=ex.dataset.ex;QBF.s=[];QBF.c=[];QBF.t=[];QBQ=''}changed();return}
+    const dd=t.closest('[data-dd]');if(dd){const k=dd.dataset.dd;QBDD=QBDD===k||!k?'':k;QBQ='';qbFilterDraw(el);if(QBDD){const h=el.querySelector('.qbddh.on');if(h&&h.scrollIntoView)h.scrollIntoView({block:'nearest',behavior:'smooth'})}return}
+    const al=t.closest('[data-all]');if(al){const g=al.dataset.all;QBF[g]=[...new Set(QBF[g].concat(qbAllOf(g)))];changed();return}
+    const cl=t.closest('[data-clr]');if(cl){const g=cl.dataset.clr;if(g==='c'&&QBQ){const drop=new Set(qbAllOf('c'));QBF.c=QBF.c.filter(x=>!drop.has(x))}else QBF[g]=[];changed();return}
+    const x=t.closest('.qbx[data-g]');if(x){const A=QBF[x.dataset.g],i=A.indexOf(x.dataset.k);if(i>=0)A.splice(i,1);changed();return}
+    const b=t.closest('.qbc[data-g]');if(b){const A=QBF[b.dataset.g],i=A.indexOf(b.dataset.k);if(i>=0)A.splice(i,1);else A.push(b.dataset.k);changed();return}
   });
 }
 
@@ -112,10 +160,9 @@ async function qbHome(){
   if(!M)return;
   if(!M.ok){if(qbMissing(M))return qbSoon('Question bank');return setApp(`<div class="wrap"><div class="card empty">${ic('wifi',30)}<h3 style="margin:10px 0 4px">Could not load</h3><p class="sm">${esc(qbErr(M))}</p><button class="btn" onclick="route()">Try again</button></div></div>`)}
   QB.f=QB.f||Object.assign(qbEmptyF(),LS.get('cbt_qb_f',{}));
-  ['s','c','t','l','y','o'].forEach(k=>{if(!Array.isArray(QB.f[k]))QB.f[k]=[]});
+  ['s','c','t','l','y','o'].forEach(k=>{if(!Array.isArray(QB.f[k]))QB.f[k]=[]});if(QB.f.ex!=='NEET'&&QB.f.ex!=='JEE')QB.f.ex='';
   const total=M.rows.reduce((a,r)=>a+r.n,0);
   const done=M.mine.reduce((a,r)=>a+(+r[2]||0),0),right=M.mine.reduce((a,r)=>a+(+r[3]||0),0);
-  const subs=qbGroup(M.rows,{}, 's');
   const mineS={};M.mine.forEach(r=>{const o=mineS[r[0]]=mineS[r[0]]||{n:0,r:0};o.n+=+r[2]||0;o.r+=+r[3]||0});
   if(!total)return setApp(`<div class="wrap qb"><div class="crumb"><a href="#/">${ic('left',16)} Home</a></div><div class="card empty">${ic('bank',30)}<h3 style="margin:10px 0 4px">Question bank</h3><p class="sm mut">Questions are being added. Please check again soon.</p></div></div>`);
   setApp(`<div class="wrap qb">
@@ -123,24 +170,31 @@ async function qbHome(){
    <div class="card qbhero"><span class="qbi">${ic('bank',24)}</span><div class="grow"><h2>Question bank</h2><p class="sm mut">${total.toLocaleString('en-IN')} questions · practise as much as you like. Every answer shows the right option and the explanation.</p></div></div>
    <div class="stats qbst"><div class="stat"><b>${done}</b><span>Practised</span></div><div class="stat"><b>${done?Math.round(right/done*100):0}%</b><span>Accuracy</span></div><div class="stat"><b>${Math.max(0,total-done)}</b><span>Not tried yet</span></div></div>
    <div class="h2s">Subjects</div>
-   <div class="qbsubs">${Object.keys(subs).map(s=>{const m=mineS[s]||{n:0,r:0};const p=Math.min(100,Math.round(m.n/subs[s]*100));
-     return `<button class="card qbsub" data-s="${esc(s)}"><b>${esc(qbSub(s))}</b><span class="sm mut">${subs[s]} questions · ${m.n} done${m.n?` · ${Math.round(m.r/m.n*100)}% right`:''}</span><div class="qbbar"><i style="width:${p}%"></i></div></button>`}).join('')}</div>
+   <div class="qbsubs" id="qbSubs"></div>
    <div class="h2s">Choose what to practise</div>
    <div class="card"><div id="qbF"></div>
     <div class="qbgo"><div class="grow"><b id="qbN">0</b> <span class="sm mut">questions match</span></div><button class="btn ghost sm" onclick="qbReset()">Clear</button><button class="btn" id="qbStart" onclick="qbStart()">${ic('play',16)} Start practice</button></div></div>
    <div class="card qbgenad" onclick="location.hash='#/gen'" role="button"><span class="qbi sm">${ic('wand',20)}</span><div class="grow"><b>Make your own test</b><div class="sm mut">Choose chapters, number of questions, level and time — and schedule it.</div></div>${ic('right',18)}</div>
   </div>`);
-  document.querySelectorAll('.qbsub').forEach(b=>b.onclick=()=>{QB.f=qbEmptyF();QB.f.s=[b.dataset.s];QBOPEN={[b.dataset.s]:true};qbFilterMount('qbF',QB.f,qbUpd);qbUpd();document.getElementById('qbF').scrollIntoView({behavior:'smooth',block:'start'})});
+  QB.mineS=mineS;
+  document.getElementById('qbSubs').onclick=e=>{const b=e.target.closest('.qbsub');if(!b)return;QB.f.s=[b.dataset.s];QB.f.c=[];QB.f.t=[];QBDD='c';qbFilterMount('qbF',QB.f,qbUpd);qbUpd();document.getElementById('qbF').scrollIntoView({behavior:'smooth',block:'start'})};
   qbFilterMount('qbF',QB.f,qbUpd);qbUpd();
 }
+function qbSubCards(){
+  const el=document.getElementById('qbSubs');if(!el||!QB.meta)return;
+  const subs=qbGroup(QB.meta.rows,{},'s'),M=QB.mineS||{};
+  el.innerHTML=qbExSubs(QB.f).map(s=>{const n=subs[s]||0,m=M[s]||{n:0,r:0},p=n?Math.min(100,Math.round(m.n/n*100)):0;
+    return `<button class="card qbsub" data-s="${esc(s)}"><b>${esc(qbSub(s))}</b><span class="sm mut">${n} questions · ${m.n} done${m.n?` · ${Math.round(m.r/m.n*100)}% right`:''}</span><div class="qbbar"><i style="width:${p}%"></i></div></button>`}).join('');
+}
 function qbUpd(){
-  const n=qbCount(QB.meta.rows,QB.f);const e=document.getElementById('qbN');if(e)e.textContent=n.toLocaleString('en-IN');
+  qbSubCards();
+  const n=qbCount(QB.meta.rows,qbEff(QB.f));const e=document.getElementById('qbN');if(e)e.textContent=n.toLocaleString('en-IN');
   const b=document.getElementById('qbStart');if(b)b.disabled=!n;
   LS.set('cbt_qb_f',QB.f);
 }
-function qbReset(){QB.f=qbEmptyF();QBOPEN={};qbFilterMount('qbF',QB.f,qbUpd);qbUpd()}
+function qbReset(){QB.f=qbEmptyF();QBDD='';qbFilterMount('qbF',QB.f,qbUpd);qbUpd()}
 function qbStart(){
-  QB.run={f:JSON.parse(JSON.stringify(QB.f)),q:[],seen:[],i:0,ans:{},res:{},n:0,ok:0,end:false,busy:null};
+  QB.run={f:qbEff(QB.f),q:[],seen:[],i:0,ans:{},res:{},n:0,ok:0,end:false,busy:null};
   location.hash='#/qb/go';
 }
 
@@ -323,7 +377,7 @@ async function genNew(){
    <button class="btn block gnnew" id="gnGo" onclick="genCreate()">${ic('wand',18)} Create test</button>
   </div>`);
   const upd=()=>{
-    const av=qbCount(QB.meta.rows,F.f);const e=document.getElementById('gnAv');if(e)e.textContent=av.toLocaleString('en-IN');
+    const av=qbCount(QB.meta.rows,qbEff(F.f));const e=document.getElementById('gnAv');if(e)e.textContent=av.toLocaleString('en-IN');
     const h=document.getElementById('gnDh');
     if(h)h.textContent=av&&av<F.n?`Only ${av} questions match — your test will have ${Math.max(av,0)} questions.`:`About ${Math.round(F.dur*60/F.n)} seconds per question.`;
     const b=document.getElementById('gnGo');if(b)b.disabled=av<5;
@@ -348,7 +402,7 @@ async function genCreate(){
   let at=Date.now();
   if(F.when==='later'){at=F.day+F.hm*60000;if(at<Date.now()-60000)return toast('Choose a time in the future')}
   const b=document.getElementById('gnGo');if(b){b.disabled=true;b.textContent='Creating…'}
-  const f=JSON.parse(JSON.stringify(F.f));
+  const f=qbEff(F.f);if(F.f.s.length===0)f.all=1;
   const r=await rpc('cbt_gen_create',{p_d:{title:F.title.trim()||genAutoTitle(f),f,n:F.n,dur:F.dur,plus:F.mark==='4'?4:1,minus:F.mark==='4'?1:0,order:F.order,at:F.when==='later'?at+QB.off:0}});
   if(authErr(r))return;
   if(!r||!r.ok){toast(qbErr(r));if(b){b.disabled=false;b.innerHTML=`${ic('wand',18)} Create test`}return}
@@ -358,9 +412,9 @@ async function genCreate(){
   else genStart(r.id);
 }
 function genAutoTitle(f){
-  const s=(f.s||[]).map(qbSub).join(' + ');
-  if((f.c||[]).length===1)return qbChap((f.s&&f.s[0])||'',f.c[0])+' test';
-  return (s||'Full syllabus')+' test';
+  if((f.c||[]).length===1){const s=(qbSyl().find(x=>x.chapters.some(y=>y.id===f.c[0]))||{}).id;return qbChap(s,f.c[0])+' test'}
+  if(f.all)return ((QB.form&&QB.form.f.ex)||'')+' full syllabus test';
+  return (f.s||[]).map(qbSub).join(' + ')+' test';
 }
 async function genRetake(id){
   if(!qbUid(id))return;
@@ -581,11 +635,35 @@ if(typeof viewLibrary==='function'){const _vl=viewLibrary;viewLibrary=function()
 .qbc.on{border-color:var(--pri);background:color-mix(in srgb,var(--pri) 14%,var(--surface));color:var(--pri)}
 .qbc.on i{background:color-mix(in srgb,var(--pri) 18%,transparent);color:var(--pri)}
 .qbc:disabled{opacity:.45;cursor:default}
-.qbsg{border:1px solid var(--bd);border-radius:12px;margin-bottom:8px;overflow:hidden}
-.qbsh{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;background:var(--surface2);border:0;font:inherit;color:var(--tx);cursor:pointer;text-align:left}
-.qbsh b{flex:1}
-.qbchev{display:inline-flex;transition:transform .2s}.qbchev.on{transform:rotate(180deg)}
-.qbsg .qbcs{padding:10px 12px}
+.qbexr{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.qbex button{min-width:72px}
+.qbdds{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+.qbdd{border:1.5px solid var(--bd);border-radius:14px;background:var(--surface);overflow:hidden}
+.qbddh{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;background:none;border:0;font:inherit;color:var(--tx);cursor:pointer;text-align:left}
+.qbddh .grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.qbddh small{color:var(--mut);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qbddh.on{background:color-mix(in srgb,var(--pri) 8%,var(--surface));border-bottom:1px solid var(--bd)}
+.qbddn{min-width:22px;height:22px;padding:0 7px;border-radius:99px;background:var(--pri);color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center}
+.qbddb{max-height:min(56vh,440px);overflow:auto;padding:6px 8px 10px;overscroll-behavior:contain}
+.qbsrch{margin:6px 0 4px}
+.qbac{display:flex;align-items:center;gap:6px;padding:6px 4px;position:sticky;top:-6px;background:var(--surface);z-index:1}
+.qbac button{font:inherit;font-size:13px;font-weight:700;color:var(--pri);background:none;border:0;padding:6px 8px;border-radius:8px;cursor:pointer}
+.qbac .grow{flex:1}
+.qbac .qbdone{background:var(--pri);color:#fff;padding:6px 14px}
+.qbgh{font-size:11.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--mut);padding:12px 8px 4px}
+.qbopt{display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14.5px}
+.qbopt:hover{background:var(--surface2)}
+.qbopt.on{background:color-mix(in srgb,var(--pri) 9%,transparent)}
+.qbopt input{position:absolute;opacity:0;pointer-events:none}
+.qbopt .grow{flex:1;min-width:0}
+.qbopt small{display:block;color:var(--mut);font-size:12px}
+.qbbox{width:22px;height:22px;border-radius:7px;border:2px solid var(--bd);display:grid;place-items:center;flex:none;color:transparent;transition:all .15s}
+.qbopt.on .qbbox{background:var(--pri);border-color:var(--pri);color:#fff}
+.qbopt i{font-style:normal;font-size:11.5px;font-weight:700;color:var(--mut);background:var(--surface2);border-radius:99px;padding:2px 8px}
+.qbopt i.z{opacity:.55}
+.qbpick{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 12px}
+.qbx{display:inline-flex;align-items:center;gap:4px;font:inherit;font-size:12.5px;font-weight:600;padding:5px 8px 5px 11px;border-radius:99px;border:1px solid color-mix(in srgb,var(--pri) 40%,var(--bd));background:color-mix(in srgb,var(--pri) 10%,var(--surface));color:var(--pri);cursor:pointer;max-width:100%;text-align:left}
+.qbx.clr{background:none;border-color:var(--bd);color:var(--mut);padding:5px 11px}
 .qbgo{display:flex;align-items:center;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--bd);flex-wrap:wrap}
 .qbgo b{font-size:20px}
 .qbsubs{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
