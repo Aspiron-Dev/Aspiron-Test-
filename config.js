@@ -11,6 +11,33 @@ window.CBT_CONFIG = {
   SUPPORT_WA_NUMBER: "917665619133",   // WhatsApp number of the support team: used only inside the WhatsApp buttons (never shown as text), so the message is already written in the chat, like Telegram
   TG_CHANNEL: "https://t.me/+1gxzLpz91LtmNDM9",   // Telegram channel link put in messages sent to students (leave "" to hide)
   SHORT_URL: "https://aspironeducation.com/",   // website link put in messages sent to students (opens instantly, no shortener)
+  // Social media profile links. Full https:// URL only; leave "" to hide that link everywhere on the website.
+  SOCIAL: {
+    youtube: "",
+    instagram: "https://www.instagram.com/aspironeducation/",
+    telegram: "https://t.me/AspironEducation",
+    facebook: "",
+    whatsapp_channel: "https://whatsapp.com/channel/0029VbE8vNvBvvsddM1RDV0u"
+  },
   // Web Push (notifications when the app is closed). Public key only — the private key lives in Supabase secrets.
   VAPID_PUBLIC: "BMbCxWsFmWCBrfBf073L9m9uo1zkwhVvGrbe7C21ho2ToTvcXFTgpjjKsSxLjoT-O8UMyx1qXSRJ_gMAbQyN9TA"
 };
+
+// Social links, joined with " · ". Returns "" when none are filled in, so nothing shows until a link is added.
+window.socialLinksHTML = function () {
+  const S = (window.CBT_CONFIG && CBT_CONFIG.SOCIAL) || {};
+  const names = { youtube: "YouTube", instagram: "Instagram", telegram: "Telegram", facebook: "Facebook", whatsapp_channel: "WhatsApp Channel" };
+  return Object.keys(names)
+    .filter(k => /^https:\/\/[^\s"'<>]+$/.test(S[k] || ""))
+    .map(k => `<a href="${S[k]}" target="_blank" rel="noopener">${names[k]}</a>`)
+    .join(" · ");
+};
+// Fills every element marked data-social (store footer, contact page) and hides it when empty.
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll("[data-social]").forEach(function (el) {
+    const h = window.socialLinksHTML();
+    const label = el.getAttribute("data-social-label");
+    el.innerHTML = h ? (label ? "<b>" + label + "</b> " : "") + h : "";
+    el.hidden = !h;
+  });
+});
