@@ -16,6 +16,8 @@ html.web body.wout .wfoot,html.web body.wside .wfoot{display:block}
 .soc-row{display:inline-flex;gap:10px;align-items:center;flex-wrap:wrap}
 .soc-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;border:1px solid var(--bd);color:var(--mut);text-decoration:none}
 .soc-btn:hover{color:var(--pri);border-color:var(--pri)}
+.wsoc{padding:2px 12px 10px}
+.wf-in .wf-soc{margin-left:auto}
 body.intest .wfoot{display:none!important}
 
 #wside{display:none}
