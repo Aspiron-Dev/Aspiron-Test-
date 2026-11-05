@@ -14,9 +14,10 @@ window.CBT_CONFIG = {
   // Social media profile links. Full https:// URL only; leave "" to hide that link everywhere on the website.
   SOCIAL: {
     youtube: "",
-    instagram: "",
-    telegram: "",
-    facebook: ""
+    instagram: "https://www.instagram.com/aspironeducation/",
+    telegram: "https://t.me/AspironEducation",
+    facebook: "",
+    whatsapp_channel: "https://whatsapp.com/channel/0029VbE8vNvBvvsddM1RDV0u"
   },
   // Web Push (notifications when the app is closed). Public key only — the private key lives in Supabase secrets.
   VAPID_PUBLIC: "BMbCxWsFmWCBrfBf073L9m9uo1zkwhVvGrbe7C21ho2ToTvcXFTgpjjKsSxLjoT-O8UMyx1qXSRJ_gMAbQyN9TA"
@@ -25,7 +26,7 @@ window.CBT_CONFIG = {
 // Social links, joined with " · ". Returns "" when none are filled in, so nothing shows until a link is added.
 window.socialLinksHTML = function () {
   const S = (window.CBT_CONFIG && CBT_CONFIG.SOCIAL) || {};
-  const names = { youtube: "YouTube", instagram: "Instagram", telegram: "Telegram", facebook: "Facebook" };
+  const names = { youtube: "YouTube", instagram: "Instagram", telegram: "Telegram", facebook: "Facebook", whatsapp_channel: "WhatsApp Channel" };
   return Object.keys(names)
     .filter(k => /^https:\/\/[^\s"'<>]+$/.test(S[k] || ""))
     .map(k => `<a href="${S[k]}" target="_blank" rel="noopener">${names[k]}</a>`)
