@@ -829,7 +829,16 @@ async function editSave(){
     if(!r||r.error==='missing')r=await rpc('cbt_store_order',{p_item:ORD.item,p_name:n,p_mobile:m});
     if(!r.ok)return fail(r.error==='busy'?'Too many tries. Please wait a while and try again.':r.error==='network'?'No internet. Please try again.':'Could not save. Please try again.');
     meSave(n,m);
+    // a new name / number makes a new order: the coupon (and wallet) used on the old one is put on the new one too,
+    // so the amount here, in the summary and in Admin → Orders stays what the student paid
+    const cc=ORD.coupon_code||'',wl=+ORD.wallet_used>0,was=+ORD.amount;
     Object.assign(ORD,{code:r.code,amount:r.amount,title:r.title,name:n,mobile:m,at:Date.now(),list_price:0,coupon_code:'',coupon_off:0,wallet_used:0});attachRef(r.code,m);
+    if(cc||wl){
+      let x=await rpc('cbt_store_order_apply',Object.assign({p_code:r.code,p_mobile:m,p_coupon:cc,p_wallet:wl},wl?appAuth(m)||{}:{}));
+      if(!x.ok&&wl&&cc)x=await rpc('cbt_store_order_apply',{p_code:r.code,p_mobile:m,p_coupon:cc,p_wallet:false});
+      if(x.ok)Object.assign(ORD,{amount:x.amount,list_price:x.list_price,coupon_code:x.coupon_code||'',coupon_off:x.coupon_off||0,wallet_used:x.wallet_used||0});
+    }
+    if(+ORD.amount!==was)toast(`Amount is now ${inr(ORD.amount)}${cc&&!ORD.coupon_code?' — the coupon could not be kept':''}. Check it before you send.`,'alert','bad');
   }
   const r=await rpc('cbt_store_paid',{p_code:ORD.code,p_mobile:ORD.mobile,p_payer:py,p_utr:pu});
   if(!r.ok&&r.error==='network'){LSs('store_ord',ORD);return fail('No internet. Please try again.')}
