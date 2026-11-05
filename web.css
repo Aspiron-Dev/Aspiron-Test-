@@ -1,0 +1,73 @@
+/* web.css: grouped menu headings (all screens) + the website layout (app27.js).
+   body.wside = signed in, browser tab, 900 px and wider: fixed side menu, no 3-line button, no bottom tabs. */
+
+/* menu group headings (phone drawer and side menu) */
+.wgh{font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--mut);padding:14px 12px 6px;opacity:.85}
+.drl .wgh:first-child,.wsl .wgh:first-child{padding-top:6px}
+.drl .dri em.drnew,.wsi em.drnew{margin-left:auto}
+
+/* footer with the policy links (website only) */
+.wfoot{display:none}
+html.web body.wout .wfoot,html.web body.wside .wfoot{display:block}
+.wf-in{max-width:1080px;margin:0 auto;padding:18px 16px 26px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 22px;font-size:13px;color:var(--mut);border-top:1px solid var(--bd)}
+.wf-in nav{display:flex;flex-wrap:wrap;gap:6px 18px}
+.wf-in a{color:var(--mut);text-decoration:none;font-weight:600}
+.wf-in a:hover{color:var(--pri)}
+body.intest .wfoot{display:none!important}
+
+#wside{display:none}
+@media(min-width:900px){
+  html.web body.wside:not(.intest){--wsw:264px}
+  html.web body.wside:not(.intest) #wside{display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;width:var(--wsw);z-index:26;
+    background:var(--surface);border-right:1px solid var(--bd);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+  html.web body.wside:not(.intest) .hdr,
+  html.web body.wside:not(.intest) #app,
+  html.web body.wside:not(.intest) .wfoot{margin-left:var(--wsw)}
+  html.web body.wside:not(.intest) #mnu{visibility:hidden}
+  html.web body.wside:not(.intest) .bnav{display:none!important}
+  html.web body.wside:not(.intest) .wrap{padding-bottom:40px}
+
+  .wsb{display:flex;align-items:center;gap:10px;padding:18px 20px 14px;text-decoration:none;color:var(--tx)}
+  .wsb img{width:34px;height:34px;border-radius:10px;flex:none}
+  .wsb b{display:block;font-size:17px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;line-height:1.1}
+  .wsb i{display:block;font-style:normal;font-size:9.5px;font-weight:700;letter-spacing:.42em;text-transform:uppercase;color:var(--mut);margin-top:2px}
+  .wsme{display:flex;align-items:center;gap:10px;margin:2px 12px 6px;padding:10px;border:1px solid var(--bd);border-radius:14px;background:var(--surface2);color:var(--tx);font:inherit;text-align:left;cursor:pointer}
+  .wsme:hover{border-color:color-mix(in srgb,var(--pri) 40%,var(--bd))}
+  .wsme .grow{min-width:0}
+  .wsme b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wsme i{display:block;font-style:normal;font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wsme svg{color:var(--mut);flex:none}
+  .wsav{width:38px;height:38px;border-radius:50%;overflow:hidden;flex:none;display:grid;place-items:center;background:var(--surface);color:var(--pri);font-weight:800;font-size:16px;box-shadow:0 0 0 2px color-mix(in srgb,var(--pri) 18%,transparent)}
+  .wsav img{width:100%;height:100%;object-fit:cover}
+  .wsl{padding:0 10px 20px}
+  .wsi{display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:var(--tx);padding:9px 12px;border-radius:10px;font:inherit;font-size:14px;font-weight:600;text-align:left;text-decoration:none;cursor:pointer;transition:background .15s,color .15s}
+  .wsi svg{flex:none;color:var(--mut)}
+  .wsi:hover{background:var(--surface2)}
+  .wsi.on{background:var(--priSoft);color:var(--pri)}
+  .wsi.on svg{color:var(--pri)}
+  .wsi.out{color:var(--bad)}.wsi.out svg{color:var(--bad)}
+  .wsl .sbd{margin:10px 12px}
+
+  /* the side menu replaces the tab row above the pages */
+  html.web body.wside:not(.intest) .hometabs{display:none!important}
+}
+@media(min-width:1180px){
+  /* home: banner on the left, countdown and shortcuts on the right */
+  html.web body.wside:not(.intest) #app>.wrap:has(>.promo){display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);grid-template-rows:auto auto 1fr;gap:14px 18px;align-items:start}
+  html.web body.wside:not(.intest) #app>.wrap:has(>.promo)>*{grid-column:1/-1;margin-top:0;margin-bottom:0}
+  html.web body.wside:not(.intest) #app>.wrap:has(>.promo)>.promo{grid-column:1;grid-row:1/span 3}
+  html.web body.wside:not(.intest) #app>.wrap:has(>.promo)>:is(.cdc,.qbhome,.rfhome){grid-column:2}
+  html.web body.wside:not(.intest) #app>.wrap:has(>.promo)>.h2s{margin-top:10px}
+}
+@media(min-width:1280px){
+  html.web body.wside:not(.intest){--wsw:280px}
+}
+@media(min-width:900px){
+  /* the side menu carries the logo: the header keeps only the bell */
+  html.web body.wside:not(.intest) .hdr .brand{visibility:hidden}
+}
+@media(min-width:900px){
+  html.web body.wside:not(.intest) #app{min-height:calc(100dvh - 140px)}
+}
+/* sign-in page in a browser: the footer with the policy links sits right under the card */
+html.web body.wout #app{min-height:calc(100dvh - 150px)}
