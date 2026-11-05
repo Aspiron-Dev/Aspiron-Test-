@@ -10,7 +10,7 @@ const EXAM = 'NEET';
 const can = () => AX.can('content', 'manage');
 const P = { papers: [], total: 0, rows: null, paper: '', year: 0, only: false, ready: [] };
 let sylP = null;
-const syl = () => sylP || (sylP = window.PYQ_SYL ? Promise.resolve() : new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'pyq-syllabus.js?v=2'; s.onload = res; s.onerror = () => { sylP = null; rej(new Error('pyq-syllabus.js')); }; document.head.appendChild(s); }));
+const syl = () => sylP || (sylP = window.PYQ_SYL ? Promise.resolve() : new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'pyq-syllabus.js?v=3'; s.onload = res; s.onerror = () => { sylP = null; rej(new Error('pyq-syllabus.js')); }; document.head.appendChild(s); }));
 const S = () => window.PYQ_SYL[EXAM];
 const subj = id => S().subjects.find(s => s.id === id) || S().subjects[0];
 const chap = (sid, cid) => (subj(sid).chapters || []).find(c => c.id === cid);

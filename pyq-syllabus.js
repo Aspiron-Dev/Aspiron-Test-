@@ -109,6 +109,40 @@ window.PYQ_SYL={
     papers:['AIPMT 1998','AIPMT 1999','AIPMT 2000','AIPMT 2010','AIPMT 2011','AIPMT 2012','NEET 2013','AIPMT 2014','AIPMT 2015','AIPMT 2015 Re-exam','NEET 2016 Phase I','NEET 2016 Phase II','NEET 2017','NEET 2018','NEET 2019','NEET 2020','NEET 2021','NEET 2022','NEET 2023','NEET 2023 Manipur','NEET 2024','NEET 2024 Re-exam','NEET 2025','NEET 2026']},
   JEE:{name:'JEE Main',soon:1},JEEA:{name:'JEE Advanced',soon:1},CBSE12:{name:'CBSE Class 12',soon:1},CBSE10:{name:'CBSE Class 10',soon:1}
 };
+/* Question bank / Test generator (app25.js, cx/m-qbank.js): Mathematics chapters (NCERT 11 + 12) for JEE, and the
+   subjects of each exam. Not part of PYQ_SYL, so the PYQ analysis stays NEET-only. */
+window.QB_MATH=mk('math','Mathematics',[
+ ['m_sets',11,'Sets',[['Sets','set|subset|union|intersection|venn|power set']]],
+ ['m_relfn11',11,'Relations and Functions',[['Relations & functions','relation|function|domain|range|cartesian product']]],
+ ['m_trig',11,'Trigonometric Functions',[['Trigonometric functions','sin|cos|tan|cot|sec|cosec|radian|trigonometric']]],
+ ['m_complex',11,'Complex Numbers and Quadratic Equations',[['Complex numbers & quadratics','complex|iota|argument|modulus|conjugate|quadratic|roots of']]],
+ ['m_ineq',11,'Linear Inequalities',[['Linear inequalities','inequalit|inequation']]],
+ ['m_pnc',11,'Permutations and Combinations',[['Permutations & combinations','permutation|combination|arrangement|factorial|ways']]],
+ ['m_binom',11,'Binomial Theorem',[['Binomial theorem','binomial|expansion|general term|middle term']]],
+ ['m_seq',11,'Sequences and Series',[['Sequences & series','progression|a.p.|g.p.|arithmetic mean|geometric mean|series|sequence']]],
+ ['m_lines',11,'Straight Lines',[['Straight lines','straight line|slope|intercept|perpendicular distance|collinear']]],
+ ['m_conics',11,'Conic Sections',[['Conic sections','circle|parabola|ellipse|hyperbola|focus|directrix|eccentricity|latus rectum']]],
+ ['m_3d11',11,'Introduction to Three Dimensional Geometry',[['3D coordinates','octant|three dimensional|coordinate axes']]],
+ ['m_limits',11,'Limits and Derivatives',[['Limits & derivatives','limit|lim |derivative|first principle']]],
+ ['m_stats',11,'Statistics',[['Statistics','mean deviation|variance|standard deviation|median|mode']]],
+ ['m_prob11',11,'Probability',[['Probability','probability|event|sample space|dice|coin|cards']]],
+ ['m_relfn12',12,'Relations and Functions (Class 12)',[['Relations & functions','reflexive|symmetric|transitive|equivalence|one-one|onto|bijective|invertible']]],
+ ['m_itf',12,'Inverse Trigonometric Functions',[['Inverse trigonometric functions','sin^-1|cos^-1|tan^-1|inverse trigonometric|principal value']]],
+ ['m_matrices',12,'Matrices',[['Matrices','matrix|matrices|transpose|symmetric matrix|skew']]],
+ ['m_det',12,'Determinants',[['Determinants','determinant|adjoint|cofactor|minor|inverse of matrix']]],
+ ['m_cont',12,'Continuity and Differentiability',[['Continuity & differentiability','continuous|continuity|differentiab|chain rule|implicit']]],
+ ['m_aod',12,'Application of Derivatives',[['Application of derivatives','maxima|minima|maximum value|minimum value|increasing|decreasing|tangent|normal|rate of change']]],
+ ['m_int',12,'Integrals',[['Integrals','integral|integrate|integration|antiderivative|definite']]],
+ ['m_aoi',12,'Application of Integrals',[['Area under curves','area bounded|area enclosed|area of the region|area under']]],
+ ['m_de',12,'Differential Equations',[['Differential equations','differential equation|order and degree|general solution|integrating factor']]],
+ ['m_vec',12,'Vector Algebra',[['Vectors','vector|scalar product|cross product|dot product|unit vector|position vector']]],
+ ['m_3d12',12,'Three Dimensional Geometry',[['Lines & planes in 3D','direction cosine|direction ratio|skew lines|shortest distance|plane']]],
+ ['m_lp',12,'Linear Programming',[['Linear programming','linear programming|feasible region|objective function|corner point|constraints']]],
+ ['m_prob12',12,'Probability (Class 12)',[['Probability','conditional probability|bayes|independent events|random variable|binomial distribution']]]
+]);
+window.QB_EXAMS={NEET:['phy','chem','bio'],JEE:['phy','chem','math']};
+/* every subject the bank knows, with its chapters */
+window.qbSubjects=function(){return window.PYQ_SYL.NEET.subjects.concat([window.QB_MATH])};
 /* auto-tagger: best chapter + topic for a question's text (used by the admin import) */
 window.pyqTag=function(exam,text,subjHint){
   const S=window.PYQ_SYL[exam];if(!S||!S.subjects)return null;const t=' '+String(text||'').toLowerCase().replace(/\s+/g,' ')+' ';
@@ -117,6 +151,6 @@ window.pyqTag=function(exam,text,subjHint){
     if(sc&&(!best||sc>best.score||(sc===best.score&&!c.old&&best.old)))best={subject:s.id,chapter:c.id,topic:tp.name,score:sc,old:c.old}}))});
   return best;
 };
-window.pyqSubjOf=function(sec){sec=String(sec||'').toLowerCase();return /phys/.test(sec)?'phy':/chem/.test(sec)?'chem':/bio|botany|zoology/.test(sec)?'bio':''};
+window.pyqSubjOf=function(sec){sec=String(sec||'').toLowerCase();return /phys/.test(sec)?'phy':/chem/.test(sec)?'chem':/bio|botany|zoology/.test(sec)?'bio':/math/.test(sec)?'math':''};
 window.pyqKey=function(q){return String(q||'').toLowerCase().replace(/<[^>]+>/g,' ').replace(/[^a-z0-9]+/g,'').slice(0,90)};
 })();

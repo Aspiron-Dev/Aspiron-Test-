@@ -10,8 +10,15 @@ const EXAM = 'NEET';
 const can = () => AX.can('content', 'manage');
 const call = (a, d) => AX.api.call('cbt_admin_qbank', a, d || {});
 let sylP = null;
-const syl = () => sylP || (sylP = window.PYQ_SYL ? Promise.resolve() : new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'pyq-syllabus.js?v=2'; s.onload = res; s.onerror = () => { sylP = null; rej(new Error('pyq-syllabus.js')); }; document.head.appendChild(s); }));
-const SUBS = () => window.PYQ_SYL[EXAM].subjects;
+const syl = () => sylP || (sylP = window.PYQ_SYL ? Promise.resolve() : new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'pyq-syllabus.js?v=3'; s.onload = res; s.onerror = () => { sylP = null; rej(new Error('pyq-syllabus.js')); }; document.head.appendChild(s); }));
+const SUBS = () => window.qbSubjects ? window.qbSubjects() : window.PYQ_SYL[EXAM].subjects;
+// best chapter + topic for a question (NEET subjects and Maths), same scoring as pyqTag
+const tag = (text, hint) => {
+  const t = ' ' + String(text || '').toLowerCase().replace(/\s+/g, ' ') + ' '; let best = null;
+  SUBS().forEach(s => { if (hint && hint !== s.id) return; s.chapters.forEach(c => c.topics.forEach(tp => { let sc = 0; tp.kw.forEach(k => { if (k && t.includes(k)) sc += 1 + (k.includes(' ') ? 2 : 0) + (k.length > 8 ? 1 : 0); });
+    if (sc && (!best || sc > best.score || (sc === best.score && !c.old && best.old))) best = { subject: s.id, chapter: c.id, topic: tp.name, score: sc, old: c.old }; })); });
+  return best;
+};
 const LV = [['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']];
 const TY = [['mcq', 'Multiple choice'], ['statement', 'Statement based'], ['match', 'Match the following'], ['fill', 'Fill in the blanks'], ['assertion', 'Assertion & reason']];
 const SR = [['ncert', 'NCERT based'], ['pyq', 'Previous year (PYQ)'], ['extra', 'Extra · out of NCERT']];
@@ -86,7 +93,7 @@ async function overview(ctx) {
         if (!x.ok || !x.test) return UI.toast('Could not load the test', { tone: 'bad' });
         B.test = id;
         B.rows = (x.test.data || []).map((q, i) => [q, i]).filter(([q]) => q && (q.q || q.img) && (q.options || []).length >= 4 && q.answer >= 0 && q.answer <= 3).map(([q, i]) => {
-          const hint = window.pyqSubjOf(q.sec), t = window.pyqTag(EXAM, [q.q, ...(q.options || []), q.explanation].join(' '), hint) || {};
+          const hint = window.pyqSubjOf(q.sec), t = tag([q.q, ...(q.options || []), q.explanation].join(' '), hint) || {};
           return { i, q: q.q || '', options: q.options.slice(0, 4), answer: q.answer, explanation: q.explanation || '', img: q.img || null, oimg: q.oimg || null,
             subject: t.subject || hint || (q.sec ? String(q.sec).toLowerCase().slice(0, 30) : 'bio'), chapter: t.chapter || '', topic: t.topic || '', level: B.lv, qtype: qType(q.q), sure: (t.score || 0) >= 2 };
         });
