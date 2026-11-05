@@ -1,4 +1,6 @@
 /* never inside another site's frame (clickjacking) */
+/* clean address: /store.html shows as /store, /terms.html as /terms (never the file name) */
+try{var _p=location.pathname,_n=_p.replace(/\.html$/,'');if(_n!==_p)history.replaceState(history.state,'',_n+location.search+location.hash)}catch(e){}
 if(window.top!==window.self){try{window.top.location.replace(window.location.href)}catch(e){}document.documentElement.style.display='none'};
 /* Store: light / dark theme (the saved choice, else the phone's setting), whether the student already gave their name +
    mobile, and their course (NEET / JEE). Runs in <head> before the page is drawn, so the wrong theme, course or the

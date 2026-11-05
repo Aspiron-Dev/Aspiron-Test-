@@ -1,5 +1,5 @@
 /* ===== Admin: Promotions — one tracking link per influencer or campaign (Store → Promotions).
-   Clicks, real leads, paid students, commission owed, profit, payouts. Students who open store.html?ref=CODE are counted here.
+   Clicks, real leads, paid students, commission owed, profit, payouts. Students who open store?ref=CODE are counted here.
    Server: supabase_v30_promotions.sql (cbt_admin_promos, cbt_store_orders.promo_*) ===== */
 async function PRX(action,data){
   try{
@@ -20,7 +20,7 @@ const PRSEG=[['all','All'],['on','Active'],['off','Paused']];
 const prInr=n=>'₹'+Math.round(Number(n)||0).toLocaleString('en-IN');
 const prDay=d=>new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
 const prToday=()=>{const d=new Date(),z=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`};
-const prUrl=code=>siteUrl()+'store.html?ref='+encodeURIComponent(code);
+const prUrl=code=>siteUrl()+'store?ref='+encodeURIComponent(code);
 const prErr=e=>({name:'Enter a name (at least 2 letters).',code:'Code: 3–30 letters, numbers or dashes, starting and ending with a letter or number.',exists:'This code is already used. Choose another.',commission:'Commission must be a whole number, for example 25.',claimed:'Claimed must be a whole number, or empty.',amount:'Enter an amount above 0.',date:'Check the date.',link:'Link not found. Refresh the page.',payout:'Payout not found. Refresh the page.',order:'Order not found. Refresh the page.',missing:'Run supabase_v30_promotions.sql in Supabase first.',network:'No internet. Try again.'})[e]||'Could not save. Try again.';
 async function prData(force){
   if(!force&&PRM.at&&Date.now()-PRM.at<20000)return{ok:true};

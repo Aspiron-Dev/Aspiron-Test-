@@ -17,7 +17,7 @@ const firstName = n => String(n || '').trim().split(/\s+/)[0] || 'there';
 const SITE = () => CFG.SITE_NAME || 'our test series';
 const siteUrl = () => location.href.replace(/[#?].*$/, '').replace(/[^/]*\.html$/, '');
 const siteBase = () => /^https:\/\//.test(CFG.SHORT_URL || '') ? String(CFG.SHORT_URL).replace(/\/?$/, '/') : siteUrl();
-const storeUrl = () => siteBase() + 'store.html';
+const storeUrl = () => siteBase() + 'store';
 const ms = t => AX.fmt.ms(t) || 0;
 const SEGS = [
   { id: 'verify', t: 'Payment done', d: 'Verify the UTR, then approve & unlock', icon: 'wallet' },

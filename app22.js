@@ -1,5 +1,5 @@
 /* app22: Refer & earn (#/refer) — supabase_v52_coupons_refer.sql, cbt_refer_app (signed in).
-   The student's link is store.html?r=<first name + last 5 digits>: it always opens the STORE, never the app.
+   The student's link is store?r=<first name + last 5 digits>: it always opens the STORE, never the app.
    A new student who buys through it gives the sharer the reward (₹25) in the store wallet. The wallet cannot be
    withdrawn; it is used at checkout on the store. Before v52 is run the page says "coming soon". */
 IC.gift='<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v9H5v-9M7.5 8a2.5 2.5 0 010-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 010 5"/>';
@@ -7,7 +7,7 @@ IC.copy='<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0
 IC.wallet='<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M16 14.5h2"/>';
 
 let RF=null,RFAT=0;
-const rfStore=()=>location.href.replace(/[#?].*$/,'').replace(/[^/]*$/,'')+'store.html';
+const rfStore=()=>location.href.replace(/[#?].*$/,'').replace(/[^/]*$/,'')+'store';
 const rfLink=c=>rfStore()+'?r='+encodeURIComponent(c);
 const rfText=c=>`${CFG.SITE_NAME||'Aspiron Education'} — NEET / JEE test series with real exam pattern and All-India rank. I use it. Join with my link:\n${rfLink(c)}`;
 async function rfLoad(force){
@@ -43,7 +43,7 @@ async function viewRefer(){
     <div class="rfb"><button class="btn" onclick="rfShare()">${ic('share',17)} Share link</button><button class="btn ghost" onclick="rfWa()">${ic('wa',17)} WhatsApp</button><button class="btn ghost" onclick="rfCopy(rfText(RF.code),'Message copied')">${ic('copy',17)} Copy message</button></div>
     <p class="sm mut" style="margin:10px 0 0">The link opens our store (not this app), so your friend can see the test series and buy.</p></div>
    <div class="rfk"><div class="card"><span>Friends joined</span><b>${r.joined||0}</b></div><div class="card"><span>Friends bought</span><b style="color:var(--ok)">${r.bought||0}</b></div><div class="card"><span>Total earned</span><b>${inr(r.earned)}</b></div><div class="card"><span>Wallet balance</span><b style="color:var(--pri)">${inr(r.balance)}</b></div></div>
-   <div class="card rfw"><span class="rfi sm">${ic('wallet',20)}</span><div style="flex:1;min-width:0"><b>Use your wallet in the store</b><div class="sm mut">At checkout turn on “Use wallet balance”. Wallet money cannot be withdrawn to a bank or UPI.</div></div><a class="btn soft sm" href="store.html">${ic('bag',15)} Store</a></div>
+   <div class="card rfw"><span class="rfi sm">${ic('wallet',20)}</span><div style="flex:1;min-width:0"><b>Use your wallet in the store</b><div class="sm mut">At checkout turn on “Use wallet balance”. Wallet money cannot be withdrawn to a bank or UPI.</div></div><a class="btn soft sm" href="store">${ic('bag',15)} Store</a></div>
    <div class="card"><div class="eyebrow" style="margin-bottom:6px">Your friends</div>
     ${L.length?L.map(x=>`<div class="rfl"><span class="rfav">${esc(String(x.name||'S')[0].toUpperCase())}</span><div style="flex:1;min-width:0"><b>${esc(x.name||'Student')}</b><div class="sm mut">${esc(x.mobile||'')} · joined ${new Date(x.at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div></div><span class="rfp${x.bought?' on':''}">${x.bought?'Bought · +'+rw:'Not bought yet'}</span></div>`).join('')
       :`<p class="sm mut" style="margin:4px 0 0">Nobody yet. Share your link — friends who join show here.</p>`}</div>

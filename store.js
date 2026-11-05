@@ -535,7 +535,7 @@ function sheet(step,body,foot){
    top:`<div class="steps" aria-hidden="true">${STS.map((s,i)=>`<div class="st${i+1<step?' done':i+1===step?' on':''}"><i>${i+1<step?I('check'):i+1}</i><span>${s}</span></div>${i<2?`<span class="sl${i+1<step?' fill':''}${i+2===step?' now':''}"></span>`:''}`).join('')}</div>`}));
 }
 let BUYN=0;
-/* ---------- promotion link: store.html?ref=CODE. The last link opened is remembered for 30 days. Each new visit to a link
+/* ---------- promotion link: store?ref=CODE. The last link opened is remembered for 30 days. Each new visit to a link
    counts one click; an order made after that is tied to the link on the server (the admin panel counts it there). ---------- */
 const REF_OK=/^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
 function captureRef(){
@@ -679,7 +679,7 @@ async function walGo(){
   ORD.payer='Wallet balance';ORD.utr='';LSs('store_ord',ORD);vStep();
 }
 
-/* ---------- Refer & earn: store.html?r=<code>. The link opens the store; a new student who buys gives the sharer the
+/* ---------- Refer & earn: store?r=<code>. The link opens the store; a new student who buys gives the sharer the
    reward (₹25) in the wallet. The wallet cannot be withdrawn — it is used at checkout. ---------- */
 const RC_OK=/^[a-z]{2,10}[0-9]{5,7}$/;
 function captureRc(){
