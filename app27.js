@@ -68,7 +68,7 @@ function webFoot(){
   let f=document.getElementById('wfoot');
   if(!webTab()){if(f)f.remove();return}
   if(!f){f=document.createElement('footer');f.id='wfoot';f.className='wfoot';const a=document.getElementById('app');a.parentNode.insertBefore(f,a.nextSibling)}
-  f.innerHTML=`<div class="wf-in"><span>© ${new Date().getFullYear()} Aspiron Education</span><nav aria-label="Policies"><a href="store.html">Store</a><a href="contact.html">Contact Us</a><a href="terms.html">Terms &amp; Conditions</a><a href="privacy.html">Privacy Policy</a><a href="refund.html">Refund Policy</a></nav></div>`;
+  f.innerHTML=`<div class="wf-in"><span>© ${new Date().getFullYear()} Aspiron Education</span><nav aria-label="Policies"><a href="store.html">Store</a><a href="contact.html">Contact Us</a><a href="terms.html">Terms &amp; Conditions</a><a href="privacy.html">Privacy Policy</a><a href="refund.html">Refund Policy</a></nav>${(typeof socialLinksHTML==='function'&&socialLinksHTML())?`<nav aria-label="Follow us">${socialLinksHTML()}</nav>`:''}</div>`;
 }
 function webSync(){try{webSide();webFoot();document.body.classList.toggle('wout',!AUTH)}catch(e){}}
 {const _uh=updateHeader;updateHeader=function(){const r=_uh.apply(this,arguments);webSync();return r}}
