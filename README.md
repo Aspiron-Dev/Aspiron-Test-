@@ -140,6 +140,13 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - The orders come to **Orders** tagged **Pre-booking** (and “(Pre-booking)” in the student's verify message). Verify the payment as usual and *Approve & unlock* when the series launches. Turning Pre-booking off stops new pre-bookings at once (checked in the database too); when you turn Buy now on, the series is simply live.
 - **Setup:** run `supabase_v54_prebook.sql` (after v53), then `supabase_v35_admin_team.sql` again.
 
+## Reading question papers from PDF (`cx/m-import.js`, `parser.js`)
+- **Two-column papers** are read column by column (left, then right), in bands between full-width lines such as titles, so questions no longer mix. Words on one line keep their spaces; a wide gap (side-by-side options, Match-the-following tables) keeps 3 spaces.
+- **Headers / footers** repeated at the top or bottom of most pages, and bare page numbers, are left out. A line that starts like a question is always kept.
+- **Pictures** in a PDF are cut out and go into their question or option (and into solutions read from a PDF), like pictures from Word.
+- **Hindi PDFs:** the "ि" written before its letter is put back in order, and loose matras are removed. If the font hides joined letters, the app offers to read the PDF with OCR (Hindi + English).
+- **Numbering:** `1.` `1)` `Q.1` `Q1` `Que 1:` `Question 1 -`; options `(A)` `A.` `A)` `(1)` `[A]`. A sentence the PDF broke over two lines is joined again; list lines (statements `A.` / `(i)`, table rows) keep their own lines.
+
 ## Live tests: result time and auto-save (`supabase_v30_result_time.sql`)
 - In the admin test form, a test can get **Live ends** (no new start after it) and **Result & answer key at**. The link "Fill: live till 9 PM, result 10 PM" fills both for the start day.
 - Until the result time, a student who submits sees only "Test submitted ✓ — result, rank and answer key after …": no score, rank, answer key, mistakes, insights or bookmarked answers for that test. After it, everything shows by itself. Tests without a result time and practice tests show results at once, as before.

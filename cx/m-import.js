@@ -69,20 +69,156 @@ async function pdfOpen(buf) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = LIB.worker;
   return pdfjsLib.getDocument({ data: buf.slice(0), isEvalSupported: false }).promise;
 }
-async function pdfText(pdf, spaced, note) {
-  let out = '';
-  for (let p = 1; p <= pdf.numPages; p++) {
-    const tc = await (await pdf.getPage(p)).getTextContent();
-    let last = null, cur = ''; const lines = [];
+// Hindi PDFs often keep the glyph order of the screen, not of the text: "ि" stands before its letter ("िचत्र" = "चित्र"),
+// a joined letter may come out as a blank (\u0000) and loose matras land on their own. Put "ि" back after its letter
+// (with any half letters), drop the blanks and the lone matras. Text without Devanagari is not touched.
+const DV = '[क-हक़-य़ॸ-ॿ]़?';
+const devaFix = t => !/[ऀ-ॿ]/.test(t) ? t : t.replace(/\u0000/g, '')
+  .replace(new RegExp('ि((?:' + DV + '्)*' + DV + ')', 'g'), '$1ि')
+  .replace(/(^|[ \t])[ऀ-ःऺ-ॏ॑-ॗॢॣ]+(?=[ \t]|$)/gm, '$1')
+  .replace(/^[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n');
+// Devanagari text that is still broken after devaFix (many blanks) — then OCR reads it better
+const devaBroken = t => { const d = (t.match(/[ऀ-ॿ]/g) || []).length; return d > 200 && (t.match(/\u0000/g) || []).length > d * 0.01; };
+// PDF text in reading order. Each page: two columns (a clear empty strip down the middle) are read left, then right;
+// words of one line are joined by their gap (a wide gap — side-by-side options, table cells — keeps 3 spaces);
+// header / footer lines repeated on most pages are left out. withImages: pictures on the pages are cut out and a
+// ⟦IMG:n⟧ mark is put where they stand in the text (same marks as Word), so they land in the right question or option.
+async function pdfText(pdf, spaced, note, withImages) {
+  const N = pdf.numPages, pages = [];
+  const OPS = window.pdfjsLib && pdfjsLib.OPS;
+  for (let p = 1; p <= N; p++) {
+    const page = await pdf.getPage(p), vp = page.getViewport({ scale: 1 }), W = vp.width, H = vp.height;
+    const tc = await page.getTextContent();
+    const items = [];
     for (const it of tc.items) {
-      const y = Math.round(it.transform[5]);
-      if (last !== null && Math.abs(y - last) > 3) { lines.push(cur); cur = ''; }
-      cur += it.str + (spaced ? ' ' : ''); last = y;
+      if (!it.str || !it.str.trim()) continue;
+      const t = it.transform, fh = Math.hypot(t[2], t[3]) || it.height || 10;
+      items.push({ x: t[4], y: t[5], w: it.width || 0, h: fh, s: it.str });
     }
-    lines.push(cur); out += lines.join('\n') + '\n';
-    note(`Reading page ${p} of ${pdf.numPages}…`, Math.round(p * 100 / pdf.numPages));
+    const imgs = [];
+    if (withImages && OPS) {
+      try {
+        const ol = await page.getOperatorList(), PI = new Set([OPS.paintImageXObject, OPS.paintInlineImageXObject, OPS.paintJpegXObject, OPS.paintImageXObjectRepeat].filter(x => x != null));
+        const mul = (m, n) => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
+        let ctm = [1, 0, 0, 1, 0, 0]; const st = [];
+        for (let i = 0; i < ol.fnArray.length; i++) {
+          const fn = ol.fnArray[i], ar = ol.argsArray[i];
+          if (fn === OPS.save) st.push(ctm);
+          else if (fn === OPS.restore) ctm = st.pop() || [1, 0, 0, 1, 0, 0];
+          else if (fn === OPS.transform) ctm = mul(ctm, ar);
+          else if (fn === OPS.paintFormXObjectBegin) { st.push(ctm); if (ar && ar[0] && ar[0].length === 6) ctm = mul(ctm, ar[0]); }
+          else if (fn === OPS.paintFormXObjectEnd) ctm = st.pop() || [1, 0, 0, 1, 0, 0];
+          else if (PI.has(fn)) {
+            const xs = [ctm[4], ctm[0] + ctm[4], ctm[2] + ctm[4], ctm[0] + ctm[2] + ctm[4]], ys = [ctm[5], ctm[1] + ctm[5], ctm[3] + ctm[5], ctm[1] + ctm[3] + ctm[5]];
+            const b = { x0: Math.max(0, Math.min(...xs)), x1: Math.min(W, Math.max(...xs)), y0: Math.max(0, Math.min(...ys)), y1: Math.min(H, Math.max(...ys)) };
+            // tiny marks and page-size backgrounds / watermarks are not question pictures
+            if (b.x1 - b.x0 >= 14 && b.y1 - b.y0 >= 10 && (b.x1 - b.x0) * (b.y1 - b.y0) < W * H * 0.45) imgs.push(b);
+          }
+        }
+      } catch (e) { /* no pictures from this page */ }
+    }
+    pages.push({ page, W, H, items, imgs });
+    note(`Reading page ${p} of ${N}…`, Math.round(p * (withImages ? 60 : 100) / N));
   }
-  return out;
+  // the same picture at the same place on most pages = logo / watermark
+  const key = b => [b.x0, b.y0, b.x1, b.y1].map(v => Math.round(v / 4)).join(',');
+  const imgSeen = {}; pages.forEach(pg => new Set(pg.imgs.map(key)).forEach(k => { imgSeen[k] = (imgSeen[k] || 0) + 1; }));
+  const images = [];
+  for (let i = 0; i < pages.length; i++) {
+    const pg = pages[i];
+    pg.imgs = pg.imgs.filter(b => !(N >= 3 && imgSeen[key(b)] >= Math.max(3, N * 0.6)));
+    if (!pg.imgs.length) continue;
+    const sc = 2, v2 = pg.page.getViewport({ scale: sc }), c = document.createElement('canvas');
+    c.width = Math.ceil(v2.width); c.height = Math.ceil(v2.height);
+    const cx = c.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, c.width, c.height);
+    await pg.page.render({ canvasContext: cx, viewport: v2 }).promise;
+    for (const b of pg.imgs) {
+      const pad = 2, x = Math.max(0, (b.x0 - pad) * sc), y = Math.max(0, (pg.H - b.y1 - pad) * sc), w = Math.min(c.width - x, (b.x1 - b.x0 + 2 * pad) * sc), hh = Math.min(c.height - y, (b.y1 - b.y0 + 2 * pad) * sc);
+      const o = document.createElement('canvas'); o.width = Math.max(1, Math.round(w)); o.height = Math.max(1, Math.round(hh));
+      o.getContext('2d').drawImage(c, x, y, w, hh, 0, 0, o.width, o.height);
+      images.push(o.toDataURL('image/jpeg', 0.9));
+      // the mark sits at the picture's middle height, so a picture beside "(1)" joins that option's line
+      pg.items.push({ x: b.x0, y: (b.y0 + b.y1) / 2, w: b.x1 - b.x0, h: 8, s: ` ⟦IMG:${images.length - 1}⟧ `, img: true });
+    }
+    note(`Cutting out pictures… page ${i + 1} of ${N}`, 60 + Math.round((i + 1) * 40 / N));
+  }
+  // lines of each page in reading order: a page with two columns is read in bands — between lines that run across the
+  // whole width (a title, a section heading), the left column top to bottom, then the right column
+  const toLines = its => {
+    const srt = [...its].sort((a, b) => b.y - a.y || a.x - b.x), lines = [];
+    for (const t of srt) {
+      const ln = lines[lines.length - 1];
+      if (ln && Math.abs(ln.y - t.y) <= Math.max(2.5, Math.min(ln.h, t.h) * 0.45)) { ln.it.push(t); if (!t.img) ln.h = Math.max(ln.h, t.h); }
+      else lines.push({ y: t.y, h: t.img ? 8 : t.h, it: [t] });
+    }
+    lines.forEach(ln => ln.it.sort((a, b) => a.x - b.x));
+    return lines;
+  };
+  const join = ln => {
+    let str = '', prev = null;
+    for (const t of ln.it) {
+      if (prev) {
+        const gap = t.x - (prev.x + prev.w), fh = Math.max(4, Math.min(prev.h, t.h));
+        // never split a Devanagari letter from its halant or matra
+        const glue = /\u094D$/.test(str) || /^[\u0900-\u0903\u093A-\u093E\u0940-\u094F\u0951-\u0957\u0962\u0963]/.test(t.s);   // "ि" is drawn first, so it starts a word
+        str += gap > fh * 1.6 ? '   ' : (gap > fh * 0.12 || spaced) && !glue && !/\s$/.test(str) && !/^\s/.test(t.s) ? ' ' : '';
+      }
+      str += t.s; prev = t;
+    }
+    return str.replace(/[ \t]+$/, '');
+  };
+  const out = [];
+  for (const pg of pages) {
+    const { W, items } = pg, tx = items.filter(t => !t.img);
+    let g = null;
+    if (tx.length > 20) {
+      // the gutter: the x in the middle strip crossed by the fewest text items
+      let best = null;
+      for (let x = W * 0.3; x <= W * 0.7; x += W / 100) { const n = tx.filter(t => t.x < x && t.x + t.w > x).length; if (!best || n < best.n) best = { x, n }; }
+      const L = tx.filter(t => t.x + t.w <= best.x).length, R = tx.filter(t => t.x >= best.x).length;
+      if (best.n <= Math.max(2, tx.length * 0.03) && L >= tx.length * 0.2 && R >= tx.length * 0.2) g = best.x;
+    }
+    const res = [];
+    if (g == null) toLines(items).forEach(ln => res.push({ s: join(ln), y: ln.y }));
+    else {
+      let band = { L: [], R: [] };
+      const flush = () => { ['L', 'R'].forEach(k => toLines(band[k]).forEach(ln => res.push({ s: join(ln), y: ln.y }))); band = { L: [], R: [] }; };
+      for (const ln of toLines(items)) {
+        const l = ln.it.filter(t => t.x + t.w / 2 < g), r = ln.it.filter(t => t.x + t.w / 2 >= g);
+        // one line across the gutter: text crosses it, or the left part runs on into the right part without a column gap
+        const cross = ln.it.some(t => !t.img && t.x < g - 2 && t.x + t.w > g + 2);
+        const lEnd = l.length ? Math.max(...l.map(t => t.x + t.w)) : 0, rBeg = r.length ? Math.min(...r.map(t => t.x)) : 0;
+        if (cross || (l.length && r.length && rBeg - lEnd < ln.h * 1.2)) { flush(); res.push({ s: join(ln), y: ln.y }); }
+        else { band.L.push(...l); band.R.push(...r); }
+      }
+      flush();
+    }
+    pg.lines = res;
+  }
+  // header / footer: on a page with 8+ lines, one of its 2 top (or 2 bottom) lines whose text (numbers ignored) is also
+  // among the top (or bottom) lines of most pages and never inside the page body; or a bare page number there.
+  // A line that starts like a question or solution ("12.", "Q12", "Sol 12") is always kept.
+  const norm = x => x.replace(/\d+/g, '#').replace(/\s+/g, ' ').trim().toLowerCase();
+  const qStart = x => /^\s*(?:(?:Q(?:ue(?:s(?:tion)?)?)?|Question|Sol(?:ution)?|Ans|प्रश्न|प्र)\s*[.:]?\s*)?\d{1,3}\s*(?:[.):\-–]|\s)/i.test(x);
+  const seen = { t: {}, b: {} }, body = new Set();
+  pages.forEach(pg => {
+    const ys = [...new Set(pg.lines.map(l => Math.round(l.y)))].sort((a, b) => b - a);
+    pg.pos = l => pg.lines.length < 8 ? '' : ys.slice(0, 2).includes(Math.round(l.y)) ? 't' : ys.slice(-2).includes(Math.round(l.y)) ? 'b' : '';
+    const got = { t: new Set(), b: new Set() };
+    pg.lines.forEach(l => { const p = pg.pos(l); if (p) got[p].add(norm(l.s)); else body.add(norm(l.s)); });
+    ['t', 'b'].forEach(p => got[p].forEach(k => { seen[p][k] = (seen[p][k] || 0) + 1; }));
+  });
+  pages.forEach(pg => {
+    const keep = pg.lines.filter(l => {
+      const p = pg.pos(l); if (!p || qStart(l.s)) return true;
+      const k = norm(l.s);
+      if (/^(page\s*)?#(\s*(of|\/)\s*#)?$/i.test(k)) return false;
+      return !(N >= 3 && !body.has(k) && seen[p][k] >= Math.ceil(N * 0.6));
+    });
+    out.push(keep.map(l => l.s).join('\n'));
+  });
+  const all = out.join('\n');
+  return { text: devaFix(all) + '\n', images, broken: devaBroken(all) };
 }
 async function ocrRun(count, getCanvas, note) {
   await loadScript(LIB.tess, () => window.Tesseract);
@@ -147,18 +283,22 @@ async function docxRead(f) {
   return { text: lines.join('\n'), images: imgs };
 }
 // any file → {text, images?}; PDFs without a text layer are offered OCR
-async function readAny(f, isKey, note) {
+async function readAny(f, isKey, note, pics = !isKey) {
   const n = f.name.toLowerCase();
   if (n.endsWith('.pdf') || f.type === 'application/pdf') {
     const buf = await f.arrayBuffer();
     if (!isKey) { IM.pdfBuf = buf; IM.pdfDoc = null; }
     const pdf = await pdfOpen(buf);
-    let t = await pdfText(pdf, isKey, note), scanned = false;
+    const pr = await pdfText(pdf, isKey, note, pics);
+    let t = pr.text, scanned = false;
     if (t.replace(/\s/g, '').length < 40 * pdf.numPages) {
       scanned = true;
       if (await UI.confirm({ title: 'Read this PDF with OCR?', text: 'This PDF looks like a scanned image (no typed text found). Read it with OCR? This is free but can take a few minutes.', yes: 'Read with OCR', no: 'Not now' })) t = await pdfOcr(pdf, note);
+    } else if (pr.broken && !isKey && await UI.confirm({ title: 'Read the Hindi with OCR?', text: 'Some Hindi letters in this PDF cannot be read from its text (its font joins them), so words like “केंद्रक” may lose a letter. OCR reads the page like a photo and gets them right, but takes a few minutes. Pictures still come from the English paper.', yes: 'Read with OCR', no: 'Keep this text' })) {
+      const keep = ocrLang; if (!ocrLang || ocrLang === 'eng') ocrLang = 'eng+hin';
+      try { t = await pdfOcr(pdf, note); scanned = true; } finally { ocrLang = keep; }
     }
-    return { text: t, pdf: true, scanned };
+    return { text: t, images: scanned ? [] : pr.images, pdf: true, scanned };
   }
   if (n.endsWith('.docx')) return isKey ? { text: (await docxRead(f)).text } : docxRead(f);
   if (n.endsWith('.doc')) throw new Error('Old .doc files are not supported. Open it in Word and "Save as" .docx, or save as PDF.');
@@ -174,7 +314,9 @@ async function readAny(f, isKey, note) {
   return { text: await f.text() };
 }
 // a solutions file for the Explanations tool → {text, images, ocr?, scanned?}; Word keeps its pictures (⟦IMG:n⟧ marks)
-AX.readTextFile = async (f, note) => { const n = f.name.toLowerCase(); if (n.endsWith('.docx')) return docxRead(f); const r = await readAny(f, true, note); return Object.assign({ images: [] }, r); };
+AX.readTextFile = async (f, note) => { const n = f.name.toLowerCase(); if (n.endsWith('.docx')) return docxRead(f); const r = await readAny(f, true, note || (() => {}), true); return Object.assign({ images: [] }, r); };
+// a question paper file → {text, images, pdf?, scanned?, ocr?} (the same reading as the import window)
+AX.readPaperFile = (f, note) => readAny(f, false, note || (() => {}));
 // width-limited JPEG; target ≤ 260,000 chars (quality steps down to .45, then a 70 % redraw at .6) — same as the old panel
 function compressDataUrl(src, maxW, q) {
   return new Promise(res => {
@@ -379,7 +521,7 @@ AX.importQuestions = (o = {}) => new Promise(res => {
           $('#im-raw').value = r.text;
           hasPdfText = !!(r.pdf && !r.scanned); $('#im-ocr').classList.toggle('hide', !hasPdfText);
           const c = liveCounts(prep(S.raw), S.key);
-          status(r.text.trim() ? 'Done. ' + (c ? fmt.plural(c.n, 'question') + ' found. ' : '') + (r.ocr || r.scanned ? 'OCR can make mistakes, so please check the text. ' : 'Please check the text below. ') + (S.images.length ? S.images.length + ' picture(s) found in the Word file.' : '') : 'No text was found in this file. If it is a scan, try a clearer photo or paste the text.', null, r.text.trim() ? 'ok' : 'bad');
+          status(r.text.trim() ? 'Done. ' + (c ? fmt.plural(c.n, 'question') + ' found. ' : '') + (r.ocr || r.scanned ? 'OCR can make mistakes, so please check the text. ' : 'Please check the text below. ') + (S.images.length ? S.images.length + ' picture(s) found — they go into their questions and options.' : '') : 'No text was found in this file. If it is a scan, try a clearer photo or paste the text.', null, r.text.trim() ? 'ok' : 'bad');
         } catch (err) { status('Could not read this file: ' + err.message, null, 'bad'); }
         finally { busy = false; live(); }
       };
@@ -398,7 +540,7 @@ AX.importQuestions = (o = {}) => new Promise(res => {
         const qs = r.questions.map(K.normQ);
         let skipped = 0;
         if (S.images.length && /⟦IMG:\d+⟧/.test(S.raw)) {
-          busy = true; foot(); status('Preparing the pictures from the Word file…', 10);
+          busy = true; foot(); status('Preparing the pictures…', 10);
           const cache = {};
           const get = async k => cache[k] !== undefined ? cache[k] : (cache[k] = S.images[k] ? await compressDataUrl(S.images[k], 900, 0.8) : null);
           const take = async txt => { const ks = []; const t = String(txt).replace(/⟦IMG:(\d+)⟧/g, (_, k) => { ks.push(+k); return ' '; }).replace(/[ \t]{2,}/g, ' ').trim(); return { t, img: ks.length ? await get(ks[0]) : null, n: ks.length }; };
@@ -406,7 +548,7 @@ AX.importQuestions = (o = {}) => new Promise(res => {
             const q = qs[i], a = await take(q.q); q.q = a.t; if (a.img) q.img = a.img; skipped += Math.max(0, a.n - 1);
             for (let j = 0; j < 4; j++) { const x = await take(q.options[j]); q.options[j] = x.t; if (x.img) q.oimg[j] = x.img; }
             const e = await take(q.explanation); q.explanation = e.t; if (e.img) q.eimg = e.img;
-            if (i % 10 === 0) status('Preparing the pictures from the Word file…', Math.round(i * 100 / qs.length));
+            if (i % 10 === 0) status('Preparing the pictures…', Math.round(i * 100 / qs.length));
           }
           busy = false;
         } else qs.forEach(q => { ['q', 'explanation'].forEach(k => { q[k] = q[k].replace(/⟦IMG:\d+⟧/g, ' ').replace(/[ \t]{2,}/g, ' ').trim(); }); q.options = q.options.map(x => x.replace(/⟦IMG:\d+⟧/g, ' ').replace(/[ \t]{2,}/g, ' ').trim()); });
