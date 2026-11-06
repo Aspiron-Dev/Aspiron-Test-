@@ -6,6 +6,10 @@
 *.key
 *.p8
 *.p12
+*.keystore
+*.jks
+*.aab
+*.apk
 service-account*.json
 
 # Local tooling
