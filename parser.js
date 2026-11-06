@@ -22,7 +22,7 @@ function parseKey(t){
 }
 function splitOpts(block){
   // marker must follow a space/line start; trailing spaces are not eaten, so "of (A)\n(2)" still finds (2)
-  const re=/(?:\(([A-Da-d1-4])\)|([A-Da-d])[\.\)])/g;
+  const re=/(?:[\(\[]([A-Da-d1-4])[\)\]]|([A-Da-d])[\.\)])/g;
   const ms=[];let m;
   while((m=re.exec(block))){
     if(m.index&&!/\s/.test(block[m.index-1]))continue;
@@ -59,6 +59,11 @@ function sectionName(ln){
   const g=t.match(/^section\s*[-:]?\s*([A-Za-z0-9]+)\s*$/i);
   return g?'Section '+g[1].toUpperCase():null;
 }
+// a sentence the PDF broke over two lines is joined again ("…options given\nbelow:" → "…options given below:");
+// list lines ("A. …", "(i) …", "1) …"), lines after ":" "." "?" "।" and picture marks keep their own line
+function unwrap(t){
+  return String(t||'').replace(/([^\n.:?!।;)\]])\n(?![ \t]*(?:\(?[A-Za-z0-9ivxIVX]{1,4}[.)\]]|⟦|[A-Z(\[]))(?=[ \t]*[a-zऀ-ॿ])/g,'$1 ');
+}
 const AR=['Both Assertion (A) and Reason (R) are true and R is the correct explanation of A','Both Assertion (A) and Reason (R) are true but R is not the correct explanation of A','Assertion (A) is true but Reason (R) is false','Assertion (A) is false but Reason (R) is true'];
 function parse(text,keyText){
   text=text.replace(/\r/g,'');
@@ -67,9 +72,11 @@ function parse(text,keyText){
   const key=parseKey(kt).map;
   const lines=sp.q.split('\n');
   const blocks=[];let cur=null,sec='';
+  // "12." / "12)" — or with a word in front, where the mark after the number may be left out: "Q.12", "Q12 …", "Que 12:", "Question 12 -"
   const qre=/^\s*(?:Q\.?\s*)?(\d{1,3})\s*[\.\)]\s*(.*)$/i;
+  const qre2=/^\s*(?:Q(?:ue(?:s(?:tion)?)?)?|Question)\s*[\.:]?\s*(?:no\.?\s*)?(\d{1,3})\s*(?:[\.\):\-–]\s*|\s+|$)(.*)$/i;
   for(const ln of lines){
-    const m=ln.match(qre);
+    const m=ln.match(qre)||ln.match(qre2);
     const n=m?+m[1]:0;
     const next=blocks.length+1;
     // accept the expected number, or a small jump (a missing question -> placeholder)
@@ -86,7 +93,7 @@ function parse(text,keyText){
     const r=splitOpts(b.lines.join('\n'));
     // Assertion–Reason printed without options: use the standard four
     if(!r.o.some(Boolean)&&/assertion/i.test(r.q)&&/reason/i.test(r.q))r.o=AR.slice();
-    return{q:r.q,options:r.o,answer:key[i+1]==null?null:key[i+1],explanation:'',sec:b.sec||'',gap:!!b.gap};
+    return{q:unwrap(r.q),options:r.o,answer:key[i+1]==null?null:key[i+1],explanation:'',sec:b.sec||'',gap:!!b.gap};
   });
   return{questions,keyFound:Object.keys(key).length};
 }
