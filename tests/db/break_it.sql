@@ -639,6 +639,14 @@ select pg_temp.chk('22e the student sees the public line, never the internal not
   (cbt_private.refer_info('9822200099')->'history'->0->>'note') = 'Extra paid for your order, kept in your wallet'
   and cbt_private.refer_info('9822200099')::text not like '%overpaid%');
 
+-- ===== 24. v59 monthly money summary =====
+select pg_temp.chk('24a monthly summary answers for the owner', public.cbt_admin_money(:'ow5','month','{"month":"2026-11"}')->>'ok' = 'true');
+select pg_temp.chk('24b a team member without payments access is refused',
+  public.cbt_admin_money(:'vt','month','{"month":"2026-11"}')->>'error' = 'forbidden');
+select pg_temp.chk('24c a wrong month is refused', public.cbt_admin_money(:'ow5','month','{"month":"2026-13"}')->>'error' = 'date');
+select pg_temp.chk('24d returned to wallet is taken off the earnings',
+  (public.cbt_admin_money(:'ow5','month','{"month":"2026-11"}')->>'returned')::int >= 0);
+
 -- ===== report =====
 \t off
 \a

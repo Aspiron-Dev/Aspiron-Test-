@@ -153,6 +153,11 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Student:** the wallet history (in the store's Refer & earn page and in the app's Refer & earn page) lists every entry: referral rewards and money we added, with the line we wrote. Nobody can withdraw wallet money: it only pays for test series purchases.
 - **Setup:** run `supabase_v58_wallet_history.sql` once (after v56 / v57_social), then `supabase_v35_admin_team.sql` again.
 
+## Money for the month (Payments page, `supabase_v59_money_month.sql`)
+- **Admin → Payments** now opens with a **Money this month** card (‹ › to go back up to 23 months): sales at full price, discount given, net sales, cash by UPI, wallet money used, **returned to wallets** (overpayments and gifts put in wallets, minus money taken back), referral rewards, promotion commission, sales that came from referrals, and **profit**. Below it: every wallet entry of the month (student, amount, the line the student sees).
+- Definitions: *Earnings after returns* = net sales − returned to wallets. *Profit* = earnings after returns − referral rewards − promotion commission.
+- **Setup:** run `supabase_v59_money_month.sql` once, then `supabase_v35_admin_team.sql` again.
+
 ## Live tests: result time and auto-save (`supabase_v30_result_time.sql`)
 - In the admin test form, a test can get **Live ends** (no new start after it) and **Result & answer key at**. The link "Fill: live till 9 PM, result 10 PM" fills both for the start day.
 - Until the result time, a student who submits sees only "Test submitted ✓ — result, rank and answer key after …": no score, rank, answer key, mistakes, insights or bookmarked answers for that test. After it, everything shows by itself. Tests without a result time and practice tests show results at once, as before.
