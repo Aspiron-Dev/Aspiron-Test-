@@ -665,7 +665,8 @@ function drawDrawer() {
         <a class="ibtn sm line" href="${AX.u.tel(s.mobile)}" aria-label="Call" title="Call">${icon('phone', 15)}</a>
         <a class="ibtn sm line" href="${AX.u.wa(s.mobile, 'Hi ' + first(s) + ', ')}" target="_blank" rel="noopener" aria-label="WhatsApp" title="WhatsApp">${icon('whatsapp', 15)}</a>
         <a class="ibtn sm line" href="${AX.u.tg(s.mobile)}" target="_blank" rel="noopener" aria-label="Telegram" title="Telegram">${icon('telegram', 15)}</a>
-        <button class="ibtn sm line" data-copy="${s.mobile}" aria-label="Copy number" title="Copy number">${icon('copy', 15)}</button></div>
+        <button class="ibtn sm line" data-copy="${s.mobile}" aria-label="Copy number" title="Copy number">${icon('copy', 15)}</button>
+        ${AX.can('store', 'manage') && AX.walletPut ? h`<button class="btn xs soft" data-act="dWallet" title="Put money in this student's wallet (for overpayments, gifts, corrections)">${icon('wallet', 13)} To wallet</button>` : ''}</div>
       ${infoOk() && DR.info.changes.length ? h`<div class="xs mt8" style="color:var(--gold)">${icon('refresh', 12)} Number changed ${fmt.ago(DR.info.changes[0].at)} · old: <span class="mono">${fmt.mobile(DR.info.changes[0].old)}</span></div>` : ''}
       ${infoOk() && DR.info.email ? h`<div class="xs mut mt4">${icon('inbox', 12)} ${DR.info.email}</div>` : ''}
       <div class="xs mut mt8">Joined ${fmt.date(s.created)} · ${seenTxt(s)} · ${s.devices || 0}/${s.max_devices || 2} phones</div></div></div>`);
@@ -790,6 +791,7 @@ function wireDrawer(el) {
     dOrdAmt: b => AX.editOrderAmount && AX.editOrderAmount(b.dataset.code),
     dAcc: b => { b.checked = !b.checked; toggleAccess(DR.id, b.dataset.ser); },
     dPay: () => AX.addPayment && AX.addPayment({ studentId: DR.id }),
+    dWallet: () => { const x = cur(); if (x && AX.walletPut) AX.walletPut({ put: true, mobile: x.mobile, name: nameOf(x) }); },
     dPayEdit: b => AX.addPayment && AX.addPayment({ paymentId: b.dataset.id }),
     dOrder: b => AX.openOrder ? AX.openOrder(b.dataset.code) : AX.go('orders', { q: b.dataset.code }),
     dAna: b => AX.openAnalytics(b.dataset.id),
