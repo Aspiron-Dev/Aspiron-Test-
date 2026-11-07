@@ -147,6 +147,12 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Hindi PDFs:** the "ि" written before its letter is put back in order, and loose matras are removed. If the font hides joined letters, the app offers to read the PDF with OCR (Hindi + English).
 - **Numbering:** `1.` `1)` `Q.1` `Q1` `Que 1:` `Question 1 -`; options `(A)` `A.` `A)` `(1)` `[A]`. A sentence the PDF broke over two lines is joined again; list lines (statements `A.` / `(i)`, table rows) keep their own lines.
 
+## Wallet: money we keep for a student (`supabase_v58_wallet_history.sql`)
+- **Overpaid?** Don't refund it. Admin → Orders → the order → **To wallet**: enter the extra amount. It goes into the student's **wallet** (the same wallet that holds Refer & earn rewards) and is used on their next test series purchase. The line the student sees is written in the box *Line the student sees*; the internal note stays private.
+- **Anywhere else:** Admin → Coupons & Refer → Refer & earn → **Wallet** (or *Add wallet money to any number*) adds or removes money with a note.
+- **Student:** the wallet history (in the store's Refer & earn page and in the app's Refer & earn page) lists every entry: referral rewards and money we added, with the line we wrote. Nobody can withdraw wallet money: it only pays for test series purchases.
+- **Setup:** run `supabase_v58_wallet_history.sql` once (after v56 / v57_social), then `supabase_v35_admin_team.sql` again.
+
 ## Live tests: result time and auto-save (`supabase_v30_result_time.sql`)
 - In the admin test form, a test can get **Live ends** (no new start after it) and **Result & answer key at**. The link "Fill: live till 9 PM, result 10 PM" fills both for the start day.
 - Until the result time, a student who submits sees only "Test submitted ✓ — result, rank and answer key after …": no score, rank, answer key, mistakes, insights or bookmarked answers for that test. After it, everything shows by itself. Tests without a result time and practice tests show results at once, as before.

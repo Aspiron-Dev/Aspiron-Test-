@@ -628,6 +628,17 @@ select public.cbt_admin_social(:'smt','save','{"links":[{"platform":"telegram","
 select pg_temp.chk('24h social: Broadcasts full access can save', :'soc2' = 'true'
   and (select shown from cbt_private.social_links where platform = 'telegram'));
 
+-- ===== 22. v58 wallet history and "put it in the wallet" =====
+select public.cbt_admin_refer_put(:'ow5','add','{"mobile":"9822200099","amount":"100","note":"overpaid","public_note":"Extra paid for your order, kept in your wallet"}')->>'ok' as wp \gset
+select pg_temp.chk('22a admin puts money in a wallet (no order)', :'wp' = 'true' and cbt_private.wallet_balance('9822200099') = 100);
+select pg_temp.chk('22b the wallet entry is an admin entry, not a referral', (select kind from cbt_private.wallet_txn where mobile = '9822200099' limit 1) = 'admin');
+select pg_temp.chk('22c a team member cannot put money in a wallet',
+  public.cbt_admin_refer_put(:'vt','add','{"mobile":"9822200099","amount":"100"}')->>'error' = 'forbidden');
+select pg_temp.chk('22d an unknown number is refused', public.cbt_admin_refer_put(:'ow5','add','{"mobile":"12345","amount":"100"}')->>'error' = 'mobile');
+select pg_temp.chk('22e the student sees the public line, never the internal note',
+  (cbt_private.refer_info('9822200099')->'history'->0->>'note') = 'Extra paid for your order, kept in your wallet'
+  and cbt_private.refer_info('9822200099')::text not like '%overpaid%');
+
 -- ===== report =====
 \t off
 \a
