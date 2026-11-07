@@ -85,6 +85,27 @@ const activeSt = L => L.filter(s => s.status !== 'pending');
 const PAGE = 60;
 
 AX.css('payments', `
+.mb16{margin-bottom:16px}
+.mm .mm-hero{margin:14px 0 6px;padding:16px;border-radius:var(--r-md);background:var(--solid-2);border:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
+.mm-hero span{font-size:12px;font-weight:700;color:var(--mut)}
+.mm-hero b{font-family:var(--font-display);font-size:34px;font-weight:600;color:var(--ok)}
+.mm-hero b.bad{color:var(--bad)}
+.mm-hero small{color:var(--mut)}
+.mm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:12px}
+.mm-h{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin-bottom:6px}
+.mm-r{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.mm-r span{display:flex;flex-direction:column;min-width:0}
+.mm-r small{font-size:11.5px;color:var(--mut);font-weight:500}
+.mm-r b{white-space:nowrap;font-variant-numeric:tabular-nums}
+.mm-r.neg b{color:var(--bad)}
+.mm-r.tot{font-weight:700}
+.mm-r.tot b{color:var(--ok)}
+.mm-r.info b{color:var(--pri)}
+.mm-e{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.mm-e small{display:block;color:var(--mut);font-size:12px}
+.mm-e b.ok{color:var(--ok)}.mm-e b.bad{color:var(--bad)}
+@media (max-width:640px){.mm-grid{grid-template-columns:minmax(0,1fr)}}
+
 .px-top{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:14px;margin-top:14px}
 @media (max-width:900px){.px-top{grid-template-columns:minmax(0,1fr)}}
 .px-kpis .kpi.btnk{cursor:pointer;border:1px solid var(--glass-brd);font:inherit}
@@ -162,6 +183,7 @@ AX.mod({
     if (!D.P.ok && D.P.error !== 'missing') { AX.set(ctx.el, UI.errorBox(D.P, 'supabase_v29_payments.sql')); AX.act(ctx.el, { retry: () => ctx.reload() }); return; }
     V.D = D;
     AX.set(ctx.el, h`${D.P.error === 'missing' ? h`<div class="callout warn" style="margin-bottom:14px">${icon('db')}<div><b>One-time setup needed to add payments</b><div class="sm mt4">Open Supabase → SQL Editor, paste <b>supabase_v29_payments.sql</b> and press Run once. Then refresh this page.</div></div></div>` : ''}
+      <div id="px-month" class="mb16"></div>
       <div id="px-top"></div>
       <div class="px-tools"><div class="chips" id="px-seg"></div><span class="grow"></span>
         <div class="inp-wrap search">${icon('search', 17)}<input class="inp" id="px-q" type="search" placeholder="Search name or mobile…" value="${V.q}" autocomplete="off" aria-label="Search payments"></div></div>
@@ -186,6 +208,7 @@ AX.mod({
     });
     ctx.el.querySelector('#px-q').addEventListener('input', AX.u.debounce(e => { V.q = e.target.value; V.more = 0; drawList(); }, 120));
     draw();
+    V.mmo = V.mmo || 0; monthCard(ctx.el.querySelector('#px-month'), ctx);
   },
   async search(q) {
     if (q.length < 3 || !AX.can('payments')) return [];
@@ -206,6 +229,54 @@ AX.on('data:changed', AX.u.debounce(async () => {
   if (!V.ctx.alive() || !D.S.ok || !(D.P.ok || D.P.error === 'missing')) return;
   V.D = D; draw();
 }, 250));
+
+/* ---------- one month's money: sales, discounts, returns to wallets, referrals, profit (cbt_admin_money, v59) ---------- */
+const MTH = d => { const a = new Date(); a.setDate(1); a.setHours(0, 0, 0, 0); a.setMonth(a.getMonth() - d); return a; };
+const mKey = a => a.getFullYear() + '-' + z2(a.getMonth() + 1);
+async function monthCard(box, ctx) {
+  if (!box || !AX.can('payments')) return;
+  const a = MTH(V.mmo || 0), label = a.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  AX.set(box, h`<div class="card"><div class="row between wrap gap8"><b>${label}</b><div class="row gap6">
+    <button class="ibtn sm line" data-act="mmPrev" aria-label="Previous month">${icon('chevL', 16)}</button>
+    <button class="ibtn sm line" data-act="mmNext" aria-label="Next month" ${V.mmo === 0 ? raw('disabled') : ''}>${icon('chevR', 16)}</button></div></div>${UI.skeleton(2, 'kpi')}</div>`);
+  if (!box.__mm) { box.__mm = 1; AX.act(box, {
+    mmPrev: () => { V.mmo = Math.min(MONTHS_BACK, (V.mmo || 0) + 1); monthCard(box, ctx); },
+    mmNext: () => { V.mmo = Math.max(0, (V.mmo || 0) - 1); monthCard(box, ctx); }
+  }); }
+  const r = await AX.api.call('cbt_admin_money', 'month', { month: mKey(a) });
+  if (ctx && !ctx.alive()) return;
+  if (!r.ok) { AX.set(box, h`<div class="card">${UI.errorBox(r, 'supabase_v59_money_month.sql')}</div>`); return; }
+  const inr = fmt.inr;
+  const row = (l, v, cls, note) => h`<div class="mm-r ${cls || ''}"><span>${l}${note ? h`<small>${note}</small>` : ''}</span><b>${v}</b></div>`;
+  const E = r.entries || [];
+  AX.set(box, h`<div class="card mm">
+    <div class="row between wrap gap8"><div><div class="eyebrow">${label}</div><h3 class="mt4">Money this month</h3></div>
+      <div class="row gap6">
+        <button class="ibtn sm line" data-act="mmPrev" aria-label="Previous month">${icon('chevL', 16)}</button>
+        <button class="ibtn sm line" data-act="mmNext" aria-label="Next month" ${V.mmo === 0 ? raw('disabled') : ''}>${icon('chevR', 16)}</button></div></div>
+    <div class="mm-hero"><span>Profit</span><b class="${r.profit < 0 ? 'bad' : ''}">${inr(r.profit)}</b><small>${fmt.plural(r.orders || 0, 'order')} approved this month</small></div>
+    <div class="mm-grid">
+      <div class="mm-col"><div class="mm-h">Sales</div>
+        ${row('Sales at full price', inr(r.sales), '', 'list price of approved orders')}
+        ${row('− Discount given', '−' + inr(r.discount), 'neg', 'coupon codes')}
+        ${row('Net sales', inr(r.net_sales), 'tot')}
+        ${row('Cash received by UPI', inr(r.upi), 'info', 'what the students paid us')}
+        ${row('Paid from wallets', inr(r.wallet_used), 'info', 'wallet money used on these orders')}
+      </div>
+      <div class="mm-col"><div class="mm-h">Costs and returns</div>
+        ${row(r.returned >= 0 ? '− Returned to wallets' : '+ Taken back from wallets', (r.returned >= 0 ? '−' : '+') + inr(Math.abs(r.returned)), r.returned >= 0 ? 'neg' : 'tot', r.returned_in || r.returned_out ? `added ${inr(r.returned_in)}${r.returned_out ? ' · taken back ' + inr(r.returned_out) : ''}` : 'overpayments and gifts kept as wallet money')}
+        ${row('− Referral rewards', '−' + inr(r.rewards), 'neg', fmt.plural(r.reward_n || 0, 'reward'))}
+        ${row('− Promotion commission', '−' + inr(r.promo), 'neg', 'to promoters, counted orders')}
+        ${row('Earnings after returns', inr(r.after_returns), 'tot')}
+        ${row('From referrals (sales)', inr(r.refer_sales), 'info', fmt.plural(r.refer_orders || 0, 'order') + ' by a referred student')}
+      </div>
+    </div>
+    <div class="mm-h mt16">Wallet entries this month</div>
+    ${E.length ? h`<div class="mm-list">${join(E.slice(0, 30), x => h`<div class="mm-e"><span class="grow"><b>${x.name || 'Student'}</b> <span class="mono xs mut">${fmt.mobile(x.mobile)}</span><small>${x.kind === 'refer' ? 'Referral reward' : (x.public_note || x.note || 'Added by us')}${x.order_code ? ' · ' + x.order_code : ''} · ${fmt.dt(x.at)}</small></span><b class="${x.amount > 0 ? 'ok' : 'bad'}">${x.amount > 0 ? '+' : '−'}${inr(Math.abs(x.amount))}</b></div>`)}</div>`
+      : h`<p class="sm mut">No wallet entries in ${label}.</p>`}
+    <p class="xs mut mt12">Profit = earnings after returns − referral rewards − promotion commission. Wallet money is used when the student buys, so it counts as sales then.</p>
+  </div>`);
+}
 
 /* ---------- page ---------- */
 function stats(D) {
