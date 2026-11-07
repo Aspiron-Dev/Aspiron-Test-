@@ -101,12 +101,12 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   // 5b. v52: referral link, coupon box and wallet at checkout (the price is set on the server only)
   const rcode = (await q(`select public.cbt_refer_me('9811100001','Priya Verma') r`))[0].r.code;
   await q(`insert into cbt_private.store_coupons(item_id,code,kind,value,ends_at) values ('cccccccc-0000-0000-0000-000000000001','DIWALI','pct',20,now()+interval '5 days')
-           on conflict (item_id) do update set code='DIWALI', kind='pct', value=20, starts_at=now()-interval '1 minute', ends_at=now()+interval '5 days', active=true`);
+           on conflict (code,item_id) do update set code='DIWALI', kind='pct', value=20, starts_at=now()-interval '1 minute', ends_at=now()+interval '5 days', active=true`);
   ({ c, p, errs } = await mk());
   await p.addInitScript(() => { if (!sessionStorage.getItem('s')) { sessionStorage.setItem('s', 1); localStorage.setItem('store_me', JSON.stringify({ name: 'Aman Gupta', mobile: '9822200002', course: 'neet' })); } });
   await p.goto(BASE + 'store.html?r=' + rcode); await p.waitForTimeout(2500);
   ok((await q(`select referrer from cbt_private.refer_links where mobile='9822200002'`)).length === 0, 'refer: opening the link alone joins nobody (v53)');
-  await p.click('[data-buy]'); await p.waitForSelector('#cpi'); await p.waitForTimeout(800);
+  await p.click('[data-buy]'); await p.waitForTimeout(700); if (await p.$('[data-scrnext]')) await p.click('[data-scrnext]'); await p.waitForSelector('#cpi'); await p.waitForTimeout(800);
   ok((await q(`select referrer from cbt_private.refer_links where mobile='9822200002'`)).length === 1
      && (await q(`select refer_code from public.cbt_store_orders where mobile='9822200002' and refer_code is not null`)).length === 1, 'refer: the new student\'s own order from the link joins them to the sharer');
   await p.fill('#cpi', 'WRONG1'); await p.click('[data-cpgo]'); await p.waitForTimeout(800);
@@ -131,7 +131,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   ({ c, p, errs } = await mk());
   await p.addInitScript(() => { if (!sessionStorage.getItem('s')) { sessionStorage.setItem('s', 1); localStorage.setItem('store_me', JSON.stringify({ name: 'Janvi', mobile: '9988360846', course: 'neet' })); } });
   await p.goto(BASE + 'store.html'); await p.waitForTimeout(2500);
-  await p.click('[data-buy]'); await p.waitForSelector('#cpi'); await p.fill('#cpi', 'DIWALI'); await p.click('[data-cpgo]'); await p.waitForTimeout(1200);
+  await p.click('[data-buy]'); await p.waitForTimeout(700); if (await p.$('[data-scrnext]')) await p.click('[data-scrnext]'); await p.waitForSelector('#cpi'); await p.fill('#cpi', 'DIWALI'); await p.click('[data-cpgo]'); await p.waitForTimeout(1200);
   await p.click('[data-step=paid]'); await p.waitForSelector('#py'); await p.fill('#py', 'janvi'); await p.click('[data-paidgo]'); await p.waitForSelector('[data-edit]');
   await p.click('[data-edit]'); await p.waitForSelector('#en'); await p.fill('#en', 'Janvi Sharma'); await p.click('#esave'); await p.waitForTimeout(2000);
   const eo = (await q(`select amount, coupon_off from public.cbt_store_orders where mobile='9988360846' and name='Janvi Sharma'`))[0];

@@ -459,7 +459,7 @@ select pg_temp.chk('20a refer: the reward goes to the link the buyer ordered fro
   (select mobile from cbt_private.wallet_txn where kind='refer' and ref_mobile='9833333333') = '9811111111');
 -- a nearly free order (99% coupon) earns no reward
 insert into cbt_private.store_coupons(item_id,code,kind,value,ends_at) values ('cccccccc-0000-0000-0000-000000000001','BIG99','pct',99,now()+interval '1 day')
-  on conflict (item_id) do update set code='BIG99',kind='pct',value=99,starts_at=now()-interval '1 minute',ends_at=now()+interval '1 day',active=true;
+  on conflict (code,item_id) do update set code='BIG99',kind='pct',value=99,starts_at=now()-interval '1 minute',ends_at=now()+interval '1 day',active=true;
 set role anon;
 select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Sim Two','9844444444')->>'ok';
 reset role;
@@ -646,6 +646,40 @@ select pg_temp.chk('24b a team member without payments access is refused',
 select pg_temp.chk('24c a wrong month is refused', public.cbt_admin_money(:'ow5','month','{"month":"2026-13"}')->>'error' = 'date');
 select pg_temp.chk('24d returned to wallet is taken off the earnings',
   (public.cbt_admin_money(:'ow5','month','{"month":"2026-11"}')->>'returned')::int >= 0);
+
+-- ===== 25. v60 many codes, limits, scratch card =====
+select public.cbt_admin_coupons(:'ow5','bulk',jsonb_build_object('code','TWOA','ends_at', floor(extract(epoch from now() + interval '4 days') * 1000)::bigint,
+  'items', jsonb_build_array(jsonb_build_object('item_id','cccccccc-0000-0000-0000-000000000001','kind','pct','value',5))))->>'ok' as tw \gset
+select public.cbt_admin_coupons(:'ow5','bulk',jsonb_build_object('code','LIMIT2','ends_at', floor(extract(epoch from now() + interval '4 days') * 1000)::bigint,'max_uses',2,
+  'items', jsonb_build_array(jsonb_build_object('item_id','cccccccc-0000-0000-0000-000000000001','kind','flat','value',10))))->>'ok' as lm \gset
+select pg_temp.chk('25a two codes live on the same series at once (nothing is replaced)',
+  (select count(*) = 2 from cbt_private.store_coupons where item_id = 'cccccccc-0000-0000-0000-000000000001' and active and code in ('TWOA','LIMIT2')));
+select pg_temp.chk('25b a code can be deleted from one series without touching the other code',
+  public.cbt_admin_coupons(:'ow5','remove_one','{"item_id":"cccccccc-0000-0000-0000-000000000001","code":"TWOA"}')->>'ok' = 'true'
+  and (select count(*) = 1 from cbt_private.store_coupons where item_id = 'cccccccc-0000-0000-0000-000000000001' and code = 'LIMIT2'));
+select public.cbt_admin_coupons(:'ow5','bulk',jsonb_build_object('code','TWOA','ends_at', floor(extract(epoch from now() + interval '4 days') * 1000)::bigint,
+  'items', jsonb_build_array(jsonb_build_object('item_id','cccccccc-0000-0000-0000-000000000001','kind','pct','value',5))))->>'ok';
+set role anon;
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Limit One','9866000001')->>'code' as lo1 \gset
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Limit Two','9866000002')->>'code' as lo2 \gset
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Limit Three','9866000003')->>'code' as lo3 \gset
+select pg_temp.chk('25c a code with a limit works for the first orders',
+  (public.cbt_store_order_apply(:'lo1','9866000001','LIMIT2',false)->>'coupon_off')::int = 10
+  and (public.cbt_store_order_apply(:'lo2','9866000002','LIMIT2',false)->>'coupon_off')::int = 10);
+select pg_temp.chk('25d the next order after the limit is refused',
+  public.cbt_store_order_apply(:'lo3','9866000003','LIMIT2',false)->>'error' = 'coupon_used_up');
+select pg_temp.chk('25e the store is told how many are left, and no code is shown',
+  (public.cbt_store_coupons_public()->'items') @> '[]'::jsonb
+  and public.cbt_store_coupons_public()::text not like '%LIMIT2%' and public.cbt_store_coupons_public()::text not like '%TWOA%');
+select pg_temp.chk('25f the scratch card gives a live code for the series',
+  public.cbt_store_reveal('cccccccc-0000-0000-0000-000000000001')->>'code' is not null);
+reset role;
+select pg_temp.chk('25g an unknown code is refused',
+  public.cbt_store_order_apply(:'lo1','9866000001','NOSUCH',false)->>'error' = 'coupon');
+select public.cbt_admin_coupons(:'ow5','update_code','{"code":"LIMIT2","max_uses":5}')->>'ok' as uc \gset
+select pg_temp.chk('25h the owner can change the limit of a code later',
+  :'uc' = 'true' and (select max_uses = 5 from cbt_private.store_coupons where code = 'LIMIT2' limit 1));
+select pg_temp.chk('25i a team member cannot delete a code', public.cbt_admin_coupons(:'vt','remove_code','{"code":"LIMIT2"}')->>'error' = 'forbidden');
 
 -- ===== report =====
 \t off
