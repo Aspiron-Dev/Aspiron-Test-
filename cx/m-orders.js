@@ -267,7 +267,7 @@ function orderCard(o, D, full) {
     ${(() => { const t = sg !== 'done' && S.offerTwin(o, D.orders); return t ? h`<div class="callout warn sm">${icon('tag', 16)}<div>This order is at the full price. The same student also has order <b class="mono">${t.code}</b> at <b>${fmt.inr(t.amount)}</b>${+t.coupon_off ? h` with coupon <b class="mono">${t.coupon_code}</b>` : ''}${+t.wallet_used ? h` · wallet ${fmt.inr(t.wallet_used)}` : ''}. If they paid ${fmt.inr(t.amount)}, tap <b>Amount</b> and set ${fmt.inr(t.amount)}, or approve that order instead.</div></div>` : ''; })()}
     ${twin ? h`<div class="callout warn sm">${icon('info', 16)}<div>Already approved for this series in order <b class="mono">${twin.code}</b>. Approving again counts the money twice.</div></div>` : ''}
     ${o.contact_n || o.note ? h`<div class="oc-fol">${o.contact_n ? h`<div class="row gap6">${icon('phone', 14)}<span>Contacted ${o.contact_n}× · last ${fmt.ago(o.contacted_at)}</span></div>` : ''}${o.note ? h`<div class="row top gap6">${icon('edit', 14)}<span class="oc-note">${o.note}</span></div>` : ''}</div>` : ''}
-    <footer class="oc-f"><div class="oc-con">${S.contactBar(o.mobile, msg, o.code)}${man ? h`<button class="ibtn line" data-act="note" data-code="${o.code}" title="Note" aria-label="Note">${icon('edit', 17)}</button><button class="ibtn line" data-act="odel" data-code="${o.code}" title="Delete this order" aria-label="Delete this order" style="color:var(--bad)">${icon('trash', 17)}</button>` : ''}</div><div class="oc-act">${acts}</div></footer>
+    <footer class="oc-f"><div class="oc-con">${S.contactBar(o.mobile, msg, o.code)}${man ? h`<button class="ibtn line" data-act="note" data-code="${o.code}" title="Note" aria-label="Note">${icon('edit', 17)}</button><button class="ibtn line" data-act="odel" data-code="${o.code}" title="Delete this order" aria-label="Delete this order" style="color:var(--bad)">${icon('trash', 17)}</button>` : ''}</div><div class="oc-act">${man ? h`<button class="btn sm ghost" data-act="wallet" data-code="${o.code}" title="The student paid more than the price: keep the extra in their wallet instead of refunding">${icon('wallet', 15)} To wallet</button>` : ''}${acts}</div></footer>
   </article>`;
 }
 function reqCard(s, D) {
@@ -301,6 +301,7 @@ function cardActs(root, after) {
     login(el) { const o = find(el.dataset.code); if (o) AX.u.copy(S.stuMsg({ sid: S.sidOf(o), name: o.name, title: o.item_title, order: o.code, mobile: o.mobile })).then(x => UI.toast(x ? 'Login message copied — add the access code before sending' : 'Copy failed')); },
     student: el => S.openStudent(el.dataset.m),
     note: el => S.note(el.dataset.code),
+    wallet: el => { const o = find(el.dataset.code); if (o && AX.walletPut) AX.walletPut({ mobile: o.mobile, order: o.code, name: o.name }); },
     amt: el => S.editAmount(el.dataset.code),
     odel: el => S.deleteOrder(el.dataset.code),
     rdel(el) { const s = (S.cur.students || []).find(x => x.id === el.dataset.id); if (!s) return; if (AX.rejectRequest) return AX.rejectRequest([s.id], 'delete'); S.rejectReq(s); },
