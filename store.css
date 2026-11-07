@@ -883,3 +883,15 @@ html.anim .secs:not(.noanim) .sech{animation:rise .55s var(--out) backwards;anim
 .rfn b{font-family:var(--font-display);font-size:26px;font-weight:600;line-height:1.1}
 .rfn.ok b{color:var(--ok)}.rfn.gold b{color:var(--gold)}.rfn.pri b{color:var(--pri)}
 @media (max-width:760px){.rfk{grid-template-columns:repeat(2,minmax(0,1fr))}.rfhero{flex-direction:column}.rfa .btn{flex:1 1 auto}}
+
+/* ---------- v60: coupons left on the cards, the scratch card, confetti ---------- */
+.cpl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0 6px;padding:6px 10px;border-radius:var(--r-pill);background:var(--gold-soft);color:var(--tx);font-size:12.5px;width:max-content;max-width:100%}
+.cpl .i{width:14px;height:14px;color:var(--gold);flex:none}
+.cpl span{color:var(--tx-2);font-weight:650}
+.scr{position:relative;border-radius:var(--r-lg);overflow:hidden;height:150px;margin:4px 0 4px;background:linear-gradient(135deg,#7c2d12,#b45309 45%,#f59e0b);box-shadow:0 14px 34px -14px rgba(180,83,9,.6)}
+.scr-face{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#fff;text-align:center;padding:10px}
+.scr-face small{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.92}
+.scr-code{font-family:var(--font-display);font-size:30px;font-weight:700;letter-spacing:.12em;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+.scr-cv{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair;border-radius:inherit}
+.confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:200}
+@media (prefers-reduced-motion:reduce){.confetti{display:none}}

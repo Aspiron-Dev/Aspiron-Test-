@@ -189,7 +189,8 @@ function under(st,hash){try{history.replaceState(null,'',location.pathname+locat
 
 async function load(){
   const nm=CFG.SITE_NAME||'Aspiron Education';$$('[data-sname]').forEach(e=>e.textContent=nm);
-  const [r,lg,of]=await Promise.all([rpc('cbt_store'),rpc('cbt_store_langs'),rpc('cbt_store_offers')]);
+  const [r,lg,of,cp]=await Promise.all([rpc('cbt_store'),rpc('cbt_store_langs'),rpc('cbt_store_offers'),rpc('cbt_store_coupons_public')]);
+  CPUB={};if(cp&&cp.ok)(cp.items||[]).forEach(c=>(CPUB[c.item_id]=CPUB[c.item_id]||[]).push(c));
   if(of&&of.ok)CPN=of.coupons!==false;
   if(lg&&lg.ok)LANGS=new Set((lg.items||[]).map(String));
   if(!r.ok){
@@ -295,11 +296,19 @@ function priceHtml(x,short){
   const off=offPct(x);return `<div class="pr"><b>${inr(x.price)}</b>${off?`<s>${inr(x.mrp)}</s><span class="pill ok">Save ${inr(x.mrp-x.price)}${short?'':` · ${off}% off`}</span>`:''}</div>`;
 }
 // a card: photo, name, rating (one thin line), short description, price, then Explore and Buy now (everything else is on the Explore page)
+// the offers still open on a series: "20% off · 37 of 50 left" (no code is shown here)
+function cpnLine(id){
+  if(!CPN||!CPUB[id]||!CPUB[id].length)return '';
+  const c=CPUB[id].slice().sort((a,b)=>(b.value>0)-(a.value>0))[0];
+  const off=c.kind==='pct'?`${c.value}% off`:`${inr(c.value)} off`;
+  const left=c.left!=null?` · ${c.left} of ${c.total} left`:'';
+  return `<div class="cpl">${I('gift')}<b>${off}</b><span>${esc(left.replace(/^ · /,''))}</span></div>`;
+}
 function cardHtml(x,i){
   const off=offPct(x),ph=!okImg(x.image),bdg=x.badge||(x.buy_on===false?'Coming soon':'');
   return `<article class="sc" id="p_${esc(x.id)}" style="--i:${Math.min(i||0,7)}"><div class="sc-m${ph?' isph':''}" data-view="${esc(x.id)}">${bdg?`<span class="tag${x.buy_on===false&&!x.badge?' soon':''}">${esc(bdg)}</span>`:''}${off?`<span class="tag off">${off}% off</span>`:''}${mediaHtml(x)}</div>
    <div class="sc-b"><h3 class="sc-t${ph?' sr':''}">${esc(x.title)}</h3>${LANGS.has(x.id)?`<div class="lgs">${I('globe')}English + हिंदी medium</div>`:''}<div class="rlw" data-rline="${esc(x.id)}">${rLine(x.id)}</div>${x.subtitle?`<p class="sc-s">${esc(x.subtitle)}</p>`:''}
-   ${priceHtml(x,1)}
+   ${cpnLine(x.id)}${priceHtml(x,1)}
    <div class="sc-a"><button class="btn line" data-explore="${esc(x.id)}">${I('compass')}Explore</button>${buyBtn(x,1)}</div></div></article>`;
 }
 // Buy now, or — for a series not launched yet (Buy now off in the admin panel) — "Coming soon · Notify me". short = on a card
@@ -584,7 +593,71 @@ async function buy(id,lang){
      <p class="for">For ${esc(me.name)} · ${esc(me.mobile)} · <a href="#" data-redo>change</a></p>`,`<button class="btn pri lg block" data-buy="${esc(id)}">${I('next')}Try again</button>`);
   }
   ORD={item:IT.id,code:r.code,amount:r.amount,title:r.title,name:me.name,mobile:me.mobile,at:Date.now(),lang:bi?lang:''};LSs('store_ord',ORD);attachRef(r.code,me.mobile);
-  payStep();
+  scratchOr(payStep);
+}
+/* ---------- scratch card (v60): a live code of the series, under a silver layer. The student scratches it, copies it,
+   and pastes it in the coupon box on the next step. Scratching it all away (or most of it) bursts confetti. ---------- */
+async function scratchOr(next){
+  if(!CPN||OFFER===false||ORD.payer||ORD.coupon_code)return next();
+  const r=await rpc('cbt_store_reveal',{p_item:IT.id});
+  if(!r||!r.ok||!r.code)return next();
+  scratchSheet(r,next);
+}
+function scratchSheet(r,next){
+  const off=r.kind==='pct'?`${r.value}% off`:`${inr(r.value)} off`,left=r.left!=null?`${r.left} of ${r.total} left`:'',
+   till=r.ends_at?new Date(r.ends_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'}):'';
+  ovSet(modal({t:'You got an offer!',s:'Scratch the card to see your code · कोड देखने के लिए स्क्रैच करें',cls:'narrow',
+   body:`<div class="scr" id="scr"><div class="scr-face"><small>${esc(off)}</small><b class="scr-code" id="scrc">${esc(r.code)}</b><small>${left?esc(left)+' · ':''}till ${esc(till)}</small></div>
+     <canvas class="scr-cv" id="scrcv" aria-label="Scratch here"></canvas></div>
+     <p class="sm mut center mt12" id="scrt">Scratch with your finger or mouse. Then copy the code.</p>
+     <div class="row center mt12"><button class="btn line" id="scrcp" disabled>${I('copy')}Copy code</button></div>`,
+   foot:`<button class="btn pri lg block" data-scrnext>${I('next')}Continue to pay</button>`}));
+  ORD.scrNext=next;
+  setTimeout(()=>scrInit(r.code),30);
+}
+function scrInit(code){
+  const cv=document.getElementById('scrcv');if(!cv)return;
+  const w=cv.clientWidth||300,hh=cv.clientHeight||120,dpr=Math.min(2,devicePixelRatio||1);
+  cv.width=Math.round(w*dpr);cv.height=Math.round(hh*dpr);
+  const g=cv.getContext('2d');g.scale(dpr,dpr);
+  const gr=g.createLinearGradient(0,0,w,hh);gr.addColorStop(0,'#c9ced8');gr.addColorStop(.5,'#eef1f6');gr.addColorStop(1,'#aab2bf');
+  g.fillStyle=gr;g.fillRect(0,0,w,hh);
+  g.fillStyle='rgba(15,23,42,.55)';g.font='800 16px "Plus Jakarta Sans",system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';
+  g.fillText('✦ SCRATCH HERE ✦',w/2,hh/2);
+  g.globalCompositeOperation='destination-out';g.lineWidth=34;g.lineCap='round';g.lineJoin='round';
+  let down=false,last=null,moved=0,done=false;
+  const pt=e=>{const b=cv.getBoundingClientRect();return{x:e.clientX-b.left,y:e.clientY-b.top}};
+  const cut=(a,b)=>{g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke()};
+  cv.addEventListener('pointerdown',e=>{down=true;last=pt(e);cv.setPointerCapture(e.pointerId);cut(last,last);moved++;e.preventDefault()});
+  cv.addEventListener('pointermove',e=>{if(!down||done)return;const p=pt(e);cut(last,p);last=p;moved++;e.preventDefault()});
+  const end=()=>{if(!down)return;down=false;if(done)return;
+    const d=g.getImageData(0,0,cv.width,cv.height).data;let clear=0,n=0;
+    for(let i=3;i<d.length;i+=4*11){n++;if(d[i]<40)clear++}
+    if(n&&clear/n>.45){done=true;cv.style.transition='opacity .35s';cv.style.opacity='0';setTimeout(()=>cv.remove(),400);
+      const cb=document.getElementById('scrcp');if(cb)cb.disabled=false;
+      const t=document.getElementById('scrt');if(t)t.textContent='Your code is open. Copy it and paste it in the coupon box.';
+      confetti();}
+  };
+  cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);cv.addEventListener('pointerleave',end);
+  const cb=document.getElementById('scrcp');
+  if(cb)cb.addEventListener('click',()=>{copy(code,'Code copied · paste it in the coupon box')});
+  // a student who scratches for long and does not finish still sees the code: the button turns on after the first stroke
+  setTimeout(()=>{const b=document.getElementById('scrcp');if(b&&!done)b.disabled=false},6000);
+}
+// a few seconds of colours falling (the Diwali feel); no sound, respects "reduce motion"
+function confetti(){
+  if(RM)return;
+  const c=document.createElement('canvas');c.className='confetti';c.setAttribute('aria-hidden','true');document.body.appendChild(c);
+  const W=c.width=innerWidth,H=c.height=innerHeight,g=c.getContext('2d');
+  const C=['#f59e0b','#ef4444','#22c55e','#3b82f6','#a855f7','#fde047','#ec4899'];
+  const P=Array.from({length:150},()=>({x:W/2+(Math.random()-.5)*W*.5,y:H*.35,vx:(Math.random()-.5)*11,vy:-Math.random()*12-4,r:Math.random()*5+3,a:Math.random()*6,va:(Math.random()-.5)*.3,c:C[(Math.random()*C.length)|0],s:Math.random()>.5}));
+  const t0=performance.now();
+  (function f(t){
+    g.clearRect(0,0,W,H);
+    P.forEach(p=>{p.vy+=.32;p.vx*=.99;p.x+=p.vx;p.y+=p.vy;p.a+=p.va;g.save();g.translate(p.x,p.y);g.rotate(p.a);g.fillStyle=p.c;
+      if(p.s)g.fillRect(-p.r,-p.r/2,p.r*2,p.r);else{g.beginPath();g.arc(0,0,p.r/1.6,0,6.3);g.fill()}g.restore()});
+    if(t-t0<2600)requestAnimationFrame(f);else c.remove();
+  })(t0);
 }
 const upiLink=()=>{const s=ST.settings,e=encodeURIComponent;return `upi://pay?pa=${s.upi}&pn=${e(s.payee||'')}&am=${ORD.amount}&cu=INR&tn=${e(ORD.code)}`};
 const qrMake=t=>{const q=qrcode(0,'M');q.addData(t);q.make();return q};
@@ -612,7 +685,8 @@ function payStep(){
     <button class="btn ${mob?'line':'pri'} lg block" data-step="paid">${I('check')}I have already paid ${I('next')}</button>`);
 }
 /* ---------- coupon code + wallet (supabase_v52): applied on the server to this order; the page never sets a price ---------- */
-let OFFER=null,WAL=null,CPN=true;   // CPN = the coupon box is on (Admin → Coupons & Refer → Coupons)
+let OFFER=null,WAL=null,CPN=true,CPUB={};   // CPUB = the live coupons per series, without the codes (for "37 of 50 left")
+   // CPN = the coupon box is on (Admin → Coupons & Refer → Coupons)
    // OFFER false = the server has no coupons yet (v52 not run) · WAL = {balance, code, …} of this number
 async function walLoad(make){
   const m=ME();if(!m)return null;
@@ -639,7 +713,7 @@ function offerHtml(){
    <div class="err" id="cper" role="alert"></div></div>`;
 }
 function offerUi(){const b=$('#offer');if(b)b.innerHTML=offerHtml()}
-const OFERR={coupon:'This coupon code does not work for this test series.',coupon_off:'Coupons are not available right now.',coupon_expired:'This coupon has ended.',coupon_soon:'This coupon has not started yet.',
+const OFERR={coupon:'This coupon code does not work for this test series.',coupon_off:'Coupons are not available right now.',coupon_expired:'This coupon has ended.',coupon_soon:'This coupon has not started yet.',coupon_used_up:'This coupon is used up — all of them are taken.',
   locked:'This order can no longer change. Close and tap Buy now again.',order:'This order was not found. Close and tap Buy now again.',busy:'Too many tries. Please wait a while and try again.',
   network:'No internet. Please try again.',item:'This series is not available right now.',
   signin:'To use your wallet, sign in to the student app on this phone with this number first.'};
@@ -658,6 +732,7 @@ async function offerGo(coupon,wallet,btn){
   Object.assign(ORD,{amount:r.amount,list_price:r.list_price,coupon_code:r.coupon_code||'',coupon_off:r.coupon_off||0,wallet_used:r.wallet_used||0});
   if(WAL)WAL.balance=r.wallet_left;
   LSs('store_ord',ORD);
+  if(coupon&&r.coupon_off)confetti();
   toast(coupon&&r.coupon_off?`Coupon applied · you save ${inr(r.coupon_off)}`:wallet?`Wallet used · ${inr(r.wallet_used)}`:'Updated',coupon?'gift':'card');
   payStep();
 }
@@ -1022,6 +1097,7 @@ document.addEventListener('click',e=>{
   else if(d.step==='back1')payStep();
   else if('paidgo' in d)paidGo();
   else if('cpgo' in d)cpGo(t);
+  else if('scrnext' in d){const n=ORD&&ORD.scrNext;if(n){ORD.scrNext=null;n()}}
   else if('cpx' in d)offerGo('',+ORD.wallet_used>0,t);
   else if('wal' in d)offerGo(ORD.coupon_code||'',!(+ORD.wallet_used>0),null);
   else if('walgo' in d)walGo();

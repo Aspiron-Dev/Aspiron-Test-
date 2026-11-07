@@ -158,6 +158,13 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - Definitions: *Earnings after returns* = net sales − returned to wallets. *Profit* = earnings after returns − referral rewards − promotion commission.
 - **Setup:** run `supabase_v59_money_month.sql` once, then `supabase_v35_admin_team.sql` again.
 
+## Many coupon codes, limits and the scratch card (`supabase_v60_coupons_many.sql`)
+- **Many codes at once** (changed from one per series): Admin → Coupons & Refer → **New coupon** as often as you like. Each code works on any series you put it on, with its own discount. Making a new code never switches off another one.
+- **Limit:** *Valid for how many orders?* — the code stops when that many orders (pending or paid) have it. Empty = no limit. Edit a code later to change its limit, end date or discounts; the card shows *used of … · left*. Remove one series from a code (✕ on the line) or delete the whole code (Remove).
+- **Store:** each series with a live code shows *20% off · 37 of 50 left*. The codes are never shown on the store.
+- **Scratch card:** when a student taps **Buy now** and a live code exists, a card opens: scratch it, the code appears, **Copy code**, then **Continue to pay** and paste it in the coupon box. A successful apply bursts confetti.
+- **Setup:** run `supabase_v60_coupons_many.sql` once (after v59), then `supabase_v35_admin_team.sql` again.
+
 ## Live tests: result time and auto-save (`supabase_v30_result_time.sql`)
 - In the admin test form, a test can get **Live ends** (no new start after it) and **Result & answer key at**. The link "Fill: live till 9 PM, result 10 PM" fills both for the start day.
 - Until the result time, a student who submits sees only "Test submitted ✓ — result, rank and answer key after …": no score, rank, answer key, mistakes, insights or bookmarked answers for that test. After it, everything shows by itself. Tests without a result time and practice tests show results at once, as before.
