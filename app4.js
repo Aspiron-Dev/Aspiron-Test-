@@ -76,7 +76,9 @@ function runningTest(){
 }
 let T0=Date.now();
 function hideSplash(){const e=document.getElementById('splash');window.__splReady=1;if(!e||e.classList.contains('off'))return;clearTimeout(window.__splT);/* the start-up animation sets __splEnd (index.html); a tap on it sets 0 */
-  const end=window.__splEnd!=null?window.__splEnd:300;window.__splT=setTimeout(()=>{e.classList.add('off');setTimeout(()=>e.remove(),650)},Math.max(0,end-performance.now()))}
+  /* the show may start a little later than the page (it waits for a real screen frame): wait for its end, at most 6 s */
+  const go=()=>{const end=window.__splEnd!=null?window.__splEnd:300,w=end-performance.now();if(w>0&&performance.now()<6000){window.__splT=setTimeout(go,Math.min(w,6000-performance.now()));return}
+    e.classList.add('off');setTimeout(()=>e.remove(),650)};go()}
 setTimeout(hideSplash,5000);
 function skelPage(){
   setApp(`<div class="wrap skpage"><div class="sk skhero"></div><div class="skrow"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
