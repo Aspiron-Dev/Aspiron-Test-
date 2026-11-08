@@ -790,3 +790,24 @@ svg.i .f{fill:currentColor;fill-opacity:0;transition:fill-opacity .3s var(--ease
 .pst-top{position:absolute;left:0;right:0;top:0;padding:12px 16px 0}
 .pst-tabs{position:relative;z-index:2;margin-top:-96px;padding:0 16px}
 .pst .tt2{margin-top:0;padding:0}
+/* ---- round 4: the poster runs from the top of the screen and fades into the page; colours come from the poster ---- */
+.hdr{transition:background-color .3s ease,box-shadow .3s ease}
+.hdr.onpst{background:var(--pcTop);box-shadow:none;--logo:var(--pcLogo);--logoE:var(--pcLogoE)}
+.pst{margin-top:calc(-6px - var(--hh,62px))}
+.pst-art{aspect-ratio:auto}
+.pst.noimg .pst-art{aspect-ratio:1/1.12}
+.pst-art img{height:auto;max-height:min(125vw,575px);object-fit:cover;object-position:top center}
+.pst-art::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:32%;pointer-events:none;background:linear-gradient(180deg,transparent 0%,color-mix(in srgb,var(--bg) 30%,transparent) 40%,color-mix(in srgb,var(--bg) 78%,transparent) 72%,var(--bg) 100%)}
+.pst-top{padding-top:calc(var(--hh,62px) + 10px)}
+.pst-ph{padding:calc(var(--hh,62px) + 70px) 28px 150px}
+.tt2 button{background:var(--surface);color:var(--tx)}
+.pc .tt2 .ti{color:var(--pcDeep)}
+.tt2 button.on,.pc .tt2 button.on{background:var(--pcDeep,var(--ink));border-color:transparent;color:#fff}
+.tt2 button.on .ti,.pc .tt2 button.on .ti{background:rgba(255,255,255,.14);color:#fff}
+.tt2 button.on small{color:rgba(255,255,255,.75)}
+.pc .o3{background:color-mix(in srgb,var(--pcDeep) 9%,var(--surface));border-color:color-mix(in srgb,var(--pcDeep) 38%,transparent)}
+.pc .o3i{background:var(--pcDeep);color:#fff}
+.pc .o3 em{background:var(--pcDeep);color:#fff}
+.pst{min-width:0;width:calc(100% + 32px);max-width:none}
+.pst-art,.pst-art img{min-width:0;max-width:100%}
+.pst-art img{width:100%}
