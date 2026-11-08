@@ -842,6 +842,35 @@ select public.cbt_admin_telegram(:'ow9','off','{}')->>'ok';
 select pg_temp.chk('28h turning it off removes the token', not exists (select 1 from cbt_private.settings where key in ('tg_token', 'tg_chat')));
 select set_config('request.headers', '{"x-real-ip":"203.0.113.120"}', false);
 
+-- ===== 29. v64 series page: validity, upgrade plans, syllabus, promo =====
+set role anon;
+select pg_temp.chk('29a meta: the public call works and has nothing yet',
+  public.cbt_series_meta()->>'ok' = 'true' and public.cbt_series_meta()->'series' = '{}'::jsonb and public.cbt_series_meta()->>'promo' = '');
+select coalesce((public.cbt_admin_series_meta('wrong-password','save_series','{"series_id":"11111111-1111-1111-1111-111111111111","starts_at":1,"ends_at":2}')->>'ok')::boolean, false) as sm0 \gset
+select pg_temp.chk('29b meta: nobody changes it without signing in', not :'sm0'::boolean and public.cbt_series_meta()->'series' = '{}'::jsonb);
+reset role;
+select pg_temp.chk('29c meta: anon cannot read the tables directly',
+  not has_table_privilege('anon', 'cbt_private.series_meta', 'SELECT') and not has_table_privilege('anon', 'cbt_private.test_meta', 'SELECT'));
+select public.cbt_admin_series_meta(:'ow5','save_series','{"series_id":"11111111-1111-1111-1111-111111111111","starts_at":200,"ends_at":100}')->>'error' = 'date'
+  and public.cbt_admin_series_meta(:'ow5','save_series','{"series_id":"11111111-1111-1111-1111-111111111111","upgrades":[{"item":"cccccccc-0000-0000-0000-0000000000ff"}]}')->>'error' = 'upgrades'
+  and public.cbt_admin_series_meta(:'ow5','save_series','{"series_id":"11111111-1111-1111-1111-111111111111","features":[1,2]}')->>'error' = 'features'
+  and public.cbt_admin_series_meta(:'ow5','save_series','{"series_id":"nope"}')->>'error' = 'series'
+  and public.cbt_admin_series_meta(:'ow5','save_promo','{"link":"javascript:alert(1)"}')->>'error' = 'link'
+  and public.cbt_admin_series_meta(:'ow5','save_promo','{"link":"","promo":"data:text/html;base64,PGI+"}')->>'error' = 'image'
+  as sm_bad \gset
+select pg_temp.chk('29d meta: wrong dates, an unknown plan, bad lines, a bad link or a non-picture is refused, nothing saved',
+  :'sm_bad'::boolean and not exists (select 1 from cbt_private.series_meta));
+select public.cbt_admin_series_meta(:'ow5','save_series','{"series_id":"11111111-1111-1111-1111-111111111111","starts_at":1000,"ends_at":2000,"features":["Full tests <b>","  "],"upgrades":[{"item":"cccccccc-0000-0000-0000-000000000001","label":"Pro"}]}')->>'ok' as sm1 \gset
+select public.cbt_admin_series_meta(:'ow5','save_syllabus','{"test_id":"aaaaaaaa-0000-0000-0000-000000000001","syllabus":"Mole concept, <i>Atoms"}')->>'ok' as sm2 \gset
+select pg_temp.chk('29e meta: the owner saves dates, lines (cleaned), a plan and a syllabus; the public call shows them',
+  :'sm1' = 'true' and :'sm2' = 'true'
+  and public.cbt_series_meta()->'series'->'11111111-1111-1111-1111-111111111111'->'f' = '["Full tests b"]'::jsonb
+  and (public.cbt_series_meta()->'series'->'11111111-1111-1111-1111-111111111111'->>'e')::bigint = 2000
+  and public.cbt_series_meta()->'syl'->>'aaaaaaaa-0000-0000-0000-000000000001' = 'Mole concept, iAtoms');
+select pg_temp.chk('29f meta: Store view-only can look but not save',
+  public.cbt_admin_series_meta(:'lvt','get','{}')->>'ok' = 'true'
+  and public.cbt_admin_series_meta(:'lvt','save_syllabus','{"test_id":"aaaaaaaa-0000-0000-0000-000000000001","syllabus":"x"}')->>'error' = 'forbidden');
+
 -- ===== report =====
 \t off
 \a

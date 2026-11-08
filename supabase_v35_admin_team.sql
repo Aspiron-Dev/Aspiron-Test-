@@ -373,6 +373,7 @@ create or replace function cbt_private.admin_need(p_fn text, p_act text) returns
     when 'cbt_admin_qbank'          then case when p_act in ('stats', 'list', 'get') then 'content:view' else 'content:manage' end   -- v55
     when 'cbt_admin_social'         then case when p_act = 'get' then 'messaging:view' else 'messaging:manage' end   -- v57
     when 'cbt_admin_store_look'     then case when p_act = 'get' then 'store:view' else 'store:manage' end   -- v61
+    when 'cbt_admin_series_meta'    then case when p_act = 'get' then 'store:view' else 'store:manage' end   -- v64
   end
 $$;
 revoke all on function cbt_private.admin_need(text, text) from public, anon, authenticated;
@@ -489,7 +490,7 @@ begin
         locked_until = case when a.fails + 1 >= 5 then t + 3600000 else a.locked_until end,
         fails        = case when a.fails + 1 >= 5 then 0 else a.fails + 1 end;
     insert into admin_fail_log default values;
-    perform adm_fail_ip();   -- v62
+    perform adm_fail_ip();   -- v64
     delete from admin_fail_log where at < now() - interval '2 hours';
     if (select count(*) from admin_fail_log where at > now() - interval '1 hour') >= 100 then
       insert into settings values ('admin_locked_until',(t + 900000)::text)
@@ -618,7 +619,7 @@ begin
     if coalesce((select value from settings where key = 'team_login'), 'on') = 'off' then u := null; end if;
     if u.id is null or not adm_pw_ok(u.salt, u.pw_hash, p_pw) then
       perform adm_fail('team', false);
-      perform adm_fail_ip();   -- v62
+      perform adm_fail_ip();   -- v64
       insert into admin_fail_log_team default values;
       delete from admin_fail_log_team where at < now() - interval '2 hours';
       if (select count(*) from admin_fail_log_team where at > now() - interval '1 hour') >= 100 then
