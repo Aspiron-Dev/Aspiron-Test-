@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=11;
+const V3VER=12;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -190,7 +190,7 @@ A.copy=el=>{const c=el.dataset.v;const done=()=>toast3('Copied: '+c);try{navigat
 /* ---------- the classic screens: open them, show a pill to come back ---------- */
 let lockHash=null;
 function toOld(){document.body.classList.add('v3old');host&&host.setAttribute('data-view','old')}
-function toNew(){document.body.classList.remove('v3old');lockHash=null;host&&host.removeAttribute('data-view');const m=document.querySelector('meta[name="theme-color"]');m&&m.setAttribute('content',getComputedStyle(host).getPropertyValue('--bg').trim()||'#f5f5f3')}
+function toNew(){document.body.classList.remove('v3old','x3ins');lockHash=null;host&&host.removeAttribute('data-view');const m=document.querySelector('meta[name="theme-color"]');m&&m.setAttribute('content',getComputedStyle(host).getPropertyValue('--bg').trim()||'#f5f5f3')}
 /* go to a classic page by its address (#/qb, #/m, #/s/<id> …) */
 function oldHash(h){closeLayer();unwind(()=>{toOld();if(location.hash===h)_route();else location.hash=h})}
 /* run a classic function that draws straight into the page (openReview …) */
@@ -1225,6 +1225,7 @@ route=async function(){
   if(goThen){const f=goThen;goThen=null;setTimeout(f,0)}};
 if(typeof login==='function'){const _login=login;login=function(){document.body.classList.remove('v3on','v3old');return _login.apply(this,arguments)}}
 if(typeof cdRefresh==='function'){const _cdr=cdRefresh;cdRefresh=function(){const r=_cdr.apply(this,arguments);if(booted&&document.body.classList.contains('v3on')&&!document.body.classList.contains('v3old')&&(S.tab==='home'||S.tab==='tools'))softRender();return r}}
+window.v3BackNew=()=>{document.body.classList.remove('x3ins');A.backNew()};
 window.v3Enable=function(){lsSet('cbt_v3',true);if(typeof AUTH==='undefined'||!AUTH)return;boot();document.body.classList.add('v3on');toNew();S.tab='';if(!isNewHash(location.hash||'#/'))location.hash='#/';else route();setTimeout(()=>toast3('Welcome to the new design. Switch back any time from the menu.'),600)};
 window.v3Disable=function(){lsSet('cbt_v3',false);closeLayer();unwind(()=>{document.body.classList.remove('v3on','v3old');lockHash=null;try{typeof syncTheme==='function'&&syncTheme()}catch(e){}if(location.hash==='#/'||location.hash===''){_route()}else location.hash='#/';try{typeof toast==='function'&&toast('Classic design is back. Try the new one again from the menu.')}catch(e){}})};
 /* already signed in and the new design chosen: take over the first screen */
@@ -1311,4 +1312,136 @@ async function rvAsk(sid,title,manual){
     just=s&&s.unlocked?{sid:s.id,title:s.title,at:Date.now()}:null}catch(e){just=null}return _sp.apply(this,arguments)};
   const after=()=>{if(!just||Date.now()-just.at>120000)return;const j=just;just=null;setTimeout(()=>rvAsk(j.sid,j.title,false),1400)};
   ['showHeld','showResult'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;window[n]=function(){const r=f.apply(this,arguments);try{after()}catch(e){}return r}})})();
+})();
+
+/* ================= THE EXAM SCREEN in the new design =================
+   Runs outside the v3 bubble on purpose: the exam engine stays the classic one (cbt_start, timer, answers saved on
+   the phone every change and online every few seconds, offline resume, leave warnings, Hindi / English, submit and
+   the pending queue). Only the screen is drawn here, with the same actions (sel, clr, go, goSec, saveNext,
+   markNext, pal, submitAsk). With the classic design on, nothing here runs. */
+(function(){'use strict';
+if(typeof draw!=='function'||typeof T==='undefined')return;
+const on=()=>document.body.classList.contains('v3on');
+const XV=['bg','surface','surface2','line','tx','mut','faint','ink','onInk','acc','acc1','acc2','onAcc','accSoft','ok','err','warn','hero1','hero2','heroTx','heroMut','glow'];
+function xSync(){const h=document.getElementById('v3host');if(!h)return;const cs=getComputedStyle(h),b=document.body.style;XV.forEach(v=>{const x=cs.getPropertyValue('--'+v).trim();if(x)b.setProperty('--x-'+v,x)});
+  b.setProperty('--x-dark',(h.dataset.mode&&h.dataset.mode!=='light')?'1':'0');document.body.classList.toggle('x3dark',!!h.dataset.mode&&h.dataset.mode!=='light')}
+const xs=i=>{const has=P.ans[i]!=null,mk=P.mark[i];return mk?(has?'mans':'mark'):has?'ans':P.vis[i]?'na':'nv'};
+const LBL={nv:'Not visited',na:'Not answered',ans:'Answered',mark:'Marked',mans:'Answered & marked'};
+function xCounts(idx){const c={nv:0,na:0,ans:0,mark:0,mans:0};idx.forEach(i=>c[xs(i)]++);return c}
+function xPal(){const lock=!!T.lock_back,cur=SEC.of(P.cur),idx=SEC.has?T.questions.map((_,i)=>i).filter(i=>SEC.of(i)===cur):T.questions.map((_,i)=>i),c=xCounts(idx);
+  return `${SEC.has?`<p class="x3ps">${esc(SEC.label(cur))}</p>`:''}<div class="x3pal">${idx.map(i=>`<button class="${xs(i)}${i===P.cur?' cur':''}" ${lock?'disabled':''} onclick="go(${i})" aria-label="Question ${i+1}, ${LBL[xs(i)]}">${i+1}</button>`).join('')}</div>
+  <div class="x3leg">${['ans','na','nv','mark','mans'].map(k=>`<span><i class="${k}">${c[k]}</i>${LBL[k]}</span>`).join('')}</div>`}
+const _draw=draw;
+draw=function(){if(!on()||!T||!P)return _draw.apply(this,arguments);
+  document.body.classList.remove('x3ins');xSync();const n=T.questions.length,q=T.questions[P.cur],a=P.ans[P.cur],lock=!!T.lock_back,all=xCounts(T.questions.map((_,i)=>i)),done=all.ans+all.mans;
+  P.vis[P.cur]=1;const hi=T.lang==='hi';
+  const opt=(o,i)=>(o||(q.oimg&&q.oimg[i]))?`<button class="x3op ${pracCls(q,a,i)}" ${T.practice&&a!=null?'':`onclick="sel(${i})"`} aria-pressed="${a===i}"><span class="k">${L[i]}</span><span class="t">${esc(o)}${imgTag(q.oimg&&q.oimg[i],'oi')}</span></button>`:'';
+  document.getElementById('app').innerHTML=`<div class="x3">
+   <header class="x3h cbtbar"><div class="x3t"><b class="tb-title">${esc(T.title)}${hi?' <span class="lgb">हिंदी</span>':''}</b><small>${esc((AUTH&&AUTH.name)||'')}</small></div>
+    <div class="timer x3tm" id="tm">${ic('clock',16)}<span>--:--</span></div><button class="x3sub" onclick="submitAsk()">Submit</button></header>
+   <div class="x3bar" aria-hidden="true"><i style="width:${(done/n*100).toFixed(1)}%"></i></div>
+   ${SEC.has?`<nav class="x3sec">${SEC.names.map(s=>`<button class="${s===SEC.of(P.cur)?'on':''}" ${lock?'disabled':''} onclick="goSec(${JSON.stringify(s).replace(/"/g,'&quot;')})">${esc(SEC.label(s))}</button>`).join('')}</nav>`:''}
+   <div class="x3m"><section class="qcard x3q"${hi?' lang="hi"':''}>
+     <div class="x3qm"><span class="x3qn">Question ${P.cur+1}<small> of ${n}</small></span><span class="x3mk"><i class="g">+${T.correct}</i><i class="b">−${T.wrong}</i></span>${P.mark[P.cur]?'<span class="x3chip">Marked</span>':''}<span style="flex:1"></span>${bmBtn(P.tid,P.cur)}${rpBtn(P.tid,P.cur)}</div>
+     <div class="x3qt">${esc(q.q)}</div>${imgTag(q.img)}
+     <div class="x3os">${q.options.map(opt).join('')}</div>${pracFb(q,a)}
+     ${a!=null&&!T.practice?'<button class="x3clr" onclick="clr()">Clear response</button>':''}</section>
+    <aside class="x3side"><div class="x3who"><span>${esc(((AUTH&&AUTH.name)||'?').trim()[0].toUpperCase())}</span><div><b>${esc((AUTH&&AUTH.name)||'')}</b><small>Candidate</small></div></div>${xPal()}<button class="x3sub blk" onclick="submitAsk()">Submit test</button></aside></div>
+   <footer class="x3f">${lock?'':`<button class="x3nav" ${P.cur===0?'disabled':''} onclick="go(${P.cur-1})" aria-label="Previous question">${ic('left',20)}</button>`}
+    <button class="x3pb" onclick="pal(true)" aria-label="Question palette">${ic('grid',18)}<span>${done}/${n}</span></button>
+    <button class="x3mn" onclick="markNext()">${ic('flag',16)}<span>Mark &amp; Next</span></button>
+    <button class="x3sn" onclick="saveNext()"><span>${P.cur===n-1?'Save':'Save &amp; Next'}</span>${ic('right',18)}</button></footer>
+   <div class="sheet x3sh ${typeof palOpen!=='undefined'&&palOpen?'open':''}" onclick="if(event.target===this)pal(false)"><div class="in"><div class="grab"></div><div class="x3shh"><b>Question palette</b><button onclick="pal(false)" aria-label="Close">${ic('x',18)}</button></div>${xPal()}<button class="x3sub blk" onclick="submitAsk()">Submit test</button></div></div></div>`;
+  tick()};
+/* the instructions page and the exam pop-ups take the new look too (CSS below); keep the colours in step */
+if(typeof instr==='function'){const _in=instr;instr=function(){const r=_in.apply(this,arguments);if(on()){xSync();document.body.classList.add('x3ins');
+    const b=document.querySelector('#app .ins > button.btn.ghost');if(b&&window.v3BackNew){b.removeAttribute('onclick');b.addEventListener('click',e=>{e.preventDefault();window.v3BackNew()})}}return r}}
+addEventListener('hashchange',()=>{if(!document.querySelector('#app .ins'))document.body.classList.remove('x3ins')});
+const css=document.createElement('style');css.id='x3css';css.textContent=`
+body.v3on.intest{background:var(--x-bg)!important;font-family:Geist,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body.v3on.intest #app{max-width:none;padding:0}
+.x3{min-height:100vh;background:var(--x-bg);color:var(--x-tx);padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+.x3 button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;-webkit-tap-highlight-color:transparent}
+.x3h{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top,0px));background:color-mix(in srgb,var(--x-bg) 88%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-bottom:1px solid var(--x-line);box-shadow:none;margin:0;border-radius:0}
+.x3t{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.x3t b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.x3t small{font-size:12px;color:var(--x-mut)}
+.x3tm{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px;border-radius:12px;background:var(--x-surface2);font-weight:600;font-variant-numeric:tabular-nums;font-size:15px;color:var(--x-tx);border:0}
+.x3tm.low{background:color-mix(in srgb,var(--x-err) 14%,transparent);color:var(--x-err);animation:x3p 1s ease-in-out infinite}
+@keyframes x3p{50%{opacity:.6}}
+.x3sub{height:38px;padding:0 14px;border-radius:12px;background:var(--x-ink)!important;color:var(--x-onInk)!important;font-weight:600;font-size:14px}
+.x3sub.blk{width:100%;height:48px;margin-top:16px;border-radius:14px;font-size:15px}
+.x3bar{height:3px;background:var(--x-surface2)}.x3bar i{display:block;height:100%;background:var(--x-acc1);transition:width .4s ease}
+.x3sec{display:flex;gap:8px;overflow-x:auto;padding:12px 14px 0;scrollbar-width:none}.x3sec::-webkit-scrollbar{display:none}
+.x3sec button{flex:none;height:36px;padding:0 14px;border-radius:99px;border:1.5px solid var(--x-line)!important;font-size:13.5px;font-weight:500;background:var(--x-surface)!important}
+.x3sec button.on{background:var(--x-ink)!important;color:var(--x-onInk)!important;border-color:transparent!important}
+.x3m{max-width:1080px;margin:0 auto;padding:14px;display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:900px){.x3m{grid-template-columns:1fr 320px;align-items:start}}
+.x3q{background:var(--x-surface)!important;border:1px solid var(--x-line)!important;border-radius:22px!important;padding:18px!important;box-shadow:0 12px 30px -22px rgba(0,0,0,.35)!important;margin:0!important}
+.x3qm{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.x3qn{font-size:15px;font-weight:600}.x3qn small{font-weight:400;color:var(--x-mut)}
+.x3mk{display:inline-flex;gap:4px}.x3mk i{font-style:normal;font-size:12px;font-weight:600;padding:3px 8px;border-radius:8px}
+.x3mk .g{background:color-mix(in srgb,var(--x-ok) 13%,transparent);color:var(--x-ok)}.x3mk .b{background:color-mix(in srgb,var(--x-err) 12%,transparent);color:var(--x-err)}
+.x3chip{font-size:12px;font-weight:600;padding:3px 9px;border-radius:8px;background:var(--x-accSoft);color:var(--x-acc)}
+.x3qt{font-size:16.5px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.x3q img.qi{max-width:100%;height:auto;border-radius:12px;margin-top:12px;background:#fff}
+.x3os{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+.x3op{display:flex;align-items:flex-start;gap:12px;width:100%;padding:14px!important;border-radius:16px!important;border:1.5px solid var(--x-line)!important;background:var(--x-surface)!important;text-align:left;font-size:15.5px;line-height:1.5;transition:border-color .2s,background .2s,transform .2s}
+.x3op:active{transform:scale(.99)}
+.x3op .k{flex:none;width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-weight:600;font-size:14px;background:var(--x-surface2)}
+.x3op .t{flex:1;min-width:0;overflow-wrap:anywhere}
+.x3op.sel{border-color:var(--x-ink)!important;background:color-mix(in srgb,var(--x-ink) 6%,var(--x-surface))!important}
+.x3op.sel .k{background:var(--x-ink);color:var(--x-onInk)}
+.x3op.ok{border-color:var(--x-ok)!important;background:color-mix(in srgb,var(--x-ok) 10%,var(--x-surface))!important}.x3op.ok .k{background:var(--x-ok);color:#fff}
+.x3op.bad{border-color:var(--x-err)!important;background:color-mix(in srgb,var(--x-err) 9%,var(--x-surface))!important}.x3op.bad .k{background:var(--x-err);color:#fff}
+.x3q .pfb{margin-top:14px;padding:14px;border-radius:14px;background:var(--x-surface2);font-size:14.5px;line-height:1.55}
+.x3clr{margin-top:12px;height:38px;padding:0 14px;border-radius:12px;background:var(--x-surface2)!important;font-size:13.5px;font-weight:500}
+.x3side{display:none;background:var(--x-surface);border:1px solid var(--x-line);border-radius:22px;padding:16px;position:sticky;top:80px}
+@media(min-width:900px){.x3side{display:block}}
+.x3who{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.x3who>span{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:600;background:var(--x-surface2)}
+.x3who b{display:block;font-size:14.5px}.x3who small{font-size:12px;color:var(--x-mut)}
+.x3ps{font-size:13px;font-weight:600;margin:0 0 10px}
+.x3pal{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:8px}
+.x3pal button{height:42px;border-radius:12px!important;font-size:14px;font-weight:600;border:1.5px solid transparent!important;transition:transform .2s}
+.x3pal button:active{transform:scale(.92)}
+.x3pal .nv{background:var(--x-surface2)!important;color:var(--x-mut)!important}
+.x3pal .na{background:color-mix(in srgb,var(--x-err) 12%,var(--x-surface))!important;color:var(--x-err)!important}
+.x3pal .ans{background:var(--x-ok)!important;color:#fff!important}
+.x3pal .mark{background:#8a6fd1!important;color:#fff!important}
+.x3pal .mans{background:#8a6fd1!important;color:#fff!important;box-shadow:inset 0 -4px 0 var(--x-ok)}
+.x3pal .cur{border-color:var(--x-ink)!important;box-shadow:0 0 0 2px var(--x-surface),0 0 0 4px var(--x-ink)}
+.x3leg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;font-size:12.5px;color:var(--x-mut)}
+.x3leg span{display:flex;align-items:center;gap:7px}.x3leg span:last-child{grid-column:1/-1}
+.x3leg i{font-style:normal;min-width:24px;height:24px;padding:0 5px;border-radius:7px;display:grid;place-items:center;font-size:12px;font-weight:600}
+.x3leg .nv{background:var(--x-surface2)}.x3leg .na{background:color-mix(in srgb,var(--x-err) 12%,var(--x-surface));color:var(--x-err)}.x3leg .ans{background:var(--x-ok);color:#fff}.x3leg .mark,.x3leg .mans{background:#8a6fd1;color:#fff}
+.x3f{position:fixed;left:0;right:0;bottom:0;z-index:25;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb,var(--x-surface) 92%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid var(--x-line)}
+.x3f button{height:50px;border-radius:15px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:14.5px}
+.x3nav{flex:none;width:50px;background:var(--x-surface2)!important}.x3nav:disabled{opacity:.4}
+.x3pb{flex:none;padding:0 12px;background:var(--x-surface2)!important;font-size:13.5px!important}
+.x3mn span,.x3sn span{white-space:nowrap}
+@media(max-width:430px){.x3mn svg{display:none}.x3mn{font-size:13.5px!important}}
+body.x3ins .hdr,body.x3ins #bnav{display:none!important}
+body.x3ins #v3host{display:none!important}
+body.v3on.x3ins{padding-top:env(safe-area-inset-top,0px)}
+.x3mn{flex:1;background:color-mix(in srgb,#8a6fd1 14%,var(--x-surface))!important;color:#7a5fc4!important}
+.x3sn{flex:1.4;background:var(--x-ink)!important;color:var(--x-onInk)!important}
+body.x3dark .x3mn{color:#c3b2f2!important}
+.x3sh{position:fixed;inset:0;z-index:40;background:rgba(10,10,12,.45);opacity:0;pointer-events:none;transition:opacity .3s}
+.x3sh.open{opacity:1;pointer-events:auto}
+.x3sh .in{position:absolute;left:0;right:0;bottom:0;max-height:82vh;overflow:auto;background:var(--x-surface);color:var(--x-tx);border-radius:26px 26px 0 0;padding:10px 18px calc(18px + env(safe-area-inset-bottom,0px));transform:translateY(100%);transition:transform .45s cubic-bezier(.2,.9,.25,1)}
+.x3sh.open .in{transform:none}
+.x3sh .grab{width:40px;height:4px;border-radius:4px;background:var(--x-line);margin:0 auto 12px}
+.x3shh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.x3shh b{font-size:17px}
+.x3shh button{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--x-surface2)!important}
+.x3 .iconbtn{width:36px;height:36px;border-radius:11px;background:var(--x-surface2);border:0;color:var(--x-tx)}
+.x3 .iconbtn.on{color:var(--x-acc);background:var(--x-accSoft)}
+body.v3on.intest #layer .modal .box,body.v3on.v3old #layer .modal .box{border-radius:24px;background:var(--x-surface);color:var(--x-tx);font-family:Geist,system-ui,sans-serif}
+body.v3on.intest #layer .modal .btn,body.v3on.v3old #layer .modal .btn{border-radius:14px;min-height:46px;font-weight:600}
+body.v3on.v3old #app .ins.im{font-family:Geist,system-ui,sans-serif}
+body.v3on.v3old #app .ins.im .im-hero{background:radial-gradient(120% 90% at 100% 0%,var(--x-glow),transparent 60%),linear-gradient(155deg,var(--x-hero1),var(--x-hero2));color:var(--x-heroTx);border-radius:24px;box-shadow:0 24px 50px -28px rgba(0,0,0,.5)}
+body.v3on.v3old #app .ins.im .im-hero h1{color:var(--x-heroTx)}
+body.v3on.v3old #app .ins.im #sb{background:var(--x-ink);color:var(--x-onInk);border-radius:16px;min-height:52px;font-weight:600}
+body.v3on.v3old #app .ins.im #sb:disabled{opacity:.4}
+`;document.head.appendChild(css);
 })();
