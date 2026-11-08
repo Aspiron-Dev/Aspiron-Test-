@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=4;
+const V3VER=5;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -412,10 +412,11 @@ function tabs2(){const c=myCount(),n=(STORE||[]).filter(x=>x.buy_on!==false).len
 function posterImg(){const p=LK().poster||'';return /^data:image\/(jpeg|png|webp);base64,/.test(p)?p:''}
 function poster(){const L=LK(),img=posterImg(),u=/^(https:\/\/|#\/|store\.html#)[^\s"'<>\\]*$/.test(L.link||'')?L.link:'';
   const art=img?`<img src="${esc3(img)}" alt="">`:`<span class="pst-ph"><small>ASPIRON EDUCATION</small><b>Test series</b><em>NEET and JEE, exam-style tests with All India rank</em></span>`;
-  return `<section class="pst${img?'':' noimg'}">${u?`<a class="pst-art" href="${esc3(u)}"${/^https:/.test(u)?' target="_blank" rel="noopener noreferrer"':''} aria-label="Offer">${art}</a>`:`<div class="pst-art">${art}</div>`}
+  return `<div class="pst-stick" id="pstStick"><div class="pst-bd" id="pstBd"></div>
    <div class="pst-top"><div class="search"><label class="sbox">${ic('search',19)}<input id="tq" type="search" autocomplete="off" placeholder="Search test series, test name or exam" value="${esc3(TQ.q)}" aria-label="Search test series, test name or exam"><button class="clr" data-a="tqClear" aria-label="Clear search"${TQ.q?'':' hidden'}>${ic('x',17)}</button></label>
    <button class="fb${tfCount()?' on':''}" data-a="tFilter" aria-label="Filter${tfCount()?`, ${tfCount()} on`:''}">${ic('filter',20)}${tfCount()?`<b>${tfCount()}</b>`:''}</button></div></div>
-   <div class="pst-tabs">${tabs2()}</div></section>`}
+   <div class="pst-tabs" id="pstTabs">${tabs2()}</div></div>
+   <section class="pst${img?'':' noimg'}" id="pst">${u?`<a class="pst-art" href="${esc3(u)}"${/^https:/.test(u)?' target="_blank" rel="noopener noreferrer"':''} aria-label="Offer">${art}</a>`:`<div class="pst-art">${art}</div>`}</section>`}
 
 /* the poster's own colours, read from the picture on the phone: the top edge tints the header, a deep shade colours the
    offer boxes and the chosen button. Any poster the admin puts up gets matching colours by itself. */
@@ -434,12 +435,30 @@ function setPC(pc){PCOL=pc;if(!host)return;if(!pc){['--pcTop','--pcDeep','--pcLo
 function loadPC(){const img=posterImg(),key=img?img.length+img.slice(-40):'none';if(key===pcKey)return;pcKey=key;
   if(!img){const t=hexRGB(getComputedStyle(host).getPropertyValue('--hero1'));setPC({top:t,deep:t});pstSync();return}
   readPC(img).then(pc=>{if(pcKey!==key)return;setPC(pc);pstSync()})}
-/* while the poster is under the header, the header takes its colour (only colours change, never the size) */
-function pstSync(){if(!root)return;const h=$('#hdr');if(!h||!main)return;const p=S.tab==='test'&&!scrOpen()&&$('.pst'),old=document.body.classList.contains('v3old');
-  host&&host.style.setProperty('--hh',h.offsetHeight+'px');
-  const on=!!(p&&PCOL&&!old&&p.getBoundingClientRect().bottom>h.offsetHeight+70);h.classList.toggle('onpst',on);main.classList.toggle('pc',!!(p&&PCOL));
-  if(old||!host)return;const m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',on?host.dataset.pcMeta||'':getComputedStyle(host).getPropertyValue('--bg').trim()||'#f5f5f3')}
-addEventListener('scroll',()=>{if(!root||!main)return;if(S.tab==='test'||($('#hdr')&&$('#hdr').classList.contains('onpst')))pstSync()},{passive:true});
+/* scrolling the Tests page: the search bar stays at the top, the two big buttons ride up with the poster, stop under
+   the search bar and shrink to slim buttons; the poster drifts up and fades, and the header's colour goes from the
+   poster's colour back to normal. Only colours, positions and the buttons' height change (the header keeps its size). */
+const parseCol=v=>{v=String(v||'').trim();let m=/^#?([0-9a-f]{6})$/i.exec(v);if(m)return [0,2,4].map(i=>parseInt(m[1].substr(i,2),16)).concat(1);
+  m=/rgba?\(([^)]+)\)/.exec(v);if(!m)return [245,245,243,1];const n=m[1].split(',').map(x=>parseFloat(x));return [n[0],n[1],n[2],n.length>3?n[3]:1]};
+const mixC=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
+const TABH=116,TABS=48;
+let pstRaf=0;
+function pstSync(){if(!root)return;const h=$('#hdr');if(!h||!main)return;const st=$('#pstStick'),ps=$('#pst'),old=document.body.classList.contains('v3old');
+  const on=!!(S.tab==='test'&&!scrOpen()&&st&&ps&&!old),hh=h.offsetHeight;host&&host.style.setProperty('--hh',hh+'px');
+  main.classList.toggle('pc',!!(on&&PCOL));
+  const meta=document.querySelector('meta[name="theme-color"]');
+  if(!on){h.classList.remove('onpst');h.style.background='';if(!old&&host&&meta)meta.setAttribute('content',getComputedStyle(host).getPropertyValue('--bg').trim()||'#f5f5f3');return}
+  const sy=Math.max(0,scrollY),y0=ps.offsetHeight-hh-96,y1=68,span=Math.max(1,y0-y1),p=Math.min(1,sy/span),q=p*p*(3-2*p);
+  st.style.setProperty('--p',q.toFixed(3));
+  const th=TABH-(TABH-TABS)*q,ty=Math.max(y1,y0-sy);$('#pstTabs').style.transform=`translateY(${ty.toFixed(1)}px)`;
+  const bd=$('#pstBd');bd.style.height=(ty+th+14)+'px';bd.style.opacity=q.toFixed(3);
+  const art=ps.firstElementChild;if(art){art.style.transform=`translateY(${(Math.min(sy,span+200)*.45).toFixed(1)}px)`;art.style.opacity=(1-.9*q).toFixed(3)}
+  if(!PCOL){h.classList.remove('onpst');h.style.background='';return}
+  const base=parseCol(getComputedStyle(host).getPropertyValue('--hdr')),top=PCOL.top.concat(.78),c=mixC(top,base,q);
+  h.style.background=`rgba(${c.slice(0,3).map(Math.round).join(',')},${c[3].toFixed(3)})`;h.classList.toggle('onpst',q<.5);
+  if(meta){const b2=parseCol(getComputedStyle(host).getPropertyValue('--bg')),m2=mixC(PCOL.top,b2.slice(0,3),q);meta.setAttribute('content',`rgb(${m2.map(Math.round).join(',')})`)}}
+addEventListener('scroll',()=>{if(!root||!main||pstRaf)return;if(S.tab!=='test'&&!($('#hdr')&&$('#hdr').style.background))return;pstRaf=requestAnimationFrame(()=>{pstRaf=0;pstSync()})},{passive:true});
+addEventListener('resize',()=>{if(root&&S.tab==='test')pstSync()},{passive:true});
 
 /* ---------- store view ---------- */
 function offer3(){const L=(STORE||[]).filter(x=>x.buy_on!==false&&x.price).sort((a,b)=>offPct(b)-offPct(a)).slice(0,3);if(L.length<2)return '';
@@ -476,7 +495,7 @@ function myView(){const c=myCount(),L=TQ.mf==='exp'?[]:mine().filter(s=>TQ.mf===
   <div class="list">${L.length?L.map(myCard).join(''):`<div class="card empty"><span class="ti">${ic('layers',22)}</span><b>${TQ.mf==='exp'?'No expired test series':TQ.mf==='paid'?'No paid test series yet':'No free test series yet'}</b><p>${TQ.mf==='exp'?'Series whose access has ended will show up here.':'Get one from the store and it shows up here.'}</p>${TQ.mf==='exp'?'':'<button class="btn sm" data-a="toStore">Open the store</button>'}</div>`}</div>`}
 VIEW.test=()=>poster()+`<div id="tBody" class="stack" style="gap:var(--gap)">${storeView()}</div>`;
 function drawT(){const b=$('#tBody');if(!b)return;b.innerHTML=storeView();const n=tfCount(),fb=$('[data-a="tFilter"]');if(fb){fb.className='fb'+(n?' on':'');fb.innerHTML=ic('filter',20)+(n?`<b>${n}</b>`:'')}const x=$('[data-a="tqClear"]');x&&(x.hidden=!TQ.q);const t=$('.tt2');t&&(t.outerHTML=tabs2());autoRail('#tbRail','#tbRailD')}
-AFTER.test=()=>{const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#tbRail','#tbRailD');loadExtras();loadLook();loadPC();pstSync();
+AFTER.test=()=>{const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#tbRail','#tbRailD');loadExtras();loadLook();loadPC();pstSync();const pi=$('#pst img');pi&&!pi.complete&&pi.addEventListener('load',pstSync,{once:true});
   try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length))promoLoad().then(()=>{if(S.tab==='test'&&!scrOpen())softRender()})}catch(e){}};
 A.toList=()=>{TQ.tile='store';$$('.tt2 button').forEach(b=>b.classList.toggle('on',b.dataset.a==='toList'));const a=$('#allSec');a&&a.scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})};
 A.tqClear=()=>{TQ.q='';$('#tq').value='';drawT();$('#tq').focus()};
