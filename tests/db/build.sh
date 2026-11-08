@@ -17,7 +17,7 @@ ORDER="v9_banners v10_push v11_pyq v12_test_alerts v13_store v17_store_fix v18_s
  v42_audit_fixes v43_test_rules v44_edit_details v45_checklist_cd v46_order_trash v47_alerts_results v48_review_low v35_admin_team
  v49_answer_sheet v50_rank_order v51_test_pdf v35_admin_team v52_coupons_refer v53_refer_fixes v35_admin_team
  v54_store_map v55_qbank v35_admin_team v56_student_keep v57_social v35_admin_team
- v58_wallet_history v59_money_month v60_coupons_many v35_admin_team v61_tests_page v35_admin_team"
+ v58_wallet_history v59_money_month v60_coupons_many v35_admin_team v61_tests_page v62_admin_guard v35_admin_team"
 P tests/db/00_supabase_stubs.sql
 P tests/db/01_mock_schema.sql
 P tests/db/02_base_functions.sql

@@ -126,6 +126,13 @@ create table if not exists cbt_private.admin_fail_log_team (at timestamptz not n
 -- connections that signed in correctly in the last 60 days: the shared lock (someone guessing from many places) skips them
 create table if not exists cbt_private.admin_known (ip text primary key, at timestamptz not null default now());
 revoke all on cbt_private.admin_known from public, anon, authenticated;
+-- v62: addresses the owner blocked (Team & access → Security alerts → Block): no admin or team sign-in from them
+create table if not exists cbt_private.admin_ip_blocks (ip text primary key, note text not null default '', who text not null default '',
+  at timestamptz not null default now());
+revoke all on cbt_private.admin_ip_blocks from public, anon, authenticated;
+alter table cbt_private.admin_ip_blocks enable row level security;
+-- v62: team sign-in switch (Team & access → Members → "Team sign-in"); off until the owner turns it on
+insert into cbt_private.settings (key, value) values ('team_login', 'off') on conflict (key) do nothing;
 revoke all on cbt_private.admin_totp, cbt_private.admin_fail_log_team from public, anon, authenticated;
 
 -- HMAC-SHA1 and random bytes come from pgcrypto (schema "extensions" on Supabase)
@@ -355,6 +362,9 @@ begin
   if r.revoked_at is not null then return 'signed_out'; end if;
   if r.expires_at < now() then return 'expired'; end if;
   if r.user_id is not null and r.active is not true then return 'disabled'; end if;
+  -- v62: team sign-in off → every member session stops; a blocked address cannot use any session
+  if r.user_id is not null and coalesce((select value from settings where key = 'team_login'), 'on') = 'off' then return 'disabled'; end if;
+  if exists (select 1 from admin_ip_blocks where ip = adm_raw_ip()) then return 'signed_out'; end if;
   if r.last_seen < now() - interval '30 seconds' then
     update admin_sessions set last_seen = now(), expires_at = least(now() + interval '30 days', created_at + interval '180 days') where id = v_id;
   end if;
@@ -441,10 +451,11 @@ begin
   select * into f from admin_fails where ip = v_ip;
   if found and f.locked_until > t then return 'locked'; end if;
   if not adm_pw_ok(sl, h, p_pw) then
+    -- v62: 5 wrong owner passwords from one place lock that place for 1 hour
     insert into admin_fails as a (ip, fails) values (v_ip, 1)
       on conflict (ip) do update set
-        locked_until = case when a.fails + 1 >= 10 then t + 900000 else a.locked_until end,
-        fails        = case when a.fails + 1 >= 10 then 0 else a.fails + 1 end;
+        locked_until = case when a.fails + 1 >= 5 then t + 3600000 else a.locked_until end,
+        fails        = case when a.fails + 1 >= 5 then 0 else a.fails + 1 end;
     insert into admin_fail_log default values;
     delete from admin_fail_log where at < now() - interval '2 hours';
     if (select count(*) from admin_fail_log where at > now() - interval '1 hour') >= 100 then
@@ -537,6 +548,9 @@ begin
   perform cbt_private.adm_ctx_clear();
   perform set_config('cbt.fn', 'cbt_admin_login', true);
   if coalesce(p_pw, '') = '' or p_pw like 'as1.%' then return jsonb_build_object('ok', false, 'error', 'invalid'); end if;
+  -- v62: a blocked address cannot sign in at all
+  if exists (select 1 from admin_ip_blocks where ip = adm_raw_ip()) then return jsonb_build_object('ok', false, 'error', 'locked'); end if;
+  perform set_config('cbt.try_user', left(regexp_replace(v_name, '[^a-z0-9._@-]', '', 'g'), 40), true);
 
   if v_name = '' or v_name = 'owner' then
     perform set_config('cbt.pwlogin', '1', true);  -- the owner: same checks and locks as before; the code is checked below
@@ -552,7 +566,9 @@ begin
       return jsonb_build_object('ok', false, 'error', 'locked');
     end if;
     select * into u from admin_users where username = v_name;
-    if not found or not adm_pw_ok(u.salt, u.pw_hash, p_pw) then
+    -- v62: team sign-in switched off by the owner: every try is refused and counted like a wrong password
+    if coalesce((select value from settings where key = 'team_login'), 'on') = 'off' then u := null; end if;
+    if u.id is null or not adm_pw_ok(u.salt, u.pw_hash, p_pw) then
       perform adm_fail('team', false);
       insert into admin_fail_log_team default values;
       delete from admin_fail_log_team where at < now() - interval '2 hours';
@@ -643,6 +659,7 @@ begin
   if p_action = 'get' then
     return jsonb_build_object('ok', true, 'current', v_sid,
       'team_2fa_required', coalesce((select value from settings where key = 'team_2fa_required'), '') = '1',
+      'team_login', coalesce((select value from settings where key = 'team_login'), 'on') = 'on',
       'users', coalesce((select jsonb_agg(jsonb_build_object('id', u.id, 'name', u.name, 'username', u.username, 'perms', u.perms,
                    'active', u.active, 'note', u.note, 'created_at', u.created_at, 'last_login', u.last_login,
                    'online', exists (select 1 from admin_sessions s where s.user_id = u.id and s.revoked_at is null
@@ -695,6 +712,13 @@ begin
       end if;
     end if;
     return jsonb_build_object('ok', true, 'id', v_id);
+
+  elsif p_action = 'team_login' then
+    -- v62: owner: team sign-in on / off (off also stops the members' sessions at once)
+    insert into settings values ('team_login', case when coalesce((d->>'on')::boolean, false) then 'on' else 'off' end)
+      on conflict (key) do update set value = excluded.value;
+    perform set_config('cbt.detail', case when coalesce((d->>'on')::boolean, false) then 'on' else 'off' end, true);
+    return jsonb_build_object('ok', true);
 
   elsif p_action = 'team_2fa' then
     -- owner: require two-step sign-in for every team member (on / off)

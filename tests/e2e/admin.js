@@ -95,12 +95,17 @@ async function rpcRoute(route) {
     ok(await page.$('#tb_students') !== null, tag + ' backup panel opens with a recovery code');
     await page.goto(BASE + 'cp-dt764twzf54s5m.html#/team/members'); await page.waitForTimeout(1500);
     ok(/2-step on/.test(await page.textContent('#ax-page')), tag + ' team page shows owner 2-step on');
+    ok(/Team sign-in/.test(await page.textContent('#ax-page')) && await page.$('[name=tlog]') !== null, tag + ' team page has the team sign-in switch');
     // R3: security alerts (the recovery code and the wrong code above), shown safely, and the bell counts them
     await q(`select cbt_private.sec_event('team_changed','high','<img src=x onerror="window.__x=1">','<b>x</b>')`);
-    await page.goto(BASE + 'cp-dt764twzf54s5m.html#/team/alerts'); await page.waitForTimeout(1500);
+    await page.goto(BASE + 'cp-dt764twzf54s5m.html#/team/alerts?c=all'); await page.waitForTimeout(1500);   // 'all': the XSS row is an admin change
     const al = await page.textContent('#ax-page');
     ok(/Recovery code used/.test(al) && /Wrong two-step code/.test(al), tag + ' security alerts list the recovery code and wrong code');
     ok(!(await page.evaluate(() => window.__x)) && await page.$('#ax-page img[src=x]') === null, tag + ' alert text is shown as text, not HTML');
+    await page.click('.tl-i[data-act=open]'); await page.waitForSelector('.drawer');
+    const dr = await page.textContent('.drawer');
+    ok(/IP address/.test(dr) && /Device/.test(dr) && /Group/.test(dr), tag + ' an alert opens with its address, device and group');
+    await page.click('.drawer [data-close]'); await page.waitForTimeout(400);
     await page.click('[data-act=seen]'); await page.waitForTimeout(1200);
     ok((await q(`select count(*)::int n from cbt_private.security_events where level = 'high' and not seen`))[0].n === 0, tag + ' mark as seen works');
     ok(!errs.length, tag + ' no page errors ' + errs.join(' | '));
