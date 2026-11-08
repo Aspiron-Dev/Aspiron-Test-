@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=9;
+const V3VER=10;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -285,7 +285,6 @@ function tick(first){let c=null;try{c=cdGet()}catch(e){}if(!c||!$('#cdBox'))retu
   setDg('cdD',p(D),first);setDg('cdH',p(H),first);setDg('cdM',p(M),first);setDg('cdS',p(s),first);
   let pc=0;try{pc=cdCalc(c).pc}catch(e){}const pg=$('#cdPg');if(pg){pg.style.strokeDashoffset=(RC*(1-pc/100)).toFixed(1);$('#cdPct').textContent=pc+'%'}
   $('#cdBox').setAttribute('aria-label',`${D} days, ${H} hours, ${M} minutes until ${c.name}`)}
-A.cdEdit=()=>oldModal(()=>cdEdit());
 /* upcoming and live tests from the student's own series */
 function upList(){const cs=curSeries(),ok=new Set(cs?[cs.id]:[]),t0=nowMs();return (C().tests||[]).filter(t=>ok.has(t.series_id)).map(t=>({t,st:stOf(t)}))
   .filter(x=>['live','prog'].includes(x.st)||(x.st==='wait'&&x.t.opens_at-t0<14*DAY)).sort((a,b)=>(['live','prog'].includes(b.st)-['live','prog'].includes(a.st))||((a.t.opens_at||0)-(b.t.opens_at||0)))}
@@ -862,7 +861,6 @@ A.per=el=>{AN.per=el.dataset.v;$$('[data-a="per"]').forEach(x=>{const on=x===el;
 A.chSel=el=>{AN.chart=el.dataset.v;$('#chArea').innerHTML=chartArea()};
 A.chTbl=()=>{AN.table=!AN.table;$('#chArea').innerHTML=chartArea()};
 A.oldGo=el=>oldHash(el.dataset.h);
-A.profile=()=>oldModal(()=>openProfile());
 A.focus=()=>push(focusView());
 function histView(){return {t:'Test history',s:`${allRes().length} tests`,html:()=>{const R=allRes().slice().reverse();return R.length?`<div class="card rows">${R.slice(0,60).map(r=>{const t=tOf(r.test_id),s=t&&sOf(t.series_id);return `<div class="item"><span class="ti g">${ic('trophy',18)}</span><div class="bd"><div class="tt"><b>${esc3(titleOf(r))}</b><span class="badge n">${pctOf(r)}%</span></div><small>${s?esc3(s.title)+', ':''}${dS(r.at)}</small><small>${r.score} / ${r.max} marks. ${r.correct} right, ${r.wrong} wrong. Accuracy ${accOf(r)}%${r.used?`, ${Math.round(r.used/60)} min`:''}</small><div class="acts"><button class="btn sm" data-a="review" data-r="${esc3(r.id)}">Result and solutions</button></div></div></div>`}).join('')}</div>${R.length>60?'<p class="hint">Showing your latest 60 tests.</p>':''}`:`<div class="card empty"><span class="ti">${ic('trophy',22)}</span><b>No tests yet</b><p>Your results show up here after your first test.</p></div>`}}}
 A.hist=()=>push(histView());
@@ -1003,6 +1001,91 @@ A.prSkip=()=>{PR.pick=-1;PR.done++;redraw()};
 A.prNext=()=>{PR.i++;PR.pick=null;prRedraw()};
 A.prMaster=async el=>{el.disabled=true;const ok=await mkMaster(PR.q[PR.i]);if(ok)PR.mastered++;else toast3('Could not save, kept for later.');PR.i++;PR.pick=null;prRedraw()};
 
+/* ================= PROFILE, SETTINGS, EXAM COUNTDOWN, HELP and SIGN OUT in the new design =================
+   The data stays where it always was: profile cbt_pf_<mobile> and countdown cbt_cd_<mobile> on the phone, which the
+   app also keeps on the student's account (cbt_keep, v56) on every save; sound cbt_snd; notifications cbt_np. */
+const PF3={cls:['Class 9','Class 10','Class 11','Class 12','Dropper','College'],exam:['NEET','JEE','CUET','Boards','Other'],
+  f:[['name','Full name','text','Your name','name'],['email','Email','email','name@example.com','email'],['phone','Alternate phone','tel','Optional','tel'],['school','School / Coaching','text','School or coaching name','organization'],['city','City','text','Your city','address-level2']]};
+let PFD=null;
+function pfAv(sz){const o=stuProf();return o.photo&&/^data:image\//.test(o.photo)?`<img src="${esc3(o.photo)}" alt="" style="width:100%;height:100%;object-fit:cover">`:`<b style="font-size:${Math.round(sz*.4)}px">${initial()}</b>`}
+function profileView(){return {t:'My profile',s:'Your details and progress',key:'prof',html:()=>{const o=PFD,R=allRes(),st=stats(R),nm=(o.name||(AUTH&&AUTH.name)||'').trim();let lvl='';try{lvl=pstats(C().results||[]).lvl}catch(e){}
+  return `<section class="pfh"><label class="pfa" for="pfFile" aria-label="Change photo">${pfAv(92)}<span class="pfc">${ic('pen',14)}</span></label><input id="pfFile" type="file" accept="image/*" hidden>
+    <div class="pfn"><b>${esc3(nm||'Student')}</b><small>+91 ${esc3(typeof maskMob==='function'&&AUTH?maskMob(AUTH.mobile):'')}${lvl?` · ${esc3(lvl)}`:''}</small>${stuProf().photo?'<button class="lnk" data-a="pfRm">Remove photo</button>':''}</div>
+    <div class="pfs"><div><b>${st.n||R.length}</b><small>Tests</small></div><div><b>${st.avg!=null?Math.round(st.avg):0}%</b><small>Average</small></div><div><b>${st.streak||0}</b><small>Day streak</small></div></div></section>
+   <form class="card pff" id="pfForm" autocomplete="on" onsubmit="return false">
+    ${PF3.f.map(f=>`<label class="fl"><span>${f[1]}</span><input class="inp" name="${f[0]}" type="${f[2]}" placeholder="${f[3]}" autocomplete="${f[4]}" maxlength="80" value="${esc3(f[0]==='name'?nm:(o[f[0]]||''))}"></label>`).join('')}
+    <div class="fl"><span>Class</span><div class="chips wrap">${PF3.cls.map(c=>`<button type="button" class="${o.cls===c?'on':''}" aria-pressed="${o.cls===c}" data-a="pfPick" data-k="cls" data-v="${c}">${c}</button>`).join('')}</div></div>
+    <div class="fl"><span>Target exam</span><div class="chips wrap">${PF3.exam.map(c=>`<button type="button" class="${o.exam===c?'on':''}" aria-pressed="${o.exam===c}" data-a="pfPick" data-k="exam" data-v="${c}">${c}</button>`).join('')}</div></div>
+    <label class="fl"><span>About or goal</span><textarea class="inp" name="about" rows="3" maxlength="300" placeholder="e.g. Aim for 650+ in NEET">${esc3(o.about||'')}</textarea></label>
+    <p class="hint" style="margin:0">All optional. Saved to your account, so it comes back on any phone.</p></form>
+   <div class="buybar"><span class="mut" style="font-size:13px">Changes are saved when you tap Save</span><button class="btn" data-a="pfSave">${ic('check',16)}Save profile</button></div>`},
+  after:()=>{const f=$('#pfFile');f&&f.addEventListener('change',()=>pfPhoto(f))}}}
+A.profile=()=>{PFD=Object.assign({},stuProf());closeLayer();push(profileView())};
+const pfForm=()=>{const F=$('#pfForm');if(!F)return;PF3.f.forEach(f=>{const i=F.querySelector(`[name="${f[0]}"]`);if(i)PFD[f[0]]=i.value.trim()});const a=F.querySelector('[name=about]');if(a)PFD.about=a.value.trim()};
+A.pfPick=el=>{pfForm();PFD[el.dataset.k]=PFD[el.dataset.k]===el.dataset.v?'':el.dataset.v;redraw()};
+A.pfSave=()=>{pfForm();const o=Object.assign({},stuProf(),PFD);if(AUTH&&o.name===(AUTH.name||'').trim())delete o.name;
+  if(o.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(o.email)){toast3('Please check your email');return}
+  try{pfSave(o);if(typeof pfHdr==='function')pfHdr()}catch(e){toast3('Could not save. Please try again.');return}
+  toast3('Profile saved');back();setTimeout(()=>softRender(),350)};
+A.pfRm=()=>{const o=Object.assign({},stuProf());delete o.photo;try{pfSave(o)}catch(e){}PFD=Object.assign(PFD||{},{photo:undefined});delete PFD.photo;redraw();toast3('Photo removed')};
+function pfPhoto(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{const im=document.createElement('img');im.onload=()=>{const S=256,c=document.createElement('canvas');c.width=c.height=S;const g=c.getContext('2d'),m=Math.min(im.width,im.height);
+    g.drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,S,S);const o=Object.assign({},stuProf());o.photo=c.toDataURL('image/jpeg',.82);try{pfSave(o)}catch(e){}pfForm();PFD.photo=o.photo;redraw();toast3('Photo updated')};
+   im.onerror=()=>toast3('Could not read this picture');im.src=r.result};r.readAsDataURL(f)}
+
+/* ---------- exam countdown editor ---------- */
+const CDU3=[['months','Months'],['weeks','Weeks'],['days','Days'],['hours','Hours'],['minutes','Minutes'],['seconds','Seconds']];
+const CDQ=[['NEET 2027','2027-05-02T14:00'],['JEE Main 2027','2027-01-22T09:00'],['JEE Advanced 2027','2027-05-23T09:00'],['CUET 2027','2027-05-15T09:00']];
+let CDE3=null;
+const cdk3=()=>'cbt_cd_'+(AUTH&&AUTH.mobile);
+const pad2=n=>String(n).padStart(2,'0');
+const dtLocal=t=>{const d=new Date(t);return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`};
+function cdSheet(){const c=CDE3;openSheet(`<h2 id="sheetT">Exam countdown</h2><p class="sub">Only you see this. It is kept on your account.</p>
+  <div class="fg"><h3>Quick pick</h3><div class="chips wrap">${CDQ.map(q=>`<button class="${c.name===q[0]?'on':''}" data-cq="${q[0]}" data-cd="${q[1]}">${q[0]}</button>`).join('')}</div></div>
+  <label class="fl"><span>Exam or event name</span><input class="inp" id="cdN" maxlength="30" placeholder="e.g. NEET 2027" value="${esc3(c.name)}"></label>
+  <label class="fl"><span>Date and time</span><input class="inp" id="cdD" type="datetime-local" value="${c.date}"></label>
+  <div class="fg"><h3>Show these</h3><div class="chips wrap">${CDU3.map(u=>`<button class="${c.units.includes(u[0])?'on':''}" aria-pressed="${c.units.includes(u[0])}" data-cu="${u[0]}">${u[1]}</button>`).join('')}</div></div>
+  <div class="sheet-ft">${c.had?'<button class="btn ghost" data-cdx>Remove</button>':'<button class="btn ghost" data-a="close">Cancel</button>'}<button class="btn" data-cds>Save countdown</button></div>`);
+  sheet.onclick=e=>{const read=()=>{const n=sheet.querySelector('#cdN'),d=sheet.querySelector('#cdD');if(n)c.name=n.value;if(d)c.date=d.value};
+   const q=e.target.closest('[data-cq]');if(q){c.name=q.dataset.cq;c.date=q.dataset.cd;cdSheet();return}
+   const u=e.target.closest('[data-cu]');if(u){read();const i=c.units.indexOf(u.dataset.cu);i>-1?c.units.splice(i,1):c.units.push(u.dataset.cu);const y=sheet.scrollTop;cdSheet();sheet.scrollTop=y;return}
+   if(e.target.closest('[data-cdx]')){try{LS.del(cdk3())}catch(e2){}closeLayer();toast3('Countdown removed');softRender();return}
+   if(e.target.closest('[data-cds]')){read();const n=c.name.trim(),t=new Date(c.date).getTime();if(!n){toast3('Enter the exam name');return}if(!c.date||isNaN(t)){toast3('Pick a date');return}if(!c.units.length){toast3('Pick at least one unit');return}
+    let old=null;try{old=cdGet()}catch(e2){}const iso=new Date(t).toISOString();
+    try{LS.set(cdk3(),{name:n,date:iso,start:old&&old.date===iso&&old.start?old.start:Date.now(),units:CDU3.map(x=>x[0]).filter(k=>c.units.includes(k))})}catch(e2){toast3('Could not save');return}
+    closeLayer();toast3('Countdown saved');softRender()}}}
+A.cdEdit=()=>{let c=null;try{c=cdGet()}catch(e){}CDE3={name:c?c.name:'',date:dtLocal(c?c.date:Date.now()+30*DAY),units:c?c.units.slice():['days','hours','minutes'],had:!!c};closeLayer();setTimeout(cdSheet,RM?0:60)};
+
+/* ---------- settings ---------- */
+const sndOn3=()=>{try{return LS.get('cbt_snd',true)!==false}catch(e){return true}};
+const npOn3=()=>{try{return npOn()}catch(e){return false}};
+const standalone3=()=>{try{return isStandalone()}catch(e){return false}};
+function setRow(i,t,d,a,right){return `<button class="row" data-a="${a}"><span class="ti g">${ic(i,19)}</span><span><b>${t}</b>${d?`<small>${d}</small>`:''}</span>${right||ic('right',18)}</button>`}
+const tgl=on=>`<span class="tgl${on?' on':''}" aria-hidden="true"><i></i></span>`;
+function settingsView(){return {t:'Settings',s:'Your account and the app',key:'set',html:()=>{let c=null;try{c=cdGet()}catch(e){}
+  return `<div class="stack" style="gap:10px"><p class="gh">Account</p><div class="card rows">${setRow('user','Profile','Name, photo, class and target exam','profile')}${setRow('target','Exam countdown',c?esc3(c.name)+', '+dS(c.date):'Set your exam date','cdEdit')}${setRow('sun','Theme and colours',esc3(themeLabel()),'setTheme')}</div></div>
+  <div class="stack" style="gap:10px"><p class="gh">App</p><div class="card rows">${setRow('bell','Phone notifications',npOn3()?'On, new notices appear on your phone':'Get new notices on your phone','setNp',tgl(npOn3()))}${setRow('mega','Opening sound',sndOn3()?'On, a soft sound with the opening animation':'Off, the app opens silently','setSnd',tgl(sndOn3()))}${standalone3()?'':setRow('dl','Install the app','Open it from your home screen, full screen','setInstall')}${setRow('swap','Classic design','Switch back to the older look','setClassic')}</div></div>
+  <div class="stack" style="gap:10px"><p class="gh">Help</p><div class="card rows">${setRow('mail','Chat with support','WhatsApp or Telegram','setHelp')}${setRow('info','About us','','setAbout')}${setRow('file','Terms and conditions','','setTerms')}${setRow('file','Privacy policy','','setPrivacy')}${setRow('file','Refund policy','','setRefund')}</div></div>
+  <button class="btn lg ghost danger3" data-a="setOut">${ic('out',17)}Sign out</button>`}}}
+A.settings=()=>{closeLayer();push(settingsView())};
+A.setTheme=()=>openTheme();
+A.setSnd=()=>{const on=!sndOn3();try{LS.set('cbt_snd',on)}catch(e){}toast3(on?'Opening sound on':'Opening sound off');redraw()};
+A.setNp=async()=>{try{await npToggle()}catch(e){toast3('Could not change notifications')}setTimeout(()=>{if(top()&&top().key==='set')redraw()},300)};
+A.setClassic=()=>window.v3Disable();
+A.setPrivacy=()=>window.open('privacy','_blank','noopener');A.setRefund=()=>window.open('refund','_blank','noopener');
+A.setInstall=()=>{if(standalone3()){toast3('The app is already installed');return}
+  try{if(typeof DIP!=='undefined'&&DIP){const p=DIP;DIP=null;p.prompt();return}}catch(e){}
+  const ios=/iphone|ipad|ipod/i.test(navigator.userAgent),st=ios?['Open this site in <b>Safari</b>','Tap the <b>Share</b> button','Tap <b>Add to Home Screen</b>, then <b>Add</b>']:['Tap the <b>⋮</b> menu at the top right of Chrome','Tap <b>Install app</b> (or <b>Add to Home screen</b>)','Tap <b>Install</b>, then open the app from your home screen'];
+  openSheet(`<span class="ti g" style="margin-bottom:12px">${ic('dl',22)}</span><h2 id="sheetT">Install the app</h2><p class="sub">Full screen, from your home screen. No app store needed.</p><ol class="steps3">${st.map((s,i)=>`<li><b>${i+1}</b><span>${s}</span></li>`).join('')}</ol><button class="btn blk" data-a="close" style="margin-top:14px">Got it</button>`)};
+/* the texts of About, Terms and support come from the classic app, so there is one copy to keep up to date */
+function grabSheet(fn){let h='';try{const s=window.sheet;window.sheet=x=>{h=x};try{fn()}finally{window.sheet=s}}catch(e){}return h}
+function legalPage(t,fn){const raw=grabSheet(fn),i=raw.indexOf('<div class="legal">');push({t,s:'',key:'legal',html:()=>i>-1?`<div class="card p legal3">${raw.slice(i)}</div>`:`<div class="card empty"><b>Could not open this page</b></div>`})}
+A.setAbout=()=>legalPage('About us',()=>openAbout());
+A.setTerms=()=>legalPage('Terms and conditions',()=>openTerms());
+A.setHelp=()=>{let b='';try{SUPMSG='';b=supBtns()}catch(e){}openSheet(`<span class="ti g" style="margin-bottom:12px">${ic('mail',22)}</span><h2 id="sheetT">Chat with support</h2><p class="sub">Our student support team replies on chat. Choose where you want to talk.</p><div class="sup3">${b}</div><p class="hint" style="text-align:center">Chat only. Calls are not available.</p>`)};
+A.setOut=()=>openSheet(`<span class="ti" style="margin-bottom:12px">${ic('out',22)}</span><h2 id="sheetT">Sign out?</h2><p class="sub">Your tests, results and notes stay on your account. Sign in again with your mobile number any time.</p><div class="sheet-ft"><button class="btn ghost" data-a="close">Cancel</button><button class="btn danger3" data-a="setOutGo">Sign out</button></div>`);
+A.setOutGo=()=>{closeLayer();unwind(()=>{try{doSignOut()}catch(e){location.reload()}})};
+
 /* ================= MENU: the classic menu's items, plus the switch back ================= */
 A.menu=()=>{const u=unread(),mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' on':''}${cls||''}" data-a="m" data-k="${k}">${ic(i)}<span>${t}</span>${extra?`<em>${extra}</em>`:''}</button>`;
   drawer.innerHTML=`<div class="hero pcard"><div class="who">${avatar()}<div style="min-width:0"><b>${esc3(stuName())}</b><small class="mut">${esc3(stuMeta())}</small></div></div><button class="btn sm onhero ghost blk" data-a="m" data-k="profile">View profile</button></div>
@@ -1012,8 +1095,8 @@ A.menu=()=>{const u=unread(),mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' o
   ${mi('swap','Switch to the classic design','classic',0,'','')}${mi('out','Logout','logout',0,'',' out')}`;openLayer(drawer)};
 A.m=el=>{const k=el.dataset.k;closeLayer();
   const M={profile:A.profile,theme:openTheme,home:()=>go('home'),series:()=>go('test'),history:A.hist,mistakes:()=>openMistakes(),saved:()=>openSaved(),tracker:()=>oldHash('#/t'),notif:A.bell,cd:A.cdEdit,
-   settings:()=>oldModal(()=>openSettings()),about:()=>oldModal(()=>openAbout()),terms:()=>oldModal(()=>openTerms()),privacy:()=>window.open('privacy','_blank','noopener'),refund:()=>window.open('refund','_blank','noopener'),contact:()=>oldModal(()=>supportSheet()),
-   classic:()=>window.v3Disable(),logout:()=>oldModal(()=>signOut())};
+   settings:A.settings,about:A.setAbout,terms:A.setTerms,privacy:()=>window.open('privacy','_blank','noopener'),refund:()=>window.open('refund','_blank','noopener'),contact:A.setHelp,
+   classic:()=>window.v3Disable(),logout:A.setOut};
   setTimeout(()=>{(M[k]||(()=>{}))()},140)};
 
 /* ---------- theme page: preview live, apply to keep, reset to default ---------- */
