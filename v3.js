@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=6;
+const V3VER=7;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -369,7 +369,7 @@ A.openNote=el=>{const n=(NOTES||[]).find(x=>String(x.id)===el.dataset.id);if(!n)
 A.oldNotices=()=>oldHash('#/n');
 
 /* ================= TESTS: store + my test series, the store's own data (photos, descriptions, reviews) ================= */
-const TQ={q:'',f:{e:[],c:[],s:[]},mf:'paid',cat:'all',sf:'all',xt:'d',tile:''};
+const TQ={q:'',f:{e:[],c:[],s:[]},mf:'paid',cat:'all',sf:'all',xt:'d',tile:'',tf:'all',ts:'all',plan:null};
 let XD=null,RV={},SCHD={},LANGS=new Set(),SMAP={},extrasBusy=null;
 function loadExtras(){if(extrasBusy||XD)return extrasBusy;const q=(fn,auth)=>rpc(fn,{},!auth).catch(()=>null);
   extrasBusy=Promise.all([q('cbt_store_explore'),q('cbt_store_reviews'),q('cbt_store_schedules'),q('cbt_store_langs'),q('cbt_store_map',true)]).then(([x,r,s,l,m])=>{
@@ -409,7 +409,6 @@ const sorted=L=>L;
 const mpass=s=>{const w=TQ.q.toLowerCase().split(/\s+/).filter(Boolean),h=[s.title,s.description,testsOf(s.id).map(t=>t.title).join(' ')].join(' ').toLowerCase();return w.every(v=>h.includes(v))};
 
 /* ---------- top: the poster from Admin → Tests page, edge to edge, with the search on it and the two big buttons on its bottom ---------- */
-function myCount(){const L=mine();return {paid:L.filter(s=>!s.is_free).length,free:L.filter(s=>s.is_free).length,exp:0,all:L.length,live:L.some(s=>seriesStats(s).live)}}
 function tabs2(){const c=myCount(),n=(STORE||[]).filter(x=>x.buy_on!==false).length;
   return `<div class="tt2">
    <button class="${TQ.tile==='store'?'on':''}" data-a="toList"><span class="ti">${ic('tests',22)}</span><b>Test Series Store</b><small>${STORE?n+' series':'Loading'}</small></button>
@@ -496,19 +495,9 @@ function storeView(){
    trendRail()+(soon.length?`<section class="sec"><div class="sh"><h2>Coming soon</h2><span class="aside">${soon.length}</span></div><div class="list">${soon.map(iCard).join('')}</div></section>`:'')+
    `<a class="btn lg ghost" href="store.html">${ic('right',16)}Open the full store</a>`}
 
-/* ---------- my test series view (in place): Paid / Free / Expired ---------- */
-function myCard(s){const k=seriesStats(s),it=itemOfSeries(s.id);
-  return `<article class="card ic2"><button class="cv" data-a="openSD" data-id="${esc3(s.id)}" aria-label="Open ${esc3(s.title)}">${coverOf(it||{title:s.title},s.is_free?'Free series':'Premium series')}${k.live?'<span class="badge cvb" style="background:var(--err);color:#fff">Live now</span>':''}</button>
-  <div class="ic2b"><span class="tag">${s.is_free?'Free series':'Premium series'}</span><h3>${esc3(s.title)}</h3>
-  <div class="nums"><div><b>${k.n}</b><small>Total</small></div><div><b>${k.done}</b><small>Attempted</small></div><div><b>${k.n-k.done}</b><small>Remaining</small></div></div>
-  <span class="bar"><i style="--p:${k.n?(k.done/k.n).toFixed(3):0}"></i></span>
-  <div class="ft">${k.live?`<span class="st live">${k.live} live now</span>`:'<span class="st ok">Active</span>'}<div class="acts"><button class="btn sm" data-a="openSD" data-id="${esc3(s.id)}">View tests</button></div></div></div></article>`}
-function myView(){const c=myCount(),L=TQ.mf==='exp'?[]:mine().filter(s=>TQ.mf==='paid'?!s.is_free:s.is_free);
-  return `<div class="seg" role="tablist">${[['paid','Paid',c.paid],['free','Free',c.free],['exp','Expired',c.exp]].map(t=>`<button role="tab" aria-selected="${t[0]===TQ.mf}" class="${t[0]===TQ.mf?'on':''}" data-a="mf" data-v="${t[0]}">${t[1]}<small>${t[2]}</small></button>`).join('')}</div>
-  <div class="list">${L.length?L.map(myCard).join(''):`<div class="card empty"><span class="ti">${ic('layers',22)}</span><b>${TQ.mf==='exp'?'No expired test series':TQ.mf==='paid'?'No paid test series yet':'No free test series yet'}</b><p>${TQ.mf==='exp'?'Series whose access has ended will show up here.':'Get one from the store and it shows up here.'}</p>${TQ.mf==='exp'?'':'<button class="btn sm" data-a="toStore">Open the store</button>'}</div>`}</div>`}
 VIEW.test=()=>poster()+`<div id="tBody" class="stack" style="gap:var(--gap)">${storeView()}</div>`;
 function drawT(){const b=$('#tBody');if(!b)return;b.innerHTML=storeView();const n=tfCount(),fb=$('[data-a="tFilter"]');if(fb){fb.className='fb'+(n?' on':'');fb.innerHTML=ic('filter',20)+(n?`<b>${n}</b>`:'')}const x=$('[data-a="tqClear"]');x&&(x.hidden=!TQ.q);const t=$('.tt2');t&&(t.outerHTML=tabs2());autoRail('#tbRail','#tbRailD');reveal(b);lastQ=-1;pstSync()}
-AFTER.test=()=>{const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#tbRail','#tbRailD');loadExtras();loadLook();loadPC();pstSync(true);const pi=$('#pst img');pi&&!pi.complete&&pi.addEventListener('load',()=>pstSync(true),{once:true});
+AFTER.test=()=>{loadMeta();const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#tbRail','#tbRailD');loadExtras();loadLook();loadPC();pstSync(true);const pi=$('#pst img');pi&&!pi.complete&&pi.addEventListener('load',()=>pstSync(true),{once:true});
   try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length))promoLoad().then(()=>{if(S.tab==='test'&&!scrOpen())softRender()})}catch(e){}};
 A.toList=()=>{TQ.tile='store';$$('.tt2 button').forEach(b=>b.classList.toggle('on',b.dataset.a==='toList'));const a=$('#allSec');a&&a.scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})};
 A.tqClear=()=>{TQ.q='';$('#tq').value='';drawT();$('#tq').focus()};
@@ -521,10 +510,6 @@ A.tFilter=()=>{loadLook();const G=[['e','Exam',LK().exams],['c','Class',LK().cla
    <div class="sheet-ft"><button class="btn ghost" data-fc>Clear</button><button class="btn" data-fa>Show ${(STORE||[]).filter(spass).length} test series</button></div>`};
   openSheet('');draw();sheet.onclick=e=>{const c=e.target.closest('[data-fk]');if(c){const a=TQ.f[c.dataset.fk],v=c.dataset.fv,i=a.indexOf(v);i>-1?a.splice(i,1):a.push(v);const y=sheet.scrollTop;draw();sheet.scrollTop=y;drawT();return}
    if(e.target.closest('[data-fc]')){TQ.f={e:[],c:[],s:[]};draw();drawT();return}if(e.target.closest('[data-fa]')){closeLayer();A.toList()}}};
-
-/* ---------- My Test Series: its own full page, Paid / Free / Expired ---------- */
-function myPage(){return {t:'My Test Series',s:`${mine().length} enrolled`,key:'my',html:myView}}
-A.mySeries=()=>{TQ.tile='my';$$('.tt2 button').forEach(b=>b.classList.toggle('on',b.dataset.a==='mySeries'));const c=myCount();TQ.mf=c.paid||!c.free?'paid':'free';closeLayer();if(STORE===null)loadStore();loadExtras();if(top()&&top().key==='my')return;push(myPage())};
 
 /* ---------- one test series page: photo, Description | Resources | Reviews, buy bar ---------- */
 const SF=[['all','All'],['open','Available'],['up','Upcoming'],['att','Attempted'],['done','Completed'],['closed','Closed'],['lock','Locked']];
@@ -544,7 +529,7 @@ function tRow(t){const st=stOf(t),r=resOf(t.id)[0],fo=t.folder_id&&(C().folders|
 function rvBlock(x){const r=x&&rvOf(x);if(!x)return `<div class="card empty"><span class="ti">${ic('star',22)}</span><b>No reviews yet</b><p>Reviews are written by students whose series is unlocked.</p></div>`;
   if(!XD)return '<div class="card sk" style="height:140px"></div>';
   if(!r)return `<div class="card empty"><span class="ti">${ic('star',22)}</span><b>No reviews yet</b><p>Reviews are written by students whose series is unlocked.</p></div>`;
-  const st=r.stars||[];return `<div class="card p rvs"><div class="rv-big"><b>${(+r.avg).toFixed(1)}</b><span>${'★'.repeat(Math.round(r.avg))}${'☆'.repeat(5-Math.round(r.avg))}</span><small>${fmtN(r.count)} reviews</small></div>
+  const st=r.stars||[];return `<div class="card p rvs"><div class="rv-big"><b>${(+r.avg).toFixed(1)}</b><span>${'★'.repeat(Math.round(r.avg))}${'☆'.repeat(5-Math.round(r.avg))}</span><small>${fmtN(r.count)} review${r.count===1?'':'s'}</small></div>
    <div class="rv-bars">${[5,4,3,2,1].map((n,i)=>`<div><span>${n}</span><i><em style="width:${r.count?Math.round((st[i]||0)*100/r.count):0}%"></em></i><span>${st[i]||0}</span></div>`).join('')}</div></div>
    <div class="card rows">${(r.list||[]).slice(0,30).map(v=>`<div class="item"><span class="ti g" style="font-weight:600">${esc3(((v.name||'S').trim()[0]||'S').toUpperCase())}</span><div class="bd"><div class="tt"><b>${esc3(v.name||'Student')}</b><span class="gold" style="font-size:13px">${'★'.repeat(Number(v.rating)||0)}</span></div>${v.body?`<small style="font-size:13.5px;color:var(--tx)">${esc3(v.body)}</small>`:`<small>Gave ${Number(v.rating)||0} stars</small>`}${v.reply?`<small><b style="font-size:12.5px">Reply from Aspiron:</b> ${esc3(v.reply)}</small>`:''}</div></div>`).join('')}</div>`}
 function descBlock(x,s){const d=String((x&&XD&&XD[x.id]||{}).description||s&&s.description||'').trim(),F=(x&&x.features)||[];
@@ -571,12 +556,99 @@ function seriesPage(o){const x=o.item,sid=o.sid,s=sid&&sOf(sid);return {t:(x||s|
    <div class="seg" role="tablist">${[['d','Description'],['r',sid?'Tests & resources':'Resources'],['v','Reviews']].map(t=>`<button role="tab" aria-selected="${TQ.xt===t[0]}" class="${TQ.xt===t[0]?'on':''}" data-a="xt" data-v="${t[0]}">${t[1]}</button>`).join('')}</div>
    <div class="stack" style="gap:14px;animation:rise .35s var(--out)">${TQ.xt==='d'?descBlock(x,s):TQ.xt==='r'?resBlock(x,sid):rvBlock(x)}</div>
    ${x&&!sid?`<div class="buybar"><span>${priceH(x)}</span>${actH(x)}</div>`:''}`}}
-A.xp=el=>{const x=(STORE||[]).find(i=>i.id===el.dataset.id);if(!x)return;loadExtras();TQ.xt='d';TQ.sf='all';closeLayer();push(seriesPage({item:x,sid:owned(x)}))};
-A.openSD=el=>{const sid=el.dataset.id;loadExtras();if(STORE===null)loadStore();TQ.xt='r';TQ.sf='all';closeLayer();push(seriesPage({item:itemOfSeries(sid),sid}))};
+A.xp=el=>{const x=(STORE||[]).find(i=>i.id===el.dataset.id);if(!x)return;loadExtras();loadMeta();const sid=owned(x);TQ.xt='d';TQ.sf='all';TQ.tf='all';TQ.ts='all';TQ.plan=null;closeLayer();push(sid?ownedPage(sid):seriesPage({item:x,sid:null}))};
+A.openSD=el=>{const sid=el.dataset.id;if(!sOf(sid))return;loadExtras();loadMeta();if(STORE===null)loadStore();TQ.xt=el.dataset.t||'r';TQ.tf='all';TQ.ts='all';TQ.plan=null;closeLayer();push(ownedPage(sid))};
 A.xt=el=>{TQ.xt=el.dataset.v;redraw()};
 A.sf=el=>{TQ.sf=el.dataset.v;redraw()};
 A.oldSeries=el=>oldHash('#/s/'+el.dataset.id);
 A.toStore=()=>{closeLayer();unwind(()=>{if(S.tab==='test'){scrollTo({top:0,behavior:RM?'auto':'smooth'});return}go('test')})};
+
+/* ================= MY TEST SERIES + the series page (Description | Resources | Tests | Reviews) =================
+   Validity, upgrade plans, test syllabus and the Tests-tab banner come from Admin → Series page (cbt_series_meta, v64).
+   Without that SQL the page still works: no dates, no plans, no syllabus. */
+let META=null,metaBusy=null;
+function loadMeta(){if(META||metaBusy)return metaBusy;metaBusy=rpc('cbt_series_meta',{},true).then(r=>{META=r&&r.ok?r:{series:{},syl:{},promo:'',promo_link:''}}).catch(()=>{META={series:{},syl:{},promo:'',promo_link:''}})
+  .finally(()=>{metaBusy=null;if(scrOpen()&&top()&&(top().key==='my'||top().key==='sp'))redraw();if(S.tab==='test'&&!scrOpen()){const t=$('.tt2');t&&(t.outerHTML=tabs2())}});return metaBusy}
+const MT=sid=>((META||{}).series||{})[sid]||{};
+const expired=s=>{const e=MT(s.id).e;return !!(e&&e<nowMs())};
+const dLong=t=>fD(t,{day:'numeric',month:'short',year:'numeric'});
+function validity(sid){const m=MT(sid);if(!m.s&&!m.e)return '';
+  return `<p class="vd">${ic('cal',16)}${m.s?`<span>Starts on <b>${dLong(m.s)}</b></span>`:''}${m.s&&m.e?'<i></i>':''}${m.e?`<span>${m.e<nowMs()?'Ended on':'Ends on'} <b>${dLong(m.e)}</b></span>`:''}</p>`}
+const upgradesOf=sid=>(MT(sid).u||[]).map(u=>{const it=(STORE||[]).find(x=>x.id===u.item);return it?{it,label:u.label||it.title}:null}).filter(Boolean);
+
+/* ---------- My Test Series page ---------- */
+function myCount(){const L=mine(),live=L.filter(s=>!expired(s));return {paid:live.filter(s=>!s.is_free).length,free:live.filter(s=>s.is_free).length,exp:L.length-live.length,all:L.length,live:L.some(s=>seriesStats(s).live)}}
+function myCard(s){const k=seriesStats(s),it=itemOfSeries(s.id),up=upgradesOf(s.id).length,ex=expired(s);
+  return `<article class="card bc${ex?' dim':''}"><div class="bc-h"><h3>${esc3(s.title)}</h3>${k.live?'<span class="st live">Live</span>':`<span class="tag">${s.is_free?'Free':'Premium'}</span>`}</div>
+   <button class="bc-cv" data-a="openSD" data-id="${esc3(s.id)}" aria-label="Open ${esc3(s.title)}">${coverOf(it||{title:s.title},s.is_free?'Free series':'Premium series')}</button>
+   ${validity(s.id)||`<p class="vd">${ic('tests',16)}<span><b>${k.done}</b> of <b>${k.n}</b> tests attempted</span></p>`}
+   <div class="bc-ft"><button class="btn ghost" data-a="openSD" data-id="${esc3(s.id)}" data-t="d">${up&&!ex?ic('crown',16)+'Upgrade':'Details'}</button><button class="btn" data-a="openSD" data-id="${esc3(s.id)}">Open Test Series</button></div></article>`}
+function myView(){const c=myCount(),L=mine().filter(s=>TQ.mf==='exp'?expired(s):!expired(s)&&(TQ.mf==='paid'?!s.is_free:s.is_free));
+  return `<div class="seg" role="tablist">${[['paid','Paid',c.paid],['free','Free',c.free],['exp','Expired',c.exp]].map(t=>`<button role="tab" aria-selected="${t[0]===TQ.mf}" class="${t[0]===TQ.mf?'on':''}" data-a="mf" data-v="${t[0]}">${t[1]}<small>${t[2]}</small></button>`).join('')}</div>
+  <div class="list">${L.length?L.map(myCard).join(''):`<div class="card empty"><span class="ti">${ic('layers',22)}</span><b>${TQ.mf==='exp'?'No expired test series':TQ.mf==='paid'?'No paid test series yet':'No free test series yet'}</b><p>${TQ.mf==='exp'?'Series whose time has ended show up here.':'Get one from the store and it shows up here.'}</p>${TQ.mf==='exp'?'':'<button class="btn sm" data-a="toStore">Open the store</button>'}</div>`}</div>`}
+function myPage(){return {t:'My Test Series',s:`${mine().length} enrolled`,key:'my',html:myView}}
+A.mySeries=()=>{TQ.tile='my';$$('.tt2 button').forEach(b=>b.classList.toggle('on',b.dataset.a==='mySeries'));const c=myCount();TQ.mf=c.paid||!c.free?'paid':'free';closeLayer();if(STORE===null)loadStore();loadExtras();loadMeta();if(top()&&top().key==='my')return;push(myPage())};
+
+/* ---------- the series page of a series the student has ---------- */
+const UT=[['d','Description'],['r','Resources'],['t','Tests'],['v','Reviews']];
+function utabs(){return `<div class="utabs" role="tablist">${UT.map(t=>`<button role="tab" aria-selected="${TQ.xt===t[0]}" class="${TQ.xt===t[0]?'on':''}" data-a="xt" data-v="${t[0]}">${t[1]}</button>`).join('')}</div>`}
+/* Description: photo, validity, plans (current + upgrades), what the series includes, about */
+function spDesc(sid){const s=sOf(sid),it=itemOfSeries(sid),m=MT(sid),ups=upgradesOf(sid),F=(m.f&&m.f.length?m.f:(it&&it.features)||[]),d=String((it&&XD&&XD[it.id]||{}).description||s.description||'').trim();
+  if(TQ.plan==null||TQ.plan>ups.length)TQ.plan=ups.length?1:0;const sel=TQ.plan?ups[TQ.plan-1]:null,inc=sel?(sel.it.features||[]):F;
+  return `<div class="xcv">${coverOf(it||{title:s.title},'Your test series')}</div>
+  ${validity(sid)?`<div class="card p">${validity(sid)}</div>`:''}
+  ${ups.length&&!expired(s)?`<div class="stack" style="gap:12px"><div class="sh" style="margin:0"><h2>Choose a plan</h2></div>
+   <div class="plans">${[{label:s.title,cur:1}].concat(ups).map((p,i)=>`<button class="plan${TQ.plan===i?' on':''}" data-a="plan" data-i="${i}" aria-pressed="${TQ.plan===i}"><b>${esc3(i?p.label:'Your plan')}</b><small>${i?`₹${fmtN(p.it.price)}`:'Current plan'}</small><i>${ic('check',14)}</i></button>`).join('')}</div>
+   ${inc.length?`<div class="card pinc"><p class="pinc-h">${esc3(sel?sel.label:s.title)} includes</p><div class="pinc-g">${inc.map(f=>`<span>${ic('star',15).replace('class="i"','class="i fill"')}${esc3(f)}</span>`).join('')}</div></div>`:''}</div>`:''}
+  ${F.length&&!(ups.length&&!sel)?`<div class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>This series includes</h2></div><div class="card rows">${F.map(f=>`<div class="row"><span class="ti g">${ic('star',17).replace('class="i"','class="i fill"')}</span><span><b style="font-weight:500">${esc3(f)}</b></span></div>`).join('')}</div></div>`:''}
+  ${d?`<div class="card p stack" style="gap:8px"><b style="font-size:15px">About this test series</b><p class="mut" style="white-space:pre-wrap;font-size:14.5px;line-height:1.65">${esc3(d)}</p></div>`:''}
+  ${sel?`<div class="buybar"><span class="price"><b>₹${fmtN(sel.it.price)}</b>${offPct(sel.it)?`<s>₹${fmtN(sel.it.mrp)}</s><span class="badge off">${offPct(sel.it)}% off</span>`:''}</span><a class="btn gold" href="${buyHref(sel.it)}">Upgrade now</a></div>`:''}`}
+A.plan=el=>{TQ.plan=+el.dataset.i;redraw()};
+/* Resources: the series' files (schedule, syllabus, notes) grouped, each group opens its own list */
+const RESK=[['schedule','Schedule','cal'],['syllabus','Syllabus','list'],['notes','Notes and PDFs','file']];
+function spRes(sid){const fl=(sOf(sid).files||[]),G=RESK.map(k=>[k,fl.filter(f=>(f.kind||'notes')===k[0])]).filter(g=>g[1].length);
+  if(!G.length)return `<div class="card empty"><span class="ti">${ic('file',22)}</span><b>No study material yet</b><p>Schedules, syllabus and PDFs for this series will appear here.</p></div>`;
+  return `<div class="list">${G.map(([k,L],i)=>`<button class="card rsc" data-a="resOpen" data-id="${esc3(sid)}" data-k="${k[0]}"><span class="rsc-n">RE - ${String(i+1).padStart(2,'0')}</span><b>${k[1]}</b><small>${L.length} ${L.length===1?'file':'files'}</small>${ic('right',18)}</button>`).join('')}</div>`}
+A.resOpen=el=>{const sid=el.dataset.id,k=RESK.find(x=>x[0]===el.dataset.k);push({t:k[1],s:sOf(sid).title,key:'res',html:()=>`<div class="card rows">${(sOf(sid).files||[]).filter(f=>(f.kind||'notes')===k[0]).map(f=>`<button class="row" data-a="fileOpen" data-id="${esc3(f.id)}"><span class="ti g">${ic(k[2],19)}</span><span><b>${esc3(f.title||f.name)}</b><small>${/\.pdf$/i.test(f.name||'')?'PDF':'Picture'}${f.size?`, ${f.size>1048576?(f.size/1048576).toFixed(1)+' MB':Math.max(1,Math.round(f.size/1024))+' KB'}`:''}</small></span>${ic('dl',18)}</button>`).join('')}</div>`})};
+A.fileOpen=el=>oldModal(()=>openFile(el.dataset.id));
+/* Tests: category chips (the series' folders), a status filter, the banner from the admin, then the tests in order */
+const TSF=[['all','All'],['att','Attempted'],['non','Not attempted'],['res','Resume'],['up','Upcoming'],['miss','Missed']];
+function tState(t){const st=stOf(t);return st==='prog'?'res':st==='live'?'live':st==='wait'?'up':st==='lock'?'lock':st==='held'?'held':(st==='done'||t.attempts>0)?'att':st==='closed'?'miss':'new'}
+const TSL={live:['live','Live'],res:['live','Resume'],up:['','Upcoming'],new:['ok','Available'],held:['gold','Result soon'],att:['ok','Attempted'],miss:['err','Missed'],lock:['','Locked']};
+function tCard(t){const s=tState(t),r=resOf(t.id)[0],syl=((META||{}).syl||{})[t.id],marks=(t.questions||0)*(t.correct||4),when=t.opens_at;let p;try{p=typeof pendOf==='function'&&pendOf(t.id)}catch(e){}
+  const act=s==='lock'?['lock','Unlock','test']:s==='up'?['clock','Opens','']:s==='held'?['clock','Result','']:s==='miss'?(r&&!p?['chart','Result','review']:['lock','Closed','']):s==='res'?['play','Resume','test']:s==='att'?(r&&!p?['chart','Result','review']:['play','Again','test']):['play','Start','test'];
+  const L=TSL[s];
+  return `<article class="card tc3${s==='miss'||s==='lock'?' dim':''}"><div class="tc3-b">
+   <div class="tc3-top"><span class="st ${L[0]}">${L[1]}</span>${when?`<span class="mut">${s==='up'?'Opens':'Held on'} ${fD(when,{day:'numeric',month:'short'})}, ${fT(when)}</span>`:''}</div>
+   <h3>${esc3(t.title)}</h3>
+   <p class="tc3-m">${ic('list',15)}<span>${t.questions||0} Question${t.questions===1?'':'s'}</span><i></i><span>${fmtN(marks)} Marks</span><i></i><span>${t.duration||0} Mins</span></p>
+   <p class="tc3-m">${ic('hist',15)}<span>Attempts: ${t.attempts||0}${r&&t.best!=null&&t.best_max?`, best ${t.best}/${t.best_max}`:''}</span></p>
+   ${s==='held'&&p&&p.result_at?`<p class="tc3-m">${ic('clock',15)}<span>Result after ${fD(p.result_at,{day:'numeric',month:'short'})}, ${fT(p.result_at)}</span></p>`:''}</div>
+   <button class="tc3-go${act[2]?'':' off'}" ${act[2]==='test'?`data-a="test" data-id="${esc3(t.id)}"`:act[2]==='review'?`data-a="review" data-r="${esc3(r.id)}"`:'disabled'}><span>${ic(act[0],20)}</span><small>${act[1]}</small></button>
+   ${syl||(r&&!p&&s==='att')?`<div class="tc3-f">${syl?`<button data-a="syl" data-id="${esc3(t.id)}">View syllabus</button>`:''}${r&&!p&&s==='att'?`<button data-a="review" data-r="${esc3(r.id)}">Result and solutions</button>`:''}</div>`:''}</article>`}
+const TORD=[['live','Live now'],['res','Continue'],['up','Upcoming'],['new','Available'],['held','Waiting for result'],['att','Attempted'],['miss','Missed'],['lock','Locked']];
+function spTests(sid){const all=testsOf(sid),F=(C().folders||[]).filter(f=>f.series_id===sid&&all.some(t=>t.folder_id===f.id)),loose=all.some(t=>!t.folder_id);
+  if(TQ.tf!=='all'&&TQ.tf!=='none'&&!F.some(f=>f.id===TQ.tf))TQ.tf='all';
+  const inF=all.filter(t=>TQ.tf==='all'||(TQ.tf==='none'?!t.folder_id:t.folder_id===TQ.tf));
+  const pass=t=>{const s=tState(t);return TQ.ts==='all'||(TQ.ts==='att'?s==='att'||s==='held':TQ.ts==='non'?['new','live','up'].includes(s):TQ.ts==='res'?s==='res':TQ.ts==='up'?s==='up':TQ.ts==='miss'?s==='miss':true)};
+  const L=inF.filter(pass),P=(META||{}).promo,PL=(META||{}).promo_link,pu=/^(https:\/\/|#\/|store\.html#)[^\s"'<>\\]*$/.test(PL||'')?PL:'';
+  const by=k=>L.filter(t=>tState(t)===k).sort((a,b)=>k==='att'||k==='miss'?(b.opens_at||0)-(a.opens_at||0):(a.opens_at||0)-(b.opens_at||0)||(a.sort||0)-(b.sort||0));
+  return `<div class="tbar"><div class="chips">${[['all','All']].concat(F.map(f=>[f.id,f.title])).concat(F.length&&loose?[['none','Other tests']]:[]).map(c=>`<button class="${TQ.tf===c[0]?'on':''}" aria-pressed="${TQ.tf===c[0]}" data-a="tf" data-v="${esc3(c[0])}">${esc3(c[1])}</button>`).join('')}</div>
+   <button class="fb${TQ.ts!=='all'?' on':''}" data-a="tsF" aria-label="Filter tests">${ic('filter',19)}${TQ.ts!=='all'?'<b>1</b>':''}</button></div>
+  ${P&&/^data:image\//.test(P)?`${pu?`<a class="promo" href="${esc3(pu)}"${/^https:/.test(pu)?' target="_blank" rel="noopener noreferrer"':''}>`:'<div class="promo">'}<img src="${esc3(P)}" alt="">${pu?'</a>':'</div>'}`:''}
+  ${L.length?TORD.map(([k,h])=>{const g=by(k);return g.length?`<div class="stack" style="gap:12px"><p class="gh">${h} <span>${g.length}</span></p>${g.map(tCard).join('')}</div>`:''}).join('')
+   :`<div class="card empty"><span class="ti">${ic('tests',22)}</span><b>No tests here</b><p>${all.length?'Try another group or filter.':'Tests of this series will appear here.'}</p>${TQ.ts!=='all'||TQ.tf!=='all'?'<button class="btn sm ghost" data-a="tfClear">Show all tests</button>':''}</div>`}`}
+A.tf=el=>{TQ.tf=el.dataset.v;redraw()};A.tfClear=()=>{TQ.tf='all';TQ.ts='all';redraw()};
+A.tsF=()=>openSheet(`<h2 id="sheetT">Show tests</h2><div>${TSF.map(f=>`<button class="opt${TQ.ts===f[0]?' on':''}" data-a="tsPick" data-v="${f[0]}"><div><b>${f[1]}${f[0]==='all'?' (default)':''}</b></div><span class="ck">${ic('check')}</span></button>`).join('')}</div>`);
+A.tsPick=el=>{TQ.ts=el.dataset.v;closeLayer();redraw()};
+A.syl=el=>{const t=tOf(el.dataset.id),x=((META||{}).syl||{})[el.dataset.id];if(!x)return;openSheet(`<h2 id="sheetT">Syllabus</h2><p class="sub">${esc3(t?t.title:'')}</p><p style="font-size:15px;line-height:1.7;white-space:pre-wrap">${esc3(x)}</p>`)};
+/* Reviews: the series' reviews and the student's own */
+function spRev(sid){const it=itemOfSeries(sid);return `<button class="btn lg ghost" data-a="rvWrite" data-id="${esc3(sid)}">${ic('star',17)}Write or edit your review</button>${rvBlock(it)}`}
+A.rvWrite=el=>{const s=sOf(el.dataset.id);if(s)rvAsk(s.id,s.title,true)};
+
+function ownedPage(sid){return {t:(sOf(sid)||{}).title||'Test series',s:'Your test series',store:1,key:'sp',
+  html:()=>{const s=sOf(sid);if(!s)return `<div class="card empty"><b>This series is not available</b></div>`;
+   return utabs()+`<div class="stack sp-pane" style="gap:16px">${TQ.xt==='d'?spDesc(sid):TQ.xt==='r'?spRes(sid):TQ.xt==='t'?spTests(sid):spRev(sid)}</div>`}}}
 
 /* ================= TOOLS (run on the phone; nothing is sent) ================= */
 const FC=2*Math.PI*100,FM=2*Math.PI*28;
@@ -855,4 +927,86 @@ window.v3Enable=function(){lsSet('cbt_v3',true);if(typeof AUTH==='undefined'||!A
 window.v3Disable=function(){lsSet('cbt_v3',false);closeLayer();unwind(()=>{document.body.classList.remove('v3on','v3old');lockHash=null;try{typeof syncTheme==='function'&&syncTheme()}catch(e){}if(location.hash==='#/'||location.hash===''){_route()}else location.hash='#/';try{typeof toast==='function'&&toast('Classic design is back. Try the new one again from the menu.')}catch(e){}})};
 /* already signed in and the new design chosen: take over the first screen */
 if(v3On()&&typeof AUTH!=='undefined'&&AUTH&&!INTEST){boot();document.body.classList.add('v3on');if(!isNewHash(location.hash||'#/'))toOld();else route()}
+
+/* ================= REVIEW REQUEST after a test (both designs) =================
+   After every submitted test the student is asked to rate the test series: stars AND a short comment (at least 15
+   letters) are needed to send. Closing once shows a gentle "just 20 seconds" note; closing again lets them go.
+   Not asked again once they have written a review with a comment. Saved with cbt_review_save (v23), one review per
+   series, which the student can change any time from the series page (Reviews). */
+const RVMIN=15;
+let rvHost=null;
+function rvDark(){try{if(document.body.classList.contains('v3on')&&!document.body.classList.contains('v3old')&&host)return host.dataset.mode!=='light';return document.documentElement.dataset.theme==='dark'}catch(e){return false}}
+const RVCSS=`:host{all:initial}*{box-sizing:border-box;margin:0;padding:0;font:inherit;color:inherit}
+.w{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:flex-end;justify-content:center;font-family:Geist,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.bg{position:absolute;inset:0;background:rgba(10,10,12,.5);opacity:0;transition:opacity .35s ease}
+.c{position:relative;width:100%;max-width:460px;background:var(--s);color:var(--tx);border-radius:28px 28px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom,0px));box-shadow:0 -20px 60px -20px rgba(0,0,0,.4);transform:translateY(105%);transition:transform .5s cubic-bezier(.2,.9,.25,1)}
+.on .bg{opacity:1}.on .c{transform:none}
+.x{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--s2);border:0;cursor:pointer}
+.x svg{width:18px;height:18px}
+.ic{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:var(--soft);color:var(--acc);margin-bottom:14px}
+.ic svg{width:26px;height:26px}
+h2{font-size:21px;font-weight:600;letter-spacing:-.02em;line-height:1.25;padding-right:40px}
+p.s{margin-top:6px;font-size:14.5px;line-height:1.55;color:var(--mut)}
+.st{display:flex;gap:8px;justify-content:center;margin:20px 0 6px}
+.st button{width:48px;height:48px;border:0;background:none;cursor:pointer;color:var(--line2);transition:transform .25s cubic-bezier(.3,1.6,.5,1),color .2s}
+.st button svg{width:44px;height:44px}.st button.on{color:#e3a72f}.st button:active{transform:scale(.85)}
+.st button.pop{transform:scale(1.18)}
+.lb{text-align:center;font-size:13.5px;font-weight:500;color:var(--mut);min-height:20px}
+textarea{display:block;width:100%;margin-top:14px;min-height:104px;resize:none;border-radius:16px;border:1.5px solid var(--line);background:var(--s2);padding:13px 14px;font-size:15px;line-height:1.5;outline:none;transition:border-color .2s}
+textarea:focus{border-color:var(--acc)}
+.ft{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12.5px;color:var(--mut)}
+.ft .ok{color:#2d8a5e;font-weight:600}
+.go{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:52px;margin-top:16px;border:0;border-radius:16px;background:var(--ink);color:var(--on);font-size:16px;font-weight:600;cursor:pointer;transition:opacity .2s,transform .2s}
+.go:disabled{opacity:.35;cursor:default}.go:not(:disabled):active{transform:scale(.98)}
+.ln{display:block;width:100%;margin-top:10px;height:44px;border:0;background:none;font-size:14.5px;font-weight:500;color:var(--mut);cursor:pointer}
+.er{margin-top:10px;font-size:13.5px;color:#c0453e;text-align:center;min-height:0}
+.ty{text-align:center;padding:18px 0 8px}.ty .ic{margin:0 auto 14px}.ty h2{padding:0}
+@media (prefers-reduced-motion: reduce){.c,.bg{transition:none}}`;
+const RVI={star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.5 2.3a.6.6 0 0 1 1 0l2.6 5.4 5.9.9a.6.6 0 0 1 .3 1l-4.3 4.2 1 5.9a.6.6 0 0 1-.8.6L12 17.6l-5.3 2.8a.6.6 0 0 1-.8-.6l1-5.9-4.3-4.2a.6.6 0 0 1 .3-1l5.9-.9z"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  heart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-9.2-9A5 5 0 0 1 12 5.6 5 5 0 0 1 21.2 11C19 15.6 12 20 12 20z"/></svg>'};
+const RVW=['','Poor','Could be better','Good','Very good','Excellent'];
+function rvClose(){if(!rvHost)return;const h=rvHost;rvHost=null;const w=h.shadowRoot.querySelector('.w');w.classList.remove('on');setTimeout(()=>h.remove(),RM?0:420)}
+async function rvAsk(sid,title,manual){
+  if(rvHost||!sid||typeof rpc!=='function')return;
+  if(!manual&&document.body.classList.contains('intest'))return;
+  let mine=null;try{const r=await rpc('cbt_review_mine',{p_series:sid});if(!r||!r.ok){if(manual&&typeof toast==='function')toast('Could not open reviews. Please try again.');return}mine=r.review}catch(e){return}
+  if(!manual&&mine&&String(mine.body||'').trim().length>=RVMIN)return;
+  if(rvHost||(!manual&&document.body.classList.contains('intest')))return;
+  const d=rvDark(),T=d?{s:'#1e1f22',s2:'#27282c',tx:'#ededee',mut:'#a3a5aa',line:'#34353a',line2:'#45464c',ink:'#ededee',on:'#161719',acc:'#d6b878',soft:'#2c271d'}
+    :{s:'#ffffff',s2:'#f3f3f1',tx:'#17181b',mut:'#5e6066',line:'#e2e2de',line2:'#d4d4cf',ink:'#1d1e22',on:'#ffffff',acc:'#85672c',soft:'#f4ecdc'};
+  rvHost=document.createElement('div');rvHost.id='rvAsk';document.body.appendChild(rvHost);const R=rvHost.attachShadow({mode:'open'});
+  let rating=mine?mine.rating:0,nudged=false;
+  R.innerHTML=`<style>${RVCSS}:host{--s:${T.s};--s2:${T.s2};--tx:${T.tx};--mut:${T.mut};--line:${T.line};--line2:${T.line2};--ink:${T.ink};--on:${T.on};--acc:${T.acc};--soft:${T.soft}}</style>
+   <div class="w" role="dialog" aria-modal="true" aria-labelledby="rvT"><div class="bg"></div><div class="c"><button class="x" aria-label="Close">${RVI.x}</button><div class="body"></div></div></div>`;
+  const W=R.querySelector('.w'),B=R.querySelector('.body');
+  const form=()=>{B.innerHTML=`<div class="ic">${RVI.star}</div><h2 id="rvT">${manual?'Your review':'How was your test?'}</h2>
+    <p class="s">Rate <b>${esc3(title||'this test series')}</b>. Your words help other students choose, and help us make every test better.</p>
+    <div class="st" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(n=>`<button role="radio" aria-checked="${rating===n}" aria-label="${n} star${n>1?'s':''}" data-n="${n}" class="${n<=rating?'on':''}">${RVI.star}</button>`).join('')}</div>
+    <p class="lb">${rating?RVW[rating]:'Tap a star'}</p>
+    <textarea maxlength="600" placeholder="What did you like? What can we do better? (at least ${RVMIN} letters)" aria-label="Your review">${esc3(mine&&mine.body||'')}</textarea>
+    <div class="ft"><span class="hn"></span><span class="ct"></span></div>
+    <button class="go" disabled>Submit review</button><p class="er" role="alert"></p>`;wire()};
+  const sync=()=>{const ta=B.querySelector('textarea');if(!ta)return;const n=ta.value.trim().length,ok=rating&&n>=RVMIN;B.querySelector('.go').disabled=!ok;B.querySelector('.ct').textContent=ta.value.length+' / 600';
+    const hn=B.querySelector('.hn');hn.className='hn'+(n>=RVMIN?' ok':'');hn.textContent=!rating?'Choose your stars':n>=RVMIN?'Ready to send':`${RVMIN-n} more letter${RVMIN-n===1?'':'s'} please`};
+  const wire=()=>{B.querySelectorAll('.st button').forEach(b=>b.addEventListener('click',()=>{rating=+b.dataset.n;B.querySelectorAll('.st button').forEach(x=>{const on=+x.dataset.n<=rating;x.classList.toggle('on',on);x.setAttribute('aria-checked',String(+x.dataset.n===rating))});
+      b.classList.add('pop');setTimeout(()=>b.classList.remove('pop'),220);B.querySelector('.lb').textContent=RVW[rating];sync();const ta=B.querySelector('textarea');if(!ta.value.trim())ta.focus({preventScroll:true})}));
+    B.querySelector('textarea').addEventListener('input',sync);B.querySelector('.go').addEventListener('click',send);sync()};
+  const send=async()=>{const ta=B.querySelector('textarea'),go=B.querySelector('.go'),er=B.querySelector('.er'),body=ta.value.trim();if(!rating||body.length<RVMIN)return;
+    go.disabled=true;go.textContent='Sending…';er.textContent='';let r=null;try{r=await rpc('cbt_review_save',{p_series:sid,p_rating:rating,p_body:body,p_photo:''})}catch(e){}
+    if(!r||!r.ok){go.textContent='Submit review';sync();er.textContent=r&&r.error==='busy'?'Please wait a few seconds and try again.':r&&r.error==='not_unlocked'?'Reviews open once this series is unlocked for you.':'Could not send. Please check your internet and try again.';return}
+    try{RV&&delete RV[(itemOfSeries(sid)||{}).id];XD=null}catch(e){}
+    B.innerHTML=`<div class="ty"><div class="ic">${RVI.heart}</div><h2>Thank you!</h2><p class="s">${r.status==='pending'?'Your review will show after a quick check.':'Your review is live on the series page.'}</p></div>`;
+    setTimeout(rvClose,1800);if(scrOpen()&&top()&&top().key==='sp')setTimeout(()=>{loadExtras();redraw()},400)};
+  const nudge=()=>{nudged=true;B.innerHTML=`<div class="ty"><div class="ic">${RVI.heart}</div><h2 id="rvT">Just 20 seconds?</h2><p class="s">Two lines from you help hundreds of students pick the right test series, and tell us what to improve next.</p></div>
+    <button class="go">Write my review</button><button class="ln">Not now</button>`;B.querySelector('.go').addEventListener('click',form);B.querySelector('.ln').addEventListener('click',rvClose)};
+  R.querySelector('.x').addEventListener('click',()=>{const ta=B.querySelector('textarea');if(!manual&&!nudged&&!(ta&&ta.value.trim().length>=RVMIN))nudge();else rvClose()});
+  R.querySelector('.bg').addEventListener('click',()=>{if(manual)rvClose()});
+  form();requestAnimationFrame(()=>requestAnimationFrame(()=>W.classList.add('on')))}
+/* after a test is submitted (result shown, or "result after …"): ask once the screen has settled */
+(function(){if(typeof sendPending!=='function')return;let just=null;
+  const _sp=sendPending;sendPending=function(it){try{const L=(typeof CAT!=='undefined'&&CAT)||null,t=L&&(L.tests||[]).find(x=>x.id===(it&&it.tid)),s=t&&(L.series||[]).find(x=>x.id===t.series_id);
+    just=s&&s.unlocked?{sid:s.id,title:s.title,at:Date.now()}:null}catch(e){just=null}return _sp.apply(this,arguments)};
+  const after=()=>{if(!just||Date.now()-just.at>120000)return;const j=just;just=null;setTimeout(()=>rvAsk(j.sid,j.title,false),1400)};
+  ['showHeld','showResult'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;window[n]=function(){const r=f.apply(this,arguments);try{after()}catch(e){}return r}})})();
 })();

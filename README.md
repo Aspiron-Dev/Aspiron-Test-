@@ -52,6 +52,23 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
   download manager. XP, syllabus progress and overall leaderboards need new data and are not shown.
 - **To remove it:** delete `v3.js`, `v3.css` and the `<script src="v3.js?v=…">` line in `index.html`.
 
+## Series page: validity, upgrade plans, syllabus, review request (`cx/m-seriespage.js`, `supabase_v64_series_page.sql`)
+- **My Test Series** (new design): one card per series with its photo, *Starts on … · Ends on …*, *Upgrade* / *Details*
+  and **Open Test Series**. After the end date the series moves to *Expired*.
+- **Series page** tabs: **Description** (validity, *Choose a plan* with the upgrade plans and *Upgrade now*, what the
+  series includes, about), **Resources** (the series' files from Admin → Tests → series: schedule, syllabus, notes),
+  **Tests** (groups = the series' folders, a filter All / Attempted / Not attempted / Resume / Upcoming / Missed, the
+  banner, then the tests in order: live, continue, upcoming, available, waiting for result, attempted, missed) and
+  **Reviews**.
+- **Admin → Series page** (Commerce): per series the start and end dates, the lines *This series includes*, up to 4
+  upgrade plans (store items, with the name shown) and a syllabus for each test; plus one banner for the Tests tab.
+  Who can change it: Store = Full access (View only can look).
+- **Review request** (both designs): after every submitted test the student is asked to rate the series with stars
+  and a comment of at least 15 letters. Closing once shows a short "just 20 seconds" note, closing again lets them go.
+  Not asked again once they have written a review with a comment. Saved with the existing `cbt_review_save` (v23).
+- **Setup:** run `supabase_v64_series_page.sql` once (after v63), then `supabase_v35_admin_team.sql` again. Until then the
+  pages show no dates, plans or syllabus.
+
 ## Tests page poster and filter (`cx/m-look.js`, `supabase_v61_tests_page.sql`)
 - **Admin → Tests page** (Commerce): the poster at the top of the Tests tab of the new design (best 1080 × 1350 px, 4 : 5;
   keep the top 15% and bottom 25% plain because the search bar and the two big buttons sit there), an optional link, the
