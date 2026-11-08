@@ -811,3 +811,14 @@ svg.i .f{fill:currentColor;fill-opacity:0;transition:fill-opacity .3s var(--ease
 .pst{min-width:0;width:calc(100% + 32px);max-width:none}
 .pst-art,.pst-art img{min-width:0;max-width:100%}
 .pst-art img{width:100%}
+/* ---- round 5: Tests page scroll — search and buttons stay on top and shrink, the poster drifts up and fades ---- */
+.pst-stick{position:sticky;top:var(--hh,62px);z-index:20;height:0;margin:-6px 0 calc(-1 * var(--gap));pointer-events:none}
+.pst-bd{position:absolute;left:-16px;right:-16px;top:0;height:0;opacity:0;background:var(--bg);box-shadow:0 12px 24px -20px rgba(0,0,0,.45)}
+.pst-stick .pst-top{position:absolute;left:0;right:0;top:0;padding:10px 0 0;pointer-events:auto}
+.pst-tabs{position:absolute;left:0;right:0;top:0;margin:0;padding:0;pointer-events:auto;will-change:transform}
+.pst-tabs .tt2{margin:0;padding:0}
+.pst-tabs .tt2 button{height:calc(116px - 68px * var(--p,0));justify-content:center;overflow:hidden;padding:0 14px}
+.pst-tabs .tt2 .ti{flex:none;height:calc(40px * (1 - var(--p,0)));opacity:calc(1 - 1.8 * var(--p,0));margin-bottom:calc(6px * (1 - var(--p,0)));overflow:hidden}
+.pst-tabs .tt2 small{opacity:calc(1 - 3.2 * var(--p,0));max-height:calc(18px * (1 - var(--p,0)));overflow:hidden}
+.pst{margin-top:calc(-1 * var(--hh,62px));margin-bottom:20px}
+.pst-art{will-change:transform,opacity}
