@@ -157,6 +157,14 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Safety note:** the store has no sign-in yet — the wallet belongs to the mobile number typed on the store. An order paid with the wallet always needs your approval; approve it only when the student messages you from that number (the order card says so). The planned email / password sign-in for the store closes this.
 - **Setup:** run `supabase_v52_coupons_refer.sql` once (after v48 or later), then `supabase_v35_admin_team.sql` again. Until then the store hides the coupon box, the Refer & earn pages say “coming soon” and the admin section asks for the setup. A mobile number changed later (v44) does not move its wallet / referral code — add the money to the new number by hand (Refer & earn → Wallet).
 
+## Admin panel guard (`supabase_v62_admin_guard.sql` + `supabase_v35_admin_team.sql`)
+- **Team sign-in switch:** Team & access → Members → *Team sign-in* (off after setup). Off = no team username can sign in and members already signed in stop at once; only the owner signs in.
+- **Owner:** 5 wrong passwords from one place lock that place for 1 hour. A sign-in from a new place shows on the bell.
+- **Admin key checked by the database:** the sign-in must carry the private admin key (from the `#k=` link; the panel sends it). Without it no password is even checked, so the sign-in cannot be guessed from outside the panel. Lost the key? SQL Editor: `delete from cbt_private.settings where key = 'admin_gate';` (turns the check off).
+- **Automatic block:** 15 wrong passwords in 24 hours from one address block it for 7 days (never an address you signed in from correctly). Blocked yourself? SQL Editor: `delete from cbt_private.admin_ip_blocks;`
+- **Security alerts:** groups *Risky sign-ins · Admin changes · Students*; tap an alert for the full IP address, device, the username tried and what to do; *Who is it?* opens ipinfo.io; the busiest addresses are listed and can be **Blocked** (no admin / team sign-in from them; your own address cannot be blocked). Full addresses are kept 30 days.
+- **Setup:** run `supabase_v62_admin_guard.sql` (after v61), then `supabase_v35_admin_team.sql` again.
+
 ## Refer & earn safety (`supabase_v53_refer_fixes.sql`)
 - The reward goes only to the link the new student ordered from (the code is kept on that order); putting someone's number under your link earlier gives nothing.
 - No reward when the new student paid less than **₹99** by UPI (Admin → Coupons & Refer → Refer & earn → *Reward only if the new student paid at least*).

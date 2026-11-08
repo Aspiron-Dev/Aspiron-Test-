@@ -51,7 +51,9 @@ async function rpcRoute(route) {
   for (const vw of [{ width: 1280, height: 860 }, { width: 390, height: 844 }]) {
     await q(`delete from cbt_private.admin_totp; delete from cbt_private.admin_fails; delete from cbt_private.admin_sessions`);
     const tag = vw.width + 'px';
-    const ctx = await br.newContext({ viewport: vw }); const page = await ctx.newPage();
+    // v62: the sign-in needs the admin page key (the test page has no gate script, so the key is put in place here)
+    await q(`update cbt_private.settings set value = encode(sha256(convert_to('aspiron-admin:e2eKey2026', 'UTF8')), 'hex') where key = 'admin_gate'`);
+    const ctx = await br.newContext({ viewport: vw }); await ctx.addInitScript(() => { try { localStorage.setItem('adm_k', 'e2eKey2026'); } catch (e) {} }); const page = await ctx.newPage();
     const errs = []; page.on('pageerror', e => errs.push('PAGEERR ' + e.message + ' @ ' + (e.stack||'').split('\n').slice(1,3).join(' '))); page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(m.text()); });
     await page.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort());
     await page.route(SUPA + '/rest/v1/rpc/**', rpcRoute);
@@ -95,12 +97,17 @@ async function rpcRoute(route) {
     ok(await page.$('#tb_students') !== null, tag + ' backup panel opens with a recovery code');
     await page.goto(BASE + 'cp-dt764twzf54s5m.html#/team/members'); await page.waitForTimeout(1500);
     ok(/2-step on/.test(await page.textContent('#ax-page')), tag + ' team page shows owner 2-step on');
+    ok(/Team sign-in/.test(await page.textContent('#ax-page')) && await page.$('[name=tlog]') !== null, tag + ' team page has the team sign-in switch');
     // R3: security alerts (the recovery code and the wrong code above), shown safely, and the bell counts them
     await q(`select cbt_private.sec_event('team_changed','high','<img src=x onerror="window.__x=1">','<b>x</b>')`);
-    await page.goto(BASE + 'cp-dt764twzf54s5m.html#/team/alerts'); await page.waitForTimeout(1500);
+    await page.goto(BASE + 'cp-dt764twzf54s5m.html#/team/alerts?c=all'); await page.waitForTimeout(1500);   // 'all': the XSS row is an admin change
     const al = await page.textContent('#ax-page');
     ok(/Recovery code used/.test(al) && /Wrong two-step code/.test(al), tag + ' security alerts list the recovery code and wrong code');
     ok(!(await page.evaluate(() => window.__x)) && await page.$('#ax-page img[src=x]') === null, tag + ' alert text is shown as text, not HTML');
+    await page.click('.tl-i[data-act=open]'); await page.waitForSelector('.drawer');
+    const dr = await page.textContent('.drawer');
+    ok(/IP address/.test(dr) && /Device/.test(dr) && /Group/.test(dr), tag + ' an alert opens with its address, device and group');
+    await page.click('.drawer [data-close]'); await page.waitForTimeout(400);
     await page.click('[data-act=seen]'); await page.waitForTimeout(1200);
     ok((await q(`select count(*)::int n from cbt_private.security_events where level = 'high' and not seen`))[0].n === 0, tag + ' mark as seen works');
     ok(!errs.length, tag + ' no page errors ' + errs.join(' | '));

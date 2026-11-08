@@ -17,7 +17,7 @@ const ROLES = [
 ];
 // readable names for the activity log
 const ACT = {
-  'session:sign_in': 'Signed in', 'session:sign_out': 'Signed out', 'cbt_admin_security:seen': 'Marked security alerts as seen', 'cbt_admin_refer_min:set': 'Changed the referral minimum payment',
+  'session:sign_in': 'Signed in', 'session:sign_out': 'Signed out', 'cbt_admin_security:seen': 'Marked security alerts as seen', 'cbt_admin_security:block': 'Blocked an address', 'cbt_admin_security:unblock': 'Unblocked an address', 'cbt_admin_team:team_login': 'Switched team sign-in', 'cbt_admin_refer_min:set': 'Changed the referral minimum payment',
   'cbt_admin:student_add': 'Added a student', 'cbt_admin:student_approve': 'Approved an access request', 'cbt_admin:student_code': 'Made a new access code',
   'cbt_admin:student_block': 'Blocked / unblocked a student', 'cbt_admin:student_devices_reset': 'Reset devices', 'cbt_admin:student_update': 'Edited a student',
   'cbt_admin:student_delete': 'Deleted a student', 'cbt_admin:grant': 'Changed series access', 'cbt_admin:series_save': 'Saved a series', 'cbt_admin:series_delete': 'Deleted a series',
@@ -51,7 +51,7 @@ const isOnline = s => s.active && Date.now() - Date.parse(s.last_seen) < 180000;
 async function load(force) {
   if (!force && T.at && Date.now() - T.at < 15000) return { ok: true };
   const [r, z] = await Promise.all([AX.api.call('cbt_admin_team', 'get'), AX.api.call('cbt_admin_2fa', 'status')]);
-  if (r.ok) { T.users = r.users || []; T.sessions = r.sessions || []; T.audit = r.audit || []; T.current = r.current; T.at = Date.now(); T.tfa = (z.ok && z.members) || {}; T.tfaOwner = !!(z.ok && z.enabled); T.req2fa = !!r.team_2fa_required; }
+  if (r.ok) { T.users = r.users || []; T.sessions = r.sessions || []; T.audit = r.audit || []; T.current = r.current; T.at = Date.now(); T.tfa = (z.ok && z.members) || {}; T.tfaOwner = !!(z.ok && z.enabled); T.req2fa = !!r.team_2fa_required; T.teamOn = r.team_login !== false; }
   return r;
 }
 
@@ -106,6 +106,7 @@ function members(ctx) {
     </div>
     <div class="section-t">Owner</div>
     <div class="card row" style="gap:14px">${UI.avatar('Owner', 'owner', 'lg')}<div class="grow"><div class="row gap6"><b class="lg">You</b>${UI.pill('Owner', 'gold')}${T.tfaOwner ? UI.pill('2-step on', 'ok') : h`<a class="pill warn" href="#/settings">2-step off · turn on</a>`}</div><div class="sm mut">Full access to everything, including this page. Signed in on ${fmt.plural(act.filter(s => !s.user_id).length, 'device')}.</div></div><a class="btn sm" href="#/team/sessions">${icon('device', 15)} Devices</a></div>
+    <div class="card row wrap mt12" style="gap:12px"><div class="grow"><b>Team sign-in</b><div class="xs mut">${T.teamOn ? 'On: team members can sign in with their username.' : 'Off: nobody can sign in with a team username, and members already signed in are stopped at once. Only you (owner) can sign in.'}</div></div>${AX.f.switch({ name: 'tlog', value: !!T.teamOn, label: T.teamOn ? 'On' : 'Off' })}</div>
     <div class="card row wrap mt12" style="gap:12px"><div class="grow"><b>Require two-step sign-in for the team</b><div class="xs mut">Until a member turns it on (Settings → Two-step sign-in) they can only do that. ${T.users.filter(u => (T.tfa || {})[u.id]).length} of ${T.users.length} members have it on.</div></div>${AX.f.switch({ name: 't2fa', value: !!T.req2fa, label: T.req2fa ? 'Required' : 'Optional' })}</div>
     <div class="section-t">Team members</div>
     ${T.users.length ? h`<div class="grid g2">${join(T.users, u => {
@@ -117,6 +118,13 @@ function members(ctx) {
         <div class="divider"></div>
         <div class="row xs mut wrap"><span>${icon('clock', 13)} Last sign-in ${u.last_login ? fmt.ago(u.last_login) : 'never'}</span><span>·</span><span>${fmt.plural(ss.length, 'device')}</span><span class="grow"></span><button class="btn xs" data-act="edit" data-id="${u.id}">${icon('edit', 13)} Edit access</button></div></div>`;
     })}</div>` : h`<div class="card">${UI.empty({ icon: 'team', title: 'No team members yet', text: 'Add a person, give them a username and password, and choose exactly what they can see or change. You stay the only owner.', action: h`<button class="btn pri" data-act="add">${icon('userPlus', 17)} Add first member</button>` })}</div>`}`);
+  const tl = ctx.el.querySelector('[name=tlog]');
+  if (tl) tl.addEventListener('change', async e => {
+    const on = e.target.checked;
+    const r = await AX.api.call('cbt_admin_team', 'team_login', { on });   // supabase_v35_admin_team.sql (v62)
+    if (!r.ok) { e.target.checked = !on; return UI.err(r); }
+    T.teamOn = on; UI.toast(on ? 'Team sign-in is on' : 'Team sign-in is off — only the owner can sign in'); T.at = 0; ctx.reload();
+  });
   const sw = ctx.el.querySelector('[name=t2fa]');
   if (sw) sw.addEventListener('change', async e => {
     const on = e.target.checked;
@@ -316,30 +324,79 @@ function activity(ctx) {
   AX.act(ctx.el, { who: el => AX.go('team/activity', Object.assign({ f }, el.value ? { who: el.value } : {})) }, 'change');
 }
 
-/* ---------- security alerts (owner) ---------- */
+/* ---------- security alerts (owner) — supabase_v62_admin_guard.sql ---------- */
+// name · what it means · what to do
 const SEC = {
-  owner_wrong_password: 'Wrong owner password', team_wrong_password: 'Wrong team password', wrong_2fa: 'Wrong two-step code',
-  sign_in_locked: 'Sign-in locked (10 wrong tries)', sign_in_paused: 'Sign-in paused (100 wrong passwords in an hour)',
-  '2fa_locked': 'Two-step code locked', '2fa_off': 'Two-step sign-in turned off', recovery_code_used: 'Recovery code used',
-  team_changed: 'Team member added / changed / removed', owner_password_changed: 'Owner password changed',
-  new_place_sign_in: 'Sign-in from a new place', member_access_or_money: 'Member gave access / changed orders or payments',
-  refused: 'Refused (no permission)', student_locked: 'Student locked out (wrong codes)', busy: 'Student sent too many requests'
+  owner_wrong_password: ['Wrong owner password', 'Someone typed a wrong password for the owner account.', 'If it was not you: block the address below. 5 wrong tries lock that place for 1 hour by themselves.'],
+  team_wrong_password: ['Wrong team password', 'Someone tried to sign in with a team username (shown in quotes) and a wrong password.', 'Keep team sign-in off when nobody uses it (Members). Block the address if it repeats.'],
+  wrong_2fa: ['Wrong two-step code', 'The password was RIGHT but the 6-digit code was wrong. Someone may know the password.', 'If it was not you: change that account\'s password now and sign out everyone else.'],
+  sign_in_locked: ['Sign-in locked', 'Too many wrong tries from one place: that place is locked for a while.', 'Nothing to do unless it repeats; then block the address.'],
+  sign_in_paused: ['Sign-in paused', '100 wrong passwords in an hour from many places: sign-in paused for 15 minutes (your known devices still work).', 'Someone is guessing at scale. Change the password if it is weak.'],
+  '2fa_locked': ['Two-step code locked', '5 wrong codes in a row: two-step sign-in locked for 15 minutes.', 'If it was not you: change the password now.'],
+  '2fa_off': ['Two-step sign-in turned off', 'Two-step sign-in was switched off for an account.', 'If you did not do it: turn it on again (Settings) and change the password.'],
+  recovery_code_used: ['Recovery code used', 'Someone signed in with a one-time recovery code.', 'If it was not you: sign out everyone else, change the password, make new codes.'],
+  new_place_sign_in: ['Sign-in from a new place', 'A sign-in from an address not seen in the last 90 days.', 'If it was not you: Where signed in → sign that device out, change the password.'],
+  refused: ['Refused (no permission)', 'A team member tried something they have no permission for.', 'Check with the member; change their access if needed.'],
+  team_changed: ['Team member added / changed / removed', 'A team account was added, changed or removed, or a team setting changed.', 'Nothing to do if it was you.'],
+  owner_password_changed: ['Owner password changed', 'The owner password was changed.', 'If it was not you: use SECURITY_RUNBOOK.md section 1 at once.'],
+  member_access_or_money: ['Member gave access / changed money', 'A team member gave a series, changed an order, a payment, a wallet or a coupon.', 'Check that it was expected.'],
+  student_locked: ['Student locked out (wrong codes)', 'A student (or someone with their number) typed 8 wrong access codes; locked 15 minutes.', 'If the student asks: give a new access code (Students).'],
+  no_key_login: ['Sign-in without the admin key', 'Someone called the sign-in without the private admin key (not from your panel link). It was refused before any password was checked.', 'Nothing to do: without the key no password can be tried. Block the address if it keeps coming.'],
+  ip_auto_blocked: ['Address blocked automatically', '15 wrong passwords in 24 hours came from this address, so it is blocked for 7 days.', 'Nothing to do. Unblock it below only if it was you.'],
+  busy: ['Student sent too many requests', 'A student opened very many tests or reviews in an hour (copying?).', 'Look at the student if it repeats.']
 };
-const secName = k => k.startsWith('many:') ? 'Many: ' + (SEC[k.slice(5)] || k.slice(5)).toLowerCase() : SEC[k] || k;
+const secName = k => k.startsWith('many:') ? 'Many: ' + ((SEC[k.slice(5)] || [k.slice(5)])[0]).toLowerCase() : (SEC[k] || [k])[0];
+const secInfo = k => SEC[k.startsWith('many:') ? k.slice(5) : k] || [k, '', ''];
+const CATS = [['risk', 'Risky sign-ins', 'alert'], ['admin', 'Admin changes', 'settings'], ['students', 'Students', 'users'], ['all', 'All', 'list']];
+const device = ua => !ua ? '' : (/(iPhone|iPad|Android|Windows|Mac OS X|Linux)/.exec(ua) || [''])[0].replace('Mac OS X', 'Mac') + (/(Edg|Chrome|Firefox|Safari)\//.test(ua) ? ' · ' + /(Edg|Chrome|Firefox|Safari)\//.exec(ua)[1].replace('Edg', 'Edge') : '');
 async function alerts(ctx) {
-  const days = +(ctx.q.d || 7);
+  const days = +(ctx.q.d || 7), cat = CATS.some(c => c[0] === ctx.q.c) ? ctx.q.c : 'risk';
   AX.set(ctx.el, UI.skeleton(4));
-  const r = await AX.api.call('cbt_admin_security', 'get', { days });
+  const r = await AX.api.call('cbt_admin_security', 'get', { days, cat });
   if (!ctx.alive()) return;
-  if (!r.ok) { AX.set(ctx.el, UI.errorBox(r, 'supabase_v47_alerts_results.sql')); AX.act(ctx.el, { retry: () => ctx.reload() }); return; }
-  const L = r.events || [], C = Object.entries(r.counts || {}).sort((a, b) => b[1] - a[1]);
-  AX.set(ctx.el, h`<div class="callout ${r.unseen ? 'bad' : 'info'}">${icon(r.unseen ? 'alert' : 'shieldCheck')}<div class="sm">${r.unseen ? h`<b>${fmt.plural(r.unseen, 'new alert')}.</b> Check each one. Not you? Sign everyone else out (Where signed in), change the password and see SECURITY_RUNBOOK.md.` : 'No new alerts.'} Serious alerts also send you a GitHub e-mail ("Security alerts" check failed).</div></div>
-    <div class="row wrap gap16" style="margin:16px 0"><div class="chips">${join([[1, '24 hours'], [7, '7 days'], [30, '30 days']], ([k, l]) => h`<a class="chip ${days === k ? 'on' : ''}" href="${AX.link('team/alerts', { d: k })}">${l}</a>`)}</div>
+  if (!r.ok) { AX.set(ctx.el, UI.errorBox(r, 'supabase_v62_admin_guard.sql')); AX.act(ctx.el, { retry: () => ctx.reload() }); return; }
+  const L = r.events || [], C = Object.entries(r.counts || {}).sort((a, b) => b[1] - a[1]), cats = r.cats || {};
+  const lnk = q => AX.link('team/alerts', Object.assign({ d: days, c: cat }, q));
+  const bad = a => a.level === 'high' || a.level === 'warn';
+  AX.set(ctx.el, h`<div class="callout ${r.unseen ? 'bad' : 'info'}">${icon(r.unseen ? 'alert' : 'shieldCheck')}<div class="sm">${r.unseen ? h`<b>${fmt.plural(r.unseen, 'new alert')}.</b> Tap an alert to see the full address, device and what to do.` : 'No new alerts.'} Your address now: <b class="mono">${r.me || '—'}</b></div></div>
+    <div class="row wrap gap16" style="margin:16px 0"><div class="chips">${join(CATS, ([k, l, ic]) => h`<a class="chip ${cat === k ? 'on' : ''} ${k === 'risk' ? 'alert' : ''}" href="${lnk({ c: k })}">${icon(ic, 14)} ${l}<em>${k === 'all' ? Object.values(cats).reduce((x, y) => x + y, 0) : cats[k] || 0}</em></a>`)}</div>
+      <div class="chips">${join([[1, '24 h'], [7, '7 days'], [30, '30 days']], ([k, l]) => h`<a class="chip ${days === k ? 'on' : ''}" href="${lnk({ d: k })}">${l}</a>`)}</div>
       <span class="grow"></span>${r.unseen ? h`<button class="btn sm" data-act="seen">${icon('check', 15)} Mark all as seen</button>` : ''}</div>
-    ${C.length ? h`<div class="card pad0 list">${join(C, ([k, n]) => h`<div class="li"><div class="grow"><div class="t">${secName(k)}</div></div><span class="pill ${k.startsWith('many:') || ['sign_in_locked', 'sign_in_paused', '2fa_locked', '2fa_off', 'recovery_code_used', 'team_changed', 'owner_password_changed'].includes(k) ? 'bad' : ''}">${n}</span></div>`)}</div>` : ''}
-    <div class="card mt16">${L.length ? h`<div class="timeline">${join(L, a => h`<div class="tl-i ${a.level === 'high' ? 'bad' : a.level === 'info' ? 'mut' : 'gold'}"><div class="row wrap gap6"><b>${secName(a.kind)}</b>${a.who ? h`<span class="tx2">${a.who}</span>` : ''}${a.detail ? h`<span class="pill">${a.detail}</span>` : ''}${(a.level === 'high' || a.level === 'warn') && !a.seen ? UI.pill('New', a.level === 'high' ? 'bad' : 'warn') : ''}</div><div class="xs mut">${fmt.day(a.at)} ${fmt.time(a.at)}${a.ip ? ' · ' + a.ip : ''}</div></div>`)}</div>`
-      : UI.empty({ icon: 'shieldCheck', title: 'Nothing in this period', text: 'Wrong passwords, lock-outs, refused actions and team changes show up here.' })}</div>`);
-  AX.act(ctx.el, { async seen(b) { await UI.busy(b, async () => { const x = await AX.api.call('cbt_admin_security', 'seen'); if (!x.ok) return UI.err(x); UI.toast('Marked as seen'); AX.emit('data:changed'); ctx.reload(); }); } });
+    ${cat === 'risk' && (r.ips || []).length ? h`<div class="card pad0"><div class="card-h" style="padding:14px 16px 6px">${icon('globe')}<h3 class="grow">Addresses with the most risky events</h3></div><div class="list">${join(r.ips, x => h`<div class="li"><div class="grow"><div class="t mono">${x.ip}${x.me ? h` ${UI.pill('you', 'ok')}` : ''}${x.blocked ? h` ${UI.pill('Blocked', 'bad')}` : ''}</div><div class="xs mut">${fmt.plural(x.n, 'event')} · ${(x.kinds || []).map(secName).join(', ')} · last ${fmt.ago(x.last)}</div></div>
+        <a class="btn xs ghost" href="https://ipinfo.io/${encodeURIComponent(x.ip)}" target="_blank" rel="noopener noreferrer">${icon('search', 13)} Who is it?</a>
+        ${x.me ? '' : x.blocked ? h`<button class="btn xs" data-act="unblock" data-ip="${x.ip}">Unblock</button>` : h`<button class="btn xs danger" data-act="block" data-ip="${x.ip}">${icon('ban', 13)} Block</button>`}</div>`)}</div></div>` : ''}
+    ${C.length ? h`<div class="card pad0 list mt16">${join(C, ([k, n]) => h`<div class="li"><div class="grow"><div class="t">${secName(k)}</div></div><span class="pill ${k.startsWith('many:') || ['sign_in_locked', 'sign_in_paused', '2fa_locked', '2fa_off', 'recovery_code_used', 'wrong_2fa', 'owner_password_changed'].includes(k) ? 'bad' : ''}">${n}</span></div>`)}</div>` : ''}
+    <div class="card mt16">${L.length ? h`<div class="timeline">${join(L, a => h`<div class="tl-i click ${a.level === 'high' ? 'bad' : a.level === 'info' ? 'mut' : 'gold'}" data-act="open" data-id="${a.id}" role="button" tabindex="0" style="cursor:pointer"><div class="row wrap gap6"><b>${secName(a.kind)}</b>${a.who ? h`<span class="tx2">${a.who}</span>` : ''}${a.detail ? h`<span class="pill">${a.detail}</span>` : ''}${bad(a) && !a.seen ? UI.pill('New', a.level === 'high' ? 'bad' : 'warn') : ''}${a.blocked ? UI.pill('Blocked', 'bad') : ''}</div><div class="xs mut">${fmt.day(a.at)} ${fmt.time(a.at)}${a.ip_full || a.ip ? ' · ' + (a.ip_full || a.ip) : ''}${a.ua ? ' · ' + device(a.ua) : ''} ${icon('chevR', 12)}</div></div>`)}</div>`
+      : UI.empty({ icon: 'shieldCheck', title: 'Nothing in this group', text: 'Wrong passwords, lock-outs, refused actions and team changes show up here.' })}</div>
+    ${(r.blocks || []).length ? h`<div class="card pad0 mt16"><div class="card-h" style="padding:14px 16px 6px">${icon('ban')}<h3 class="grow">Blocked addresses</h3></div><div class="list">${join(r.blocks, b => h`<div class="li"><div class="grow"><div class="t mono">${b.ip}</div><div class="xs mut">${b.note || 'No note'} · ${fmt.ago(b.at)}${b.until ? ' · until ' + fmt.day(b.until) : ' · until you unblock it'}</div></div><button class="btn xs" data-act="unblock" data-ip="${b.ip}">Unblock</button></div>`)}</div></div>` : ''}`);
+  const block = async ip => {
+    if (!(await UI.confirm({ title: 'Block ' + ip + '?', text: 'Nobody can sign in to the admin panel or the team from this address, and sessions in use from it stop. You can unblock it any time.', yes: 'Block', tone: 'danger' }))) return;
+    const x = await AX.api.call('cbt_admin_security', 'block', { ip, note: 'Blocked from Security alerts' });
+    if (!x.ok) return UI.toast(x.error === 'own_ip' ? 'That is your own address — it cannot be blocked.' : 'Could not block: ' + (x.error || 'error'), { tone: 'bad' });
+    UI.toast('Blocked ' + ip); ctx.reload();
+  };
+  const open = a => {
+    const [nm, what, todo] = secInfo(a.kind), ip = a.ip_full || '';
+    if (bad(a) && !a.seen) AX.api.call('cbt_admin_security', 'seen_one', { id: a.id }).then(() => AX.emit('data:changed'));
+    UI.drawer({ title: secName(a.kind), sub: fmt.day(a.at) + ' ' + fmt.time(a.at), body: h`<div class="col gap16">
+      <div class="callout ${a.level === 'high' ? 'bad' : a.level === 'warn' ? 'warn' : 'info'}">${icon('info')}<div class="sm"><b>${what || nm}</b>${todo ? h`<div class="mt4">${todo}</div>` : ''}</div></div>
+      <div class="card pad0 list">
+        ${a.who ? h`<div class="li"><div class="grow"><div class="xs mut">Account / person</div><div class="t">${a.who}</div></div></div>` : ''}
+        ${a.detail ? h`<div class="li"><div class="grow"><div class="xs mut">Details</div><div class="t">${a.detail}</div></div></div>` : ''}
+        <div class="li"><div class="grow"><div class="xs mut">IP address</div><div class="t mono">${ip || a.ip || 'not known'}${ip && ip === r.me ? h` ${UI.pill('you', 'ok')}` : ''}${a.blocked ? h` ${UI.pill('Blocked', 'bad')}` : ''}</div></div>${ip ? h`<a class="btn xs ghost" href="https://ipinfo.io/${encodeURIComponent(ip)}" target="_blank" rel="noopener noreferrer">${icon('search', 13)} Who is it?</a>` : ''}</div>
+        <div class="li"><div class="grow"><div class="xs mut">Device / browser</div><div class="t">${device(a.ua) || 'not known'}</div>${a.ua ? h`<div class="xs faint">${a.ua}</div>` : ''}</div></div>
+        <div class="li"><div class="grow"><div class="xs mut">Group</div><div class="t">${(CATS.find(c => c[0] === a.cat) || ['', 'Other'])[1]}</div></div></div>
+      </div>
+      ${ip && ip !== r.me && a.cat === 'risk' ? (a.blocked ? h`<button class="btn" data-act="unblock" data-ip="${ip}">Unblock ${ip}</button>` : h`<button class="btn danger" data-act="block" data-ip="${ip}">${icon('ban', 15)} Block ${ip}</button>`) : ''}
+      <p class="xs faint">Full addresses and devices are kept 30 days. "Who is it?" opens ipinfo.io (country, internet company).</p></div>`,
+      onOpen(el, close) { AX.act(el, { block: b => { close(); block(b.dataset.ip); }, async unblock(b) { const x = await AX.api.call('cbt_admin_security', 'unblock', { ip: b.dataset.ip }); if (!x.ok) return UI.err(x); close(); UI.toast('Unblocked'); ctx.reload(); } }); } });
+  };
+  AX.act(ctx.el, {
+    async seen(b) { await UI.busy(b, async () => { const x = await AX.api.call('cbt_admin_security', 'seen'); if (!x.ok) return UI.err(x); UI.toast('Marked as seen'); AX.emit('data:changed'); ctx.reload(); }); },
+    open: el => { const a = L.find(x => String(x.id) === el.dataset.id); if (a) open(a); },
+    block: b => block(b.dataset.ip),
+    async unblock(b) { const x = await AX.api.call('cbt_admin_security', 'unblock', { ip: b.dataset.ip }); if (!x.ok) return UI.err(x); UI.toast('Unblocked'); ctx.reload(); }
+  });
 }
 
 /* ---------- owner password ---------- */

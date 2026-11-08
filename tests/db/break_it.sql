@@ -13,6 +13,8 @@ create function pg_temp.chk(p_name text, p_ok boolean, p_info text default '') r
   $$ insert into t (name, ok, info) values (p_name, coalesce(p_ok, false), coalesce(p_info, '')) $$;
 grant execute on function pg_temp.chk(text, boolean, text) to anon;
 select set_config('request.headers', '{"x-real-ip":"203.0.113.10"}', false);
+-- v62: the admin-key check of the sign-in is tested in section 27; the other sections sign in without it
+delete from cbt_private.settings where key = 'admin_gate';
 
 -- ===== 1. signed out / wrong code: every student function refuses =====
 do $$ declare f record; r jsonb; n int := 0; bad text := ''; begin
@@ -175,6 +177,8 @@ reset role;
 
 -- ===== 14. admin: team permissions and two-step sign-in =====
 select public.cbt_admin_login('','OwnerPass2026x','Owner')->>'token' as ow \gset
+-- v62: team sign-in is off until the owner turns it on
+select public.cbt_admin_team(:'ow','team_login','{"on":true}')->>'ok';
 select public.cbt_admin_team(:'ow','user_save','{"name":"Viewer","username":"viewer1","password":"Tr7k-9mQz-pLx2","perms":{"students":"view"}}')->>'ok';
 select public.cbt_admin_login('viewer1','Tr7k-9mQz-pLx2','V')->>'token' as vt \gset
 select pg_temp.chk('14a view-only member cannot delete a student',
@@ -715,6 +719,69 @@ select public.cbt_admin_login('lookview1','Tr7k-9mQz-pLx8','S')->>'token' as lvt
 select pg_temp.chk('26g look: Store view-only can look but not save',
   public.cbt_admin_store_look(:'lvt','get','{}')->>'ok' = 'true'
   and public.cbt_admin_store_look(:'lvt','save','{"link":"","exams":["NEET"],"classes":[],"subjects":[]}')->>'error' = 'forbidden');
+
+-- ===== 27. admin panel guard (supabase_v62_admin_guard.sql + v35) =====
+delete from cbt_private.admin_fails;
+select set_config('request.headers', '{"x-real-ip":"203.0.113.120","user-agent":"TestBrowser/1.0"}', false);
+select public.cbt_admin_login('','OwnerPass2026x','Owner')->>'token' as ow9 \gset
+select public.cbt_admin_team(:'ow9','user_save','{"name":"Helper","username":"helper1","password":"Tr7k-9mQz-pLx5","perms":{"students":"view"}}')->>'ok';
+select public.cbt_admin_login('helper1','Tr7k-9mQz-pLx5','H')->>'token' as hp \gset
+select public.cbt_admin_team(:'ow9','team_login','{"on":false}')->>'ok';
+select pg_temp.chk('27a team sign-in off: a member cannot sign in and their open session stops',
+  public.cbt_admin_login('helper1','Tr7k-9mQz-pLx5','H')->>'error' = 'invalid'
+  and public.cbt_admin(:'hp','students','{}')->>'error' = 'disabled');
+select pg_temp.chk('27b a wrong team sign-in is recorded with the username tried, full address and device',
+  exists (select 1 from cbt_private.security_events where kind = 'team_wrong_password' and who like '%helper1%'
+          and ip_full = '203.0.113.120' and ua = 'TestBrowser/1.0'));
+select set_config('request.headers', '{"x-real-ip":"198.51.100.200"}', false);
+select public.cbt_admin_login('','wrong-guess-' || g,'X')->>'error' from generate_series(1,5) g;
+select pg_temp.chk('27c 5 wrong owner passwords lock that place (even the right password)',
+  public.cbt_admin_login('','OwnerPass2026x','X')->>'error' = 'locked');
+select set_config('request.headers', '{"x-real-ip":"203.0.113.120"}', false);
+select pg_temp.chk('27d the owner cannot block their own address',
+  public.cbt_admin_security(:'ow9','block','{"ip":"203.0.113.120"}')->>'error' = 'own_ip');
+select public.cbt_admin_security(:'ow9','block','{"ip":"198.51.100.201","note":"guessing"}')->>'ok';
+select set_config('request.headers', '{"x-real-ip":"198.51.100.201"}', false);
+select pg_temp.chk('27e a blocked address cannot sign in, even with the right password',
+  public.cbt_admin_login('','OwnerPass2026x','X')->>'error' = 'locked');
+select set_config('request.headers', '{"x-real-ip":"203.0.113.120"}', false);
+select pg_temp.chk('27f alerts are grouped and show the busiest addresses',
+  (select (r->'cats') ? 'risk' and jsonb_array_length(r->'ips') > 0 and jsonb_array_length(r->'blocks') = 1
+     from (select public.cbt_admin_security(:'ow9','get','{"days":1,"cat":"risk"}') r) x));
+select public.cbt_admin_security(:'ow9','unblock','{"ip":"198.51.100.201"}')->>'ok';
+select pg_temp.chk('27g unblocking works', not exists (select 1 from cbt_private.admin_ip_blocks));
+-- the admin page key: without it nobody can even try a password
+update cbt_private.settings set value = encode(sha256(convert_to('aspiron-admin:TestKey77', 'UTF8')), 'hex') where key = 'admin_gate';
+insert into cbt_private.settings (key, value) select 'admin_gate', encode(sha256(convert_to('aspiron-admin:TestKey77', 'UTF8')), 'hex')
+  where not exists (select 1 from cbt_private.settings where key = 'admin_gate');
+select set_config('request.headers', '{"x-real-ip":"198.51.100.230"}', false);
+select pg_temp.chk('27h without the admin key the right password is refused (and nothing is counted)',
+  public.cbt_admin_login('','OwnerPass2026x','X')->>'error' = 'gate'
+  and public.cbt_admin_login('','OwnerPass2026x','X','','WrongKey')->>'error' = 'gate'
+  and not exists (select 1 from cbt_private.admin_fail_ips where ip = '198.51.100.230'));
+select pg_temp.chk('27i with the admin key the owner signs in',
+  left(public.cbt_admin_login('','OwnerPass2026x','X','','TestKey77')->>'token', 4) = 'as1.');
+select pg_temp.chk('27j the old sign-in without the key no longer exists',
+  to_regprocedure('public.cbt_admin_login(text,text,text,text)') is null and to_regprocedure('public.cbt_admin_login(text,text,text)') is null);
+-- automatic block: 15 wrong passwords in 24 hours from one address
+select set_config('request.headers', '{"x-real-ip":"198.51.100.240"}', false);
+do $$ begin for i in 1..15 loop
+  delete from cbt_private.admin_fails;   -- the 1-hour lock would stop the tries before 15; the 24-hour count goes on
+  perform public.cbt_admin_login('', 'guess-' || i, 'X', '', 'TestKey77');
+end loop; end $$;
+select pg_temp.chk('27k 15 wrong passwords in 24 hours block the address for 7 days',
+  exists (select 1 from cbt_private.admin_ip_blocks where ip = '198.51.100.240' and until > now() + interval '6 days')
+  and public.cbt_admin_login('','OwnerPass2026x','X','','TestKey77')->>'error' = 'locked'
+  and exists (select 1 from cbt_private.security_events where kind = 'ip_auto_blocked'));
+select set_config('request.headers', '{"x-real-ip":"203.0.113.120"}', false);
+do $$ begin for i in 1..15 loop
+  delete from cbt_private.admin_fails;
+  perform public.cbt_admin_login('', 'oops-' || i, 'X', '', 'TestKey77');
+end loop; end $$;
+select pg_temp.chk('27l the owner''s own known address is never blocked automatically',
+  not exists (select 1 from cbt_private.admin_ip_blocks where ip = '203.0.113.120'));
+delete from cbt_private.admin_fails; delete from cbt_private.settings where key = 'admin_gate';
+select public.cbt_admin_team(:'ow9','team_login','{"on":true}')->>'ok';
 
 -- ===== report =====
 \t off

@@ -74,7 +74,7 @@ function login(reason) {
     if (m === 'team' && !u) { er.textContent = 'Enter your username.'; return; }
     if (!p) { er.textContent = 'Enter the password.'; return; }
     await UI.busy(f.querySelector('#lg-go'), async () => {
-      const o = f.querySelector('#lg-o').value.trim(), args = { p_user: u, p_pw: p, p_device: AX.u.device() };
+      const o = f.querySelector('#lg-o').value.trim(), args = { p_user: u, p_pw: p, p_device: AX.u.device(), p_gate: (() => { try { return localStorage.getItem('adm_k') || ''; } catch (e) { return ''; } })() };   // v62: the page key, checked by the database too
       if (o) args.p_otp = o;           // only sent once the server asked for it (older databases do not know it)
       let r = await AX.api.rpc('cbt_admin_login', args, { auth: false });
       if (r.error === 'missing') {
@@ -85,6 +85,7 @@ function login(reason) {
         S.token = p; S.legacy = true; S.me = { owner: true, name: 'Owner', perms: {} }; S.save(false);
         return start();
       }
+      if (r.error === 'gate') { er.textContent = 'This phone does not have the admin key. Open the panel once from your private link (the one with #k=…), then sign in.'; return; }
       if (['otp_required', 'otp_invalid', 'otp_locked'].includes(r.error)) {
         const of = f.querySelector('#lg-o');
         f.querySelector('#lgo').classList.remove('hide');
