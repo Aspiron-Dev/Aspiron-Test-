@@ -81,7 +81,7 @@ function coupons(el) {
     ${G.length ? h`<div class="of-grid mt16">${join(G, g => {
       const st = state(g.L[0], now), [lab, tone] = STATE[st];
       return h`<article class="card of-card ${st === 'live' ? '' : 'dim'}">
-        <header class="row top"><span class="of-code mono">${g.code}</span><div class="grow"><div class="row gap6 wrap">${UI.pill(lab, tone, st === 'live')}<span class="xs mut">${st === 'soon' ? 'from ' + fmt.dt(g.starts) + ' · ' : ''}${st === 'ended' ? 'ended ' : 'till '}${fmt.dt(g.ends)}${st === 'live' ? ' · ' + left(g.ends - now) : ''}</span></div></div>
+        <header class="row top"><span class="of-code mono">${g.code}</span><div class="grow"><div class="row gap6 wrap">${UI.pill(lab, tone, st === 'live')}${g.L[0].scratch === false ? UI.pill('Private', 'vio') : ''}<span class="xs mut">${st === 'soon' ? 'from ' + fmt.dt(g.starts) + ' · ' : ''}${st === 'ended' ? 'ended ' : 'till '}${fmt.dt(g.ends)}${st === 'live' ? ' · ' + left(g.ends - now) : ''}</span></div></div>
           ${m ? h`<button class="ibtn sm line" data-act="edit" data-code="${g.code}" title="Edit" aria-label="Edit ${g.code}">${icon('edit', 15)}</button>` : ''}</header>
         <div class="xs mut">${g.L[0].max_uses != null ? h`<b class="tx">${fmt.num(g.L[0].used || 0)}</b> used of ${fmt.num(g.L[0].max_uses)} · <b class="${g.L[0].left ? 'ok' : 'bad'}">${fmt.num(g.L[0].left || 0)} left</b>` : h`${fmt.num(g.L[0].used || 0)} used · no limit`}</div>
         <div class="list of-list">${join(g.L, c => { const it = item(c.item_id); return h`<div class="li"><div class="grow"><b class="ell">${it.title}</b><div class="xs mut">${fmt.inr(it.price)} → <b class="tx">${fmt.inr(Math.max(0, it.price - off(c, it.price)))}</b> · ${offTxt(c)}</div></div>${m ? h`<button class="ibtn sm line" data-act="rmone" data-code="${g.code}" data-item="${c.item_id}" title="Remove this code from this series" aria-label="Remove from ${it.title}">${icon('x', 13)}</button>` : ''}<div class="xs mut of-use">${fmt.plural(+c.used || 0, 'order')}<br>${+c.paid || 0} paid</div></div>`; })}</div>
@@ -138,6 +138,7 @@ function editCode(code) {
         : AX.f.input({ name: 'code', label: 'Coupon code', max: 24, placeholder: 'DIWALI', hint: 'Students type this. Letters and numbers.' })}
       ${UI.dtField({ name: 'starts_at', label: 'Starts (optional)', value: st0 && st0 > Date.now() ? st0 : null, placeholder: 'Now', hint: 'Empty = works from now' })}
       ${UI.dtField({ name: 'ends_at', label: 'Works till', value: end0, clear: false, hint: 'Stops by itself at this time' })}
+      <div class="full">${AX.f.switch({ name: 'scratch', value: !mine.length || mine[0].scratch !== false, label: 'Show on the scratch card and the store', hint: 'Off = a private code (e.g. for one promoter): it works only when typed, nobody sees it on the store.' })}</div>
       ${AX.f.input({ name: 'max_uses', label: 'Valid for how many orders?', value: mine.length && mine[0].max_uses != null ? mine[0].max_uses : '', type: 'number', min: 1, inputmode: 'numeric', placeholder: 'Empty = no limit', hint: 'Once this many orders have the code, it is used up' })}
       <div class="fld"><label>Quick end</label><div class="row gap6 wrap">${join([[3, '3 days'], [7, '7 days'], [15, '15 days'], [30, '30 days']], ([n, l]) => h`<button type="button" class="btn xs" data-act="days" data-n="${n}">${l}</button>`)}</div></div>
       <div class="full"><div class="section-t" style="margin-top:4px">Discount on each series</div>
@@ -167,7 +168,7 @@ function editCode(code) {
           if (!items.length && !drop.length) return AX.f.error(f, 'items', 'Give a discount on at least one series.');
           await UI.busy(btn, async () => {
             if (items.length) {
-              const r = await AX.api.call('cbt_admin_coupons', 'bulk', { code: cc, ends_at: String(v.ends_at), starts_at: v.starts_at ? String(v.starts_at) : '', items, max_uses: mu || '' });
+              const r = await AX.api.call('cbt_admin_coupons', 'bulk', { code: cc, ends_at: String(v.ends_at), starts_at: v.starts_at ? String(v.starts_at) : '', items, max_uses: mu || '', scratch: !!v.scratch });
               if (!r.ok) return r.error === 'code' ? AX.f.error(f, 'code', ERR.code) : UI.toast(errText(r), { tone: 'bad' });
             }
             for (const id of drop) await AX.api.call('cbt_admin_coupons', 'remove_one', { item_id: id, code: cc });
