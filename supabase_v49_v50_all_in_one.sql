@@ -1143,3 +1143,11 @@ select p.proname as admin_function,
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
  where n.nspname = 'public' and p.proname like 'cbt\_admin%' order by 1;
 select 'v35 installed: admin team, sessions, permissions, activity log, two-step sign-in' as status;
+
+-- v62: the sign-in now needs the admin page key (5 arguments). If this older file is run again after v62, remove the
+-- old 4-argument sign-in it made, so the key check cannot be skipped. Then run supabase_v35_admin_team.sql again.
+do $$ begin
+  if to_regprocedure('public.cbt_admin_login(text,text,text,text,text)') is not null then
+    drop function if exists public.cbt_admin_login(text, text, text, text);
+  end if;
+end $$;

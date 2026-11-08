@@ -13,6 +13,8 @@ create function pg_temp.chk(p_name text, p_ok boolean, p_info text default '') r
   $$ insert into t (name, ok, info) values (p_name, coalesce(p_ok, false), coalesce(p_info, '')) $$;
 grant execute on function pg_temp.chk(text, boolean, text) to anon;
 select set_config('request.headers', '{"x-real-ip":"203.0.113.10"}', false);
+-- v62: the admin-key check of the sign-in is tested in section 27; the other sections sign in without it
+delete from cbt_private.settings where key = 'admin_gate';
 
 -- ===== 1. signed out / wrong code: every student function refuses =====
 do $$ declare f record; r jsonb; n int := 0; bad text := ''; begin
@@ -748,6 +750,37 @@ select pg_temp.chk('27f alerts are grouped and show the busiest addresses',
      from (select public.cbt_admin_security(:'ow9','get','{"days":1,"cat":"risk"}') r) x));
 select public.cbt_admin_security(:'ow9','unblock','{"ip":"198.51.100.201"}')->>'ok';
 select pg_temp.chk('27g unblocking works', not exists (select 1 from cbt_private.admin_ip_blocks));
+-- the admin page key: without it nobody can even try a password
+update cbt_private.settings set value = encode(sha256(convert_to('aspiron-admin:TestKey77', 'UTF8')), 'hex') where key = 'admin_gate';
+insert into cbt_private.settings (key, value) select 'admin_gate', encode(sha256(convert_to('aspiron-admin:TestKey77', 'UTF8')), 'hex')
+  where not exists (select 1 from cbt_private.settings where key = 'admin_gate');
+select set_config('request.headers', '{"x-real-ip":"198.51.100.230"}', false);
+select pg_temp.chk('27h without the admin key the right password is refused (and nothing is counted)',
+  public.cbt_admin_login('','OwnerPass2026x','X')->>'error' = 'gate'
+  and public.cbt_admin_login('','OwnerPass2026x','X','','WrongKey')->>'error' = 'gate'
+  and not exists (select 1 from cbt_private.admin_fail_ips where ip = '198.51.100.230'));
+select pg_temp.chk('27i with the admin key the owner signs in',
+  left(public.cbt_admin_login('','OwnerPass2026x','X','','TestKey77')->>'token', 4) = 'as1.');
+select pg_temp.chk('27j the old sign-in without the key no longer exists',
+  to_regprocedure('public.cbt_admin_login(text,text,text,text)') is null and to_regprocedure('public.cbt_admin_login(text,text,text)') is null);
+-- automatic block: 15 wrong passwords in 24 hours from one address
+select set_config('request.headers', '{"x-real-ip":"198.51.100.240"}', false);
+do $$ begin for i in 1..15 loop
+  delete from cbt_private.admin_fails;   -- the 1-hour lock would stop the tries before 15; the 24-hour count goes on
+  perform public.cbt_admin_login('', 'guess-' || i, 'X', '', 'TestKey77');
+end loop; end $$;
+select pg_temp.chk('27k 15 wrong passwords in 24 hours block the address for 7 days',
+  exists (select 1 from cbt_private.admin_ip_blocks where ip = '198.51.100.240' and until > now() + interval '6 days')
+  and public.cbt_admin_login('','OwnerPass2026x','X','','TestKey77')->>'error' = 'locked'
+  and exists (select 1 from cbt_private.security_events where kind = 'ip_auto_blocked'));
+select set_config('request.headers', '{"x-real-ip":"203.0.113.120"}', false);
+do $$ begin for i in 1..15 loop
+  delete from cbt_private.admin_fails;
+  perform public.cbt_admin_login('', 'oops-' || i, 'X', '', 'TestKey77');
+end loop; end $$;
+select pg_temp.chk('27l the owner''s own known address is never blocked automatically',
+  not exists (select 1 from cbt_private.admin_ip_blocks where ip = '203.0.113.120'));
+delete from cbt_private.admin_fails; delete from cbt_private.settings where key = 'admin_gate';
 select public.cbt_admin_team(:'ow9','team_login','{"on":true}')->>'ok';
 
 -- ===== report =====

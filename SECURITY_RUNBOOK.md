@@ -20,6 +20,12 @@ Map of everything: `SECURITY_MAP.md`.
 5. Check the Activity log for what was changed (orders approved, series given, students deleted, notices sent) and
    undo it. Deleted orders are in `cbt_private.order_trash` (`RESTORE.md` B).
 
+## 1b. Someone keeps trying to sign in to the admin panel
+Admin → Team & access → Security alerts → *Risky sign-ins*: tap an alert for the address; **Block** it. Keep *Team sign-in*
+off (Members) when nobody uses it. Sign-ins without the admin key are refused by the database before any password check,
+and 15 wrong passwords in 24 hours block an address for 7 days by themselves. Locked out yourself:
+SQL Editor `delete from cbt_private.admin_ip_blocks;` (blocks) or `delete from cbt_private.settings where key = 'admin_gate';` (key check).
+
 ## 2. A student's code is being shared / misused
 Admin → Students → the student → new access code (all their phones are signed out at once) → Reset devices if needed.
 

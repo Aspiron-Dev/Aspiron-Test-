@@ -51,7 +51,9 @@ async function rpcRoute(route) {
   for (const vw of [{ width: 1280, height: 860 }, { width: 390, height: 844 }]) {
     await q(`delete from cbt_private.admin_totp; delete from cbt_private.admin_fails; delete from cbt_private.admin_sessions`);
     const tag = vw.width + 'px';
-    const ctx = await br.newContext({ viewport: vw }); const page = await ctx.newPage();
+    // v62: the sign-in needs the admin page key (the test page has no gate script, so the key is put in place here)
+    await q(`update cbt_private.settings set value = encode(sha256(convert_to('aspiron-admin:e2eKey2026', 'UTF8')), 'hex') where key = 'admin_gate'`);
+    const ctx = await br.newContext({ viewport: vw }); await ctx.addInitScript(() => { try { localStorage.setItem('adm_k', 'e2eKey2026'); } catch (e) {} }); const page = await ctx.newPage();
     const errs = []; page.on('pageerror', e => errs.push('PAGEERR ' + e.message + ' @ ' + (e.stack||'').split('\n').slice(1,3).join(' '))); page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(m.text()); });
     await page.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort());
     await page.route(SUPA + '/rest/v1/rpc/**', rpcRoute);

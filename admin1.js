@@ -58,7 +58,7 @@ async function unlock(){
   const o=$('#otp')?$('#otp').value.trim():'';
   // a sign-in session (supabase_v35) when the database has it: needed when two-step sign-in is on
   let l=null;
-  try{const q=await fetch(API+'/rest/v1/rpc/cbt_admin_login',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(Object.assign({p_user:'',p_pw:p,p_device:'Backup panel'},o?{p_otp:o}:{}))});l=q.ok?await q.json():null}catch(e){}
+  try{const q=await fetch(API+'/rest/v1/rpc/cbt_admin_login',{method:'POST',headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(Object.assign({p_user:'',p_pw:p,p_device:'Backup panel',p_gate:(()=>{try{return localStorage.getItem('adm_k')||''}catch(e){return ''}})()},o?{p_otp:o}:{}))});l=q.ok?await q.json():null}catch(e){}
   if(l&&!l.ok){gate(l.error);$('#pw').value=p;const f=$(['otp_required','otp_invalid','otp_locked'].includes(l.error)?'#otp':'#pw');if(f)f.focus();return}
   PW=l&&l.ok?l.token:p;
   const r=await A('ping');

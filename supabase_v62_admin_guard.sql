@@ -17,6 +17,7 @@ create table if not exists cbt_private.admin_ip_blocks (ip text primary key, not
   at timestamptz not null default now());
 revoke all on cbt_private.admin_ip_blocks from public, anon, authenticated;
 alter table cbt_private.admin_ip_blocks enable row level security;
+alter table cbt_private.admin_ip_blocks add column if not exists until timestamptz;   -- null = until unblocked
 insert into cbt_private.settings (key, value) values ('team_login', 'off') on conflict (key) do nothing;
 
 -- which group an event belongs to: 'risk' (sign-in attacks, 2FA, new places) · 'admin' (changes made in the panel) · 'students'
@@ -134,18 +135,21 @@ begin
                            where at > now() - make_interval(days => v_days) and (v_cat = 'all' or sec_cat(kind) = v_cat) group by kind) z), '{}'::jsonb),
       'events', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'at', (extract(epoch from at) * 1000)::bigint, 'kind', kind,
                            'cat', sec_cat(kind), 'level', level, 'who', who, 'detail', detail, 'ip', ip, 'ip_full', ip_full, 'ua', ua, 'seen', seen,
-                           'blocked', exists (select 1 from admin_ip_blocks b where b.ip = z.ip_full and z.ip_full <> '')) order by id desc)
+                           'blocked', exists (select 1 from admin_ip_blocks b where b.ip = z.ip_full and z.ip_full <> '' and (b.until is null or b.until > now()))) order by id desc)
                           from (select * from security_events where at > now() - make_interval(days => v_days)
                                   and (v_cat = 'all' or sec_cat(kind) = v_cat)
                                 order by (level in ('high', 'warn') and not seen) desc, id desc limit 300) z), '[]'::jsonb),
       'ips', coalesce((select jsonb_agg(jsonb_build_object('ip', ip_full, 'n', n, 'kinds', kinds, 'first', (extract(epoch from f) * 1000)::bigint,
                          'last', (extract(epoch from l) * 1000)::bigint, 'me', ip_full = v_me,
-                         'blocked', exists (select 1 from admin_ip_blocks b where b.ip = x.ip_full)) order by n desc)
+                         'blocked', exists (select 1 from admin_ip_blocks b where b.ip = x.ip_full and (b.until is null or b.until > now()))) order by n desc)
                        from (select ip_full, count(*) n, min(at) f, max(at) l, array_agg(distinct kind) kinds from security_events
                               where ip_full <> '' and at > now() - make_interval(days => v_days) and sec_cat(kind) = 'risk'
                               group by ip_full order by count(*) desc limit 20) x), '[]'::jsonb),
-      'blocks', coalesce((select jsonb_agg(jsonb_build_object('ip', ip, 'note', note, 'who', who, 'at', (extract(epoch from at) * 1000)::bigint) order by at desc)
-                          from admin_ip_blocks), '[]'::jsonb));
+      'blocks', coalesce((select jsonb_agg(jsonb_build_object('ip', ip, 'note', note, 'who', who, 'at', (extract(epoch from at) * 1000)::bigint,
+                            'until', (extract(epoch from until) * 1000)::bigint) order by at desc)
+                          from admin_ip_blocks where until is null or until > now()), '[]'::jsonb),
+      'gate', coalesce((select value from settings where key = 'admin_gate'), '') <> '',
+      'team_login', coalesce((select value from settings where key = 'team_login'), 'on') = 'on');
   elsif p_action = 'seen' then
     update security_events set seen = true where not seen;
     return jsonb_build_object('ok', true);
@@ -162,7 +166,7 @@ begin
     end if;
     if v_ip = v_me then return jsonb_build_object('ok', false, 'error', 'own_ip'); end if;   -- never lock yourself out
     insert into admin_ip_blocks (ip, note, who) values (v_ip, left(btrim(regexp_replace(coalesce(d->>'note', ''), '[<>\r\t]', '', 'g')), 200), 'Owner')
-      on conflict (ip) do update set note = excluded.note, at = now();
+      on conflict (ip) do update set note = excluded.note, who = excluded.who, until = null, at = now();
     -- sessions in use from that address stop too: the session check refuses a blocked address (v35)
     return jsonb_build_object('ok', true);
   end if;
