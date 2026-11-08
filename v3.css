@@ -936,3 +936,56 @@ button.opt3:active{transform:scale(.985)}
 .qc3-f.g2{display:grid;grid-template-columns:1fr 1fr}
 .qc3-f .btn{flex:none}
 .qc3-f.g2 .btn{width:100%}
+/* ---- round 9: Mistake notebook and practice mode ---- */
+.mkh{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:18px;padding:22px 20px 20px;border-radius:26px;color:var(--heroTx);background:radial-gradient(120% 90% at 100% 0%,var(--glow),transparent 60%),linear-gradient(155deg,var(--hero1),var(--hero2));box-shadow:0 24px 50px -28px rgba(0,0,0,.55)}
+.mkh-top{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.mkh-top>div:first-child{display:flex;flex-direction:column;gap:2px;min-width:0}
+.mkh small{font-size:11.5px;font-weight:600;letter-spacing:.1em;color:var(--heroMut)}
+.mkh-top b{font-size:46px;font-weight:600;letter-spacing:-.04em;line-height:1.05}
+.mkh-top>div>span{font-size:14px;color:var(--heroMut)}
+.mkh-ring{position:relative;flex:none;display:grid;place-items:center}
+.mkh-ring>span{position:absolute;display:flex;flex-direction:column;align-items:center;line-height:1.1}
+.mkh-ring b{font-size:21px;font-weight:600;letter-spacing:-.02em}
+.mkh-ring small{font-size:11px;letter-spacing:.02em;text-transform:none}
+.mkr{transition:stroke-dashoffset 1.1s var(--out)}
+.mkh-st{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mkh-st>div{display:flex;flex-direction:column;gap:2px;padding:12px;border-radius:16px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08)}
+.mkh-st b{font-size:20px;font-weight:600}
+.mkh-st small{font-size:12px;letter-spacing:0;font-weight:500}
+.mkh-st i{width:8px;height:8px;border-radius:50%;margin-bottom:4px}
+.mkh-st .dw{background:#ef7a73}.mkh-st .ds{background:#b9bbc1}.mkh-st .dm{background:#6cc39b}
+.mkh .btn.lg{width:100%;height:52px;border-radius:16px;font-size:16px}
+.mks{padding:6px 14px}
+.mks-r{display:flex;flex-direction:column;gap:8px;width:100%;padding:12px 2px;text-align:left;border-radius:12px;transition:background .2s}
+.mks-r+.mks-r{border-top:1px solid var(--line)}
+.mks-t{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:14.5px}
+.mks-t b{font-weight:500}.mks-t em{font-style:normal;font-weight:600;color:var(--mut)}
+.mks-b{height:7px;border-radius:7px;background:var(--surface2);overflow:hidden}
+.mks-b i{display:block;height:100%;border-radius:7px;background:var(--faint);transition:width .6s var(--out),background .2s}
+.mks-r.on .mks-b i{background:var(--ink)}.mks-r.on b{font-weight:600}
+.mkq{display:flex;flex-direction:column;gap:8px;width:100%;padding:15px 16px;text-align:left;transition:transform .3s var(--spring),opacity .25s}
+.mkq:active{transform:scale(.985)}
+.mkq.out3{opacity:0;transform:translateX(24px)}
+.mkq-h{display:flex;align-items:center;gap:8px;font-size:13px;min-width:0}
+.mkq-h b{font-size:14.5px}
+.mkq-h .mut{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mkq-q{font-size:15px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mkq-f{display:flex;align-items:center;gap:10px;font-size:12.5px}
+.mkq-f .mut{margin-left:auto}
+.mkq-f>svg{color:var(--faint)}
+.qc3{animation:rise .35s var(--out)}
+.pr-top{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--mut)}
+.pr-top b{color:var(--tx)}
+.pr-sc{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:99px;background:color-mix(in srgb,var(--ok) 12%,transparent);color:var(--ok);font-weight:600;font-size:13px}
+.pr-bar{height:6px;border-radius:6px;background:var(--surface2);overflow:hidden;margin-top:-4px}
+.pr-bar i{display:block;height:100%;border-radius:6px;background:var(--ink);transition:width .5s var(--out)}
+.pr-card .qc3{animation:prIn .45s var(--out)}
+@keyframes prIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+.pr-ft{position:sticky;bottom:0;display:grid;grid-template-columns:1fr 1.3fr;gap:10px;padding:12px 0 calc(6px + env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,var(--bg) 30%)}
+.pr-ft.one{grid-template-columns:1fr}
+.pr-ft .btn{height:50px;border-radius:15px}
+.pr-end{align-items:center;text-align:center;gap:14px;padding:30px 22px}
+.pr-end h2{font-size:24px;font-weight:600;letter-spacing:-.02em}
+.pr-end p{font-size:15px;line-height:1.55;color:var(--heroMut)}.pr-end p b{color:var(--heroTx)}
+.btn.on-dark{background:rgba(255,255,255,.1);color:var(--heroTx);border-color:rgba(255,255,255,.14)}
+@media (prefers-reduced-motion: reduce){.pr-card .qc3,.qc3{animation:none}}

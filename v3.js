@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=8;
+const V3VER=9;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -800,7 +800,7 @@ VIEW.lib=()=>`<div class="pt"><div><h1>Library</h1><p>Practice, revision and stu
 function drawL(){const b=$('#lBody');if(!b)return;b.innerHTML=LQ.q.trim()?libResults():libHome();$('[data-a="lqClear"]').hidden=!LQ.q}
 AFTER.lib=()=>{const q=$('#lq');q.addEventListener('input',()=>{LQ.q=q.value;drawL()});try{if(typeof loadPdfs==='function'&&pdfCount()===null)loadPdfs().then(()=>{if(S.tab==='lib'&&!LQ.q)drawL()})}catch(e){}};
 A.lqClear=()=>{LQ.q='';const q=$('#lq');if(q)q.value='';drawL()};
-A.lmod=el=>oldHash(el.dataset.h);
+A.lmod=el=>{const h=el.dataset.h,f={'#/b':openSaved,'#/m':openMistakes,'#/notes':openNotes}[h];if(f)f();else oldHash(h)};
 
 /* ================= ANALYTICS: from the student's own results (cbt_catalog.results) ================= */
 const AN={per:'all',chart:'marks',table:false};
@@ -930,37 +930,78 @@ A.bmOff=async el=>{const tid=el.dataset.t,i=+el.dataset.i,card=root.getElementBy
   clearOld('bm');try{if(typeof BM!=='undefined'&&BM)BM.delete(tid+':'+i)}catch(e){}
   setTimeout(()=>{BM3=BM3.filter(x=>!(x.test_id===tid&&x.qidx===i));$('#scrS').textContent=`${BM3.length} saved`;redraw();toast3('Removed from saved')},RM?0:260)};
 
-/* ---------- Mistakes: wrong and skipped questions to practise ---------- */
-const MK3={kind:'all',sec:'',items:null,more:false,counts:null,st:{},n:0,busy:false};
+/* ---------- Mistake notebook: what to revise, by subject, and a focused practice mode ----------
+   Server: cbt_mistakes (list + counts, paged), cbt_mistake_done (mastered). Nothing new is stored. */
+const MK3={kind:'all',sec:'',items:null,more:false,counts:null,st:{},open:{},n:0,busy:false};
 async function mkLoad(off){if(MK3.busy)return;MK3.busy=true;let r=null;try{r=await rpc('cbt_mistakes',{p_offset:off,p_limit:15,p_kind:MK3.kind,p_sec:MK3.sec})}catch(e){}MK3.busy=false;
-  if(!r||!r.ok){if(MK3.items===null)MK3.items=[];toast3('Could not load your mistakes. Please try again.');redraw();return}
-  r.items.forEach(x=>{x._n=++MK3.n});MK3.items=off?MK3.items.concat(r.items):r.items;MK3.more=r.more;MK3.counts=r.counts;if(top()&&top().key==='mk')redraw()}
-function mkView(){return {t:'Mistakes',s:'Practise what you got wrong',key:'mk',html:()=>{const c=MK3.counts;
-  if(MK3.items===null||!c)return '<div class="card sk" style="height:110px"></div><div class="card sk" style="height:200px"></div>';
+  if(!r||!r.ok){if(MK3.items===null)MK3.items=[];if(!MK3.counts)MK3.counts={wrong:0,skipped:0,mastered:0,secs:[]};toast3('Could not load your notebook. Please try again.');if(top()&&top().key==='mk')redraw();return}
+  r.items.forEach(x=>{x._n=++MK3.n});MK3.items=off?MK3.items.concat(r.items):r.items;MK3.more=r.more;if(!MK3.sec&&MK3.kind==='all'||!MK3.counts)MK3.counts=r.counts;else MK3.counts=Object.assign({},r.counts,{secs:MK3.counts.secs});
+  if(top()&&top().key==='mk'){const b=$('#scrB'),y=b.scrollTop;redraw();b.scrollTop=y}}
+const mkRing=(p,sz)=>{const R=sz/2-5,Cc=2*Math.PI*R;return `<svg viewBox="0 0 ${sz} ${sz}" width="${sz}" height="${sz}" aria-hidden="true"><circle cx="${sz/2}" cy="${sz/2}" r="${R}" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="7"/><circle cx="${sz/2}" cy="${sz/2}" r="${R}" fill="none" stroke="var(--acc1)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${Cc.toFixed(1)}" stroke-dashoffset="${(Cc*(1-p)).toFixed(1)}" transform="rotate(-90 ${sz/2} ${sz/2})" class="mkr"/></svg>`};
+function mkHero(){const c=MK3.counts,tot=c.wrong+c.skipped,all=tot+c.mastered,p=all?c.mastered/all:0;
+  return `<section class="mkh"><div class="mkh-top"><div><small>TO REVISE</small><b>${N(tot)}</b><span>${tot===1?'question':'questions'} waiting for you</span></div>
+    <div class="mkh-ring">${mkRing(p,96)}<span><b>${Math.round(p*100)}%</b><small>mastered</small></span></div></div>
+   <div class="mkh-st"><div><i class="dw"></i><b>${N(c.wrong)}</b><small>Wrong</small></div><div><i class="ds"></i><b>${N(c.skipped)}</b><small>Skipped</small></div><div><i class="dm"></i><b>${N(c.mastered)}</b><small>Mastered</small></div></div>
+   ${tot?`<button class="btn gold lg" data-a="mkPrac">${ic('play',17)}Practise ${MK3.sec?esc3(MK3.sec):'now'}</button>`:''}</section>`}
+function mkSubjects(){const S=(MK3.counts.secs||[]).filter(s=>s.n>0);if(S.length<2)return '';const mx=Math.max(...S.map(s=>s.n));
+  return `<section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>By subject</h2>${MK3.sec?'<button class="lnk" data-a="mkSec" data-v="">Show all</button>':''}</div>
+   <div class="card mks">${S.map(s=>`<button class="mks-r${MK3.sec===s.sec?' on':''}" data-a="mkSec" data-v="${esc3(s.sec)}" aria-pressed="${MK3.sec===s.sec}"><span class="mks-t"><b>${esc3(s.sec)}</b><em>${s.n}</em></span><span class="mks-b"><i style="width:${Math.max(6,Math.round(s.n/mx*100))}%"></i></span></button>`).join('')}</div></section>`}
+function mkRow(it){const S=MK3.st[it._n]||{},rev=S.pick!=null||!!S.show,open=MK3.open[it._n],t=it.title||(tOf(it.test_id)||{}).title||'Test';
+  if(!open)return `<button class="card mkq" id="mk${it._n}" data-a="mkOpen" data-n="${it._n}"><span class="mkq-h"><b>Q${it.qidx+1}</b><span class="mut">${esc3(t)}</span>${it.sec?`<span class="tag">${esc3(it.sec)}</span>`:''}</span>
+    <span class="mkq-q">${esc3(it.q||'')}</span><span class="mkq-f">${it.kind==='wrong'?`<span class="st err">You chose ${LT[it.mine]||'-'}</span>`:'<span class="st">Skipped</span>'}<span class="mut">Tap to practise</span>${ic('down',16)}</span></button>`;
+  return qCard(it,{id:'mk'+it._n,n:it._n,rev,pick:S.pick,tap:'mkPick',badge:it.kind==='wrong'?`<span class="st err">You chose ${LT[it.mine]||'-'}</span>`:'<span class="st">Skipped</span>',
+    tools:`<button class="ib sm" data-a="mkClose" data-n="${it._n}" aria-label="Fold">${ic('x',16)}</button>`,
+    note:rev&&S.pick!=null?`<p class="qc3-r ${S.pick===it.answer?'ok':'bad'}">${S.pick===it.answer?'Correct! Well done.':`Not quite. The correct answer is ${LT[it.answer]}.`}</p>`:'',
+    foot:rev?`<div class="g2 qc3-f"><button class="btn sm" data-a="mkDone" data-n="${it._n}">${ic('check',15)}Mastered</button><button class="btn sm ghost" data-a="mkAgain" data-n="${it._n}">Try again</button></div>`
+     :`<div class="qc3-f row"><span class="mut" style="flex:1;font-size:13px">Pick your answer</span><button class="btn sm ghost" data-a="mkShow" data-n="${it._n}">Show answer</button></div>`})}
+function mkView(){return {t:'Mistake notebook',s:'Turn every mistake into marks',key:'mk',html:()=>{const c=MK3.counts;
+  if(MK3.items===null||!c)return '<div class="card sk" style="height:230px"></div><div class="card sk" style="height:140px"></div><div class="card sk" style="height:120px"></div>';
   const tot=c.wrong+c.skipped;
-  return `<div class="nums"><div><b>${tot}</b><small>To revise</small></div><div><b>${c.wrong}</b><small>Wrong</small></div><div><b>${c.skipped}</b><small>Skipped</small></div><div><b>${c.mastered}</b><small>Mastered</small></div></div>
-  <div class="seg" role="tablist">${[['all','All'],['wrong','Wrong'],['skipped','Skipped']].map(t=>`<button role="tab" aria-selected="${MK3.kind===t[0]}" class="${MK3.kind===t[0]?'on':''}" data-a="mkKind" data-v="${t[0]}">${t[1]}</button>`).join('')}</div>
-  ${(c.secs||[]).length>1?`<div class="chips">${[{sec:'',n:tot}].concat(c.secs).map(s=>`<button class="${MK3.sec===s.sec?'on':''}" data-a="mkSec" data-v="${esc3(s.sec)}">${s.sec?esc3(s.sec):'All subjects'}<small>${s.n}</small></button>`).join('')}</div>`:''}
-  ${MK3.items.length?MK3.items.map(it=>{const S=MK3.st[it._n]||{},rev=S.pick!=null||!!S.show;
-    return qCard(it,{id:'mk'+it._n,n:it._n,rev,pick:S.pick,tap:'mkPick',badge:it.kind==='wrong'?`<span class="st err">You chose ${LT[it.mine]||'-'}</span>`:'<span class="st">Skipped</span>',
-     note:rev&&S.pick!=null?`<p class="qc3-r ${S.pick===it.answer?'ok':'bad'}">${S.pick===it.answer?'Correct! Well done.':`Not quite. The correct answer is ${LT[it.answer]}.`}</p>`:'',
-     foot:rev?`<div class="g2 qc3-f"><button class="btn sm" data-a="mkDone" data-n="${it._n}">${ic('check',15)}Got it, remove</button><button class="btn sm ghost" data-a="mkAgain" data-n="${it._n}">Practise again</button></div>`
-      :`<div class="qc3-f row"><span class="mut" style="flex:1;font-size:13px">Tap an option to practise</span><button class="btn sm ghost" data-a="mkShow" data-n="${it._n}">Show answer</button></div>`})}).join('')
-   +(MK3.more?`<button class="btn lg ghost" data-a="mkMore">Load more</button>`:'')
-   :`<div class="card empty"><span class="ti g">${ic('check',22)}</span><b>${tot?'Nothing here':'All clear!'}</b><p>${tot?'No questions match this filter.':'Questions you get wrong or skip in tests collect here so you can practise them.'}</p></div>`}`}}}
-function openMistakes(){MK3.kind='all';MK3.sec='';MK3.items=null;MK3.st={};push(mkView());mkLoad(0)}
-const mkUpd=n=>{const it=(MK3.items||[]).find(x=>x._n===n);const b=$('#scrB'),y=b.scrollTop;redraw();b.scrollTop=y;return it};
-A.mkPick=el=>{MK3.st[+el.dataset.n]={pick:+el.dataset.j};if(navigator.vibrate)navigator.vibrate(8);mkUpd(+el.dataset.n)};
-A.mkShow=el=>{MK3.st[+el.dataset.n]={show:1};mkUpd(+el.dataset.n)};
-A.mkAgain=el=>{delete MK3.st[+el.dataset.n];mkUpd(+el.dataset.n)};
-A.mkKind=el=>{MK3.kind=el.dataset.v;MK3.st={};MK3.items=null;redraw();mkLoad(0)};
-A.mkSec=el=>{MK3.sec=el.dataset.v;MK3.st={};MK3.items=null;redraw();mkLoad(0)};
-A.mkMore=()=>mkLoad(MK3.items.length);
-A.mkDone=async el=>{const n=+el.dataset.n,it=MK3.items.find(x=>x._n===n);if(!it)return;const card=root.getElementById('mk'+n);if(card)card.classList.add('out3');
-  let r=null;try{r=await rpc('cbt_mistake_done',{p_test:it.test_id,p_qidx:it.qidx,p_on:true})}catch(e){}
-  if(!r||!r.ok){if(card)card.classList.remove('out3');toast3('Could not save. Please try again.');return}
-  clearOld('mk');const c=MK3.counts;c[it.kind]=Math.max(0,c[it.kind]-1);c.mastered++;const s=(c.secs||[]).find(x=>x.sec===it.sec);if(s)s.n--;
-  setTimeout(()=>{MK3.items=MK3.items.filter(x=>x._n!==n);const b=$('#scrB'),y=b.scrollTop;redraw();b.scrollTop=y;toast3('Marked as mastered')},RM?0:260)};
+  if(!tot&&!MK3.items.length)return mkHero()+`<div class="card empty"><span class="ti g">${ic('check',22)}</span><b>${c.mastered?'Everything mastered!':'Your notebook is empty'}</b><p>${c.mastered?'Every question you got wrong is now mastered. Keep taking tests.':'Questions you get wrong or skip in tests collect here, so you can practise them until you get them right.'}</p></div>`;
+  return mkHero()+mkSubjects()+`<div class="seg" role="tablist">${[['all','All',tot],['wrong','Wrong',c.wrong],['skipped','Skipped',c.skipped]].map(t=>`<button role="tab" aria-selected="${MK3.kind===t[0]}" class="${MK3.kind===t[0]?'on':''}" data-a="mkKind" data-v="${t[0]}">${t[1]}<small>${t[2]}</small></button>`).join('')}</div>
+   <div class="stack" style="gap:10px">${MK3.items.length?MK3.items.map(mkRow).join(''):`<div class="card empty"><span class="ti">${ic('search',22)}</span><b>Nothing here</b><p>No questions match this filter.</p></div>`}</div>
+   ${MK3.more?`<button class="btn lg ghost" data-a="mkMore">${MK3.busy?'Loading…':'Show more questions'}</button>`:''}`}}}
+function openMistakes(){MK3.kind='all';MK3.sec='';MK3.items=null;MK3.st={};MK3.open={};push(mkView());mkLoad(0)}
+const mkKeep=fn=>{const b=$('#scrB'),y=b.scrollTop;fn();redraw();b.scrollTop=y};
+A.mkOpen=el=>mkKeep(()=>{MK3.open[+el.dataset.n]=1});
+A.mkClose=el=>mkKeep(()=>{delete MK3.open[+el.dataset.n];delete MK3.st[+el.dataset.n]});
+A.mkPick=el=>mkKeep(()=>{MK3.st[+el.dataset.n]={pick:+el.dataset.j};if(navigator.vibrate)navigator.vibrate(8)});
+A.mkShow=el=>mkKeep(()=>{MK3.st[+el.dataset.n]={show:1}});
+A.mkAgain=el=>mkKeep(()=>{delete MK3.st[+el.dataset.n]});
+A.mkKind=el=>{MK3.kind=el.dataset.v;MK3.st={};MK3.open={};MK3.items=[];MK3.more=false;mkKeep(()=>{});mkLoad(0)};
+A.mkSec=el=>{MK3.sec=el.dataset.v;MK3.st={};MK3.open={};MK3.items=[];MK3.more=false;mkKeep(()=>{});mkLoad(0)};
+A.mkMore=()=>{mkLoad(MK3.items.length);mkKeep(()=>{})};
+async function mkMaster(it){let r=null;try{r=await rpc('cbt_mistake_done',{p_test:it.test_id,p_qidx:it.qidx,p_on:true})}catch(e){}
+  if(!r||!r.ok)return false;clearOld('mk');const c=MK3.counts;if(c){c[it.kind]=Math.max(0,c[it.kind]-1);c.mastered++;const s=(c.secs||[]).find(x=>x.sec===it.sec);if(s)s.n=Math.max(0,s.n-1)}
+  if(MK3.items)MK3.items=MK3.items.filter(x=>!(x.test_id===it.test_id&&x.qidx===it.qidx));return true}
+A.mkDone=async el=>{const n=+el.dataset.n,it=(MK3.items||[]).find(x=>x._n===n);if(!it)return;const card=root.getElementById('mk'+n);if(card)card.classList.add('out3');
+  const ok=await mkMaster(it);if(!ok){if(card)card.classList.remove('out3');toast3('Could not save. Please try again.');return}
+  setTimeout(()=>{mkKeep(()=>{});toast3('Marked as mastered')},RM?0:260)};
+
+/* practice mode: one question at a time, instant feedback, master it or keep it, a short summary at the end */
+const PR={q:[],i:0,pick:null,right:0,done:0,mastered:0};
+function pracView(){return {t:'Practice',get s(){return PR.q.length?`${MK3.sec||'All subjects'}, ${PR.q.length} question${PR.q.length===1?'':'s'}`:''},key:'prac',html:()=>{
+  if(!PR.q.length)return '<div class="card sk" style="height:300px"></div>';
+  if(PR.i>=PR.q.length){const p=PR.done?Math.round(PR.right/PR.done*100):0;
+    return `<section class="mkh pr-end"><div class="mkh-ring" style="margin:0 auto">${mkRing(p/100,120)}<span><b>${p}%</b><small>right</small></span></div>
+     <h2>${p>=80?'Brilliant!':p>=50?'Good progress!':'Keep going!'}</h2><p>You answered <b>${PR.right}</b> of <b>${PR.done}</b> correctly and mastered <b>${PR.mastered}</b> ${PR.mastered===1?'question':'questions'}.</p>
+     <div class="g2" style="grid-template-columns:1fr 1fr;width:100%"><button class="btn gold" data-a="mkPrac">${ic('play',16)}Practise again</button><button class="btn ghost on-dark" data-a="back">Back to notebook</button></div></section>`}
+  const it=PR.q[PR.i],rev=PR.pick!=null,ok=rev&&PR.pick===it.answer;
+  return `<div class="pr-top"><span>Question <b>${PR.i+1}</b> of ${PR.q.length}</span><span class="pr-sc">${ic('check',14)}${PR.right} right</span></div>
+   <div class="pr-bar"><i style="width:${(PR.i/PR.q.length*100).toFixed(1)}%"></i></div>
+   <div class="pr-card">${qCard(it,{id:'pr'+it._n,rev,pick:PR.pick,tap:'prPick',n:it._n,badge:it.sec?`<span class="tag">${esc3(it.sec)}</span>`:'',
+     note:rev?(PR.pick<0?`<p class="qc3-r">The correct answer is ${LT[it.answer]}.</p>`:`<p class="qc3-r ${ok?'ok':'bad'}">${ok?'Correct! You have got this one.':`Not quite. The correct answer is ${LT[it.answer]}.`}</p>`):''})}</div>
+   ${rev?`<div class="pr-ft"><button class="btn ghost" data-a="prNext">Keep for later</button><button class="btn" data-a="prMaster">${ic('check',16)}Mastered, next</button></div>`
+    :`<div class="pr-ft one"><button class="btn ghost" data-a="prSkip">Show answer</button></div>`}`}}}
+A.mkPrac=async()=>{PR.q=[];PR.i=0;PR.pick=null;PR.right=0;PR.done=0;PR.mastered=0;if(!(top()&&top().key==='prac'))push(pracView());else redraw();
+  let r=null;try{r=await rpc('cbt_mistakes',{p_offset:0,p_limit:50,p_kind:MK3.kind,p_sec:MK3.sec})}catch(e){}
+  if(!r||!r.ok||!r.items.length){toast3(r&&r.ok?'Nothing to practise here.':'Could not load questions. Please try again.');back();return}
+  r.items.forEach(x=>{x._n=++MK3.n});PR.q=r.items.sort(()=>Math.random()-.5);$('#scrS').textContent=pracView().s;redraw()};
+const prRedraw=()=>{redraw();$('#scrB').scrollTop=0};
+A.prPick=el=>{if(PR.pick!=null)return;PR.pick=+el.dataset.j;PR.done++;if(PR.pick===PR.q[PR.i].answer)PR.right++;if(navigator.vibrate)navigator.vibrate(PR.pick===PR.q[PR.i].answer?8:[10,40,10]);redraw()};
+A.prSkip=()=>{PR.pick=-1;PR.done++;redraw()};
+A.prNext=()=>{PR.i++;PR.pick=null;prRedraw()};
+A.prMaster=async el=>{el.disabled=true;const ok=await mkMaster(PR.q[PR.i]);if(ok)PR.mastered++;else toast3('Could not save, kept for later.');PR.i++;PR.pick=null;prRedraw()};
 
 /* ================= MENU: the classic menu's items, plus the switch back ================= */
 A.menu=()=>{const u=unread(),mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' on':''}${cls||''}" data-a="m" data-k="${k}">${ic(i)}<span>${t}</span>${extra?`<em>${extra}</em>`:''}</button>`;
