@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=2;
+const V3VER=3;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -262,10 +262,9 @@ function seriesHero(){const s=curSeries();
   if(!s)return `<section class="band"><div class="band-in"><small>YOUR TEST SERIES</small><div class="band-row"><b class="band-t">Choose your first test series</b><button class="pillbtn" data-a="tab" data-tab="test">OPEN STORE</button></div></div></section>`;
   const k=seriesStats(s);
   return `<section class="band" id="serBox"><div class="band-in"><small>YOUR TEST SERIES</small>
-   <div class="band-row"><button class="band-t" data-a="${mine().length>1?'switchSeries':'openSD'}" data-id="${esc3(s.id)}" aria-label="${mine().length>1?'Switch test series':'Open this test series'}"><span>${esc3(s.title)}</span>${ic('down',20)}</button>
-    <button class="pillbtn" data-a="tab" data-tab="test">${s.is_free?'UPGRADE':'UPGRADE PLAN'}</button></div>
-   <div class="band-meta"><span>${k.done} of ${k.n} tests attempted</span>${k.live?`<span class="st live" style="color:#ffb3ad">${k.live} live now</span>`:''}<button class="lnk" style="color:var(--heroTx)" data-a="openSD" data-id="${esc3(s.id)}">Open${ic('right')}</button></div>
-   <span class="bar"><i style="--p:${k.n?(k.done/k.n).toFixed(3):0}"></i></span></div></section>`}
+   <div class="band-row"><button class="band-t" data-a="switchSeries" aria-label="Change test series"><span>${esc3(s.title)}</span>${ic('down',20)}</button>
+    <button class="pillbtn" data-a="tab" data-tab="test">UPGRADE</button></div>
+   <div class="band-meta"><span>${k.done} of ${k.n} tests attempted</span><button class="minibtn" data-a="openSD" data-id="${esc3(s.id)}">Open${ic('right',14)}</button></div></div></section>`}
 const RC=2*Math.PI*24;
 function cdCard3(){let c=null;try{c=cdGet()}catch(e){}
   if(!c)return `<section class="sec"><div class="card cdc"><div class="cd-top"><span class="ti g">${ic('target',22)}</span><div style="min-width:0"><h3>Exam countdown</h3><p>Set your exam date and see how much time is left.</p></div><button class="btn sm" data-a="cdEdit">Set date</button></div></div></section>`;
@@ -283,15 +282,15 @@ function tick(first){let c=null;try{c=cdGet()}catch(e){}if(!c||!$('#cdBox'))retu
   $('#cdBox').setAttribute('aria-label',`${D} days, ${H} hours, ${M} minutes until ${c.name}`)}
 A.cdEdit=()=>oldModal(()=>cdEdit());
 /* upcoming and live tests from the student's own series */
-function upList(){const ok=new Set(mine().map(s=>s.id)),t0=nowMs();return (C().tests||[]).filter(t=>ok.has(t.series_id)).map(t=>({t,st:stOf(t)}))
+function upList(){const cs=curSeries(),ok=new Set(cs?[cs.id]:[]),t0=nowMs();return (C().tests||[]).filter(t=>ok.has(t.series_id)).map(t=>({t,st:stOf(t)}))
   .filter(x=>['live','prog'].includes(x.st)||(x.st==='wait'&&x.t.opens_at-t0<14*DAY)).sort((a,b)=>(['live','prog'].includes(b.st)-['live','prog'].includes(a.st))||((a.t.opens_at||0)-(b.t.opens_at||0)))}
 function evRow(x){const t=x.t,live=['live','prog'].includes(x.st),when=t.opens_at||nowMs(),s=sOf(t.series_id);
   return `<button class="evr" data-a="${x.st==='wait'?'openSD':'test'}" data-id="${esc3(x.st==='wait'?t.series_id:t.id)}"><span class="when${live?' now':''}"><b>${new Date(when).getDate()}</b><small>${fD(when,{month:'short'})}</small></span>
-   <span style="min-width:0"><b>${esc3(t.title)}</b><small>${live?(x.st==='prog'?'You started this test':'Open now'):dayWord(when)+', '+fT(when)}, ${dur(t.duration||0)}${s?', '+esc3(s.title):''}</small></span>${stBadge(t)}</button>`}
-function upcoming(){const all=upList(),L=all.slice(0,4),done=(C().tests||[]).some(t=>t.closes_at&&day0(t.closes_at)===day0(nowMs())&&t.closes_at<nowMs());
+   <span style="min-width:0"><b>${esc3(t.title)}</b><small>${live?(x.st==='prog'?'You started this test':'Open now'):dayWord(when)+', '+fT(when)}, ${dur(t.duration||0)}</small></span>${stBadge(t)}</button>`}
+function upcoming(){const cs=curSeries(),all=upList(),L=all.slice(0,4),done=(C().tests||[]).some(t=>cs&&t.series_id===cs.id&&t.closes_at&&day0(t.closes_at)===day0(nowMs())&&t.closes_at<nowMs());
   return `<section class="sec"><div class="sh"><h2>Upcoming Events (${all.length})</h2></div>
   ${L.length?`<div class="card"><div class="ev">${L.map(evRow).join('')}</div></div>`:`<div class="evnone"><span class="ti">${ic('cal',20)}</span><span>${done?'Today’s live tests have ended':'No live or upcoming tests right now'}</span></div>`}
-  <button class="obtn" data-a="week">View Weekly Schedule</button></section>`}
+  ${cs?'<button class="obtn" data-a="week">View Weekly Schedule</button>':''}</section>`}
 const ZONE=[['series','layers','My Test Series'],['qb','qb','Question Bank'],['pyq','pyq','PYQ Analyzer'],['gen','spark','Test Generator'],['dl','file','Notes & PDFs'],['mk','pen','Mistakes'],['bm','bookmark','Saved'],['hist','trophy','Results']];
 function zone(){return `<section class="sec"><div class="sh"><h2>Your study zone</h2></div><div class="qgrid">
   ${ZONE.map(z=>`<button class="qi" data-a="zone" data-k="${z[0]}"><span class="ti g">${ic(z[1],24)}</span><span>${z[2]}</span></button>`).join('')}</div></section>`}
@@ -304,31 +303,46 @@ function storeCard(x,cls){const off=x.mrp&&x.mrp>x.price?Math.round((1-x.price/x
   return `<article class="card ${cls||'tc'}"><span class="tag">${[courseOf(x),esc3(x.section||'')].filter(Boolean).join(', ')||'Test series'}</span><h3>${esc3(x.title)}</h3>${x.subtitle?`<p class="mut" style="font-size:13px">${esc3(x.subtitle)}</p>`:''}
    <div class="ft"><span class="price">${x.price?`<b>₹${fmtN(x.price)}</b>${off?`<s>₹${fmtN(x.mrp)}</s><span class="badge off">${off}% off</span>`:''}`:'<span class="free">Free</span>'}</span><a class="btn sm ${soon?'':'gold'}" href="${storeUrl(x)}">${soon?ic('bell',15)+'Notify me':x.prebook&&x.buy_on===false?'Pre-book':'Buy now'}</a></div></article>`}
 function trending(){if(!STORE){loadStore();return `<section class="sec"><div class="sh"><h2>Trending test series</h2></div><div class="card sk" style="height:190px"></div></section>`}loadExtras();return trendRail(true)}
-VIEW.home=()=>seriesHero()+cdCard3()+upcoming()+zone()+promoRail('hbRail')+trending();
-AFTER.home=()=>{tick(true);every(()=>tick(false),1000);autoRail('#trRail','#trDots');autoRail('#hbRail','#hbRailD');try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length))promoLoad().then(()=>{if(S.tab==='home')softRender()})}catch(e){}};
+VIEW.home=()=>seriesHero()+cdCard3()+upcoming()+zone()+trending();
+AFTER.home=()=>{tick(true);every(()=>tick(false),1000);autoRail('#trRail','#trDots')};
 function autoRail(rs,ds){const c=$(rs);if(!c||!c.children.length)return;const dots=[...root.querySelectorAll(ds+' i')];let i=0,touched=false;const st=()=>c.children[0].getBoundingClientRect().width+12;
   c.addEventListener('scroll',()=>{const k=Math.round(c.scrollLeft/st());if(k!==i){i=k;dots.forEach((d,j)=>d.classList.toggle('on',j===k))}},{passive:true});
   ['pointerdown','touchstart','wheel','focusin'].forEach(ev=>c.addEventListener(ev,()=>{touched=true},{passive:true}));
   if(!RM)every(()=>{if(touched||document.hidden)return;c.scrollTo({left:((i+1)%c.children.length)*st(),behavior:'smooth'})},5000)}
-A.switchSeries=()=>openSheet(`<h2 id="sheetT">Switch test series</h2><p class="sub">Home shows the series you pick.</p><div>${mine().map(s=>{const k=seriesStats(s);return `<button class="opt${s.id===(curSeries()||{}).id?' on':''}" data-a="pickSeries" data-id="${esc3(s.id)}"><div><b>${esc3(s.title)}</b><small>${s.is_free?'Free':'Premium'}, ${k.done} of ${k.n} tests attempted</small></div><span class="ck">${ic('check')}</span></button>`}).join('')}</div>`);
+A.switchSeries=()=>openSheet(`<h2 id="sheetT">Switch test series</h2><p class="sub">Home, upcoming tests and the weekly schedule follow the series you pick.</p><div>${mine().map(s=>{const k=seriesStats(s);return `<button class="opt${s.id===(curSeries()||{}).id?' on':''}" data-a="pickSeries" data-id="${esc3(s.id)}"><div><b>${esc3(s.title)}</b><small>${s.is_free?'Free':'Premium'}, ${k.done} of ${k.n} tests attempted</small></div><span class="ck">${ic('check')}</span></button>`}).join('')}</div><button class="btn lg ghost" style="margin-top:12px" data-a="toStore">${ic('tests',16)}Get more test series</button>`);
 A.pickSeries=el=>{lsSet('cbt_v3_series',el.dataset.id);closeLayer();const b=$('#serBox');if(b){b.style.transition='opacity .2s';b.style.opacity=0}setTimeout(()=>{softRender();toast3('Switched to '+(curSeries()||{}).title)},200)};
-A.zone=el=>{const k=el.dataset.k;({study:()=>go('lib'),series:()=>{TQ.view='my';go('test')},dl:()=>oldHash('#/notes'),hist:()=>oldHash('#/r'),mk:()=>oldHash('#/m'),bm:()=>oldHash('#/b'),qb:()=>oldHash('#/qb'),pyq:()=>oldHash('#/pyq'),gen:()=>oldHash('#/gen')}[k]||(()=>{}))()};
+A.zone=el=>{const k=el.dataset.k;({study:()=>go('lib'),series:()=>A.mySeries(),dl:()=>oldHash('#/notes'),hist:()=>oldHash('#/r'),mk:()=>oldHash('#/m'),bm:()=>oldHash('#/b'),qb:()=>oldHash('#/qb'),pyq:()=>oldHash('#/pyq'),gen:()=>oldHash('#/gen')}[k]||(()=>{}))()};
 A.test=el=>{const t=tOf(el.dataset.id);if(!t)return;if(t.locked){oldModal(()=>openTest(t.id));return}oldRun(()=>openTest(t.id))};
 A.review=el=>oldRun(()=>openReview(el.dataset.r));
 
-/* ---------- weekly schedule: tests that open this week, by day ---------- */
-const MON=()=>{const d=new Date(nowMs());d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()};
+/* ---------- weekly schedule of the series chosen on Home: tests by the day they open; any week of any month ---------- */
+const monOf=t=>{const d=new Date(t);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()};
+const MON=()=>monOf(nowMs());
 const TI=()=>(new Date(nowMs()).getDay()+6)%7;
-let wkSel=0;
-function weekItems(i){const a=MON()+i*DAY,b=a+DAY,ok=new Set(mine().map(s=>s.id));return (C().tests||[]).filter(t=>ok.has(t.series_id)&&t.opens_at>=a&&t.opens_at<b).sort((x,y)=>x.opens_at-y.opens_at)}
-function weekView(){return {t:'Weekly schedule',s:`${fD(MON(),{day:'numeric',month:'short'})} to ${fD(MON()+6*DAY,{day:'numeric',month:'short'})}`,right:()=>`<button class="ib" data-a="wkToday" aria-label="Go to today">${ic('cal',19)}</button>`,
-  html:()=>{const it=weekItems(wkSel),d=MON()+wkSel*DAY;
-  return `<div class="card wk" role="tablist">${[0,1,2,3,4,5,6].map(i=>{const dd=MON()+i*DAY;return `<button class="wd${i===wkSel?' on':''}${i===TI()?' today':''}" role="tab" aria-selected="${i===wkSel}" data-a="wkDay" data-i="${i}"><small>${fD(dd,{weekday:'narrow'})}</small><b>${new Date(dd).getDate()}</b><i style="${weekItems(i).length?'':'opacity:0'}"></i></button>`}).join('')}</div>
-  <div class="sh"><h2>${wkSel===TI()?'Today':fD(d,{weekday:'long',day:'numeric',month:'long'})}</h2><span class="aside">${it.length} ${it.length===1?'test':'tests'}</span></div>
-  ${it.length?`<div class="card rows">${it.map(t=>`<button class="it test" data-a="openSD" data-id="${esc3(t.series_id)}" style="width:100%;text-align:left"><time>${fT(t.opens_at)}</time><div><b>${esc3(t.title)}</b><small><em>Test</em>, ${dur(t.duration||0)}, ${t.questions||0} questions</small></div>${ic('right',16)}</button>`).join('')}</div>`:`<div class="card empty"><span class="ti">${ic('cal',22)}</span><b>No tests on this day</b><p>Use your study tracker to plan revision for free days.</p></div>`}
-  <button class="btn lg ghost" data-a="oldTracker">${ic('list',16)}Open your study tracker</button>`}}}
-A.week=()=>{wkSel=TI();push(weekView())};
-A.wkDay=el=>{wkSel=+el.dataset.i;redraw()};A.wkToday=()=>{wkSel=TI();redraw()};
+const addDays=(t,n)=>{const d=new Date(t);d.setDate(d.getDate()+n);return d.getTime()};
+let wkMon=0,wkSel=0;
+const wkTests=()=>{const cs=curSeries();return cs?testsOf(cs.id).filter(t=>t.opens_at):[]};
+function dayItems(a){const b=addDays(a,1);return wkTests().filter(t=>t.opens_at>=a&&t.opens_at<b).sort((x,y)=>x.opens_at-y.opens_at)}
+const weekItems=i=>dayItems(addDays(MON(),i));
+const mKey=t=>{const d=new Date(t);return d.getFullYear()*12+d.getMonth()};
+function weekView(){const cs=curSeries();return {t:'Weekly schedule',s:cs?cs.title:'',key:'week',right:()=>`<button class="ib" data-a="wkMonth" aria-label="Choose a month">${ic('cal',19)}</button>`,
+  html:()=>{const d=addDays(wkMon,wkSel),it=dayItems(d),today=day0(nowMs());
+  return `<div class="wkbar"><button class="mbtn" data-a="wkMonth" aria-label="Choose a month">${fD(d,{month:'long',year:'numeric'})}${ic('down',18)}</button>
+    <span><button class="ib sm" data-a="wkStep" data-v="-1" aria-label="Previous week">${ic('back',18)}</button><button class="ib sm" data-a="wkStep" data-v="1" aria-label="Next week">${ic('right',18)}</button></span></div>
+  <div class="card wk" role="tablist">${[0,1,2,3,4,5,6].map(i=>{const dd=addDays(wkMon,i);return `<button class="wd${i===wkSel?' on':''}${dd===today?' today':''}" role="tab" aria-selected="${i===wkSel}" data-a="wkDay" data-i="${i}"><small>${fD(dd,{weekday:'narrow'})}</small><b>${new Date(dd).getDate()}</b><i style="${dayItems(dd).length?'':'opacity:0'}"></i></button>`}).join('')}</div>
+  <div class="sh"><h2>${d===today?'Today':fD(d,{weekday:'long',day:'numeric',month:'long'})}</h2><span class="aside">${it.length} ${it.length===1?'test':'tests'}</span></div>
+  ${it.length?`<div class="card rows">${it.map(t=>`<button class="it test" data-a="openSD" data-id="${esc3(t.series_id)}" style="width:100%;text-align:left"><time>${fT(t.opens_at)}</time><div><b>${esc3(t.title)}</b><small><em>Test</em>, ${dur(t.duration||0)}, ${t.questions||0} questions</small></div>${ic('right',16)}</button>`).join('')}</div>`
+   :`<div class="card empty"><span class="ti">${ic('cal',22)}</span><b>No tests scheduled for this day</b><p>Pick another day or month to see what is coming in ${esc3(cs?cs.title:'your test series')}.</p></div>`}`}}}
+function wkGo(t){wkMon=monOf(t);wkSel=Math.round((day0(t)-wkMon)/DAY);if(wkSel<0||wkSel>6)wkSel=0}
+A.week=()=>{if(!curSeries())return;wkGo(nowMs());push(weekView())};
+A.wkDay=el=>{wkSel=+el.dataset.i;redraw()};
+A.wkStep=el=>{wkMon=addDays(wkMon,7*+el.dataset.v);wkSel=monOf(nowMs())===wkMon?TI():0;redraw()};
+A.wkMonth=()=>{const T=wkTests(),now=mKey(nowMs()),ks=T.map(t=>mKey(t.opens_at)),lo=Math.min(now-2,...ks),hi=Math.max(now+6,...ks),cur=mKey(addDays(wkMon,wkSel)),L=[];
+  for(let k=lo;k<=hi;k++)L.push(k);
+  openSheet(`<h2 id="sheetT">Choose a month</h2><p class="sub">${esc3((curSeries()||{}).title||'')}</p><div class="mgrid">${L.map(k=>{const y=Math.floor(k/12),m=k%12,n=ks.filter(x=>x===k).length;
+   return `<button class="${k===cur?'on':''}${k===now?' now':''}" data-a="wkPick" data-k="${k}"><b>${fD(new Date(y,m,1),{month:'short'})}</b><small>${y}</small><em>${n?n+(n===1?' test':' tests'):'No tests'}</em></button>`}).join('')}</div>`)};
+A.wkPick=el=>{const k=+el.dataset.k,y=Math.floor(k/12),m=k%12,first=new Date(y,m,1).getTime(),next=new Date(y,m+1,1).getTime();closeLayer();
+  if(k===mKey(nowMs()))wkGo(nowMs());else{const t=wkTests().filter(x=>x.opens_at>=first&&x.opens_at<next).sort((a,b)=>a.opens_at-b.opens_at)[0];wkGo(t?t.opens_at:first)}redraw()};
 A.oldTracker=()=>oldHash('#/t');
 
 /* ---------- notifications (the classic notices) ---------- */
@@ -350,7 +364,7 @@ A.openNote=el=>{const n=(NOTES||[]).find(x=>String(x.id)===el.dataset.id);if(!n)
 A.oldNotices=()=>oldHash('#/n');
 
 /* ================= TESTS: store + my test series, the store's own data (photos, descriptions, reviews) ================= */
-const TQ={q:'',f:{exam:[],cat:[],med:[],price:[],offer:[],status:[]},sort:'pop',view:'store',mf:'paid',cat:'all',sf:'all',xt:'d'};
+const TQ={q:'',f:{e:[],c:[],s:[]},mf:'paid',cat:'all',sf:'all',xt:'d'};
 let XD=null,RV={},SCHD={},LANGS=new Set(),SMAP={},extrasBusy=null;
 function loadExtras(){if(extrasBusy||XD)return extrasBusy;const q=(fn,auth)=>rpc(fn,{},!auth).catch(()=>null);
   extrasBusy=Promise.all([q('cbt_store_explore'),q('cbt_store_reviews'),q('cbt_store_schedules'),q('cbt_store_langs'),q('cbt_store_map',true)]).then(([x,r,s,l,m])=>{
@@ -373,27 +387,34 @@ function actH(x){const sid=owned(x),soon=x.buy_on===false;
   if(soon&&!x.prebook)return `<a class="btn sm" href="${storeUrl(x)}">${ic('bell',15)}Notify me</a>`;
   return `<a class="btn sm gold" href="${buyHref(x)}">${soon?'Pre-book':x.price?'Buy now':'Get it free'}</a>`}
 
-/* ---------- filters + sort ---------- */
-const SORTS=[['pop','Popular'],['low','Price: low to high'],['high','Price: high to low'],['off','Biggest discount'],['rate','Top rated']];
-const tfCount=()=>Object.values(TQ.f).reduce((a,v)=>a+v.length,0)+(TQ.sort!=='pop'?1:0);
-function spass(x){const w=TQ.q.toLowerCase().split(/\s+/).filter(Boolean),h=[x.title,x.subtitle,x.section,courseOf(x),(x.features||[]).join(' '),(XD&&XD[x.id]||{}).description].join(' ').toLowerCase();if(!w.every(v=>h.includes(v)))return false;const f=TQ.f;
-  if(f.exam.length&&courseOf(x)&&!f.exam.includes(courseOf(x)))return false;if(f.cat.length&&!f.cat.includes(String(x.section||'').trim()))return false;
-  if(f.med.length&&!(f.med.includes('Hindi + English')&&LANGS.has(x.id))&&!(f.med.includes('Single medium')&&!LANGS.has(x.id)))return false;
-  if(f.price.length&&!f.price.includes(x.price?'Paid':'Free'))return false;if(f.offer.length&&!offPct(x))return false;if(f.status.length&&!f.status.includes(x.buy_on===false?'Coming soon':'Available'))return false;return true}
-function sorted(L){const r=x=>(rvOf(x)||{avg:0}).avg;return L.slice().sort({low:(a,b)=>a.price-b.price,high:(a,b)=>b.price-a.price,off:(a,b)=>offPct(b)-offPct(a),rate:(a,b)=>r(b)-r(a)}[TQ.sort]||(()=>0))}
+/* ---------- the Tests page look (Admin → Tests page): poster, and the filter Exam / Class / Subject ---------- */
+const LOOK0={poster:'',link:'',exams:['NEET','JEE'],classes:['Class 11','Class 12','Dropper'],subjects:['Physics','Chemistry','Biology','Maths'],tags:{}};
+let LOOK=null,lookBusy=null;
+function loadLook(){if(LOOK||lookBusy)return lookBusy;lookBusy=rpc('cbt_store_look',{},true).then(r=>{LOOK=r&&r.ok?Object.assign({},LOOK0,r,{tags:r.tags||{}}):LOOK0}).catch(()=>{LOOK=LOOK0})
+  .finally(()=>{lookBusy=null;if(S.tab==='test'&&!scrOpen())softRender()});return lookBusy}
+const LK=()=>LOOK||LOOK0;
+/* which exams / classes / subjects a store series is for; not set in the admin yet = guessed from its course and name.
+   An empty list means "all of them". */
+function tagsOf(x){const t=LK().tags[x.id];if(t)return {e:t.e||[],c:t.c||[],s:t.s||[]};const n=String(x.title||'').toLowerCase();
+  return {e:courseOf(x)?[courseOf(x)]:[],c:[],s:LK().subjects.filter(v=>{const w=v.toLowerCase().replace(/s$/,'');return w.length>2&&n.includes(w)})}}
+const tfCount=()=>TQ.f.e.length+TQ.f.c.length+TQ.f.s.length;
+function spass(x){const w=TQ.q.toLowerCase().split(/\s+/).filter(Boolean),h=[x.title,x.subtitle,x.section,courseOf(x),(x.features||[]).join(' '),(XD&&XD[x.id]||{}).description].join(' ').toLowerCase();if(!w.every(v=>h.includes(v)))return false;
+  const g=tagsOf(x);return ['e','c','s'].every(k=>!TQ.f[k].length||!g[k].length||g[k].some(v=>TQ.f[k].includes(v)))}
+const sorted=L=>L;
 const mpass=s=>{const w=TQ.q.toLowerCase().split(/\s+/).filter(Boolean),h=[s.title,s.description,testsOf(s.id).map(t=>t.title).join(' ')].join(' ').toLowerCase();return w.every(v=>h.includes(v))};
 
-/* ---------- top: 16:9 banners from Admin → Banners, then the two tabs ---------- */
-function topBanner(){let L=[];try{L=(typeof PROMO!=='undefined'&&PROMO)||[]}catch(e){}
-  if(!L.length)return `<div class="tbanner"><div class="pbn hero"><span class="bn-tx"><small class="gold">Aspiron test series</small><b>Exam-style tests with All India rank</b><em>NEET and JEE, in Hindi and English</em></span></div></div>`;
-  return `<div class="tbanner"><div class="rail" id="tbRail">${L.slice(0,6).map(x=>{const u=/^https?:\/\/|^#\//i.test(x.link||'')?x.link:'',img=x.img&&/^data:image\/|^https:\/\//.test(x.img)?x.img:'';
-   return `<a class="pbn${img?'':' hero'}" ${u?`href="${esc3(u)}"${/^https?:/i.test(u)?' target="_blank" rel="noopener noreferrer"':''}`:''}>${img?`<img src="${esc3(img)}" alt="${esc3(x.title||'Offer')}">`:`<span class="bn-tx"><small class="gold">${esc3(x.label||'Aspiron')}</small><b>${esc3(x.title||'')}</b>${x.text?`<em>${esc3(x.text)}</em>`:''}</span>`}</a>`}).join('')}</div>
-   ${L.length>1?`<div class="dots" id="tbRailD" aria-hidden="true">${L.slice(0,6).map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}</div>`}
+/* ---------- top: the poster from Admin → Tests page, edge to edge, with the search on it and the two big buttons on its bottom ---------- */
 function myCount(){const L=mine();return {paid:L.filter(s=>!s.is_free).length,free:L.filter(s=>s.is_free).length,exp:0,all:L.length,live:L.some(s=>seriesStats(s).live)}}
 function tabs2(){const c=myCount(),n=(STORE||[]).filter(x=>x.buy_on!==false).length;
-  return `<div class="tt2" role="tablist">
-   <button role="tab" aria-selected="${TQ.view==='store'}" class="${TQ.view==='store'?'on':''}" data-a="tview" data-v="store"><span class="ti">${ic('tests',22)}</span><b>Test Series Store</b><small>${STORE?n+' series':'Loading'}</small></button>
-   <button role="tab" aria-selected="${TQ.view==='my'}" class="${TQ.view==='my'?'on':''}" data-a="tview" data-v="my"><span class="ti">${ic('layers',22)}</span><b>My Test Series</b><small>${c.live?'<span class="st live">Test live now</span>':c.all+' enrolled'}</small></button></div>`}
+  return `<div class="tt2">
+   <button class="on" data-a="toList"><span class="ti">${ic('tests',22)}</span><b>Test Series Store</b><small>${STORE?n+' series':'Loading'}</small></button>
+   <button data-a="mySeries"><span class="ti">${ic('layers',22)}</span><b>My Test Series</b><small>${c.all?c.all+' enrolled':'None yet'}</small></button></div>`}
+function poster(){const L=LK(),img=/^data:image\/(jpeg|png|webp);base64,/.test(L.poster||'')?L.poster:'',u=/^(https:\/\/|#\/|store\.html#)[^\s"'<>\\]*$/.test(L.link||'')?L.link:'';
+  const art=img?`<img src="${esc3(img)}" alt="">`:`<span class="pst-ph"><small>ASPIRON EDUCATION</small><b>Test series</b><em>NEET and JEE, exam-style tests with All India rank</em></span>`;
+  return `<section class="pst">${u?`<a class="pst-art" href="${esc3(u)}"${/^https:/.test(u)?' target="_blank" rel="noopener noreferrer"':''} aria-label="Offer">${art}</a>`:`<div class="pst-art">${art}</div>`}
+   <div class="pst-top"><div class="search"><label class="sbox">${ic('search',19)}<input id="tq" type="search" autocomplete="off" placeholder="Search test series, test name or exam" value="${esc3(TQ.q)}" aria-label="Search test series, test name or exam"><button class="clr" data-a="tqClear" aria-label="Clear search"${TQ.q?'':' hidden'}>${ic('x',17)}</button></label>
+   <button class="fb${tfCount()?' on':''}" data-a="tFilter" aria-label="Filter${tfCount()?`, ${tfCount()} on`:''}">${ic('filter',20)}${tfCount()?`<b>${tfCount()}</b>`:''}</button></div></div>
+   <div class="pst-tabs">${tabs2()}</div></section>`}
 
 /* ---------- store view ---------- */
 function offer3(){const L=(STORE||[]).filter(x=>x.buy_on!==false&&x.price).sort((a,b)=>offPct(b)-offPct(a)).slice(0,3);if(L.length<2)return '';
@@ -412,7 +433,7 @@ function storeView(){
     ${M.length?`<p class="gh">In your test series</p><div class="card rows">${M.map(s=>`<button class="row" data-a="openSD" data-id="${esc3(s.id)}"><span class="ti k">${ic('layers',19)}</span><span><b>${esc3(s.title)}</b><small>${seriesStats(s).n} tests</small></span>${ic('right',18)}</button>`).join('')}</div>`:''}
     ${L.length?`${M.length?'<p class="gh">In the store</p>':''}<div class="list">${L.map(iCard).join('')}</div>`:M.length?'':`<div class="card empty"><span class="ti">${ic('search',22)}</span><b>No test series match</b><p>Try another word, or remove a filter.</p><button class="btn sm ghost" data-a="tClear">Clear search and filters</button></div>`}</section>`}
   const C2=cats(),all=STORE.filter(x=>x.buy_on!==false&&(TQ.cat==='all'||(TQ.cat==='NEET'||TQ.cat==='JEE'?courseOf(x)===TQ.cat:String(x.section||'').trim()===TQ.cat))),soon=STORE.filter(x=>x.buy_on===false);
-  return offer3()+`<section class="sec" id="allSec"><div class="sh"><h2>Test series</h2><span class="aside">${all.length} series</span></div>
+  return offer3()+promoRail('tbRail')+`<section class="sec" id="allSec"><div class="sh"><h2>Test series</h2><span class="aside">${all.length} series</span></div>
    <div class="chips">${['all','NEET','JEE',...C2].map(q=>`<button class="${TQ.cat===q?'on':''}" aria-pressed="${TQ.cat===q}" data-a="cat" data-v="${esc3(q)}">${q==='all'?'All':esc3(q)}</button>`).join('')}</div>
    ${all.length?`<div class="list">${all.map(iCard).join('')}</div>`:`<div class="card empty"><span class="ti">${ic('layers',22)}</span><b>Nothing in this group yet</b><p>Pick another group above.</p></div>`}</section>`+
    trendRail()+(soon.length?`<section class="sec"><div class="sh"><h2>Coming soon</h2><span class="aside">${soon.length}</span></div><div class="list">${soon.map(iCard).join('')}</div></section>`:'')+
@@ -425,29 +446,28 @@ function myCard(s){const k=seriesStats(s),it=itemOfSeries(s.id);
   <div class="nums"><div><b>${k.n}</b><small>Total</small></div><div><b>${k.done}</b><small>Attempted</small></div><div><b>${k.n-k.done}</b><small>Remaining</small></div></div>
   <span class="bar"><i style="--p:${k.n?(k.done/k.n).toFixed(3):0}"></i></span>
   <div class="ft">${k.live?`<span class="st live">${k.live} live now</span>`:'<span class="st ok">Active</span>'}<div class="acts"><button class="btn sm" data-a="openSD" data-id="${esc3(s.id)}">View tests</button></div></div></div></article>`}
-function myView(){const c=myCount(),L=TQ.mf==='exp'?[]:mine().filter(s=>(TQ.mf==='paid'?!s.is_free:s.is_free)&&(!TQ.q.trim()||mpass(s)));
+function myView(){const c=myCount(),L=TQ.mf==='exp'?[]:mine().filter(s=>TQ.mf==='paid'?!s.is_free:s.is_free);
   return `<div class="seg" role="tablist">${[['paid','Paid',c.paid],['free','Free',c.free],['exp','Expired',c.exp]].map(t=>`<button role="tab" aria-selected="${t[0]===TQ.mf}" class="${t[0]===TQ.mf?'on':''}" data-a="mf" data-v="${t[0]}">${t[1]}<small>${t[2]}</small></button>`).join('')}</div>
-  <div class="list">${L.length?L.map(myCard).join(''):`<div class="card empty"><span class="ti">${ic('layers',22)}</span><b>${TQ.mf==='exp'?'No expired test series':TQ.mf==='paid'?'No paid test series yet':'No free test series yet'}</b><p>${TQ.mf==='exp'?'Series whose access has ended will show up here.':'Get one from the store and it shows up here.'}</p>${TQ.mf==='exp'?'':'<button class="btn sm" data-a="tview" data-v="store">Open the store</button>'}</div>`}</div>`}
-const tBody=()=>TQ.view==='my'?myView():storeView();
-VIEW.test=()=>{const n=tfCount();return `<div class="search" style="margin-top:4px"><label class="sbox">${ic('search',19)}<input id="tq" type="search" autocomplete="off" placeholder="Search test series, test name or exam" value="${esc3(TQ.q)}" aria-label="Search test series, test name or exam"><button class="clr" data-a="tqClear" aria-label="Clear search"${TQ.q?'':' hidden'}>${ic('x',17)}</button></label>
-   <button class="fb${n?' on':''}" data-a="tFilter" aria-label="Filters${n?`, ${n} on`:''}">${ic('filter',20)}${n?`<b>${n}</b>`:''}</button></div>
-  <div class="ttop">${topBanner()}${tabs2()}</div><div id="tBody" class="stack" style="gap:var(--gap)">${tBody()}</div>`};
-function drawT(){const b=$('#tBody');if(!b)return;b.innerHTML=tBody();const n=tfCount(),fb=$('[data-a="tFilter"]');if(fb){fb.className='fb'+(n?' on':'');fb.innerHTML=ic('filter',20)+(n?`<b>${n}</b>`:'')}const x=$('[data-a="tqClear"]');x&&(x.hidden=!TQ.q);const t=$('.tt2');t&&(t.outerHTML=tabs2())}
-AFTER.test=()=>{const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#tbRail','#tbRailD');loadExtras();
-  try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length))promoLoad().then(()=>{if(S.tab==='test')softRender()})}catch(e){}};
-A.tview=el=>{TQ.view=el.dataset.v;if(S.tab!=='test'){go('test');return}drawT();const b=$('#tBody');b&&(b.style.animation='none',void b.offsetWidth,b.style.animation='rise .4s var(--out)')};
+  <div class="list">${L.length?L.map(myCard).join(''):`<div class="card empty"><span class="ti">${ic('layers',22)}</span><b>${TQ.mf==='exp'?'No expired test series':TQ.mf==='paid'?'No paid test series yet':'No free test series yet'}</b><p>${TQ.mf==='exp'?'Series whose access has ended will show up here.':'Get one from the store and it shows up here.'}</p>${TQ.mf==='exp'?'':'<button class="btn sm" data-a="toStore">Open the store</button>'}</div>`}</div>`}
+VIEW.test=()=>poster()+`<div id="tBody" class="stack" style="gap:var(--gap)">${storeView()}</div>`;
+function drawT(){const b=$('#tBody');if(!b)return;b.innerHTML=storeView();const n=tfCount(),fb=$('[data-a="tFilter"]');if(fb){fb.className='fb'+(n?' on':'');fb.innerHTML=ic('filter',20)+(n?`<b>${n}</b>`:'')}const x=$('[data-a="tqClear"]');x&&(x.hidden=!TQ.q);const t=$('.tt2');t&&(t.outerHTML=tabs2());autoRail('#tbRail','#tbRailD')}
+AFTER.test=()=>{const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#tbRail','#tbRailD');loadExtras();loadLook();
+  try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length))promoLoad().then(()=>{if(S.tab==='test'&&!scrOpen())softRender()})}catch(e){}};
+A.toList=()=>{const a=$('#allSec');a&&a.scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})};
 A.tqClear=()=>{TQ.q='';$('#tq').value='';drawT();$('#tq').focus()};
-A.tClear=()=>{TQ.q='';Object.keys(TQ.f).forEach(k=>TQ.f[k]=[]);TQ.sort='pop';const q=$('#tq');if(q)q.value='';drawT()};
+A.tClear=()=>{TQ.q='';TQ.f={e:[],c:[],s:[]};const q=$('#tq');if(q)q.value='';drawT()};
 A.cat=el=>{TQ.cat=el.dataset.v;drawT()};
-A.mf=el=>{TQ.mf=el.dataset.v;drawT()};
-A.tFilter=()=>{const G=[['exam','Exam',['NEET','JEE']],['cat','Category',cats()],['med','Medium',['Hindi + English','Single medium']],['price','Price',['Free','Paid']],['offer','Offers',['Discounted']],['status','Status',['Available','Coming soon']]].filter(g=>g[2].length);
-  const draw=()=>{sheet.innerHTML=`<div class="grab"></div><h2 id="sheetT">Filter and sort</h2><p class="sub">Filters every test series in the store.</p>
-   <div class="fg"><h3>Sort by</h3><div class="chips wrap">${SORTS.map(s=>`<button class="${TQ.sort===s[0]?'on':''}" aria-pressed="${TQ.sort===s[0]}" data-fs="${s[0]}">${s[1]}</button>`).join('')}</div></div>
+A.mf=el=>{TQ.mf=el.dataset.v;redraw()};
+A.tFilter=()=>{loadLook();const G=[['e','Exam',LK().exams],['c','Class',LK().classes],['s','Subject',LK().subjects]].filter(g=>g[2].length);
+  const draw=()=>{sheet.innerHTML=`<div class="grab"></div><h2 id="sheetT">Filter</h2><p class="sub">Pick your exam, class and subject.</p>
    ${G.map(([k,l,o])=>`<div class="fg"><h3>${l}</h3><div class="chips wrap">${o.map(v=>`<button class="${TQ.f[k].includes(v)?'on':''}" aria-pressed="${TQ.f[k].includes(v)}" data-fk="${k}" data-fv="${esc3(v)}">${esc3(v)}</button>`).join('')}</div></div>`).join('')}
    <div class="sheet-ft"><button class="btn ghost" data-fc>Clear</button><button class="btn" data-fa>Show ${(STORE||[]).filter(spass).length} test series</button></div>`};
-  openSheet('');draw();sheet.onclick=e=>{const so=e.target.closest('[data-fs]');if(so){TQ.sort=so.dataset.fs;const y=sheet.scrollTop;draw();sheet.scrollTop=y;TQ.view='store';drawT();return}
-   const c=e.target.closest('[data-fk]');if(c){const a=TQ.f[c.dataset.fk],v=c.dataset.fv,i=a.indexOf(v);i>-1?a.splice(i,1):a.push(v);const y=sheet.scrollTop;draw();sheet.scrollTop=y;TQ.view='store';drawT();return}
-   if(e.target.closest('[data-fc]')){Object.keys(TQ.f).forEach(k=>TQ.f[k]=[]);TQ.sort='pop';draw();drawT();return}if(e.target.closest('[data-fa]')){closeLayer();scrollTo({top:0,behavior:RM?'auto':'smooth'})}}};
+  openSheet('');draw();sheet.onclick=e=>{const c=e.target.closest('[data-fk]');if(c){const a=TQ.f[c.dataset.fk],v=c.dataset.fv,i=a.indexOf(v);i>-1?a.splice(i,1):a.push(v);const y=sheet.scrollTop;draw();sheet.scrollTop=y;drawT();return}
+   if(e.target.closest('[data-fc]')){TQ.f={e:[],c:[],s:[]};draw();drawT();return}if(e.target.closest('[data-fa]')){closeLayer();A.toList()}}};
+
+/* ---------- My Test Series: its own full page, Paid / Free / Expired ---------- */
+function myPage(){return {t:'My Test Series',s:`${mine().length} enrolled`,key:'my',html:myView}}
+A.mySeries=()=>{const c=myCount();TQ.mf=c.paid||!c.free?'paid':'free';closeLayer();if(STORE===null)loadStore();loadExtras();if(top()&&top().key==='my')return;push(myPage())};
 
 /* ---------- one test series page: photo, Description | Resources | Reviews, buy bar ---------- */
 const SF=[['all','All'],['open','Available'],['up','Upcoming'],['att','Attempted'],['done','Completed'],['closed','Closed'],['lock','Locked']];
@@ -499,9 +519,7 @@ A.openSD=el=>{const sid=el.dataset.id;loadExtras();if(STORE===null)loadStore();T
 A.xt=el=>{TQ.xt=el.dataset.v;redraw()};
 A.sf=el=>{TQ.sf=el.dataset.v;redraw()};
 A.oldSeries=el=>oldHash('#/s/'+el.dataset.id);
-function openMySeries(f){TQ.mf=f||'paid';TQ.view='my';go('test')}
-A.mySeries=()=>openMySeries(myCount().paid?'paid':'free');
-A.toStore=()=>{TQ.view='store';go('test')};
+A.toStore=()=>{closeLayer();unwind(()=>{if(S.tab==='test'){scrollTo({top:0,behavior:RM?'auto':'smooth'});return}go('test')})};
 
 /* ================= TOOLS (run on the phone; nothing is sent) ================= */
 const FC=2*Math.PI*100,FM=2*Math.PI*28;

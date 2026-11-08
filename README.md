@@ -43,9 +43,23 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
   classic CSS cannot change the new one. It has its own theme (Light / Dark / Black, 5 palettes each, `cbt_v3_theme`); the exam
   screen keeps the classic theme.
 - **Addresses:** `#/` Home, `#/x/test`, `#/x/tools`, `#/x/lib`, `#/x/stats`. Every other address opens the classic page.
+- **Home** follows the test series picked in the top band (▾): *Upcoming Events* and the *Weekly Schedule* show only that
+  series. The schedule can go to any week (‹ ›) or month (month name or the calendar button).
+- **Tests:** the poster from **Admin → Tests page** (edge to edge, search bar on it, the two big buttons on its bottom), then
+  offer boxes, the Admin → Broadcasts → Home banners as a slider, and the test series. *My Test Series* opens its own page.
+  The filter is Exam / Class / Subject, set in Admin → Tests page (see v61 below).
 - **Not built yet** (shown as *Coming soon* in the Library): books reader, handwritten notes and DPPs, mindmaps and flashcards,
   download manager. XP, syllabus progress and overall leaderboards need new data and are not shown.
 - **To remove it:** delete `v3.js`, `v3.css` and the `<script src="v3.js?v=…">` line in `index.html`.
+
+## Tests page poster and filter (`cx/m-look.js`, `supabase_v61_tests_page.sql`)
+- **Admin → Tests page** (Commerce): the poster at the top of the Tests tab of the new design (best 1080 × 1350 px, 4 : 5;
+  keep the top 15% and bottom 25% plain because the search bar and the two big buttons sit there), an optional link, the
+  filter lists (Exam, Class, Subject: names separated by commas) and, for each store test series, which of them it is for.
+  An empty row means "all" (a full package shows for every subject). Who can change it: Store = Full access (View only can look).
+- Students read it with `cbt_store_look` (public, read only). Until the SQL is run the app shows a plain dark poster and
+  guesses the filter from each series' course and name.
+- **Setup:** run `supabase_v61_tests_page.sql` once (after v60), then `supabase_v35_admin_team.sql` again.
 
 ## Social media links (`config.js`, `app27.js`, `cx/m-social.js`, `supabase_v57_social.sql`)
 - **Admin → Social media** (Engagement): Instagram, Facebook, YouTube, X (Twitter), Telegram, WhatsApp Channel, LinkedIn,

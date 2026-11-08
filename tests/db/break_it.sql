@@ -681,6 +681,41 @@ select pg_temp.chk('25h the owner can change the limit of a code later',
   :'uc' = 'true' and (select max_uses = 5 from cbt_private.store_coupons where code = 'LIMIT2' limit 1));
 select pg_temp.chk('25i a team member cannot delete a code', public.cbt_admin_coupons(:'vt','remove_code','{"code":"LIMIT2"}')->>'error' = 'forbidden');
 
+-- ===== 26. v61 Tests page: poster and filter =====
+set role anon;
+select pg_temp.chk('26a look: the public call gives the default lists and no poster',
+  public.cbt_store_look()->>'ok' = 'true' and public.cbt_store_look()->>'poster' = ''
+  and public.cbt_store_look()->'exams' = '["NEET","JEE"]'::jsonb);
+select coalesce((public.cbt_admin_store_look('wrong-password','save','{"link":"","exams":["X"],"classes":[],"subjects":[]}')->>'ok')::boolean, false) as lk0 \gset
+select pg_temp.chk('26b look: nobody changes it without signing in', not :'lk0'::boolean and public.cbt_store_look()->'exams' = '["NEET","JEE"]'::jsonb);
+reset role;
+select pg_temp.chk('26c look: anon cannot read the tables directly',
+  not has_table_privilege('anon', 'cbt_private.store_look', 'SELECT') and not has_table_privilege('anon', 'cbt_private.store_item_tags', 'SELECT'));
+select public.cbt_admin_store_look(:'ow5','save','{"link":"javascript:alert(1)","exams":["NEET"],"classes":[],"subjects":[]}')->>'error' = 'link'
+  and public.cbt_admin_store_look(:'ow5','save','{"link":"https://x.com/a\"><b>","exams":["NEET"],"classes":[],"subjects":[]}')->>'error' = 'link'
+  and public.cbt_admin_store_look(:'ow5','save','{"link":"","poster":"data:text/html;base64,PGI+","exams":["NEET"],"classes":[],"subjects":[]}')->>'error' = 'image'
+  and public.cbt_admin_store_look(:'ow5','save','{"link":"","exams":[],"classes":[],"subjects":[]}')->>'error' = 'list'
+  and public.cbt_admin_store_look(:'ow5','save','{"link":"","exams":["NEET","neet"],"classes":[],"subjects":[]}')->>'error' = 'list'
+  and public.cbt_admin_store_look(:'ow5','save','{"link":"","exams":["<b>"],"classes":[],"subjects":[]}')->>'error' = 'list'
+  and public.cbt_admin_store_look(:'ow5','save','{"link":"","exams":["NEET"],"classes":[],"subjects":[],"tags":{"cccccccc-0000-0000-0000-000000000001":{"e":["JEE"]}}}')->>'error' = 'tags'
+  and public.cbt_admin_store_look(:'ow5','save','{"link":"","exams":["NEET"],"classes":[],"subjects":[],"tags":{"cccccccc-0000-0000-0000-0000000000ff":{"e":[]}}}')->>'error' = 'item'
+  as lk_bad \gset
+select pg_temp.chk('26d look: a bad link, a non-picture, an empty / repeated / unsafe list or an unknown tag is refused, nothing saved',
+  :'lk_bad'::boolean and (select exams from cbt_private.store_look) = '["NEET","JEE"]'::jsonb and not exists (select 1 from cbt_private.store_item_tags));
+select public.cbt_admin_store_look(:'ow5','save','{"link":"store.html#x=cccccccc-0000-0000-0000-000000000001","poster":"data:image/jpeg;base64,/9j/AA==","exams":["NEET","JEE"],"classes":["Class 11","Dropper"],"subjects":["Biology"],"tags":{"cccccccc-0000-0000-0000-000000000001":{"e":["NEET"],"c":["Dropper"],"s":["Biology"]}}}')->>'ok' as lk1 \gset
+select pg_temp.chk('26e look: the owner saves the poster, lists and tags; the public call shows them', :'lk1' = 'true'
+  and public.cbt_store_look()->>'poster' = 'data:image/jpeg;base64,/9j/AA=='
+  and public.cbt_store_look()->'tags'->'cccccccc-0000-0000-0000-000000000001'->'s' = '["Biology"]'::jsonb);
+select public.cbt_admin_store_look(:'ow5','save','{"link":"","exams":["NEET","JEE"],"classes":["Class 11"],"subjects":["Biology"]}')->>'ok' as lk2 \gset
+select pg_temp.chk('26f look: leaving the poster out keeps it; a class taken out of the list leaves every series', :'lk2' = 'true'
+  and public.cbt_store_look()->>'poster' = 'data:image/jpeg;base64,/9j/AA=='
+  and public.cbt_store_look()->'tags'->'cccccccc-0000-0000-0000-000000000001'->'c' = '[]'::jsonb);
+select public.cbt_admin_team(:'ow5','user_save','{"name":"Store viewer","username":"lookview1","password":"Tr7k-9mQz-pLx8","perms":{"store":"view"}}')->>'ok';
+select public.cbt_admin_login('lookview1','Tr7k-9mQz-pLx8','S')->>'token' as lvt \gset
+select pg_temp.chk('26g look: Store view-only can look but not save',
+  public.cbt_admin_store_look(:'lvt','get','{}')->>'ok' = 'true'
+  and public.cbt_admin_store_look(:'lvt','save','{"link":"","exams":["NEET"],"classes":[],"subjects":[]}')->>'error' = 'forbidden');
+
 -- ===== report =====
 \t off
 \a
