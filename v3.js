@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=10;
+const V3VER=11;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -317,7 +317,6 @@ A.switchSeries=()=>openSheet(`<h2 id="sheetT">Switch test series</h2><p class="s
 A.pickSeries=el=>{lsSet('cbt_v3_series',el.dataset.id);closeLayer();const b=$('#serBox');if(b){b.style.transition='opacity .2s';b.style.opacity=0}setTimeout(()=>{softRender();toast3('Switched to '+(curSeries()||{}).title)},200)};
 A.zone=el=>{const k=el.dataset.k;({study:()=>go('lib'),series:()=>A.mySeries(),dl:()=>openNotes(),hist:()=>A.hist(),mk:()=>openMistakes(),bm:()=>openSaved(),qb:()=>oldHash('#/qb'),pyq:()=>oldHash('#/pyq'),gen:()=>oldHash('#/gen')}[k]||(()=>{}))()};
 A.test=el=>{const t=tOf(el.dataset.id);if(!t)return;if(t.locked){oldModal(()=>openTest(t.id));return}oldRun(()=>openTest(t.id))};
-A.review=el=>oldRun(()=>openReview(el.dataset.r));
 
 /* ---------- weekly schedule of the series chosen on Home: tests by the day they open; any week of any month ---------- */
 const monOf=t=>{const d=new Date(t);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()};
@@ -369,10 +368,10 @@ A.oldNotices=()=>oldHash('#/n');
 
 /* ================= TESTS: store + my test series, the store's own data (photos, descriptions, reviews) ================= */
 const TQ={q:'',f:{e:[],c:[],s:[]},mf:'paid',cat:'all',sf:'all',xt:'d',tile:'',tf:'all',ts:'all',plan:null};
-let XD=null,RV={},SCHD={},LANGS=new Set(),SMAP={},extrasBusy=null;
+let XD=null,SRV={},SCHD={},LANGS=new Set(),SMAP={},extrasBusy=null;
 function loadExtras(){if(extrasBusy||XD)return extrasBusy;const q=(fn,auth)=>rpc(fn,{},!auth).catch(()=>null);
   extrasBusy=Promise.all([q('cbt_store_explore'),q('cbt_store_reviews'),q('cbt_store_schedules'),q('cbt_store_langs'),q('cbt_store_map',true)]).then(([x,r,s,l,m])=>{
-   XD={};(x&&x.ok?x.items||[]:[]).forEach(i=>XD[i.id]=i);RV={};(r&&r.ok?r.items||[]:[]).forEach(i=>RV[i.id]=i);SCHD={};(s&&s.ok?s.items||[]:[]).forEach(i=>SCHD[i.id]=i);
+   XD={};(x&&x.ok?x.items||[]:[]).forEach(i=>XD[i.id]=i);SRV={};(r&&r.ok?r.items||[]:[]).forEach(i=>SRV[i.id]=i);SCHD={};(s&&s.ok?s.items||[]:[]).forEach(i=>SCHD[i.id]=i);
    LANGS=new Set((l&&l.ok?l.items||[]:[]).map(String));SMAP=(m&&m.ok&&m.map)||{};
    if(S.tab==='test'&&!scrOpen())drawT();if(scrOpen()&&top().store)redraw()}).finally(()=>{extrasBusy=null});return extrasBusy}
 const okImg=u=>/^(data:image\/|https:\/\/)/.test(u||'');
@@ -381,7 +380,7 @@ const seriesOfItem=id=>Object.keys(SMAP).find(k=>SMAP[k]===id);
 const itemOfSeries=sid=>(STORE||[]).find(x=>x.id===SMAP[sid]);
 const owned=x=>{const sid=seriesOfItem(x.id);return sid&&mine().some(s=>s.id===sid)?sid:null};
 const cats=()=>[...new Set((STORE||[]).map(x=>String(x.section||'').trim()).filter(Boolean))];
-const rvOf=x=>RV[x.id]&&RV[x.id].count?RV[x.id]:null;
+const rvOf=x=>SRV[x.id]&&SRV[x.id].count?SRV[x.id]:null;
 const starRow=r=>`<span class="stars" aria-label="${(+r.avg).toFixed(1)} out of 5">${ic('star',13).replace('class="i"','class="i fill"')}<b>${(+r.avg).toFixed(1)}</b> <span class="mut">(${fmtN(r.count)})</span></span>`;
 function coverOf(x,label){return okImg(x&&x.image)?`<img src="${esc3(x.image)}" alt="${esc3(x.title)}" loading="lazy">`:`<span class="cvph"><small>${esc3(label||courseOf(x||{})||'Aspiron')}</small><b>${esc3((x&&x.title)||'')}</b></span>`}
 const priceH=x=>x.price?`<span class="price"><b>₹${fmtN(x.price)}</b>${offPct(x)?`<s>₹${fmtN(x.mrp)}</s><span class="badge off">${offPct(x)}% off</span>`:''}</span>`:'<span class="price"><span class="free">Free</span></span>';
@@ -1086,6 +1085,91 @@ A.setHelp=()=>{let b='';try{SUPMSG='';b=supBtns()}catch(e){}openSheet(`<span cla
 A.setOut=()=>openSheet(`<span class="ti" style="margin-bottom:12px">${ic('out',22)}</span><h2 id="sheetT">Sign out?</h2><p class="sub">Your tests, results and notes stay on your account. Sign in again with your mobile number any time.</p><div class="sheet-ft"><button class="btn ghost" data-a="close">Cancel</button><button class="btn danger3" data-a="setOutGo">Sign out</button></div>`);
 A.setOutGo=()=>{closeLayer();unwind(()=>{try{doSignOut()}catch(e){location.reload()}})};
 
+/* ================= RESULT AND SOLUTIONS in the new design =================
+   Opened from any "Result" button (cbt_review) and right after a test is submitted (the classic exam screen still
+   runs the test; its result is shown here). Server: cbt_review, cbt_leaderboard, cbt_bookmark. */
+const RS3={rec:null,Q:[],tab:'ov',f:'all',sec:'*',lb:null,bm:new Set(),title:''};
+const pct3=(s,m)=>m?Math.max(0,Math.round(s*100/m)):0;
+const fsec=t=>{t=Math.round(t||0);return t<60?t+'s':Math.floor(t/60)+'m '+String(t%60).padStart(2,'0')+'s'};
+const fdur=t=>{t=Math.max(0,Math.round(t||0));const h=Math.floor(t/3600),m=Math.floor(t%3600/60);return h?`${h}h ${m}m`:m?`${m}m ${String(t%60).padStart(2,'0')}s`:`${t}s`};
+function rsAnalyse(){const rec=RS3.rec,Qs=RS3.Q,ans=rec.answers||{},tm=rec.times||{};
+  const all=Qs.map((q,i)=>{const a=ans[i]!=null?+ans[i]:null,t=tm[i]!=null?+tm[i]:null;return {q,i,a,t,st:q.answer==null||a==null?'s':a===q.answer?'c':'w'}});
+  const names=[];Qs.forEach(q=>{const s=q.sec||'';if(!names.includes(s))names.push(s)});
+  const cm=Qs.length?rec.max/Qs.length:0,wm=rec.wrong?(rec.correct*cm-rec.score)/rec.wrong:0;
+  return {rec,Qs,all,names,cm,wm,hasSec:names.some(x=>x),hasT:all.some(x=>x.t>0)}}
+const avgT3=a=>{const v=a.filter(x=>x.t>0);return v.length?v.reduce((s,x)=>s+x.t,0)/v.length:null};
+function rsRing(p,sz){const R=sz/2-8,Cc=2*Math.PI*R;return `<svg viewBox="0 0 ${sz} ${sz}" width="${sz}" height="${sz}" aria-hidden="true"><circle cx="${sz/2}" cy="${sz/2}" r="${R}" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="10"/><circle cx="${sz/2}" cy="${sz/2}" r="${R}" fill="none" stroke="var(--acc1)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${Cc.toFixed(1)}" stroke-dashoffset="${(Cc*(1-p/100)).toFixed(1)}" transform="rotate(-90 ${sz/2} ${sz/2})" class="mkr"/></svg>`}
+function rsHero(A){const r=A.rec,p=pct3(r.score,r.max),att=r.correct+r.wrong,acc=att?Math.round(r.correct*100/att):0;let cheat=false;try{cheat=typeof CHEAT!=='undefined'&&CHEAT&&CHEAT.has(String(r.test_id))}catch(e){}
+  return `${cheat?`<div class="card rs-warn">${ic('info',18)}<span><b>Marked for cheating</b><small>The admin marked this test as cheating. Your rank in it is moved to the last place.</small></span></div>`:''}
+  <section class="rsh"><div class="rsh-top"><div class="mkh-ring">${rsRing(p,132)}<span><b>${r.score}</b><small>of ${r.max}</small></span></div>
+    <div class="rsh-t"><small>${esc3(RS3.title||'Your result')}</small><h2>${p>=75?'Excellent work!':p>=50?'Good effort!':'Keep practising!'}</h2><p>${p}% score · ${acc}% accuracy${r.late?' · submitted late':''}${r.lang==='hi'?' · हिंदी':''}</p></div></div>
+   <div class="rsh-st"><div><b class="c">${r.correct}</b><small>Correct</small></div><div><b class="w">${r.wrong}</b><small>Wrong</small></div><div><b>${r.skipped}</b><small>Skipped</small></div><div><b>${fdur(r.used)}</b><small>Time</small></div></div></section>`}
+const RST=[['ov','Overview'],['sub','Subjects'],['time','Time'],['sol','Solutions'],['his','Attempts']];
+function rsTabs(A){return `<div class="utabs rs-tabs" role="tablist">${RST.filter(t=>t[0]!=='sub'||A.hasSec).map(t=>`<button role="tab" aria-selected="${RS3.tab===t[0]}" class="${RS3.tab===t[0]?'on':''}" data-a="rsTab" data-v="${t[0]}">${t[1]}</button>`).join('')}</div>`}
+function rsLb(){const r=RS3.lb;if(r===null)return '<div class="card sk" style="height:150px"></div>';if(!r||!r.ok||!r.top||!r.top.length)return '';
+  const solo=r.total<2,mx=Math.max(1,...(r.dist||[0]));
+  return `${r.my_rank?`<section class="card rk3"><div class="rk3-m"><small>Your rank</small><b>${fmtN(r.my_rank)}</b><span>of ${fmtN(r.total)}</span></div><div class="rk3-g">${solo?'':`<div><b>${r.percentile}</b><small>Percentile</small></div>`}<div><b>${r.my_score}</b><small>Your score</small></div><div><b>${r.avg}</b><small>Class average</small></div><div><b>${r.top_score}</b><small>Topper</small></div></div>${solo?'<p class="hint" style="margin:10px 0 0">You are the first to attempt this test. Your rank updates as others take it.</p>':''}</section>`:''}
+   <section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>Top ${Math.min(10,r.top.length)}</h2><span class="aside">First attempt of each student</span></div><div class="card rows">${r.top.map(x=>`<div class="lb3${x.me?' me':''}"><span class="n${x.rank<=3?' m'+x.rank:''}">${x.rank}</span><span class="nm">${esc3(x.name)}${x.me?' (you)':''}</span><b>${x.score}</b></div>`).join('')}${r.my_rank&&r.my_rank>10?`<div class="lb3 me"><span class="n">${r.my_rank}</span><span class="nm">You</span><b>${r.my_score}</b></div>`:''}</div></section>
+   ${solo||!r.dist?'':`<section class="card p"><b style="font-size:15px">Score distribution</b><div class="hist3">${r.dist.map((n,i)=>`<div class="${r.my_bucket===i?'me':''}"><i style="height:${n?Math.max(8,n/mx*100):3}%"></i><span>${i*10}</span></div>`).join('')}</div><p class="hint" style="margin:6px 0 0;text-align:center">Students by score band (% of marks). Your band is highlighted.</p></section>`}`}
+function rsOv(A){const {rec,Qs,wm}=A,att=rec.correct+rec.wrong;
+  return `<div class="tiles3"><div><b>${att}/${Qs.length}</b><small>Attempted</small></div><div><b>${Qs.length?fsec(rec.used/Qs.length):'-'}</b><small>Per question</small></div><div><b class="w">−${Math.round(rec.wrong*wm*100)/100}</b><small>Negative marks</small></div></div>${rsLb()}`}
+function rsSub(A){const {all,names,cm,wm,hasT}=A;
+  const rows=names.map(s=>{const it=all.filter(x=>(x.q.sec||'')===s),c=it.filter(x=>x.st==='c').length,w=it.filter(x=>x.st==='w').length,k=it.length-c-w;return {s:s||'General',n:it.length,c,w,k,acc:c+w?Math.round(c*100/(c+w)):0,marks:Math.round((c*cm-w*wm)*100)/100,max:Math.round(it.length*cm*100)/100,t:avgT3(it)}});
+  const ok=rows.filter(r=>r.c+r.w>0).sort((a,b)=>b.acc-a.acc);
+  return `${ok.length>1?`<div class="g2 rs-tip"><div class="card"><small>Strongest</small><b>${esc3(ok[0].s)}</b><span class="st ok">${ok[0].acc}% accuracy</span></div><div class="card"><small>Needs work</small><b>${esc3(ok[ok.length-1].s)}</b><span class="st err">${ok[ok.length-1].acc}% accuracy</span></div></div>`:''}
+   ${rows.map(r=>`<div class="card rs-sub"><div class="rs-sub-h"><b>${esc3(r.s)}</b><span>${r.marks} / ${r.max} marks</span></div><div class="stk3"><i class="c" style="width:${r.n?r.c*100/r.n:0}%"></i><i class="w" style="width:${r.n?r.w*100/r.n:0}%"></i></div>
+    <p class="rs-sub-m"><span class="c">${r.c} correct</span><span class="w">${r.w} wrong</span><span>${r.k} skipped</span><span>${r.acc}% accuracy</span>${hasT&&r.t?`<span>${fsec(r.t)} per question</span>`:''}</p></div>`).join('')}`}
+function rsTime(A){const {all,hasT}=A;if(!hasT)return `<div class="card empty"><span class="ti">${ic('clock',22)}</span><b>No time data for this attempt</b><p>Time per question is recorded for tests you take from now on.</p></div>`;
+  const mx=Math.max(1,...all.map(x=>x.t||0)),tc=avgT3(all.filter(x=>x.st==='c')),tw=avgT3(all.filter(x=>x.st==='w')),ta=avgT3(all),slow=all.filter(x=>x.t>0).sort((a,b)=>b.t-a.t).slice(0,5);
+  let msg='Your time is spread evenly across questions.';if(tc&&tw&&tw>tc*1.3)msg='You spend more time on questions you get wrong. Skip hard ones early and come back to them at the end.';else if(tc&&tw&&tw<tc*.7)msg='You answer wrong questions faster than right ones. Slow down and check before you move on.';
+  return `<div class="tiles3"><div><b>${ta?fsec(ta):'-'}</b><small>Average</small></div><div><b class="c">${tc?fsec(tc):'-'}</b><small>On correct</small></div><div><b class="w">${tw?fsec(tw):'-'}</b><small>On wrong</small></div></div>
+   <section class="card p"><b style="font-size:15px">Time per question</b><p class="hint" style="margin:2px 0 0">Tap a bar to open that question</p><div class="tch3-w"><div class="tch3" style="min-width:${Math.max(100,all.length*18)}px">${all.map(x=>`<button class="${x.st}" data-a="rsJump" data-i="${x.i}" aria-label="Question ${x.i+1}, ${fsec(x.t)}"><i style="height:${x.t?Math.max(4,x.t/mx*100):2}%"></i><span>${x.i+1}</span></button>`).join('')}</div></div>
+    <p class="rs-key"><span class="c">Correct</span><span class="w">Wrong</span><span class="s">Skipped</span></p></section>
+   <div class="card rs-note">${ic('info',18)}<span>${msg}</span></div>
+   <section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>Slowest questions</h2></div><div class="card rows">${slow.map(x=>`<button class="lb3" data-a="rsJump" data-i="${x.i}"><span class="n">${x.i+1}</span><span class="nm">${esc3((x.q.q||'').slice(0,60))}${(x.q.q||'').length>60?'…':''}</span><b class="${x.st}">${fsec(x.t)}</b></button>`).join('')}</div></section>`}
+function rsSol(A){const {all,names,hasSec}=A,f=RS3.f,sf=RS3.sec,cnt=k=>all.filter(x=>k==='all'||x.st===k).length,tid=A.rec.test_id;
+  const items=all.filter(x=>(f==='all'||x.st===f)&&(!hasSec||sf==='*'||(x.q.sec||'')===sf));
+  return `<div class="seg" role="tablist">${[['all','All'],['c','Correct'],['w','Wrong'],['s','Skipped']].map(t=>`<button role="tab" aria-selected="${f===t[0]}" class="${f===t[0]?'on':''}" data-a="rsF" data-v="${t[0]}">${t[1]}<small>${cnt(t[0])}</small></button>`).join('')}</div>
+   ${hasSec?`<div class="chips">${[['*','All sections']].concat(names.map(s=>[s,s||'General'])).map(c=>`<button class="${sf===c[0]?'on':''}" data-a="rsSec" data-v="${esc3(c[0])}">${esc3(c[1])}</button>`).join('')}</div>`:''}
+   ${items.length?items.map(({q,i,a,t,st})=>qCard(Object.assign({qidx:i},q),{id:'rq'+i,rev:true,pick:a,badge:`${st==='c'?'<span class="st ok">Correct</span>':st==='w'?'<span class="st err">Wrong</span>':'<span class="st">Skipped</span>'}${q.sec?`<span class="tag">${esc3(q.sec)}</span>`:''}${t?`<span class="mut" style="font-size:12.5px">${fsec(t)}</span>`:''}`,
+     tools:tid?`<button class="ib sm${RS3.bm.has(i)?' on':''}" data-a="rsBm" data-i="${i}" aria-label="${RS3.bm.has(i)?'Remove from saved':'Save this question'}">${ic('bookmark',17)}</button>`:'',
+     note:q.answer==null?'<p class="qc3-n">No answer key was set for this question, so it is not marked.</p>':''})).join(''):`<div class="card empty"><b>Nothing to show here</b><p>Pick another filter above.</p></div>`}`}
+function rsHis(A){const tid=A.rec.test_id,L=allRes().filter(r=>r.test_id===tid).slice().sort((a,b)=>(a.at||0)-(b.at||0));
+  if(!L.length)return `<div class="card empty"><b>No other attempts</b><p>Every attempt of this test shows up here.</p></div>`;
+  const P=L.map(x=>pct3(x.score,x.max)),best=Math.max(...P);
+  return `<div class="card p"><div class="rs-sub-h"><b>${L.length} attempt${L.length>1?'s':''}</b><span>Best ${best}%</span></div>${L.length>1?`<div class="hist3 att">${L.map((x,i)=>`<div class="${x.id===A.rec.id?'me':''}"><i style="height:${Math.max(6,P[i])}%"></i><span>${i+1}</span></div>`).join('')}</div>`:''}</div>
+   <div class="card rows">${L.slice().reverse().map((x,j)=>{const i=L.length-1-j;return `<button class="row" data-a="review" data-r="${esc3(x.id)}"${x.id===A.rec.id?' disabled':''}><span class="ti${P[i]===best?' g':''}">${ic(P[i]===best?'trophy':'hist',18)}</span><span><b>Attempt ${i+1}${x.id===A.rec.id?' (this one)':''}</b><small>${x.at?dS(x.at):''}, ${x.score} / ${x.max}</small></span><span class="tag">${P[i]}%</span></button>`}).join('')}</div>`}
+function resultView(){return {t:'Result',get s(){return RS3.title||''},key:'res3',html:()=>{if(!RS3.rec)return '<div class="card sk" style="height:260px"></div><div class="card sk" style="height:160px"></div>';
+  const A=rsAnalyse();return rsHero(A)+rsTabs(A)+`<div class="stack sp-pane" style="gap:14px">${RS3.tab==='sub'&&A.hasSec?rsSub(A):RS3.tab==='time'?rsTime(A):RS3.tab==='sol'?rsSol(A):RS3.tab==='his'?rsHis(A):rsOv(A)}</div>
+   <button class="btn lg ghost" data-a="back">Done</button>`}}}
+function rsOpen(rec,review,title){const t=tOf(rec.test_id);RS3.rec=rec;RS3.Q=review||[];RS3.tab='ov';RS3.f='all';RS3.sec='*';RS3.lb=null;RS3.title=title||rec.title||rec.test_title||(t&&t.title)||'';
+  RS3.bm=new Set();try{if(typeof BM!=='undefined'&&BM)BM.forEach(k=>{const [a,b]=String(k).split(':');if(a===String(rec.test_id))RS3.bm.add(+b)})}catch(e){}
+  if(top()&&top().key==='res3')redraw();else push(resultView());
+  if(!rec.test_id||(t&&t.practice)){RS3.lb={ok:false};redraw();return}
+  rpc('cbt_leaderboard',{p_test:rec.test_id}).then(r=>{if(RS3.rec===rec){RS3.lb=r||{ok:false};if(top()&&top().key==='res3'&&RS3.tab==='ov'){const b=$('#scrB'),y=b.scrollTop;redraw();b.scrollTop=y}}}).catch(()=>{RS3.lb={ok:false}})}
+async function openResult3(id){closeLayer();RS3.rec=null;push(resultView());let r=null;try{r=await rpc('cbt_review',{p_result:id})}catch(e){}
+  if(r&&!r.ok&&r.error==='hidden'){back();heldOpen('',r.result_at);return}
+  if(!r||!r.ok||r.gone){back();toast3(r&&r.gone?'This test is no longer available for review.':'Could not load this result. Please try again.');return}
+  rsOpen(r.result,r.review,'')}
+const rsKeep=fn=>{const b=$('#scrB'),y=b.scrollTop;fn();redraw();b.scrollTop=y};
+A.review=el=>openResult3(el.dataset.r);
+A.rsTab=el=>{RS3.tab=el.dataset.v;redraw();const t=$('.rs-tabs');if(t){const b=$('#scrB');if(t.offsetTop<b.scrollTop)b.scrollTop=t.offsetTop-4}};
+A.rsF=el=>rsKeep(()=>{RS3.f=el.dataset.v});A.rsSec=el=>rsKeep(()=>{RS3.sec=el.dataset.v});
+A.rsJump=el=>{const i=+el.dataset.i;RS3.tab='sol';RS3.f='all';RS3.sec='*';redraw();setTimeout(()=>{const e=root.getElementById('rq'+i);if(e){e.scrollIntoView({behavior:RM?'auto':'smooth',block:'center'});e.classList.add('flash3')}},80)};
+A.rsBm=async el=>{const i=+el.dataset.i,tid=RS3.rec.test_id,on=!RS3.bm.has(i);on?RS3.bm.add(i):RS3.bm.delete(i);el.classList.toggle('on',on);
+  let r=null;try{r=await rpc('cbt_bookmark',{p_test:tid,p_qidx:i,p_on:on})}catch(e){}
+  if(!r||!r.ok){on?RS3.bm.delete(i):RS3.bm.add(i);el.classList.toggle('on',!on);toast3(r&&r.error==='limit'?'You can save up to 500 questions.':'Could not save. Please try again.');return}
+  clearOld('bm');try{if(typeof BM!=='undefined'&&BM){on?BM.add(tid+':'+i):BM.delete(tid+':'+i)}}catch(e){}toast3(on?'Saved':'Removed from saved')};
+/* the result is not out yet (live tests): when it will be */
+function heldOpen(title,at){push({t:'Test submitted',s:'',key:'held',html:()=>`<section class="rsh held"><span class="ti g">${ic('check',26)}</span><h2>Test submitted</h2>${title?`<p><b>${esc3(title)}</b></p>`:''}<p>Your answers are saved. Your result, rank and answer key will show after</p><b class="held-at">${at?fD(at,{weekday:'short',day:'numeric',month:'short'})+', '+fT(at):'the test closes'}</b></section>
+  <div class="card rs-note">${ic('bell',18)}<span>We will show the result here in Test history as soon as it is out.</span></div><button class="btn lg" data-a="back">Done</button>`})}
+/* after a test is submitted in the new design, show its result (or "result after …") here instead of the classic page */
+(function(){const v3now=()=>document.body.classList.contains('v3on');
+  ['showResult','showHeld'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;window[n]=function(){const r=f.apply(this,arguments);
+    if(v3now()){try{const args=arguments,R=(typeof RV!=='undefined'&&RV)||null;toNew();if(typeof loadCat==='function')loadCat(true).then(()=>{if(!scrOpen())softRender()}).catch(()=>{});
+      if(n==='showResult'&&R&&R.result){let tt='';try{const T0=(typeof CAT!=='undefined'&&CAT&&CAT.tests||[]).find(x=>x.id===R.result.test_id);tt=T0?T0.title:''}catch(e){}rsOpen(R.result,R.review,tt||(typeof CURPEND!=='undefined'&&CURPEND&&CURPEND.title)||'')}else if(n==='showHeld')heldOpen(args[0],args[1])}catch(e){console.error(e)}}
+    return r}})})();
+
 /* ================= MENU: the classic menu's items, plus the switch back ================= */
 A.menu=()=>{const u=unread(),mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' on':''}${cls||''}" data-a="m" data-k="${k}">${ic(i)}<span>${t}</span>${extra?`<em>${extra}</em>`:''}</button>`;
   drawer.innerHTML=`<div class="hero pcard"><div class="who">${avatar()}<div style="min-width:0"><b>${esc3(stuName())}</b><small class="mut">${esc3(stuMeta())}</small></div></div><button class="btn sm onhero ghost blk" data-a="m" data-k="profile">View profile</button></div>
@@ -1213,7 +1297,7 @@ async function rvAsk(sid,title,manual){
   const send=async()=>{const ta=B.querySelector('textarea'),go=B.querySelector('.go'),er=B.querySelector('.er'),body=ta.value.trim();if(!rating||body.length<RVMIN)return;
     go.disabled=true;go.textContent='Sending…';er.textContent='';let r=null;try{r=await rpc('cbt_review_save',{p_series:sid,p_rating:rating,p_body:body,p_photo:''})}catch(e){}
     if(!r||!r.ok){go.textContent='Submit review';sync();er.textContent=r&&r.error==='busy'?'Please wait a few seconds and try again.':r&&r.error==='not_unlocked'?'Reviews open once this series is unlocked for you.':'Could not send. Please check your internet and try again.';return}
-    try{RV&&delete RV[(itemOfSeries(sid)||{}).id];XD=null}catch(e){}
+    try{SRV&&delete SRV[(itemOfSeries(sid)||{}).id];XD=null}catch(e){}
     B.innerHTML=`<div class="ty"><div class="ic">${RVI.heart}</div><h2>Thank you!</h2><p class="s">${r.status==='pending'?'Your review will show after a quick check.':'Your review is live on the series page.'}</p></div>`;
     setTimeout(rvClose,1800);if(scrOpen()&&top()&&top().key==='sp')setTimeout(()=>{loadExtras();redraw()},400)};
   const nudge=()=>{nudged=true;B.innerHTML=`<div class="ty"><div class="ic">${RVI.heart}</div><h2 id="rvT">Just 20 seconds?</h2><p class="s">Two lines from you help hundreds of students pick the right test series, and tell us what to improve next.</p></div>
