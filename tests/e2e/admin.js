@@ -103,6 +103,7 @@ async function rpcRoute(route) {
     await page.goto(BASE + 'cp-dt764twzf54s5m.html#/team/alerts?c=all'); await page.waitForTimeout(1500);   // 'all': the XSS row is an admin change
     const al = await page.textContent('#ax-page');
     ok(/Recovery code used/.test(al) && /Wrong two-step code/.test(al), tag + ' security alerts list the recovery code and wrong code');
+    ok(/Get alerts on Telegram/.test(al) && await page.$('#tg-tok') !== null, tag + ' Telegram alerts set-up is offered');
     ok(!(await page.evaluate(() => window.__x)) && await page.$('#ax-page img[src=x]') === null, tag + ' alert text is shown as text, not HTML');
     await page.click('.tl-i[data-act=open]'); await page.waitForSelector('.drawer');
     const dr = await page.textContent('.drawer');

@@ -349,16 +349,28 @@ const secName = k => k.startsWith('many:') ? 'Many: ' + ((SEC[k.slice(5)] || [k.
 const secInfo = k => SEC[k.startsWith('many:') ? k.slice(5) : k] || [k, '', ''];
 const CATS = [['risk', 'Risky sign-ins', 'alert'], ['admin', 'Admin changes', 'settings'], ['students', 'Students', 'users'], ['all', 'All', 'list']];
 const device = ua => !ua ? '' : (/(iPhone|iPad|Android|Windows|Mac OS X|Linux)/.exec(ua) || [''])[0].replace('Mac OS X', 'Mac') + (/(Edg|Chrome|Firefox|Safari)\//.test(ua) ? ' · ' + /(Edg|Chrome|Firefox|Safari)\//.exec(ua)[1].replace('Edg', 'Edge') : '');
+// v63: serious alerts sent to the owner's Telegram at once (supabase_v63_telegram_alerts.sql)
+function tgCard(t) {
+  if (!t || !t.ok) return t && t.error === 'missing' ? h`<div class="callout warn mt12">${icon('info')}<div class="sm">Instant alerts on Telegram need <b>supabase_v63_telegram_alerts.sql</b> (then supabase_v35_admin_team.sql again).</div></div>` : '';
+  if (t.linked) return h`<div class="card row wrap mt12" style="gap:12px"><span class="av sm" style="--c:#229ED9">${icon('send', 15)}</span><div class="grow"><b>Alerts on Telegram: ON</b><div class="xs mut">Serious alerts reach your Telegram the moment they happen (at most 30 an hour).</div></div><button class="btn sm" data-act="tgtest">${icon('bell', 14)} Send a test</button><button class="btn sm ghost" data-act="tgoff">Turn off</button></div>`;
+  return h`<div class="card mt12"><div class="row" style="gap:12px"><span class="av sm" style="--c:#229ED9">${icon('send', 15)}</span><div class="grow"><b>Get alerts on Telegram at once</b><div class="xs mut">Free. Takes 2 minutes. The token is kept only in the database and never shown again.</div></div></div>
+    <ol class="sm mt12" style="padding-left:18px;line-height:1.7"><li>In Telegram open <b>@BotFather</b> → send <span class="mono">/newbot</span> → give any name and a username ending in <span class="mono">bot</span>.</li>
+      <li>BotFather sends a <b>token</b> (like <span class="mono">123456789:AA…</span>). Copy it and paste it below → <b>Save</b>.</li>
+      <li>Open your new bot (the link BotFather gave) → press <b>Start</b>.</li><li>Come back and tap <b>Check</b>. A message “alerts are ON” arrives in Telegram.</li></ol>
+    ${t.set ? h`<div class="row wrap mt12" style="gap:8px"><span class="pill warn">Token saved · waiting for Start</span><span class="grow"></span><button class="btn sm pri" data-act="tgcheck">${icon('check', 14)} Check</button><button class="btn sm ghost" data-act="tgoff">Remove</button></div>` : ''}
+    <div class="row wrap mt12" style="gap:8px"><div class="inp-wrap grow">${icon('key', 16)}<input class="inp mono" id="tg-tok" type="password" autocomplete="off" spellcheck="false" placeholder="Paste the bot token" aria-label="Bot token"></div><button class="btn pri" data-act="tgsave">${t.set ? 'Save new token' : 'Save'}</button></div></div>`;
+}
 async function alerts(ctx) {
   const days = +(ctx.q.d || 7), cat = CATS.some(c => c[0] === ctx.q.c) ? ctx.q.c : 'risk';
   AX.set(ctx.el, UI.skeleton(4));
-  const r = await AX.api.call('cbt_admin_security', 'get', { days, cat });
+  const [r, tg] = await Promise.all([AX.api.call('cbt_admin_security', 'get', { days, cat }), AX.api.call('cbt_admin_telegram', 'status')]);
   if (!ctx.alive()) return;
   if (!r.ok) { AX.set(ctx.el, UI.errorBox(r, 'supabase_v62_admin_guard.sql')); AX.act(ctx.el, { retry: () => ctx.reload() }); return; }
   const L = r.events || [], C = Object.entries(r.counts || {}).sort((a, b) => b[1] - a[1]), cats = r.cats || {};
   const lnk = q => AX.link('team/alerts', Object.assign({ d: days, c: cat }, q));
   const bad = a => a.level === 'high' || a.level === 'warn';
   AX.set(ctx.el, h`<div class="callout ${r.unseen ? 'bad' : 'info'}">${icon(r.unseen ? 'alert' : 'shieldCheck')}<div class="sm">${r.unseen ? h`<b>${fmt.plural(r.unseen, 'new alert')}.</b> Tap an alert to see the full address, device and what to do.` : 'No new alerts.'} Your address now: <b class="mono">${r.me || '—'}</b></div></div>
+    ${tgCard(tg)}
     <div class="row wrap gap16" style="margin:16px 0"><div class="chips">${join(CATS, ([k, l, ic]) => h`<a class="chip ${cat === k ? 'on' : ''} ${k === 'risk' ? 'alert' : ''}" href="${lnk({ c: k })}">${icon(ic, 14)} ${l}<em>${k === 'all' ? Object.values(cats).reduce((x, y) => x + y, 0) : cats[k] || 0}</em></a>`)}</div>
       <div class="chips">${join([[1, '24 h'], [7, '7 days'], [30, '30 days']], ([k, l]) => h`<a class="chip ${days === k ? 'on' : ''}" href="${lnk({ d: k })}">${l}</a>`)}</div>
       <span class="grow"></span>${r.unseen ? h`<button class="btn sm" data-act="seen">${icon('check', 15)} Mark all as seen</button>` : ''}</div>
@@ -392,6 +404,14 @@ async function alerts(ctx) {
       onOpen(el, close) { AX.act(el, { block: b => { close(); block(b.dataset.ip); }, async unblock(b) { const x = await AX.api.call('cbt_admin_security', 'unblock', { ip: b.dataset.ip }); if (!x.ok) return UI.err(x); close(); UI.toast('Unblocked'); ctx.reload(); } }); } });
   };
   AX.act(ctx.el, {
+    async tgsave(b) {
+      const i = ctx.el.querySelector('#tg-tok'), v = (i && i.value || '').trim();
+      if (!/^\d{5,15}:[A-Za-z0-9_-]{30,60}$/.test(v)) return UI.toast('That is not a bot token. Copy the whole token from @BotFather (numbers:letters).', { tone: 'bad' });
+      await UI.busy(b, async () => { const x = await AX.api.call('cbt_admin_telegram', 'set', { token: v }); if (!x.ok) return UI.toast(x.error === 'token' ? 'That is not a bot token.' : AX.errText(x), { tone: 'bad' }); UI.toast('Saved. Now open your bot in Telegram and press Start, then tap Check.'); ctx.reload(); });
+    },
+    async tgcheck(b) { await UI.busy(b, async () => { const x = await AX.api.call('cbt_admin_telegram', 'status'); if (!x.ok) return UI.err(x); UI.toast(x.linked ? 'Linked! A message was sent to your Telegram.' : 'Not yet: open your bot, press Start (or send "hi"), wait 5 seconds, then tap Check again.', { tone: x.linked ? 'ok' : 'warn', ms: 6000 }); if (x.linked) ctx.reload(); }); },
+    async tgtest(b) { await UI.busy(b, async () => { const x = await AX.api.call('cbt_admin_telegram', 'test'); UI.toast(x.ok ? 'Test sent — check Telegram.' : 'Could not send (more than 30 alerts in the last hour?)', { tone: x.ok ? 'ok' : 'bad' }); }); },
+    async tgoff(b) { if (!(await UI.confirm({ title: 'Turn off Telegram alerts?', text: 'Alerts will then only be in this panel and in the daily GitHub e-mail.', yes: 'Turn off', tone: 'danger' }))) return; await AX.api.call('cbt_admin_telegram', 'off'); UI.toast('Telegram alerts are off'); ctx.reload(); },
     async seen(b) { await UI.busy(b, async () => { const x = await AX.api.call('cbt_admin_security', 'seen'); if (!x.ok) return UI.err(x); UI.toast('Marked as seen'); AX.emit('data:changed'); ctx.reload(); }); },
     open: el => { const a = L.find(x => String(x.id) === el.dataset.id); if (a) open(a); },
     block: b => block(b.dataset.ip),
