@@ -202,6 +202,8 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Limit:** *Valid for how many orders?* — the code stops when that many orders (pending or paid) have it. Empty = no limit. Edit a code later to change its limit, end date or discounts; the card shows *used of … · left*. Remove one series from a code (✕ on the line) or delete the whole code (Remove).
 - **Store:** each series with a live code shows *20% off · 37 of 50 left*. The codes are never shown on the store.
 - **Scratch card:** when a student taps **Buy now** and a live code exists, a card opens: scratch it, the code appears, **Copy code**, then **Continue to pay** and paste it in the coupon box. A successful apply bursts confetti.
+- **Private code:** switch off *Show on the scratch card and the store* (e.g. a code for one promoter). It works only when typed; the card shows **Private**.
+- **Safety:** an unpaid order holds a use of a limited code only for 24 hours (or once payment details are sent), so a limit cannot be used up by orders that are never paid; two orders at the same moment cannot pass the limit.
 - **Setup:** run `supabase_v60_coupons_many.sql` once (after v59), then `supabase_v35_admin_team.sql` again.
 
 ## Live tests: result time and auto-save (`supabase_v30_result_time.sql`)

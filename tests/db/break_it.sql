@@ -684,6 +684,27 @@ select public.cbt_admin_coupons(:'ow5','update_code','{"code":"LIMIT2","max_uses
 select pg_temp.chk('25h the owner can change the limit of a code later',
   :'uc' = 'true' and (select max_uses = 5 from cbt_private.store_coupons where code = 'LIMIT2' limit 1));
 select pg_temp.chk('25i a team member cannot delete a code', public.cbt_admin_coupons(:'vt','remove_code','{"code":"LIMIT2"}')->>'error' = 'forbidden');
+-- safety (review of v60)
+select public.cbt_admin_coupons(:'ow5','bulk',jsonb_build_object('code','SECRET1','scratch',false,'ends_at', floor(extract(epoch from now() + interval '4 days') * 1000)::bigint,
+  'items', jsonb_build_array(jsonb_build_object('item_id','cccccccc-0000-0000-0000-000000000001','kind','pct','value',50))))->>'ok';
+update cbt_private.store_coupons set active = false where code <> 'SECRET1';
+set role anon;
+select pg_temp.chk('25j a private code is never shown by the scratch card or the store',
+  public.cbt_store_reveal('cccccccc-0000-0000-0000-000000000001')->>'code' is null
+  and public.cbt_store_coupons_public()::text not like '%50%');
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Secret Typed','9866000009')->>'code' as sq \gset
+select pg_temp.chk('25k a private code still works when typed',
+  (public.cbt_store_order_apply(:'sq','9866000009','SECRET1',false)->>'coupon_off')::int > 0);
+reset role;
+update cbt_private.store_coupons set active = true;
+-- LIMIT2 is full (limit 5 now: 2 used); fill it with 3 unpaid orders, then let them get old
+update cbt_private.store_coupons set max_uses = 2 where code = 'LIMIT2';
+update public.cbt_store_orders set created_at = now() - interval '2 days' where coupon_code = 'LIMIT2' and status = 'pending' and paid_at is null;
+set role anon;
+select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Late Buyer','9866000010')->>'code' as lb \gset
+select pg_temp.chk('25l unpaid orders left behind do not use up a limited code',
+  (public.cbt_store_order_apply(:'lb','9866000010','LIMIT2',false)->>'coupon_off')::int = 10);
+reset role;
 
 -- ===== 26. v61 Tests page: poster and filter =====
 set role anon;
