@@ -8,7 +8,10 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="theme-color" content="#f3f6f9">
 <!-- clean address: /index.html is shown as just / (the file name is never shown to students) -->
-<script>try{var p=location.pathname,n=p.replace(/\/index\.html$/,'/');if(n!==p)history.replaceState(history.state,'',n+location.search+location.hash)}catch(e){}</script>
+<script>/* tidy address (index.html → /) in a browser tab only: an app installed while its scope was /index.html would show a
+   browser bar for "/", so the installed app keeps the address it was opened with */
+try{var sa=matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||matchMedia('(display-mode: minimal-ui)').matches||navigator.standalone===true;
+var p=location.pathname,n=p.replace(/\/index\.html$/,'/');if(!sa&&n!==p)history.replaceState(history.state,'',n+location.search+location.hash)}catch(e){}</script>
 <link rel="canonical" href="https://aspironeducation.com/">
 <meta name="description" content="Practise NEET and JEE with online CBT mock tests in exam style. Get instant results, your rank and a detailed analysis, plus previous year questions (PYQ).">
 <meta property="og:type" content="website">
@@ -1333,6 +1336,7 @@ html[data-oled="1"] #splash{background:radial-gradient(110% 75% at 50% 40%,#1015
 #splash.go .p-lr{transform-origin:0 50%;animation:spLine .5s cubic-bezier(.22,.8,.24,1) 1.1s both}
 #splash.go .sp-ld{animation-delay:2.2s}
 #splash.q .sp-in{animation:spFade .2s ease-out both}
+#splash.hold .sp-in{opacity:0}
 html[data-lite] #splash .sp-glow,html[data-lite] #splash .sp-flare{display:none}
 @keyframes spFade{from{opacity:0}}
 @keyframes spLdIn{to{opacity:1}}
@@ -1844,12 +1848,16 @@ try{snd=JSON.parse(localStorage.getItem('cbt_snd'))!==false}catch(e){}
 s.addEventListener('click',function(){window.__splEnd=0;if(window.__splReady&&window.hideSplash)hideSplash()});
 /* header logo: a soft shine passes over ASPIRON every few seconds (not when the app is in the background or in a test) */
 if(!rm)setTimeout(function(){var sh=function(){var w=document.querySelector('.bmk-w');if(!w||document.hidden||document.body.classList.contains('intest')||!w.offsetWidth)return;w.classList.remove('bmk-go');void w.offsetWidth;w.classList.add('bmk-go')};sh();setInterval(sh,H.dataset.lite?16000:8000)},(q||rm?600:2300));
-if(q||rm){s.classList.add('q');window.__splEnd=t0+(q?300:700);return}
-s.classList.add('go');window.__splEnd=t0+1800;
-if(!snd)return;
-try{var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
-var run=function(late){var c=new AC(),done=false;
- var play=function(){if(done)return;done=true;var el=late?.8:(performance.now()-t0)/1000,T=c.currentTime,
+/* the show starts on a real screen frame (never while the app's scripts are still being read, which froze it before),
+   and its sound starts at the same moment. Until then the logo is hidden, at most 0.45 s. */
+var started=false,c=null,AC=null;window.__splEnd=t0+2600;
+var start=function(){if(started)return;started=true;requestAnimationFrame(function(){requestAnimationFrame(function(){
+  s.classList.remove('hold');t0=performance.now();
+  if(q||rm){s.classList.add('q');window.__splEnd=t0+(q?300:700);if(c)try{c.close()}catch(e){}return}
+  s.classList.add('go');window.__splEnd=t0+1800;
+  if(c){if(c.state==='running')play();else{try{var r=c.resume();if(r&&r.then)r.then(function(){if(c.state==='running'&&performance.now()-t0<700)play();else try{c.close()}catch(x){}},function(){})}catch(x){}
+    setTimeout(function(){if(!done)try{c.close()}catch(x){}},900)}}})})};
+var done=false,play=function(){if(done||!c)return;done=true;var el=(performance.now()-t0)/1000,T=c.currentTime,
   at=function(x){return x<el-.1?-1:T+Math.max(0,x-el)},
   out=c.createDynamicsCompressor(),m=c.createGain();m.gain.value=.5;m.connect(out);out.connect(c.destination);
   /* small generated room reverb */
@@ -1870,19 +1878,12 @@ var run=function(late){var c=new AC(),done=false;
   t=at(.85);if(t>=0){var o=c.createOscillator();o.type='sine';o.frequency.setValueAtTime(170,t);o.frequency.exponentialRampToValueAtTime(72,t+.14);var g=c.createGain();env(g,t,.006,.3,.2);o.connect(g);g.connect(m);o.start(t);o.stop(t+.25)}
   /* 4. sparkle chime with the star */
   [[.9,1318.51],[1,1975.53]].forEach(function(nt){var t=at(nt[0]);if(t<0)return;[[1,1,1.7],[2.01,.32,1],[3,.16,.6],[4.2,.07,.35]].forEach(function(p){var o=c.createOscillator();o.type='sine';o.frequency.value=nt[1]*p[0];var g=c.createGain();env(g,t,.004,.12*p[1],p[2]);o.connect(g);g.connect(m);o.start(t);o.stop(t+p[2]+.05)})});
-  setTimeout(function(){try{c.close()}catch(e){}},4200)};
- /* late = the first tap in a browser tab (Chrome keeps sound blocked until then): only the tap and the sparkle chime play */
- if(late){var r2=c.state==='running'?null:c.resume();if(!r2)play();else if(r2.then)r2.then(function(){if(c.state==='running')play();else try{c.close()}catch(e){}},function(){try{c.close()}catch(e){}});return}
- if(c.state==='running')play();else{var r=c.resume();if(r&&r.then)r.then(function(){if(c.state==='running'&&performance.now()-t0<500)play()},function(){})}
- setTimeout(function(){if(!done){done=true;try{c.close()}catch(e){}arm()}},550);
-};
-/* a browser tab blocks sound until the person taps: the first tap in the first 45 s plays the chime once (never in a test, never if switched off in Settings) */
-var armed=false,arm=function(){if(armed)return;armed=true;var ev=['pointerup','touchend','keydown','click'],h=function(e){if(!e.isTrusted)return;ev.forEach(function(n){document.removeEventListener(n,h,true)});
- if(performance.now()-t0>45000||document.hidden||document.body.classList.contains('intest'))return;
- try{if(JSON.parse(localStorage.getItem('cbt_snd'))===false)return}catch(x){}
- run(true)};ev.forEach(function(n){document.addEventListener(n,h,true)})};
-run(false);
-}catch(e){}})();</script>
+  var cc=c;setTimeout(function(){try{cc.close()}catch(e){}},4200)};
+/* sound: only where the phone lets the page play it at once (installed app). A browser tab that blocks sound stays
+   silent: no late chime seconds after the show. The show waits for the sound at most 0.45 s. */
+if(!q&&!rm&&snd){try{AC=window.AudioContext||window.webkitAudioContext;if(AC){c=new AC();if(c.state==='running')start();else{var r0=c.resume();if(r0&&r0.then)r0.then(function(){if(c.state==='running')start()},function(){})}}}catch(e){c=null}}
+s.classList.add('hold');setTimeout(start,c?450:0);
+try{}catch(e){}})();</script>
 <header class="hdr"><div class="hdr-in">
   <button class="iconbtn" id="mnu" aria-label="Menu" onclick="openMenu()" style="display:none"></button>
   <a class="brand" href="#/" aria-label="Aspiron Education"><span class="logo" id="lg" style="display:none"></span><span id="sn">Aspiron Education</span><span class="bmk" aria-hidden="true"><i class="bmk-w"><i class="bmk-s"></i></i><span class="bmk-e">EDUCATION</span></span></a>
@@ -1898,7 +1899,7 @@ run(false);
 <script src="app1.js?v=37"onerror="(window.__miss=window.__miss||[]).push('app1.js')"></script>
 <script src="app2.js?v=23" onerror="(window.__miss=window.__miss||[]).push('app2.js')"></script>
 <script src="app3.js?v=27" onerror="(window.__miss=window.__miss||[]).push('app3.js')"></script>
-<script src="app4.js?v=20" onerror="(window.__miss=window.__miss||[]).push('app4.js')"></script>
+<script src="app4.js?v=21" onerror="(window.__miss=window.__miss||[]).push('app4.js')"></script>
 <script src="app5.js?v=19" onerror="(window.__miss=window.__miss||[]).push('app5.js')"></script>
 <script src="app6.js?v=36"onerror="(window.__miss=window.__miss||[]).push('app6.js')"></script>
 <script src="app7.js?v=2" onerror="(window.__miss=window.__miss||[]).push('app7.js')"></script>
