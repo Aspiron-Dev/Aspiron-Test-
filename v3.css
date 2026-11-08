@@ -792,7 +792,7 @@ svg.i .f{fill:currentColor;fill-opacity:0;transition:fill-opacity .3s var(--ease
 .pst .tt2{margin-top:0;padding:0}
 /* ---- round 4: the poster runs from the top of the screen and fades into the page; colours come from the poster ---- */
 .hdr{transition:background-color .3s ease,box-shadow .3s ease}
-.hdr.onpst{background:var(--pcTop);box-shadow:none;--logo:var(--pcLogo);--logoE:var(--pcLogoE)}
+.hdr.onpst{--logo:var(--pcLogo);--logoE:var(--pcLogoE)}
 .pst{margin-top:calc(-6px - var(--hh,62px))}
 .pst-art{aspect-ratio:auto}
 .pst.noimg .pst-art{aspect-ratio:1/1.12}
@@ -822,3 +822,14 @@ svg.i .f{fill:currentColor;fill-opacity:0;transition:fill-opacity .3s var(--ease
 .pst-tabs .tt2 small{opacity:calc(1 - 3.2 * var(--p,0));max-height:calc(18px * (1 - var(--p,0)));overflow:hidden}
 .pst{margin-top:calc(-1 * var(--hh,62px));margin-bottom:20px}
 .pst-art{will-change:transform,opacity}
+/* ---- round 6: smoother — only transforms and opacity change while scrolling ---- */
+.hdr-tint{position:absolute;inset:0;background:var(--pcTop,transparent);opacity:0;pointer-events:none;will-change:opacity}
+.hdr-in{position:relative;z-index:1}
+.bmk-w{transition:background-color .4s ease}
+.bmk-e{transition:color .4s ease}
+.pst-stick{contain:layout style}
+.pst-bd{will-change:transform,opacity}
+.pst-tabs .tt2 button{transition:background-color .3s ease,color .3s ease,border-color .3s ease,transform .35s var(--spring)}
+.rv{opacity:0;transform:translate3d(0,18px,0)}
+.rv.rvin{opacity:1;transform:none;transition:opacity .6s var(--out),transform .7s var(--out)}
+@media (prefers-reduced-motion: reduce){.rv{opacity:1;transform:none}}
