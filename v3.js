@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=1;
+const V3VER=2;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -51,7 +51,7 @@ const dur=m=>m>=60?`${Math.floor(m/60)} h${m%60?` ${m%60} min`:''}`:`${m} min`;
 const fmtN=n=>Number(n||0).toLocaleString('en-IN');
 const day0=t=>{const d=new Date(t);d.setHours(0,0,0,0);return d.getTime()};
 const dayWord=t=>{const k=Math.round((day0(t)-day0(nowMs()))/DAY);return k===0?'Today':k===1?'Tomorrow':k===-1?'Yesterday':fD(t,{weekday:'short',day:'numeric',month:'short'})};
-const P={
+const P={star:'<path d="M11.5 2.3a.6.6 0 0 1 1 0l2.6 5.4 5.9.9a.6.6 0 0 1 .3 1l-4.3 4.2 1 5.9a.6.6 0 0 1-.8.6L12 17.6l-5.3 2.8a.6.6 0 0 1-.8-.6l1-5.9-4.3-4.2a.6.6 0 0 1 .3-1l5.9-.9z"/>',
  home:'<path class="f" d="M3 10a2 2 0 0 1 .7-1.5l7-6a2 2 0 0 1 2.6 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2h-4v-6a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v6H5a2 2 0 0 1-2-2z"/>',
  tests:'<path class="f" d="M7 3h6.5L19 8.5V19a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M13 3v4a1.5 1.5 0 0 0 1.5 1.5H19"/><path d="m8.6 14.6 2.2 2.2 4.6-4.6"/>',
  tools:'<rect class="f" x="3.5" y="3.5" width="7" height="7" rx="2"/><rect class="f" x="13.5" y="3.5" width="7" height="7" rx="2"/><rect class="f" x="3.5" y="13.5" width="7" height="7" rx="2"/><path d="M17 13.8v6.4"/><path d="M13.8 17h6.4"/>',
@@ -259,14 +259,13 @@ function softRender(){if(!document.body.classList.contains('v3on')||document.bod
 
 /* ================= HOME ================= */
 function seriesHero(){const s=curSeries();
-  if(!s)return `<section class="sec"><div class="hero ser"><span class="tag gold">Your test series</span><h3>Start your first test series</h3><p class="mut">Pick a NEET or JEE series from the store. Your progress shows up here.</p><div class="ft"><span></span><button class="btn sm gold" data-a="tab" data-tab="test">Open the store</button></div></div></section>`;
+  if(!s)return `<section class="band"><div class="band-in"><small>YOUR TEST SERIES</small><div class="band-row"><b class="band-t">Choose your first test series</b><button class="pillbtn" data-a="tab" data-tab="test">OPEN STORE</button></div></div></section>`;
   const k=seriesStats(s);
-  return `<section class="sec"><div class="hero ser" id="serBox">
-   <div class="ser-top"><div style="min-width:0"><span class="tag gold">Your test series</span><h3>${esc3(s.title)}</h3><p class="mut">${s.is_free?'Free series':'<span class="gold">Premium series</span>'}${k.live?`, <span style="color:#ffb3ad">${k.live} test${k.live>1?'s':''} live now</span>`:''}</p></div>
-    ${mine().length>1?`<button class="btn sm onhero ghost" data-a="switchSeries" aria-label="Switch test series">${ic('swap',15)}Switch</button>`:''}</div>
-   <div><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px"><span class="mut"><b style="color:var(--heroTx)">${N(k.done)}</b> of ${k.n} tests attempted</span><span class="mut"><b style="color:var(--heroTx)">${N(k.n-k.done)}</b> left</span></div>
-    <span class="bar"><i style="--p:${k.n?(k.done/k.n).toFixed(3):0}"></i></span></div>
-   <div class="ft"><span class="mut" style="font-size:13px">${esc3((s.description||'').slice(0,70))||'Tests, results and solutions'}</span><button class="btn sm onhero" data-a="openSD" data-id="${esc3(s.id)}">Open series</button></div></div></section>`}
+  return `<section class="band" id="serBox"><div class="band-in"><small>YOUR TEST SERIES</small>
+   <div class="band-row"><button class="band-t" data-a="${mine().length>1?'switchSeries':'openSD'}" data-id="${esc3(s.id)}" aria-label="${mine().length>1?'Switch test series':'Open this test series'}"><span>${esc3(s.title)}</span>${ic('down',20)}</button>
+    <button class="pillbtn" data-a="tab" data-tab="test">${s.is_free?'UPGRADE':'UPGRADE PLAN'}</button></div>
+   <div class="band-meta"><span>${k.done} of ${k.n} tests attempted</span>${k.live?`<span class="st live" style="color:#ffb3ad">${k.live} live now</span>`:''}<button class="lnk" style="color:var(--heroTx)" data-a="openSD" data-id="${esc3(s.id)}">Open${ic('right')}</button></div>
+   <span class="bar"><i style="--p:${k.n?(k.done/k.n).toFixed(3):0}"></i></span></div></section>`}
 const RC=2*Math.PI*24;
 function cdCard3(){let c=null;try{c=cdGet()}catch(e){}
   if(!c)return `<section class="sec"><div class="card cdc"><div class="cd-top"><span class="ti g">${ic('target',22)}</span><div style="min-width:0"><h3>Exam countdown</h3><p>Set your exam date and see how much time is left.</p></div><button class="btn sm" data-a="cdEdit">Set date</button></div></div></section>`;
@@ -289,28 +288,31 @@ function upList(){const ok=new Set(mine().map(s=>s.id)),t0=nowMs();return (C().t
 function evRow(x){const t=x.t,live=['live','prog'].includes(x.st),when=t.opens_at||nowMs(),s=sOf(t.series_id);
   return `<button class="evr" data-a="${x.st==='wait'?'openSD':'test'}" data-id="${esc3(x.st==='wait'?t.series_id:t.id)}"><span class="when${live?' now':''}"><b>${new Date(when).getDate()}</b><small>${fD(when,{month:'short'})}</small></span>
    <span style="min-width:0"><b>${esc3(t.title)}</b><small>${live?(x.st==='prog'?'You started this test':'Open now'):dayWord(when)+', '+fT(when)}, ${dur(t.duration||0)}${s?', '+esc3(s.title):''}</small></span>${stBadge(t)}</button>`}
-function upcoming(){const L=upList().slice(0,4);
-  return `<section class="sec"><div class="sh"><h2>Upcoming</h2><span class="aside">Next 2 weeks</span></div><div class="card">${L.length?`<div class="ev">${L.map(evRow).join('')}</div>`:`<div class="empty"><span class="ti">${ic('cal',22)}</span><b>No tests scheduled</b><p>Live and upcoming tests from your series show up here.</p></div>`}
-  <button class="morebtn" data-a="week"><span>${ic('cal',19)}View weekly schedule</span>${ic('right',18)}</button></div></section>`}
-const ZONE=[['series','layers','My Test Series'],['dl','dl','Notes & PDFs'],['hist','hist','My Results'],['mk','pen','Mistakes'],['qb','qb','Question Bank'],['pyq','pyq','PYQ Analyzer']];
-function zone(){return `<section class="sec"><div class="sh"><h2>Your study zone</h2></div><div class="zone">
-  <button class="zt w2 tap" data-a="zone" data-k="study"><span class="ti">${ic('book',21)}</span><div><b>My Study</b><small>Library, practice and revision</small><span class="bar"><i style="--p:${Math.min(1,(typeof pstats==='function'?pstats(C().results||[]).n:0)/30).toFixed(3)}"></i></span></div></button>
-  ${ZONE.map(z=>`<button class="zt" data-a="zone" data-k="${z[0]}"><span class="ti">${ic(z[1],22)}</span>${z[2]}</button>`).join('')}</div></section>`}
+function upcoming(){const all=upList(),L=all.slice(0,4),done=(C().tests||[]).some(t=>t.closes_at&&day0(t.closes_at)===day0(nowMs())&&t.closes_at<nowMs());
+  return `<section class="sec"><div class="sh"><h2>Upcoming Events (${all.length})</h2></div>
+  ${L.length?`<div class="card"><div class="ev">${L.map(evRow).join('')}</div></div>`:`<div class="evnone"><span class="ti">${ic('cal',20)}</span><span>${done?'Today’s live tests have ended':'No live or upcoming tests right now'}</span></div>`}
+  <button class="obtn" data-a="week">View Weekly Schedule</button></section>`}
+const ZONE=[['series','layers','My Test Series'],['qb','qb','Question Bank'],['pyq','pyq','PYQ Analyzer'],['gen','spark','Test Generator'],['dl','file','Notes & PDFs'],['mk','pen','Mistakes'],['bm','bookmark','Saved'],['hist','trophy','Results']];
+function zone(){return `<section class="sec"><div class="sh"><h2>Your study zone</h2></div><div class="qgrid">
+  ${ZONE.map(z=>`<button class="qi" data-a="zone" data-k="${z[0]}"><span class="ti g">${ic(z[1],24)}</span><span>${z[2]}</span></button>`).join('')}</div></section>`}
+function promoRail(id){let L=[];try{L=(typeof PROMO!=='undefined'&&PROMO)||[]}catch(e){}if(!L.length)return '';
+  return `<section class="sec"><div class="rail" id="${id}">${L.slice(0,6).map(x=>{const u=/^https?:\/\/|^#\//i.test(x.link||'')?x.link:'',img=x.img&&/^data:image\/|^https:\/\//.test(x.img)?x.img:'';
+   const body=img?`<img src="${esc3(img)}" alt="${esc3(x.title||'Offer')}">`:`<span class="bn-tx"><small class="gold">${esc3(x.label||'Aspiron')}</small><b>${esc3(x.title||'')}</b>${x.text?`<em>${esc3(x.text)}</em>`:''}</span>`;
+   return `<a class="pbn${img?'':' hero'}" ${u?`href="${esc3(u)}"${/^https?:/i.test(u)?' target="_blank" rel="noopener noreferrer"':''}`:''}>${body}</a>`}).join('')}</div>
+   ${L.length>1?`<div class="dots" id="${id}D" aria-hidden="true">${L.slice(0,6).map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}</section>`}
 function storeCard(x,cls){const off=x.mrp&&x.mrp>x.price?Math.round((1-x.price/x.mrp)*100):0,soon=x.buy_on===false&&!x.prebook;
   return `<article class="card ${cls||'tc'}"><span class="tag">${[courseOf(x),esc3(x.section||'')].filter(Boolean).join(', ')||'Test series'}</span><h3>${esc3(x.title)}</h3>${x.subtitle?`<p class="mut" style="font-size:13px">${esc3(x.subtitle)}</p>`:''}
    <div class="ft"><span class="price">${x.price?`<b>₹${fmtN(x.price)}</b>${off?`<s>₹${fmtN(x.mrp)}</s><span class="badge off">${off}% off</span>`:''}`:'<span class="free">Free</span>'}</span><a class="btn sm ${soon?'':'gold'}" href="${storeUrl(x)}">${soon?ic('bell',15)+'Notify me':x.prebook&&x.buy_on===false?'Pre-book':'Buy now'}</a></div></article>`}
-function trending(){if(!STORE){loadStore();return `<section class="sec"><div class="sh"><h2>Test series store</h2></div><div class="card tc sk" style="height:150px"></div></section>`}
-  const L=STORE.filter(x=>x.buy_on!==false).slice(0,6);if(!L.length)return '';
-  return `<section class="sec"><div class="sh"><h2>Trending test series</h2><button class="lnk" data-a="tab" data-tab="test">View all${ic('right')}</button></div><div class="rail" id="trRail">${L.map(x=>storeCard(x)).join('')}</div><div class="dots" id="trDots" aria-hidden="true">${L.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div></section>`}
-VIEW.home=()=>seriesHero()+cdCard3()+upcoming()+zone()+trending();
-AFTER.home=()=>{tick(true);every(()=>tick(false),1000);autoRail('#trRail','#trDots')};
+function trending(){if(!STORE){loadStore();return `<section class="sec"><div class="sh"><h2>Trending test series</h2></div><div class="card sk" style="height:190px"></div></section>`}loadExtras();return trendRail(true)}
+VIEW.home=()=>seriesHero()+cdCard3()+upcoming()+zone()+promoRail('hbRail')+trending();
+AFTER.home=()=>{tick(true);every(()=>tick(false),1000);autoRail('#trRail','#trDots');autoRail('#hbRail','#hbRailD');try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length))promoLoad().then(()=>{if(S.tab==='home')softRender()})}catch(e){}};
 function autoRail(rs,ds){const c=$(rs);if(!c||!c.children.length)return;const dots=[...root.querySelectorAll(ds+' i')];let i=0,touched=false;const st=()=>c.children[0].getBoundingClientRect().width+12;
   c.addEventListener('scroll',()=>{const k=Math.round(c.scrollLeft/st());if(k!==i){i=k;dots.forEach((d,j)=>d.classList.toggle('on',j===k))}},{passive:true});
   ['pointerdown','touchstart','wheel','focusin'].forEach(ev=>c.addEventListener(ev,()=>{touched=true},{passive:true}));
   if(!RM)every(()=>{if(touched||document.hidden)return;c.scrollTo({left:((i+1)%c.children.length)*st(),behavior:'smooth'})},5000)}
 A.switchSeries=()=>openSheet(`<h2 id="sheetT">Switch test series</h2><p class="sub">Home shows the series you pick.</p><div>${mine().map(s=>{const k=seriesStats(s);return `<button class="opt${s.id===(curSeries()||{}).id?' on':''}" data-a="pickSeries" data-id="${esc3(s.id)}"><div><b>${esc3(s.title)}</b><small>${s.is_free?'Free':'Premium'}, ${k.done} of ${k.n} tests attempted</small></div><span class="ck">${ic('check')}</span></button>`}).join('')}</div>`);
 A.pickSeries=el=>{lsSet('cbt_v3_series',el.dataset.id);closeLayer();const b=$('#serBox');if(b){b.style.transition='opacity .2s';b.style.opacity=0}setTimeout(()=>{softRender();toast3('Switched to '+(curSeries()||{}).title)},200)};
-A.zone=el=>{const k=el.dataset.k;({study:()=>go('lib'),series:()=>openMySeries('paid'),dl:()=>oldHash('#/notes'),hist:()=>oldHash('#/r'),mk:()=>oldHash('#/m'),qb:()=>oldHash('#/qb'),pyq:()=>oldHash('#/pyq')}[k]||(()=>{}))()};
+A.zone=el=>{const k=el.dataset.k;({study:()=>go('lib'),series:()=>{TQ.view='my';go('test')},dl:()=>oldHash('#/notes'),hist:()=>oldHash('#/r'),mk:()=>oldHash('#/m'),bm:()=>oldHash('#/b'),qb:()=>oldHash('#/qb'),pyq:()=>oldHash('#/pyq'),gen:()=>oldHash('#/gen')}[k]||(()=>{}))()};
 A.test=el=>{const t=tOf(el.dataset.id);if(!t)return;if(t.locked){oldModal(()=>openTest(t.id));return}oldRun(()=>openTest(t.id))};
 A.review=el=>oldRun(()=>openReview(el.dataset.r));
 
@@ -347,70 +349,107 @@ A.openNote=el=>{const n=(NOTES||[]).find(x=>String(x.id)===el.dataset.id);if(!n)
    <div class="g2" style="margin-top:16px;grid-template-columns:1fr 1fr">${n.img?'<button class="btn ghost" data-a="oldNotices">See the picture</button>':'<span></span>'}${u?`<a class="btn gold" href="${esc3(u)}" target="_blank" rel="noopener noreferrer">${esc3(n.label||'Open link')}</a>`:''}</div>`)};
 A.oldNotices=()=>oldHash('#/n');
 
-/* ================= TESTS ================= */
-const TQ={q:'',f:{exam:[],price:[],status:[]},quick:'all',mf:'paid',sf:'all'};
-const TFILT=[['exam','Exam',['NEET','JEE']],['price','Price',['Free','Paid']],['status','Status',['Available','Coming soon']]];
-const tfCount=()=>Object.values(TQ.f).reduce((a,v)=>a+v.length,0);
-function spass(x){const w=TQ.q.toLowerCase().split(/\s+/).filter(Boolean),h=[x.title,x.subtitle,x.section,courseOf(x),(x.features||[]).join(' ')].join(' ').toLowerCase();if(!w.every(v=>h.includes(v)))return false;const f=TQ.f;
-  if(f.exam.length&&courseOf(x)&&!f.exam.includes(courseOf(x)))return false;if(f.price.length&&!f.price.includes(x.price?'Paid':'Free'))return false;if(f.status.length&&!f.status.includes(x.buy_on===false?'Coming soon':'Available'))return false;return true}
+/* ================= TESTS: store + my test series, the store's own data (photos, descriptions, reviews) ================= */
+const TQ={q:'',f:{exam:[],cat:[],med:[],price:[],offer:[],status:[]},sort:'pop',view:'store',mf:'paid',cat:'all',sf:'all',xt:'d'};
+let XD=null,RV={},SCHD={},LANGS=new Set(),SMAP={},extrasBusy=null;
+function loadExtras(){if(extrasBusy||XD)return extrasBusy;const q=(fn,auth)=>rpc(fn,{},!auth).catch(()=>null);
+  extrasBusy=Promise.all([q('cbt_store_explore'),q('cbt_store_reviews'),q('cbt_store_schedules'),q('cbt_store_langs'),q('cbt_store_map',true)]).then(([x,r,s,l,m])=>{
+   XD={};(x&&x.ok?x.items||[]:[]).forEach(i=>XD[i.id]=i);RV={};(r&&r.ok?r.items||[]:[]).forEach(i=>RV[i.id]=i);SCHD={};(s&&s.ok?s.items||[]:[]).forEach(i=>SCHD[i.id]=i);
+   LANGS=new Set((l&&l.ok?l.items||[]:[]).map(String));SMAP=(m&&m.ok&&m.map)||{};
+   if(S.tab==='test'&&!scrOpen())drawT();if(scrOpen()&&top().store)redraw()}).finally(()=>{extrasBusy=null});return extrasBusy}
+const okImg=u=>/^(data:image\/|https:\/\/)/.test(u||'');
+const offPct=x=>x.mrp&&x.mrp>x.price?Math.round((1-x.price/x.mrp)*100):0;
+const seriesOfItem=id=>Object.keys(SMAP).find(k=>SMAP[k]===id);
+const itemOfSeries=sid=>(STORE||[]).find(x=>x.id===SMAP[sid]);
+const owned=x=>{const sid=seriesOfItem(x.id);return sid&&mine().some(s=>s.id===sid)?sid:null};
+const cats=()=>[...new Set((STORE||[]).map(x=>String(x.section||'').trim()).filter(Boolean))];
+const rvOf=x=>RV[x.id]&&RV[x.id].count?RV[x.id]:null;
+const starRow=r=>`<span class="stars" aria-label="${(+r.avg).toFixed(1)} out of 5">${ic('star',13).replace('class="i"','class="i fill"')}<b>${(+r.avg).toFixed(1)}</b> <span class="mut">(${fmtN(r.count)})</span></span>`;
+function coverOf(x,label){return okImg(x&&x.image)?`<img src="${esc3(x.image)}" alt="${esc3(x.title)}" loading="lazy">`:`<span class="cvph"><small>${esc3(label||courseOf(x||{})||'Aspiron')}</small><b>${esc3((x&&x.title)||'')}</b></span>`}
+const priceH=x=>x.price?`<span class="price"><b>₹${fmtN(x.price)}</b>${offPct(x)?`<s>₹${fmtN(x.mrp)}</s><span class="badge off">${offPct(x)}% off</span>`:''}</span>`:'<span class="price"><span class="free">Free</span></span>';
+const buyHref=x=>'store.html#b='+encodeURIComponent(x.id);
+function actH(x){const sid=owned(x),soon=x.buy_on===false;
+  if(sid)return `<button class="btn sm" data-a="openSD" data-id="${esc3(sid)}">${ic('play',14)}Open</button>`;
+  if(soon&&!x.prebook)return `<a class="btn sm" href="${storeUrl(x)}">${ic('bell',15)}Notify me</a>`;
+  return `<a class="btn sm gold" href="${buyHref(x)}">${soon?'Pre-book':x.price?'Buy now':'Get it free'}</a>`}
+
+/* ---------- filters + sort ---------- */
+const SORTS=[['pop','Popular'],['low','Price: low to high'],['high','Price: high to low'],['off','Biggest discount'],['rate','Top rated']];
+const tfCount=()=>Object.values(TQ.f).reduce((a,v)=>a+v.length,0)+(TQ.sort!=='pop'?1:0);
+function spass(x){const w=TQ.q.toLowerCase().split(/\s+/).filter(Boolean),h=[x.title,x.subtitle,x.section,courseOf(x),(x.features||[]).join(' '),(XD&&XD[x.id]||{}).description].join(' ').toLowerCase();if(!w.every(v=>h.includes(v)))return false;const f=TQ.f;
+  if(f.exam.length&&courseOf(x)&&!f.exam.includes(courseOf(x)))return false;if(f.cat.length&&!f.cat.includes(String(x.section||'').trim()))return false;
+  if(f.med.length&&!(f.med.includes('Hindi + English')&&LANGS.has(x.id))&&!(f.med.includes('Single medium')&&!LANGS.has(x.id)))return false;
+  if(f.price.length&&!f.price.includes(x.price?'Paid':'Free'))return false;if(f.offer.length&&!offPct(x))return false;if(f.status.length&&!f.status.includes(x.buy_on===false?'Coming soon':'Available'))return false;return true}
+function sorted(L){const r=x=>(rvOf(x)||{avg:0}).avg;return L.slice().sort({low:(a,b)=>a.price-b.price,high:(a,b)=>b.price-a.price,off:(a,b)=>offPct(b)-offPct(a),rate:(a,b)=>r(b)-r(a)}[TQ.sort]||(()=>0))}
 const mpass=s=>{const w=TQ.q.toLowerCase().split(/\s+/).filter(Boolean),h=[s.title,s.description,testsOf(s.id).map(t=>t.title).join(' ')].join(' ').toLowerCase();return w.every(v=>h.includes(v))};
-const thumb=(label,sub,j)=>`<span class="thumb${j?' j':''}">${esc3(label)}${sub?`<small>${esc3(sub)}</small>`:''}</span>`;
-function myCount(){const L=mine();return {paid:L.filter(s=>!s.is_free).length,free:L.filter(s=>s.is_free).length,exp:0,live:L.some(s=>seriesStats(s).live)}}
-function myEntry(){const c=myCount();return `<button class="hero myts tap" data-a="mySeries"><span class="ti" style="background:rgba(255,255,255,.1);color:var(--heroTx)">${ic('layers',21)}</span><span><b>My Test Series</b><small class="mut">${c.live?'<span class="st live" style="color:#ffb3ad">A test is live now</span>':'Your series and their tests'}</small></span>${ic('right',20)}
-  <span class="cnt"><span><b>${c.paid}</b>Paid</span><span><b>${c.free}</b>Free</span><span><b>${c.exp}</b>Expired</span></span></button>`}
-function banners(){let L=[];try{L=(typeof PROMO!=='undefined'&&PROMO)||[]}catch(e){}if(!L.length)return '';
-  return `<section class="sec"><div class="rail" id="bnRail">${L.slice(0,5).map((x,i)=>{const u=/^https?:\/\/|^#\//i.test(x.link||'')?x.link:'',img=x.img&&/^data:image\/|^https:\/\//.test(x.img)?x.img:'';
-   const body=img?`<img src="${esc3(img)}" alt="${esc3(x.title||'')}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`:`<div><small class="gold">${esc3(x.label||'Aspiron')}</small><h3>${esc3(x.title||'')}</h3>${x.text?`<p class="mut">${esc3(x.text)}</p>`:''}</div>${u?`<span class="btn sm onhero">${esc3(x.label||'Open')}</span>`:''}`;
-   return `<a class="hero bn" style="text-decoration:none;${img?'padding:0;min-height:0;aspect-ratio:16/8':''}" ${u?`href="${esc3(u)}"${/^https?:/i.test(u)?' target="_blank" rel="noopener noreferrer"':''}`:''}>${body}</a>`}).join('')}</div>
-   ${L.length>1?`<div class="dots" id="bnDots" aria-hidden="true">${L.slice(0,5).map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}</section>`}
-function annH(){const L=(NOTES||[]).slice().sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,3);if(!L.length)return '';
-  return `<section class="sec"><div class="sh"><h2>Announcements</h2><button class="lnk" data-a="bell">All${ic('right')}</button></div><div class="card rows">${L.map(n=>`<button class="item" data-a="openNote" data-id="${esc3(n.id)}" style="width:100%;text-align:left"><span class="ti g">${ic('mega',19)}</span><div class="bd"><b>${esc3(n.title||'Announcement')}</b><small>${esc3((n.text||'').slice(0,110))}</small></div></button>`).join('')}</div></section>`}
-function sCard(x){const off=x.mrp&&x.mrp>x.price?Math.round((1-x.price/x.mrp)*100):0,soon=x.buy_on===false;
-  return `<article class="card sc"><div class="sc-h">${thumb(courseOf(x)||'TEST',x.section?x.section.split(' ')[0]:'',courseOf(x)==='JEE')}<div style="min-width:0"><h3>${esc3(x.title)}</h3>${soon?'<span class="st gold">Coming soon</span>':x.badge?`<span class="st gold">${esc3(x.badge)}</span>`:'<span class="st ok">Available</span>'}</div></div>
-  ${x.subtitle?`<p class="mut" style="font-size:13.5px">${esc3(x.subtitle)}</p>`:''}${(x.features||[]).length?`<div class="meta">${x.features.slice(0,4).map(f=>`<span>${ic('check')}${esc3(f)}</span>`).join('')}</div>`:''}
-  <div class="ft"><span class="price">${x.price?`<b>₹${fmtN(x.price)}</b>${off?`<s>₹${fmtN(x.mrp)}</s><span class="badge off">${off}% off</span>`:''}`:'<span class="free">Free</span>'}</span><div class="acts"><a class="btn sm ghost" href="${storeUrl(x)}">Details</a><a class="btn sm${soon&&!x.prebook?'':' gold'}" href="${storeUrl(x)}">${soon?(x.prebook?'Pre-book':ic('bell',15)+'Notify me'):x.price?'Buy now':'Get it free'}</a></div></div></article>`}
-function storeBody(){
-  if(STORE===null){loadStore();return `<div class="list"><div class="card sk" style="height:180px"></div><div class="card sk" style="height:180px"></div></div>`}
-  if(TQ.q.trim()||tfCount()){const L=STORE.filter(spass),M=TQ.q.trim()?mine().filter(mpass):[];
+
+/* ---------- top: 16:9 banners from Admin → Banners, then the two tabs ---------- */
+function topBanner(){let L=[];try{L=(typeof PROMO!=='undefined'&&PROMO)||[]}catch(e){}
+  if(!L.length)return `<div class="tbanner"><div class="pbn hero"><span class="bn-tx"><small class="gold">Aspiron test series</small><b>Exam-style tests with All India rank</b><em>NEET and JEE, in Hindi and English</em></span></div></div>`;
+  return `<div class="tbanner"><div class="rail" id="tbRail">${L.slice(0,6).map(x=>{const u=/^https?:\/\/|^#\//i.test(x.link||'')?x.link:'',img=x.img&&/^data:image\/|^https:\/\//.test(x.img)?x.img:'';
+   return `<a class="pbn${img?'':' hero'}" ${u?`href="${esc3(u)}"${/^https?:/i.test(u)?' target="_blank" rel="noopener noreferrer"':''}`:''}>${img?`<img src="${esc3(img)}" alt="${esc3(x.title||'Offer')}">`:`<span class="bn-tx"><small class="gold">${esc3(x.label||'Aspiron')}</small><b>${esc3(x.title||'')}</b>${x.text?`<em>${esc3(x.text)}</em>`:''}</span>`}</a>`}).join('')}</div>
+   ${L.length>1?`<div class="dots" id="tbRailD" aria-hidden="true">${L.slice(0,6).map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}</div>`}
+function myCount(){const L=mine();return {paid:L.filter(s=>!s.is_free).length,free:L.filter(s=>s.is_free).length,exp:0,all:L.length,live:L.some(s=>seriesStats(s).live)}}
+function tabs2(){const c=myCount(),n=(STORE||[]).filter(x=>x.buy_on!==false).length;
+  return `<div class="tt2" role="tablist">
+   <button role="tab" aria-selected="${TQ.view==='store'}" class="${TQ.view==='store'?'on':''}" data-a="tview" data-v="store"><span class="ti">${ic('tests',22)}</span><b>Test Series Store</b><small>${STORE?n+' series':'Loading'}</small></button>
+   <button role="tab" aria-selected="${TQ.view==='my'}" class="${TQ.view==='my'?'on':''}" data-a="tview" data-v="my"><span class="ti">${ic('layers',22)}</span><b>My Test Series</b><small>${c.live?'<span class="st live">Test live now</span>':c.all+' enrolled'}</small></button></div>`}
+
+/* ---------- store view ---------- */
+function offer3(){const L=(STORE||[]).filter(x=>x.buy_on!==false&&x.price).sort((a,b)=>offPct(b)-offPct(a)).slice(0,3);if(L.length<2)return '';
+  return `<section class="sec"><div class="off3">${L.map(x=>`<button class="o3" data-a="xp" data-id="${esc3(x.id)}"><span class="o3i">${ic('spark',20)}</span><b>${esc3(x.title)}</b><em>${offPct(x)?`${offPct(x)}% off, now ₹${fmtN(x.price)}`:`Now @ ₹${fmtN(x.price)}`}</em></button>`).join('')}</div></section>`}
+function iCard(x){const r=rvOf(x),soon=x.buy_on===false;
+  return `<article class="card ic2"><button class="cv" data-a="xp" data-id="${esc3(x.id)}" aria-label="Explore ${esc3(x.title)}">${coverOf(x)}${offPct(x)?`<span class="badge off cvb">${offPct(x)}% off</span>`:''}${soon?'<span class="badge pro cvb">Coming soon</span>':x.badge?`<span class="badge pro cvb">${esc3(x.badge)}</span>`:''}</button>
+  <div class="ic2b"><span class="tag">${[courseOf(x),esc3(x.section||'')].filter(Boolean).join(', ')||'Test series'}</span><h3>${esc3(x.title)}</h3>${x.subtitle?`<p class="mut">${esc3(x.subtitle)}</p>`:''}
+   <div class="meta">${r?starRow(r):''}${LANGS.has(x.id)?`<span>${ic('book')}Hindi + English</span>`:''}${owned(x)?'<span class="st ok">Enrolled</span>':''}</div>
+   <div class="ft">${priceH(x)}<div class="acts"><button class="btn sm ghost" data-a="xp" data-id="${esc3(x.id)}">Explore</button>${actH(x)}</div></div></div></article>`}
+function trendRail(home){const L=(STORE||[]).filter(x=>x.buy_on!==false).slice().sort((a,b)=>((rvOf(b)||{count:0}).count-(rvOf(a)||{count:0}).count)||(!!b.badge-!!a.badge)).slice(0,6);if(!L.length||(!home&&L.length<2))return '';
+  return `<section class="sec"><div class="sh"><h2>Trending test series</h2>${home?`<button class="lnk" data-a="toStore">View all${ic('right')}</button>`:''}</div><div class="rail">${L.map(x=>`<button class="card trc" data-a="xp" data-id="${esc3(x.id)}"><span class="cv">${coverOf(x)}</span><span class="trb"><b>${esc3(x.title)}</b>${priceH(x)}</span></button>`).join('')}</div></section>`}
+function storeView(){
+  if(STORE===null){loadStore();return `<div class="list"><div class="card sk" style="height:120px"></div><div class="card sk" style="height:320px"></div></div>`}
+  if(TQ.q.trim()||tfCount()){const L=sorted(STORE.filter(spass)),M=TQ.q.trim()?mine().filter(mpass):[];
    return `<section class="sec"><div class="sh"><h2>${L.length+M.length} ${L.length+M.length===1?'result':'results'}</h2><button class="lnk" data-a="tClear">Clear all</button></div>
     ${M.length?`<p class="gh">In your test series</p><div class="card rows">${M.map(s=>`<button class="row" data-a="openSD" data-id="${esc3(s.id)}"><span class="ti k">${ic('layers',19)}</span><span><b>${esc3(s.title)}</b><small>${seriesStats(s).n} tests</small></span>${ic('right',18)}</button>`).join('')}</div>`:''}
-    ${L.length?`${M.length?'<p class="gh">In the store</p>':''}<div class="list">${L.map(sCard).join('')}</div>`:M.length?'':`<div class="card empty"><span class="ti">${ic('search',22)}</span><b>No test series match</b><p>Try another word, or remove a filter.</p><button class="btn sm ghost" data-a="tClear">Clear search and filters</button></div>`}</section>`}
-  const all=STORE.filter(x=>x.buy_on!==false&&(TQ.quick==='all'||(TQ.quick==='Free'?!x.price:TQ.quick==='Paid'?x.price:courseOf(x)===TQ.quick))),soon=STORE.filter(x=>x.buy_on===false);
-  return banners()+annH()+`<section class="sec" id="allSec"><div class="sh"><h2>Test series store</h2><span class="aside">${all.length} series</span></div>
-   <div class="chips">${['all','NEET','JEE','Free','Paid'].map(q=>`<button class="${TQ.quick===q?'on':''}" aria-pressed="${TQ.quick===q}" data-a="quick" data-v="${q}">${q==='all'?'All':q}</button>`).join('')}</div>
-   ${all.length?`<div class="list">${all.map(sCard).join('')}</div>`:`<div class="card empty"><span class="ti">${ic('layers',22)}</span><b>Nothing here yet</b><p>New test series are added often. Check back soon.</p></div>`}
-   <a class="btn lg ghost" href="store.html">${ic('right',16)}Open the full store</a></section>`+
-   (soon.length?`<section class="sec"><div class="sh"><h2>Coming soon</h2><span class="aside">${soon.length}</span></div><div class="list">${soon.map(sCard).join('')}</div></section>`:'')}
-VIEW.test=()=>{const n=tfCount();return `<div class="pt"><div><h1>Tests</h1><p>Your test series and the store</p></div></div>
-  <div class="stack"><div class="search"><label class="sbox">${ic('search',19)}<input id="tq" type="search" autocomplete="off" placeholder="Search test series, test name or exam" value="${esc3(TQ.q)}" aria-label="Search test series, test name or exam"><button class="clr" data-a="tqClear" aria-label="Clear search"${TQ.q?'':' hidden'}>${ic('x',17)}</button></label>
-   <button class="fb${n?' on':''}" data-a="tFilter" aria-label="Filters${n?`, ${n} on`:''}">${ic('filter',20)}${n?`<b>${n}</b>`:''}</button></div>${myEntry()}</div>
-  <div id="tBody" class="stack" style="gap:var(--gap)">${storeBody()}</div>`};
-function drawT(){const b=$('#tBody');if(!b)return;b.innerHTML=storeBody();const n=tfCount(),fb=$('[data-a="tFilter"]');fb.className='fb'+(n?' on':'');fb.innerHTML=ic('filter',20)+(n?`<b>${n}</b>`:'');$('[data-a="tqClear"]').hidden=!TQ.q;autoRail('#bnRail','#bnDots')}
-AFTER.test=()=>{const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#bnRail','#bnDots');try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length))promoLoad().then(()=>{if(S.tab==='test'&&!TQ.q&&!tfCount())drawT()})}catch(e){}};
-A.tqClear=()=>{TQ.q='';$('#tq').value='';drawT();$('#tq').focus()};
-A.tClear=()=>{TQ.q='';Object.keys(TQ.f).forEach(k=>TQ.f[k]=[]);const q=$('#tq');if(q)q.value='';drawT()};
-A.quick=el=>{TQ.quick=el.dataset.v;drawT()};
-A.tFilter=()=>{const draw=()=>{sheet.innerHTML=`<div class="grab"></div><h2 id="sheetT">Filters</h2><p class="sub">Filters the test series in the store.</p>
-   ${TFILT.map(([k,l,o])=>`<div class="fg"><h3>${l}</h3><div class="chips wrap">${o.map(v=>`<button class="${TQ.f[k].includes(v)?'on':''}" aria-pressed="${TQ.f[k].includes(v)}" data-fk="${k}" data-fv="${v}">${v}</button>`).join('')}</div></div>`).join('')}
-   <div class="sheet-ft"><button class="btn ghost" data-fc>Clear</button><button class="btn" data-fa>Show ${(STORE||[]).filter(spass).length} test series</button></div>`};
-  openSheet('');draw();sheet.onclick=e=>{const c=e.target.closest('[data-fk]');if(c){const a=TQ.f[c.dataset.fk],v=c.dataset.fv,i=a.indexOf(v);i>-1?a.splice(i,1):a.push(v);const y=sheet.scrollTop;draw();sheet.scrollTop=y;drawT();return}
-   if(e.target.closest('[data-fc]')){Object.keys(TQ.f).forEach(k=>TQ.f[k]=[]);draw();drawT();return}if(e.target.closest('[data-fa]')){closeLayer();scrollTo({top:0,behavior:RM?'auto':'smooth'})}}};
+    ${L.length?`${M.length?'<p class="gh">In the store</p>':''}<div class="list">${L.map(iCard).join('')}</div>`:M.length?'':`<div class="card empty"><span class="ti">${ic('search',22)}</span><b>No test series match</b><p>Try another word, or remove a filter.</p><button class="btn sm ghost" data-a="tClear">Clear search and filters</button></div>`}</section>`}
+  const C2=cats(),all=STORE.filter(x=>x.buy_on!==false&&(TQ.cat==='all'||(TQ.cat==='NEET'||TQ.cat==='JEE'?courseOf(x)===TQ.cat:String(x.section||'').trim()===TQ.cat))),soon=STORE.filter(x=>x.buy_on===false);
+  return offer3()+`<section class="sec" id="allSec"><div class="sh"><h2>Test series</h2><span class="aside">${all.length} series</span></div>
+   <div class="chips">${['all','NEET','JEE',...C2].map(q=>`<button class="${TQ.cat===q?'on':''}" aria-pressed="${TQ.cat===q}" data-a="cat" data-v="${esc3(q)}">${q==='all'?'All':esc3(q)}</button>`).join('')}</div>
+   ${all.length?`<div class="list">${all.map(iCard).join('')}</div>`:`<div class="card empty"><span class="ti">${ic('layers',22)}</span><b>Nothing in this group yet</b><p>Pick another group above.</p></div>`}</section>`+
+   trendRail()+(soon.length?`<section class="sec"><div class="sh"><h2>Coming soon</h2><span class="aside">${soon.length}</span></div><div class="list">${soon.map(iCard).join('')}</div></section>`:'')+
+   `<a class="btn lg ghost" href="store.html">${ic('right',16)}Open the full store</a>`}
 
-/* ---------- My Test Series: own page, Paid / Free / Expired ---------- */
-function myCard(s){const k=seriesStats(s);
-  return `<article class="card ms"><div class="sc-h">${thumb(s.is_free?'FREE':'PRO','',false)}<div style="min-width:0"><span class="tag">${s.is_free?'Free series':'Premium series'}</span><h3>${esc3(s.title)}</h3></div></div>
+/* ---------- my test series view (in place): Paid / Free / Expired ---------- */
+function myCard(s){const k=seriesStats(s),it=itemOfSeries(s.id);
+  return `<article class="card ic2"><button class="cv" data-a="openSD" data-id="${esc3(s.id)}" aria-label="Open ${esc3(s.title)}">${coverOf(it||{title:s.title},s.is_free?'Free series':'Premium series')}${k.live?'<span class="badge cvb" style="background:var(--err);color:#fff">Live now</span>':''}</button>
+  <div class="ic2b"><span class="tag">${s.is_free?'Free series':'Premium series'}</span><h3>${esc3(s.title)}</h3>
   <div class="nums"><div><b>${k.n}</b><small>Total</small></div><div><b>${k.done}</b><small>Attempted</small></div><div><b>${k.n-k.done}</b><small>Remaining</small></div></div>
   <span class="bar"><i style="--p:${k.n?(k.done/k.n).toFixed(3):0}"></i></span>
-  <div class="ft">${k.live?`<span class="st live">${k.live} live now</span>`:'<span class="st ok">Active</span>'}<div class="acts"><button class="btn sm" data-a="openSD" data-id="${esc3(s.id)}">View tests</button></div></div></article>`}
-function myView(){return {t:'My Test Series',s:`${mine().length} series`,key:'my',html:()=>{const c=myCount(),L=TQ.mf==='exp'?[]:mine().filter(s=>TQ.mf==='paid'?!s.is_free:s.is_free);
+  <div class="ft">${k.live?`<span class="st live">${k.live} live now</span>`:'<span class="st ok">Active</span>'}<div class="acts"><button class="btn sm" data-a="openSD" data-id="${esc3(s.id)}">View tests</button></div></div></div></article>`}
+function myView(){const c=myCount(),L=TQ.mf==='exp'?[]:mine().filter(s=>(TQ.mf==='paid'?!s.is_free:s.is_free)&&(!TQ.q.trim()||mpass(s)));
   return `<div class="seg" role="tablist">${[['paid','Paid',c.paid],['free','Free',c.free],['exp','Expired',c.exp]].map(t=>`<button role="tab" aria-selected="${t[0]===TQ.mf}" class="${t[0]===TQ.mf?'on':''}" data-a="mf" data-v="${t[0]}">${t[1]}<small>${t[2]}</small></button>`).join('')}</div>
-  <div class="list">${L.length?L.map(myCard).join(''):`<div class="card empty"><span class="ti">${ic('layers',22)}</span><b>${TQ.mf==='exp'?'No expired test series':TQ.mf==='paid'?'No paid test series yet':'No free test series yet'}</b><p>${TQ.mf==='exp'?'Series whose access has ended will show up here.':'Get one from the store and it shows up here.'}</p>${TQ.mf==='exp'?'':'<button class="btn sm" data-a="toStore">Open the store</button>'}</div>`}</div>`}}}
-function openMySeries(f){TQ.mf=f||'paid';push(myView())}
-A.mySeries=()=>openMySeries(myCount().paid?'paid':'free');
-A.mf=el=>{TQ.mf=el.dataset.v;redraw()};
-A.toStore=()=>go('test');
+  <div class="list">${L.length?L.map(myCard).join(''):`<div class="card empty"><span class="ti">${ic('layers',22)}</span><b>${TQ.mf==='exp'?'No expired test series':TQ.mf==='paid'?'No paid test series yet':'No free test series yet'}</b><p>${TQ.mf==='exp'?'Series whose access has ended will show up here.':'Get one from the store and it shows up here.'}</p>${TQ.mf==='exp'?'':'<button class="btn sm" data-a="tview" data-v="store">Open the store</button>'}</div>`}</div>`}
+const tBody=()=>TQ.view==='my'?myView():storeView();
+VIEW.test=()=>{const n=tfCount();return `<div class="search" style="margin-top:4px"><label class="sbox">${ic('search',19)}<input id="tq" type="search" autocomplete="off" placeholder="Search test series, test name or exam" value="${esc3(TQ.q)}" aria-label="Search test series, test name or exam"><button class="clr" data-a="tqClear" aria-label="Clear search"${TQ.q?'':' hidden'}>${ic('x',17)}</button></label>
+   <button class="fb${n?' on':''}" data-a="tFilter" aria-label="Filters${n?`, ${n} on`:''}">${ic('filter',20)}${n?`<b>${n}</b>`:''}</button></div>
+  <div class="ttop">${topBanner()}${tabs2()}</div><div id="tBody" class="stack" style="gap:var(--gap)">${tBody()}</div>`};
+function drawT(){const b=$('#tBody');if(!b)return;b.innerHTML=tBody();const n=tfCount(),fb=$('[data-a="tFilter"]');if(fb){fb.className='fb'+(n?' on':'');fb.innerHTML=ic('filter',20)+(n?`<b>${n}</b>`:'')}const x=$('[data-a="tqClear"]');x&&(x.hidden=!TQ.q);const t=$('.tt2');t&&(t.outerHTML=tabs2())}
+AFTER.test=()=>{const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#tbRail','#tbRailD');loadExtras();
+  try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length))promoLoad().then(()=>{if(S.tab==='test')softRender()})}catch(e){}};
+A.tview=el=>{TQ.view=el.dataset.v;if(S.tab!=='test'){go('test');return}drawT();const b=$('#tBody');b&&(b.style.animation='none',void b.offsetWidth,b.style.animation='rise .4s var(--out)')};
+A.tqClear=()=>{TQ.q='';$('#tq').value='';drawT();$('#tq').focus()};
+A.tClear=()=>{TQ.q='';Object.keys(TQ.f).forEach(k=>TQ.f[k]=[]);TQ.sort='pop';const q=$('#tq');if(q)q.value='';drawT()};
+A.cat=el=>{TQ.cat=el.dataset.v;drawT()};
+A.mf=el=>{TQ.mf=el.dataset.v;drawT()};
+A.tFilter=()=>{const G=[['exam','Exam',['NEET','JEE']],['cat','Category',cats()],['med','Medium',['Hindi + English','Single medium']],['price','Price',['Free','Paid']],['offer','Offers',['Discounted']],['status','Status',['Available','Coming soon']]].filter(g=>g[2].length);
+  const draw=()=>{sheet.innerHTML=`<div class="grab"></div><h2 id="sheetT">Filter and sort</h2><p class="sub">Filters every test series in the store.</p>
+   <div class="fg"><h3>Sort by</h3><div class="chips wrap">${SORTS.map(s=>`<button class="${TQ.sort===s[0]?'on':''}" aria-pressed="${TQ.sort===s[0]}" data-fs="${s[0]}">${s[1]}</button>`).join('')}</div></div>
+   ${G.map(([k,l,o])=>`<div class="fg"><h3>${l}</h3><div class="chips wrap">${o.map(v=>`<button class="${TQ.f[k].includes(v)?'on':''}" aria-pressed="${TQ.f[k].includes(v)}" data-fk="${k}" data-fv="${esc3(v)}">${esc3(v)}</button>`).join('')}</div></div>`).join('')}
+   <div class="sheet-ft"><button class="btn ghost" data-fc>Clear</button><button class="btn" data-fa>Show ${(STORE||[]).filter(spass).length} test series</button></div>`};
+  openSheet('');draw();sheet.onclick=e=>{const so=e.target.closest('[data-fs]');if(so){TQ.sort=so.dataset.fs;const y=sheet.scrollTop;draw();sheet.scrollTop=y;TQ.view='store';drawT();return}
+   const c=e.target.closest('[data-fk]');if(c){const a=TQ.f[c.dataset.fk],v=c.dataset.fv,i=a.indexOf(v);i>-1?a.splice(i,1):a.push(v);const y=sheet.scrollTop;draw();sheet.scrollTop=y;TQ.view='store';drawT();return}
+   if(e.target.closest('[data-fc]')){Object.keys(TQ.f).forEach(k=>TQ.f[k]=[]);TQ.sort='pop';draw();drawT();return}if(e.target.closest('[data-fa]')){closeLayer();scrollTo({top:0,behavior:RM?'auto':'smooth'})}}};
 
-/* ---------- one series: its tests by status ---------- */
+/* ---------- one test series page: photo, Description | Resources | Reviews, buy bar ---------- */
 const SF=[['all','All'],['open','Available'],['up','Upcoming'],['att','Attempted'],['done','Completed'],['closed','Closed'],['lock','Locked']];
 const grp=st=>({prog:'open',live:'open',new:'open',wait:'up',held:'att',done:'done',closed:'closed',lock:'lock'}[st]||'open');
 function tActs(t){const st=stOf(t),r=resOf(t.id)[0],id=esc3(t.id);let p;try{p=typeof pendOf==='function'&&pendOf(t.id)}catch(e){}
@@ -425,17 +464,44 @@ function tRow(t){const st=stOf(t),r=resOf(t.id)[0],fo=t.folder_id&&(C().folders|
   <div class="meta">${t.opens_at?`<span>${ic('cal')}${fD(t.opens_at,{weekday:'short',day:'numeric',month:'short'})}</span><span>${ic('clock')}${fT(t.opens_at)}</span>`:''}<span>${dur(t.duration||0)}</span><span>${t.questions||0} questions</span>${fo?`<span>${ic('layers')}${esc3(fo.title)}</span>`:''}</div>
   ${r&&t.best!=null&&t.best_max?`<p class="tnote">Best score <b>${t.best} / ${t.best_max}</b>${t.attempts>1?`, ${t.attempts} attempts`:''}</p>`:st==='prog'?'<p class="tnote">You started this test. Your answers are saved.</p>':''}
   <div class="acts">${tActs(t)}</div></article>`}
-function sdView(id){const s=sOf(id);return {t:s?s.title:'Test series',s:s?(s.is_free?'Free series':'Premium series'):'',html:()=>{if(!s)return `<div class="card empty"><b>This series is not available</b></div>`;
-  const L=testsOf(id),k=seriesStats(s),cnt=g=>L.filter(t=>grp(stOf(t))===g).length,shown=TQ.sf==='all'?L:L.filter(t=>grp(stOf(t))===TQ.sf);
-  return `<div class="hero ser"><div style="display:flex;gap:14px;align-items:center">${thumb(s.is_free?'FREE':'PRO','',false)}<div style="min-width:0"><span class="tag gold">${s.is_free?'Free series':'Premium series'}</span><h3 style="font-size:17px;font-weight:600;margin-top:3px">${esc3(s.title)}</h3></div></div>
-   <div class="nums"><div><b>${k.n}</b><small>Total</small></div><div><b>${k.done}</b><small>Attempted</small></div><div><b>${k.n-k.done}</b><small>Remaining</small></div></div><span class="bar"><i style="--p:${k.n?(k.done/k.n).toFixed(3):0}"></i></span>
-   ${s.description?`<p class="mut" style="font-size:13px">${esc3(s.description)}</p>`:''}</div>
+function rvBlock(x){const r=x&&rvOf(x);if(!x)return `<div class="card empty"><span class="ti">${ic('star',22)}</span><b>No reviews yet</b><p>Reviews are written by students whose series is unlocked.</p></div>`;
+  if(!XD)return '<div class="card sk" style="height:140px"></div>';
+  if(!r)return `<div class="card empty"><span class="ti">${ic('star',22)}</span><b>No reviews yet</b><p>Reviews are written by students whose series is unlocked.</p></div>`;
+  const st=r.stars||[];return `<div class="card p rvs"><div class="rv-big"><b>${(+r.avg).toFixed(1)}</b><span>${'★'.repeat(Math.round(r.avg))}${'☆'.repeat(5-Math.round(r.avg))}</span><small>${fmtN(r.count)} reviews</small></div>
+   <div class="rv-bars">${[5,4,3,2,1].map((n,i)=>`<div><span>${n}</span><i><em style="width:${r.count?Math.round((st[i]||0)*100/r.count):0}%"></em></i><span>${st[i]||0}</span></div>`).join('')}</div></div>
+   <div class="card rows">${(r.list||[]).slice(0,30).map(v=>`<div class="item"><span class="ti g" style="font-weight:600">${esc3(((v.name||'S').trim()[0]||'S').toUpperCase())}</span><div class="bd"><div class="tt"><b>${esc3(v.name||'Student')}</b><span class="gold" style="font-size:13px">${'★'.repeat(Number(v.rating)||0)}</span></div>${v.body?`<small style="font-size:13.5px;color:var(--tx)">${esc3(v.body)}</small>`:`<small>Gave ${Number(v.rating)||0} stars</small>`}${v.reply?`<small><b style="font-size:12.5px">Reply from Aspiron:</b> ${esc3(v.reply)}</small>`:''}</div></div>`).join('')}</div>`}
+function descBlock(x,s){const d=String((x&&XD&&XD[x.id]||{}).description||s&&s.description||'').trim(),F=(x&&x.features)||[];
+  return `${x&&x.subtitle?`<p style="font-size:15px">${esc3(x.subtitle)}</p>`:''}
+  ${x&&LANGS.has(x.id)?`<div class="card p" style="display:flex;gap:12px;align-items:center"><span class="ti g">${ic('book',19)}</span><span><b style="font-size:14.5px">Available in English and हिंदी</b><br><small class="mut">Choose your medium when you buy. Every test comes in that language.</small></span></div>`:''}
+  ${d?`<div class="card p stack" style="gap:8px"><b style="font-size:15px">About this test series</b><p class="mut" style="white-space:pre-wrap;font-size:14.5px;line-height:1.65">${esc3(d)}</p></div>`:''}
+  ${F.length?`<div class="card p stack" style="gap:10px"><b style="font-size:15px">What you get</b><div class="feat" style="margin:0">${F.map(f=>`<span>${ic('check')}${esc3(f)}</span>`).join('')}</div></div>`:''}
+  ${!d&&!F.length&&!(x&&x.subtitle)?`<div class="card empty"><span class="ti">${ic('info',22)}</span><b>No description yet</b><p>Details about this series will appear here.</p></div>`:''}`}
+function resBlock(x,sid){
+  if(sid){const L=testsOf(sid),k=seriesStats(sOf(sid)),cnt=g=>L.filter(t=>grp(stOf(t))===g).length,shown=TQ.sf==='all'?L:L.filter(t=>grp(stOf(t))===TQ.sf),up=L.filter(t=>stOf(t)==='wait').sort((a,b)=>a.opens_at-b.opens_at).slice(0,4);
+   return `<div class="nums"><div><b>${k.n}</b><small>Total</small></div><div><b>${k.done}</b><small>Attempted</small></div><div><b>${cnt('up')}</b><small>Upcoming</small></div></div>
+   ${up.length?`<div class="stack" style="gap:10px"><p class="gh">Upcoming schedule</p><div class="card rows">${up.map(t=>`<div class="it test"><time>${fD(t.opens_at,{day:'numeric',month:'short'})}<br>${fT(t.opens_at)}</time><div><b>${esc3(t.title)}</b><small><em>Test</em>, ${dur(t.duration||0)}</small></div><span></span></div>`).join('')}</div></div>`:''}
    <div class="chips" role="tablist">${SF.filter(f=>f[0]==='all'||cnt(f[0])).map(f=>`<button class="${TQ.sf===f[0]?'on':''}" data-a="sf" data-v="${f[0]}">${f[1]}<small>${f[0]==='all'?L.length:cnt(f[0])}</small></button>`).join('')}</div>
-   <div class="list" id="sdList">${shown.length?shown.map(tRow).join(''):`<div class="card empty"><span class="ti">${ic('tests',22)}</span><b>No tests here</b><p>Pick another group above.</p></div>`}</div>
-   <button class="btn lg ghost" data-a="oldSeries" data-id="${esc3(id)}">${ic('file',16)}Folders, notes and PDFs of this series</button>`}}}
-A.openSD=el=>{TQ.sf='all';closeLayer();push(sdView(el.dataset.id))};
+   <div class="list">${shown.length?shown.map(tRow).join(''):`<div class="card empty"><span class="ti">${ic('tests',22)}</span><b>No tests here</b><p>Pick another group above.</p></div>`}</div>
+   <button class="btn lg ghost" data-a="oldSeries" data-id="${esc3(sid)}">${ic('file',16)}Folders, notes and PDFs</button>`}
+  const f=SCHD[x.id],D=((XD||{})[x.id]||{}).demos||[];
+  const row=(ico,lab,t,ok)=>`<div class="row"><span class="ti${ok?' g':''}">${ic(ok?ico:'clock',19)}</span><span><b>${t}</b><small>${lab}</small></span>${ok?`<a class="btn sm ghost" href="${storeUrl(x).replace('#p=','#x=')}">Open</a>`:'<span class="badge n">Soon</span>'}</div>`;
+  return `<div class="card rows">${row('cal','Schedule',f?esc3(f.name||'Test schedule'):'Schedule coming soon',!!f)}${[1,2].map(n=>{const d=D.find(z=>z.slot===n)||{};return row('file',`Demo test ${n}`,esc3(d.title||`Demo test ${n}`),d.size>0)}).join('')}</div>
+   <p class="hint">The full tests, results and solutions open after you get this series.</p>`}
+function seriesPage(o){const x=o.item,sid=o.sid,s=sid&&sOf(sid);return {t:(x||s||{}).title||'Test series',s:sid?(s&&s.is_free?'Free series':'Your test series'):'Explore',store:1,
+  html:()=>`<div class="xcv">${coverOf(x||{title:s&&s.title},sid?'Your test series':'')}</div>
+   <div class="stack" style="gap:8px"><span class="tag">${x?[courseOf(x),esc3(x.section||'')].filter(Boolean).join(', ')||'Test series':s&&s.is_free?'Free series':'Premium series'}</span><h2 style="font-size:22px;font-weight:600;letter-spacing:-.02em;line-height:1.25">${esc3((x||s).title)}</h2>
+    <div class="meta">${x&&rvOf(x)?starRow(rvOf(x)):''}${sid?`<span class="st ok">Enrolled</span>`:''}${x&&x.buy_on===false?'<span class="st gold">Coming soon</span>':''}</div></div>
+   <div class="seg" role="tablist">${[['d','Description'],['r',sid?'Tests & resources':'Resources'],['v','Reviews']].map(t=>`<button role="tab" aria-selected="${TQ.xt===t[0]}" class="${TQ.xt===t[0]?'on':''}" data-a="xt" data-v="${t[0]}">${t[1]}</button>`).join('')}</div>
+   <div class="stack" style="gap:14px;animation:rise .35s var(--out)">${TQ.xt==='d'?descBlock(x,s):TQ.xt==='r'?resBlock(x,sid):rvBlock(x)}</div>
+   ${x&&!sid?`<div class="buybar"><span>${priceH(x)}</span>${actH(x)}</div>`:''}`}}
+A.xp=el=>{const x=(STORE||[]).find(i=>i.id===el.dataset.id);if(!x)return;loadExtras();TQ.xt='d';TQ.sf='all';closeLayer();push(seriesPage({item:x,sid:owned(x)}))};
+A.openSD=el=>{const sid=el.dataset.id;loadExtras();if(STORE===null)loadStore();TQ.xt='r';TQ.sf='all';closeLayer();push(seriesPage({item:itemOfSeries(sid),sid}))};
+A.xt=el=>{TQ.xt=el.dataset.v;redraw()};
 A.sf=el=>{TQ.sf=el.dataset.v;redraw()};
 A.oldSeries=el=>oldHash('#/s/'+el.dataset.id);
+function openMySeries(f){TQ.mf=f||'paid';TQ.view='my';go('test')}
+A.mySeries=()=>openMySeries(myCount().paid?'paid':'free');
+A.toStore=()=>{TQ.view='store';go('test')};
 
 /* ================= TOOLS (run on the phone; nothing is sent) ================= */
 const FC=2*Math.PI*100,FM=2*Math.PI*28;
@@ -692,7 +758,7 @@ function boot(){if(booted)return;ensureHost();booted=true;
   root.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('.fc')){e.preventDefault()}});
   dock.innerHTML=NAV.map(n=>`<button data-a="tab" data-tab="${n[0]}" aria-label="${n[1]}">${ic(n[2])}<span>${n[1]}</span></button>`).join('');
   $('#mnu').innerHTML=ic('menu',22);$('#scrBack').innerHTML=ic('back',20);syncBell();
-  const hdr=$('#hdr');addEventListener('scroll',()=>hdr.classList.toggle('sc',scrollY>4),{passive:true});
+  /* the header looks the same at every scroll position (no class toggled on scroll) */
   if(!RM){const w=$('#bmk');const sh=()=>{if(document.hidden||document.body.classList.contains('v3old')||!document.body.classList.contains('v3on'))return;w.classList.remove('go');void w.offsetWidth;w.classList.add('go')};setTimeout(sh,900);setInterval(sh,9000)}
   applyTheme(TH);syncDock()}
 const _route=route;
