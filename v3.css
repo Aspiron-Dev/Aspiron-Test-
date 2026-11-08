@@ -757,3 +757,36 @@ svg.i .f{fill:currentColor;fill-opacity:0;transition:fill-opacity .3s var(--ease
 .rv-bars div{display:grid;grid-template-columns:14px 1fr 28px;gap:8px;align-items:center;font-size:12px;color:var(--mut)}
 .rv-bars i{height:6px;border-radius:99px;background:var(--surface2);overflow:hidden;display:block}
 .rv-bars em{display:block;height:100%;background:linear-gradient(90deg,var(--acc2),var(--acc1))}
+/* ---- round 3: square band, upgrade in the theme colour, weekly schedule by month, Tests poster ---- */
+.band{border-radius:0}
+.band-row{align-items:center}
+.band-t{font-size:19px;line-height:1.25}
+.band-t span{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.band-t svg{flex:none}
+.pillbtn{border:0;background:var(--acc1);color:var(--onAcc);white-space:nowrap;padding:0 16px;box-shadow:0 8px 18px -10px var(--acc2)}
+.band-meta{gap:10px}
+.minibtn{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:3px;height:30px;padding:0 10px 0 14px;border-radius:99px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16);color:var(--heroTx);font-size:12.5px;font-weight:600;transition:transform .3s var(--spring)}
+.minibtn:active{transform:scale(.95)}
+.wkbar{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.wkbar>span{display:flex;gap:8px}
+.mbtn{display:inline-flex;align-items:center;gap:6px;padding:6px 2px;font-size:17px;font-weight:600;letter-spacing:-.01em;color:var(--tx)}
+.ib.sm{width:38px;height:38px;border-radius:12px}
+.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+.mgrid button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 6px;border-radius:16px;background:var(--surface2);border:1.5px solid transparent;color:var(--tx);transition:transform .3s var(--spring)}
+.mgrid button:active{transform:scale(.96)}
+.mgrid b{font-size:15.5px;font-weight:600}
+.mgrid small{font-size:12px;color:var(--mut)}
+.mgrid em{font-style:normal;font-size:11.5px;color:var(--faint);margin-top:2px}
+.mgrid .now{border-color:var(--line)}
+.mgrid .on{background:var(--ink);color:var(--onInk)}
+.mgrid .on small,.mgrid .on em{color:inherit;opacity:.72}
+.pst{position:relative;margin:-6px -16px 0;display:flex;flex-direction:column}
+.pst-art{display:block;position:relative;width:100%;aspect-ratio:4/5;overflow:hidden;background:radial-gradient(110% 80% at 100% 0%,var(--glow),transparent 60%),linear-gradient(160deg,var(--hero1),var(--hero2));text-decoration:none}
+.pst-art img{width:100%;height:100%;object-fit:cover;display:block}
+.pst-ph{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:60px 28px 120px;color:var(--heroTx)}
+.pst-ph small{font-size:12px;font-weight:600;letter-spacing:.14em;color:var(--acc1)}
+.pst-ph b{font-size:32px;font-weight:600;letter-spacing:-.03em;line-height:1.1}
+.pst-ph em{font-style:normal;font-size:14.5px;line-height:1.5;color:var(--heroMut);max-width:280px}
+.pst-top{position:absolute;left:0;right:0;top:0;padding:12px 16px 0}
+.pst-tabs{position:relative;z-index:2;margin-top:-96px;padding:0 16px}
+.pst .tt2{margin-top:0;padding:0}
