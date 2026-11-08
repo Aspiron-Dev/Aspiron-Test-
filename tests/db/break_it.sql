@@ -783,6 +783,44 @@ select pg_temp.chk('27l the owner''s own known address is never blocked automati
 delete from cbt_private.admin_fails; delete from cbt_private.settings where key = 'admin_gate';
 select public.cbt_admin_team(:'ow9','team_login','{"on":true}')->>'ok';
 
+-- ===== 28. security alerts on Telegram (supabase_v63_telegram_alerts.sql) =====
+select set_config('request.headers', '{"x-real-ip":"203.0.113.120"}', false);
+select pg_temp.chk('28a a team member cannot set up the Telegram alerts', public.cbt_admin_telegram(:'vt','set','{"token":"123456789:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}')->>'error' in ('forbidden', 'disabled', 'invalid', 'signed_out'));
+select pg_temp.chk('28b a wrong bot token is refused', public.cbt_admin_telegram(:'ow9','set','{"token":"not-a-token"}')->>'error' = 'token');
+select public.cbt_admin_telegram(:'ow9','set','{"token":"123456789:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}')->>'ok';
+-- Telegram answers getUpdates: the owner pressed Start in their bot
+insert into net._http_response (id, status_code, content)
+select value::bigint, 200, '{"ok":true,"result":[{"update_id":1,"message":{"chat":{"id":555000111,"type":"private"},"text":"/start"}}]}'
+  from cbt_private.settings where key = 'tg_req';
+select public.cbt_admin_telegram(:'ow9','status','{}')->>'linked' as tgl \gset
+select pg_temp.chk('28c after Start in the bot the alerts are linked (and a welcome message is sent)',
+  :'tgl' = 'true'
+  and (select value from cbt_private.settings where key = 'tg_chat') = '555000111'
+  and exists (select 1 from net.test_log where url like '%/sendMessage' and body->>'chat_id' = '555000111'));
+select pg_temp.chk('28d the bot token is never sent back to the panel',
+  not (public.cbt_admin_telegram(:'ow9','status','{}')::text ~ 'AAAAAAAAAA'));
+delete from net.test_log;
+select cbt_private.sec_event('2fa_off', 'high', 'Owner', 'Two-step sign-in was turned off');
+select cbt_private.sec_event('student_locked', 'low', 'Some Student', '8 wrong access codes');
+select pg_temp.chk('28e a serious alert goes to Telegram at once; a small one does not',
+  (select count(*) from net.test_log where url like '%/sendMessage' and body->>'text' like '%Two-step sign-in turned OFF%') = 1
+  and not exists (select 1 from net.test_log where body->>'text' like '%Students locked%'));
+select set_config('request.headers', '{"x-real-ip":"198.51.100.77"}', false);
+insert into cbt_private.settings (key, value) values ('admin_gate', encode(sha256(convert_to('aspiron-admin:TestKey77', 'UTF8')), 'hex'))
+  on conflict (key) do update set value = excluded.value;
+delete from net.test_log;
+select public.cbt_admin_login('','guess','X')->>'error';
+select public.cbt_admin_login('','guess2','X')->>'error';
+select pg_temp.chk('28f a sign-in without the admin key is reported once per address',
+  (select count(*) from net.test_log where body->>'text' like '%WITHOUT the admin key%' and body->>'text' like '%198.51.100.77%') = 1);
+delete from cbt_private.settings where key = 'admin_gate';
+delete from net.test_log;
+do $$ begin for i in 1..40 loop perform cbt_private.sec_event('2fa_off', 'high', 'Flood', 'x'); end loop; end $$;
+select pg_temp.chk('28g a flood of alerts sends at most 30 messages an hour', (select count(*) from cbt_private.tg_sent where at > now() - interval '1 hour') <= 30);
+select public.cbt_admin_telegram(:'ow9','off','{}')->>'ok';
+select pg_temp.chk('28h turning it off removes the token', not exists (select 1 from cbt_private.settings where key in ('tg_token', 'tg_chat')));
+select set_config('request.headers', '{"x-real-ip":"203.0.113.120"}', false);
+
 -- ===== report =====
 \t off
 \a
