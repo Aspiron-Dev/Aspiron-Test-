@@ -7,7 +7,7 @@ Static website on GitHub Pages + Supabase (database functions). No build step: u
 ## Pages
 | Page | What it is | Scripts |
 |---|---|---|
-| `index.html` | Student app (test series store + My tests, results, mistakes, tracker, PYQ, reviews, Refer & earn) | `config.js`, `app1.js` … `app26.js`, `pyq-syllabus.js` |
+| `index.html` | Student app (test series store + My tests, results, mistakes, tracker, PYQ, reviews, Refer & earn) | `config.js`, `app1.js` … `app27.js`, `pyq-syllabus.js`, `v3.js` + `v3.css` (new design, beta, off by default) |
 | `cp-dt764twzf54s5m.html` | Admin panel (needs the private access key + admin password) | `config.js`, `parser.js`, `qrcode.js`, `cx/core.js`, `cx/ui.js`, `cx/amsg.js`, `cx/lang.js`, `cx/m-*.js`, `cx/shell.js` |
 | `store.html` | Public store, in the admin console's design (menu on the left on computers, menu bar at the bottom on phones): name + mobile + course (NEET / JEE) once; pages Home (the student's course in rows by section — Full syllabus, Subject-wise …, arranged in Store setup), Search, Reviews, Help and Profile (details, course, theme, the last order); NEET / JEE switch at the top, Explore page (description, schedule, demo tests, reviews), Coming soon · Notify me, UPI payment, verify on Telegram / WhatsApp (message + payment screenshot), light / dark / auto theme | `store-theme.js`, `store.css`, `config.js`, `qrcode.js`, `store.js` `store.html?ref=CODE` is a promotion link: the visit and the orders made after it are counted in Admin → Store → Promotions. Links: `#/search`, `#/reviews`, `#/help`, `#/me` open a page, `#x=<id>` a series' Explore page |
 | `admin.html` | Decoy "404" page (the real admin page has a hidden name) | – |
@@ -30,6 +30,22 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Lite mode** (`html[data-lite]`, set in the `<head>` before the first paint): phones with 4 cores or fewer or 2 GB memory or less, data saver on, or battery at 20% or less and not charging. It keeps the frosted header and menu bar (lighter blur) but drops the blur behind sheets and the menu drawer, uses the plain page slide instead of the full-page transition, and stops decorative loops. Decorations that used to loop for ever (home card glow, live-test pulse, notification bell) now play a few times and stop, for everyone.
 - **Faster opening:** Google Fonts no longer hold up the first paint, and the service worker serves every file that has a `?v=` number straight from the phone (fetched once per new number). **So a changed script or style must get a new `?v=` number, or phones keep the old copy.** Pages themselves still always come from the network first.
 - **App icons:** `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png` show the logo symbol on ivory. Phones that installed the app pick up the new icon and name by themselves (Android can take a day or so).
+
+## New student design, beta (`v3.js`, `v3.css`)
+- **Off by default.** The classic design stays exactly as it is. A student turns the new design on from the classic menu
+  (*Try the new design (beta)*, also in Settings) and back off from the new menu (*Switch to the classic design*). The choice is
+  saved on the phone (`localStorage` `cbt_v3`); nothing is stored on the server.
+- **Only screens, no new system.** It reads the same data as the classic app (`cbt_catalog`, `cbt_notice`, `cbt_store`, `cbt_banners`)
+  and uses the classic functions for every action: `openTest` (exam screen), `openReview` (result and solutions), the store page
+  for buying, and the classic pages for question bank, PYQ, test generator, mistakes, saved questions, notes, tracker, results
+  and refer. When a classic page opens, a small *New design* button brings the student back.
+- **Separate styles.** Everything is drawn inside a Shadow DOM (`#v3host`), so `v3.css` cannot change the classic design and the
+  classic CSS cannot change the new one. It has its own theme (Light / Dark / Black, 5 palettes each, `cbt_v3_theme`); the exam
+  screen keeps the classic theme.
+- **Addresses:** `#/` Home, `#/x/test`, `#/x/tools`, `#/x/lib`, `#/x/stats`. Every other address opens the classic page.
+- **Not built yet** (shown as *Coming soon* in the Library): books reader, handwritten notes and DPPs, mindmaps and flashcards,
+  download manager. XP, syllabus progress and overall leaderboards need new data and are not shown.
+- **To remove it:** delete `v3.js`, `v3.css` and the `<script src="v3.js?v=…">` line in `index.html`.
 
 ## Social media links (`config.js`, `app27.js`, `cx/m-social.js`, `supabase_v57_social.sql`)
 - **Admin → Social media** (Engagement): Instagram, Facebook, YouTube, X (Twitter), Telegram, WhatsApp Channel, LinkedIn,
