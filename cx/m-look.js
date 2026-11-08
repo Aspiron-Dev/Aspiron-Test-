@@ -8,6 +8,14 @@
 const { h, raw, icon, join, ui: UI } = AX;
 const can = () => AX.can('store', 'manage');
 const LINK_RE = /^(https:\/\/|#\/|store\.html#)[^\s"'<>\\]*$/;
+// the poster keeps its own shape (never cut, no blurred side strips): width at most 1080 px, under 600 000 characters
+async function shrink(file) {
+  let out = '';
+  for (const [max, q] of [[1350, 0.85], [1350, 0.75], [1350, 0.62], [1100, 0.6], [900, 0.55]]) {
+    out = await AX.u.compressImage(file, { max, quality: q }); if (out.length <= 600000) return out;
+  }
+  throw new Error('big');
+}
 const LISTS = [['exams', 'e', 'Exam', 'NEET, JEE'], ['classes', 'c', 'Class', 'Class 11, Class 12, Dropper'], ['subjects', 's', 'Subject', 'Physics, Chemistry, Biology, Maths']];
 // "NEET, JEE ,neet" → ["NEET","JEE"] (trimmed, no repeats, at most 20, each at most 30 characters)
 const split = v => { const out = []; String(v || '').split(',').map(x => x.trim().replace(/[<>"\\]/g, '').slice(0, 30)).filter(Boolean)
@@ -32,20 +40,20 @@ AX.mod({
     (r.items || []).forEach(i => { S.tags[i.id] = { e: i.e || [], c: i.c || [], s: i.s || [] }; });
     const posterNow = () => S.poster !== undefined ? S.poster : r.poster;
     const prev = () => posterNow()
-      ? h`<img src="${posterNow()}" alt="" style="width:100%;max-width:360px;aspect-ratio:4/5;object-fit:cover;border-radius:14px;display:block">`
+      ? h`<img src="${posterNow()}" alt="" style="width:100%;max-width:360px;height:auto;border-radius:14px;display:block">`
       : h`<div class="dropzone" data-act="pick" style="max-width:360px;aspect-ratio:4/5">${icon('image', 22)}<div class="b mt8">Choose poster</div><div class="xs">JPG / PNG · 4 : 5 (1080 × 1350)</div></div>`;
     const itemRow = i => h`<div class="card"><div class="row" style="gap:10px"><div class="grow"><b>${i.title}</b><div class="xs mut">${[i.course ? i.course.toUpperCase() : 'NEET and JEE', i.section, i.active ? '' : 'hidden in the store'].filter(Boolean).join(' · ')}</div></div></div>
       ${join(LISTS, ([k, t, label]) => S.lists[k].length ? h`<div class="mt12"><div class="xs mut b" style="margin-bottom:6px">${label}</div><div class="chips">${join(S.lists[k], v =>
         h`<button type="button" class="chip ${S.tags[i.id][t].includes(v) ? 'on' : ''}" data-act="tag" data-id="${i.id}" data-t="${t}" data-v="${v}" ${edit ? '' : raw('disabled')}>${v}</button>`)}</div></div>` : '')}</div>`;
     const items = () => (r.items || []).length ? join(r.items, itemRow) : h`<div class="card">${UI.empty({ icon: 'store', title: 'No store test series yet', text: 'Add them in Store first.' })}</div>`;
     const draw = () => AX.set(ctx.el, h`<div class="col gap16">
-      <div class="callout info">${icon('info')}<div class="sm">Students see this in the <b>new design</b> (beta) of the app, on the <b>Tests</b> tab. The search bar sits on the top of the poster and the two big buttons on its bottom, so keep the top 15% and the bottom 25% of the picture plain.</div></div>
+      <div class="callout info">${icon('info')}<div class="sm">Students see this in the <b>new design</b> (beta) of the app, on the <b>Tests</b> tab. The search bar sits on the top of the poster and the two big buttons on its bottom, so keep the top 15% and the bottom 25% of the picture plain. The top of the poster runs behind the app header, which takes its colour, and the bottom fades into the page.</div></div>
       <div class="card"><div class="card-h">${icon('image')}<h3>Poster</h3><span class="grow"></span>${edit ? '' : UI.pill('View only')}</div>
         <div class="row wrap" style="gap:16px;align-items:flex-start"><div id="lk-prev" style="flex:1 1 220px;max-width:360px">${prev()}</div>
           <div class="col gap12" style="flex:1 1 240px">
             ${edit ? h`<div class="row wrap" style="gap:8px"><button type="button" class="btn sm" data-act="pick">${icon('image', 15)} ${posterNow() ? 'Change poster' : 'Choose poster'}</button>${posterNow() ? h`<button type="button" class="btn sm ghost" data-act="rm">${icon('trash', 15)} Remove</button>` : ''}</div>` : ''}
             <form id="lk-f" autocomplete="off" novalidate>${AX.f.input({ name: 'link', label: 'Link when tapped (optional)', value: r.link || '', max: 300, inputmode: 'url', disabled: !edit, placeholder: 'https://… or store.html#x=<series id>', hint: 'Empty = the poster is only a picture.' })}</form>
-            <p class="xs mut">Best size 1080 × 1350 px (4 : 5). Diwali, Holi, a new batch: change it any time. No poster = students see a plain dark card.</p></div></div></div>
+            <p class="xs mut">Best size 1080 × 1350 px (4 : 5); any shape works and is never cut. Diwali, Holi, a new batch: change it any time. No poster = students see a plain dark card.</p></div></div></div>
       <div class="card"><div class="card-h">${icon('filter')}<h3>Filter lists</h3></div>
         <p class="sm mut">What students can pick in the filter. Separate the names with commas. Exam needs at least one.</p>
         <div class="grid g2 mt12">${join(LISTS, ([k, , label, ph]) => h`<div class="fld"><label for="lk-${k}">${label}</label><input class="inp" id="lk-${k}" data-list="${k}" value="${S.lists[k].join(', ')}" placeholder="${ph}" maxlength="400" ${edit ? '' : raw('disabled')}></div>`)}</div></div>
@@ -61,7 +69,7 @@ AX.mod({
     if (!edit) return;
     AX.act(ctx.el, {
       async pick() { const file = await AX.u.pickFile('image/*'); if (!file) return;
-        try { S.poster = await AX.u.poster(file, { w: 1080, h: 1350, limit: 600000 }); const y = scrollY; draw(); scrollTo(0, y); } catch (e) { UI.toast('Could not use this image', { tone: 'bad' }); } },
+        try { S.poster = await shrink(file); const y = scrollY; draw(); scrollTo(0, y); } catch (e) { UI.toast('Could not use this image', { tone: 'bad' }); } },
       rm() { S.poster = ''; const y = scrollY; draw(); scrollTo(0, y); },
       tag(el) { const g = S.tags[el.dataset.id][el.dataset.t], v = el.dataset.v, i = g.indexOf(v); i > -1 ? g.splice(i, 1) : g.push(v); el.classList.toggle('on', i < 0); },
       async save(btn) {

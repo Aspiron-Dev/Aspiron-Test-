@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=3;
+const V3VER=4;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -170,8 +170,8 @@ const top=()=>STK[STK.length-1],scrOpen=()=>STK.length>0;
 function drawScr(dir){const v=top();if(!v)return;$('#scrT').textContent=v.t;$('#scrS').textContent=v.s||'';$('#scrR').innerHTML=v.right?v.right():'';
   $('#scrB').innerHTML=`<div class="scr-in${dir?' '+dir:''}">${v.html()}</div>`;v.after&&v.after()}
 function push(v){const was=STK.length>0;STK.push(v);try{history.pushState({v3s:STK.length},'',location.href)}catch(e){}
-  drawScr(was&&!RM?'fwd':'');$('#scrB').scrollTop=0;if(!scr.classList.contains('open')){scr.classList.add('open');scr.setAttribute('aria-hidden','false')}setTimeout(()=>$('#scrBack').focus({preventScroll:true}),60)}
-function pop(){const v=STK.pop();v&&v.leave&&v.leave();if(STK.length){drawScr(RM?'':'bwd')}else{scr.classList.remove('open');scr.setAttribute('aria-hidden','true');$('#scrB').innerHTML=''}}
+  drawScr(was&&!RM?'fwd':'');try{pstSync()}catch(e){}$('#scrB').scrollTop=0;if(!scr.classList.contains('open')){scr.classList.add('open');scr.setAttribute('aria-hidden','false')}setTimeout(()=>$('#scrBack').focus({preventScroll:true}),60)}
+function pop(){const v=STK.pop();v&&v.leave&&v.leave();if(STK.length){drawScr(RM?'':'bwd')}else{scr.classList.remove('open');scr.setAttribute('aria-hidden','true');$('#scrB').innerHTML='';try{pstSync()}catch(e){}}}
 function back(){if(!STK.length)return;history.back()}
 /* close every page first, wait for the browser history to settle, then run cb (so a hash change is never undone) */
 let afterUnwind=null;
@@ -210,7 +210,7 @@ function syncDock(){dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab))
 let timers=[];
 const every=(fn,ms)=>{const t=setInterval(fn,ms);timers.push(t);return t};
 function render(anim){timers.forEach(clearInterval);timers=[];try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please switch to the classic design from the menu and tell us.</p></div>`}
-  main.classList.remove('in');if(anim&&!RM){void main.offsetWidth;main.classList.add('in')}try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}countUp(main)}
+  main.classList.remove('in');if(anim&&!RM){void main.offsetWidth;main.classList.add('in')}try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync()}catch(e){}countUp(main)}
 function go(tab,then){closeLayer();unwind(()=>{const h=tab==='home'?'#/':'#/x/'+tab;if(tab===S.tab&&location.hash===h){scrollTo({top:0,behavior:RM?'auto':'smooth'});then&&then();return}goThen=then||null;location.hash=h})}
 let goThen=null;
 A.tab=el=>go(el.dataset.tab);
@@ -364,7 +364,7 @@ A.openNote=el=>{const n=(NOTES||[]).find(x=>String(x.id)===el.dataset.id);if(!n)
 A.oldNotices=()=>oldHash('#/n');
 
 /* ================= TESTS: store + my test series, the store's own data (photos, descriptions, reviews) ================= */
-const TQ={q:'',f:{e:[],c:[],s:[]},mf:'paid',cat:'all',sf:'all',xt:'d'};
+const TQ={q:'',f:{e:[],c:[],s:[]},mf:'paid',cat:'all',sf:'all',xt:'d',tile:''};
 let XD=null,RV={},SCHD={},LANGS=new Set(),SMAP={},extrasBusy=null;
 function loadExtras(){if(extrasBusy||XD)return extrasBusy;const q=(fn,auth)=>rpc(fn,{},!auth).catch(()=>null);
   extrasBusy=Promise.all([q('cbt_store_explore'),q('cbt_store_reviews'),q('cbt_store_schedules'),q('cbt_store_langs'),q('cbt_store_map',true)]).then(([x,r,s,l,m])=>{
@@ -407,14 +407,39 @@ const mpass=s=>{const w=TQ.q.toLowerCase().split(/\s+/).filter(Boolean),h=[s.tit
 function myCount(){const L=mine();return {paid:L.filter(s=>!s.is_free).length,free:L.filter(s=>s.is_free).length,exp:0,all:L.length,live:L.some(s=>seriesStats(s).live)}}
 function tabs2(){const c=myCount(),n=(STORE||[]).filter(x=>x.buy_on!==false).length;
   return `<div class="tt2">
-   <button class="on" data-a="toList"><span class="ti">${ic('tests',22)}</span><b>Test Series Store</b><small>${STORE?n+' series':'Loading'}</small></button>
-   <button data-a="mySeries"><span class="ti">${ic('layers',22)}</span><b>My Test Series</b><small>${c.all?c.all+' enrolled':'None yet'}</small></button></div>`}
-function poster(){const L=LK(),img=/^data:image\/(jpeg|png|webp);base64,/.test(L.poster||'')?L.poster:'',u=/^(https:\/\/|#\/|store\.html#)[^\s"'<>\\]*$/.test(L.link||'')?L.link:'';
+   <button class="${TQ.tile==='store'?'on':''}" data-a="toList"><span class="ti">${ic('tests',22)}</span><b>Test Series Store</b><small>${STORE?n+' series':'Loading'}</small></button>
+   <button class="${TQ.tile==='my'?'on':''}" data-a="mySeries"><span class="ti">${ic('layers',22)}</span><b>My Test Series</b><small>${c.all?c.all+' enrolled':'None yet'}</small></button></div>`}
+function posterImg(){const p=LK().poster||'';return /^data:image\/(jpeg|png|webp);base64,/.test(p)?p:''}
+function poster(){const L=LK(),img=posterImg(),u=/^(https:\/\/|#\/|store\.html#)[^\s"'<>\\]*$/.test(L.link||'')?L.link:'';
   const art=img?`<img src="${esc3(img)}" alt="">`:`<span class="pst-ph"><small>ASPIRON EDUCATION</small><b>Test series</b><em>NEET and JEE, exam-style tests with All India rank</em></span>`;
-  return `<section class="pst">${u?`<a class="pst-art" href="${esc3(u)}"${/^https:/.test(u)?' target="_blank" rel="noopener noreferrer"':''} aria-label="Offer">${art}</a>`:`<div class="pst-art">${art}</div>`}
+  return `<section class="pst${img?'':' noimg'}">${u?`<a class="pst-art" href="${esc3(u)}"${/^https:/.test(u)?' target="_blank" rel="noopener noreferrer"':''} aria-label="Offer">${art}</a>`:`<div class="pst-art">${art}</div>`}
    <div class="pst-top"><div class="search"><label class="sbox">${ic('search',19)}<input id="tq" type="search" autocomplete="off" placeholder="Search test series, test name or exam" value="${esc3(TQ.q)}" aria-label="Search test series, test name or exam"><button class="clr" data-a="tqClear" aria-label="Clear search"${TQ.q?'':' hidden'}>${ic('x',17)}</button></label>
    <button class="fb${tfCount()?' on':''}" data-a="tFilter" aria-label="Filter${tfCount()?`, ${tfCount()} on`:''}">${ic('filter',20)}${tfCount()?`<b>${tfCount()}</b>`:''}</button></div></div>
    <div class="pst-tabs">${tabs2()}</div></section>`}
+
+/* the poster's own colours, read from the picture on the phone: the top edge tints the header, a deep shade colours the
+   offer boxes and the chosen button. Any poster the admin puts up gets matching colours by itself. */
+let PCOL=null,pcKey='';
+const lum=c=>(.2126*c[0]+.7152*c[1]+.0722*c[2])/255;
+const rgb=(c,a)=>`rgba(${c.map(Math.round).join(',')},${a==null?1:a})`;
+function readPC(src){return new Promise(res=>{const im=document.createElement('img');im.onload=()=>{try{const W=24,H=30,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.drawImage(im,0,0,W,H);const d=x.getImageData(0,0,W,H).data;
+   const avg=(y0,y1,f)=>{let r=0,g=0,b=0,n=0;for(let y=y0;y<y1;y++)for(let i=0;i<W;i++){const k=(y*W+i)*4,p=[d[k],d[k+1],d[k+2]];if(f&&!f(p))continue;r+=p[0];g+=p[1];b+=p[2];n++}return n?[r/n,g/n,b/n]:null};
+   const sat=p=>{const mx=Math.max(...p),mn=Math.min(...p);return mx?(mx-mn)/mx:0};
+   const top=avg(0,3),viv=avg(0,H,p=>sat(p)>.35&&lum(p)>.12&&lum(p)<.8)||avg(0,H),k=Math.min(1,.3/Math.max(.05,lum(viv))),deep=viv.map(v=>v*k);
+   res({top,deep})}catch(e){res(null)}};im.onerror=()=>res(null);im.src=src})}
+function hexRGB(h){h=String(h||'').trim();const m=/^#?([0-9a-f]{6})$/i.exec(h);return m?[0,2,4].map(i=>parseInt(m[1].substr(i,2),16)):[43,45,50]}
+function setPC(pc){PCOL=pc;if(!host)return;if(!pc){['--pcTop','--pcDeep','--pcLogo','--pcLogoE'].forEach(v=>host.style.removeProperty(v));return}
+  const light=lum(pc.top)<.55;host.style.setProperty('--pcTop',rgb(pc.top,.78));host.style.setProperty('--pcDeep',rgb(pc.deep));
+  host.style.setProperty('--pcLogo',light?'#ffffff':'#1d1e22');host.style.setProperty('--pcLogoE',light?'rgba(255,255,255,.72)':'#55575d');host.dataset.pcMeta=rgb(pc.top)}
+function loadPC(){const img=posterImg(),key=img?img.length+img.slice(-40):'none';if(key===pcKey)return;pcKey=key;
+  if(!img){const t=hexRGB(getComputedStyle(host).getPropertyValue('--hero1'));setPC({top:t,deep:t});pstSync();return}
+  readPC(img).then(pc=>{if(pcKey!==key)return;setPC(pc);pstSync()})}
+/* while the poster is under the header, the header takes its colour (only colours change, never the size) */
+function pstSync(){if(!root)return;const h=$('#hdr');if(!h||!main)return;const p=S.tab==='test'&&!scrOpen()&&$('.pst'),old=document.body.classList.contains('v3old');
+  host&&host.style.setProperty('--hh',h.offsetHeight+'px');
+  const on=!!(p&&PCOL&&!old&&p.getBoundingClientRect().bottom>h.offsetHeight+70);h.classList.toggle('onpst',on);main.classList.toggle('pc',!!(p&&PCOL));
+  if(old||!host)return;const m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',on?host.dataset.pcMeta||'':getComputedStyle(host).getPropertyValue('--bg').trim()||'#f5f5f3')}
+addEventListener('scroll',()=>{if(!root||!main)return;if(S.tab==='test'||($('#hdr')&&$('#hdr').classList.contains('onpst')))pstSync()},{passive:true});
 
 /* ---------- store view ---------- */
 function offer3(){const L=(STORE||[]).filter(x=>x.buy_on!==false&&x.price).sort((a,b)=>offPct(b)-offPct(a)).slice(0,3);if(L.length<2)return '';
@@ -451,9 +476,9 @@ function myView(){const c=myCount(),L=TQ.mf==='exp'?[]:mine().filter(s=>TQ.mf===
   <div class="list">${L.length?L.map(myCard).join(''):`<div class="card empty"><span class="ti">${ic('layers',22)}</span><b>${TQ.mf==='exp'?'No expired test series':TQ.mf==='paid'?'No paid test series yet':'No free test series yet'}</b><p>${TQ.mf==='exp'?'Series whose access has ended will show up here.':'Get one from the store and it shows up here.'}</p>${TQ.mf==='exp'?'':'<button class="btn sm" data-a="toStore">Open the store</button>'}</div>`}</div>`}
 VIEW.test=()=>poster()+`<div id="tBody" class="stack" style="gap:var(--gap)">${storeView()}</div>`;
 function drawT(){const b=$('#tBody');if(!b)return;b.innerHTML=storeView();const n=tfCount(),fb=$('[data-a="tFilter"]');if(fb){fb.className='fb'+(n?' on':'');fb.innerHTML=ic('filter',20)+(n?`<b>${n}</b>`:'')}const x=$('[data-a="tqClear"]');x&&(x.hidden=!TQ.q);const t=$('.tt2');t&&(t.outerHTML=tabs2());autoRail('#tbRail','#tbRailD')}
-AFTER.test=()=>{const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#tbRail','#tbRailD');loadExtras();loadLook();
+AFTER.test=()=>{const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#tbRail','#tbRailD');loadExtras();loadLook();loadPC();pstSync();
   try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length))promoLoad().then(()=>{if(S.tab==='test'&&!scrOpen())softRender()})}catch(e){}};
-A.toList=()=>{const a=$('#allSec');a&&a.scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})};
+A.toList=()=>{TQ.tile='store';$$('.tt2 button').forEach(b=>b.classList.toggle('on',b.dataset.a==='toList'));const a=$('#allSec');a&&a.scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})};
 A.tqClear=()=>{TQ.q='';$('#tq').value='';drawT();$('#tq').focus()};
 A.tClear=()=>{TQ.q='';TQ.f={e:[],c:[],s:[]};const q=$('#tq');if(q)q.value='';drawT()};
 A.cat=el=>{TQ.cat=el.dataset.v;drawT()};
@@ -467,7 +492,7 @@ A.tFilter=()=>{loadLook();const G=[['e','Exam',LK().exams],['c','Class',LK().cla
 
 /* ---------- My Test Series: its own full page, Paid / Free / Expired ---------- */
 function myPage(){return {t:'My Test Series',s:`${mine().length} enrolled`,key:'my',html:myView}}
-A.mySeries=()=>{const c=myCount();TQ.mf=c.paid||!c.free?'paid':'free';closeLayer();if(STORE===null)loadStore();loadExtras();if(top()&&top().key==='my')return;push(myPage())};
+A.mySeries=()=>{TQ.tile='my';$$('.tt2 button').forEach(b=>b.classList.toggle('on',b.dataset.a==='mySeries'));const c=myCount();TQ.mf=c.paid||!c.free?'paid':'free';closeLayer();if(STORE===null)loadStore();loadExtras();if(top()&&top().key==='my')return;push(myPage())};
 
 /* ---------- one test series page: photo, Description | Resources | Reviews, buy bar ---------- */
 const SF=[['all','All'],['open','Available'],['up','Upcoming'],['att','Attempted'],['done','Completed'],['closed','Closed'],['lock','Locked']];
