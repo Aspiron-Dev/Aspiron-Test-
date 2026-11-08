@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=5;
+const V3VER=6;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -210,14 +210,19 @@ function syncDock(){dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab))
 let timers=[];
 const every=(fn,ms)=>{const t=setInterval(fn,ms);timers.push(t);return t};
 function render(anim){timers.forEach(clearInterval);timers=[];try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please switch to the classic design from the menu and tell us.</p></div>`}
-  main.classList.remove('in');if(anim&&!RM){void main.offsetWidth;main.classList.add('in')}try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync()}catch(e){}countUp(main)}
+  main.classList.remove('in');if(anim&&!RM){void main.offsetWidth;main.classList.add('in')}try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);reveal(main)}
+/* content below the first screen fades up into place as it scrolls into view (once; nothing hides if the browser cannot) */
+let rvIO=null;
+function reveal(r){if(RM||!r||!('IntersectionObserver' in window))return;
+  if(!rvIO)rvIO=new window.IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('rvin');rvIO.unobserve(e.target)}}),{rootMargin:'0px 0px -4% 0px'});
+  const H=window.innerHeight;r.querySelectorAll('.list>*,.sh,.chips,.rail,.qgrid,.off3,.obtn,.sec>.card,.sec>.dots').forEach(el=>{if(el.classList.contains('rv'))return;if(el.getBoundingClientRect().top>H){el.classList.add('rv');rvIO.observe(el)}})}
 function go(tab,then){closeLayer();unwind(()=>{const h=tab==='home'?'#/':'#/x/'+tab;if(tab===S.tab&&location.hash===h){scrollTo({top:0,behavior:RM?'auto':'smooth'});then&&then();return}goThen=then||null;location.hash=h})}
 let goThen=null;
 A.tab=el=>go(el.dataset.tab);
 function countUp(r){if(RM)return;r.querySelectorAll('[data-n]').forEach(el=>{const to=+el.dataset.n,dec=(el.dataset.n.split('.')[1]||'').length,t0=performance.now(),D=900;
   const step=t=>{const k=Math.min(1,(t-t0)/D),e=1-Math.pow(1-k,3),v=to*e;el.textContent=dec?v.toFixed(dec):fmtN(Math.round(v));if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step)})}
 const N=(v,dec)=>`<span data-n="${v}">${dec?(+v).toFixed(dec):fmtN(+v)}</span>`;
-const SKEL=`<header class="hdr" id="hdr"><div class="hdr-in">
+const SKEL=`<header class="hdr" id="hdr"><i class="hdr-tint" id="hdrTint" aria-hidden="true"></i><div class="hdr-in">
   <button class="ib" data-a="menu" aria-label="Menu" id="mnu"></button>
   <a class="brand" href="#/" data-a="tab" data-tab="home" aria-label="Aspiron Education, go to Home"><span class="bmk" aria-hidden="true"><i class="bmk-w" id="bmk"><i class="bmk-s"></i></i><span class="bmk-e"><span>EDUCATION</span></span></span></a>
   <button class="ib" data-a="bell" aria-label="Notifications" id="bell"></button></div></header>
@@ -433,8 +438,8 @@ function setPC(pc){PCOL=pc;if(!host)return;if(!pc){['--pcTop','--pcDeep','--pcLo
   const light=lum(pc.top)<.55;host.style.setProperty('--pcTop',rgb(pc.top,.78));host.style.setProperty('--pcDeep',rgb(pc.deep));
   host.style.setProperty('--pcLogo',light?'#ffffff':'#1d1e22');host.style.setProperty('--pcLogoE',light?'rgba(255,255,255,.72)':'#55575d');host.dataset.pcMeta=rgb(pc.top)}
 function loadPC(){const img=posterImg(),key=img?img.length+img.slice(-40):'none';if(key===pcKey)return;pcKey=key;
-  if(!img){const t=hexRGB(getComputedStyle(host).getPropertyValue('--hero1'));setPC({top:t,deep:t});pstSync();return}
-  readPC(img).then(pc=>{if(pcKey!==key)return;setPC(pc);pstSync()})}
+  if(!img){const t=hexRGB(getComputedStyle(host).getPropertyValue('--hero1'));setPC({top:t,deep:t});lastQ=-1;pstSync();return}
+  readPC(img).then(pc=>{if(pcKey!==key)return;setPC(pc);lastQ=-1;pstSync()})}
 /* scrolling the Tests page: the search bar stays at the top, the two big buttons ride up with the poster, stop under
    the search bar and shrink to slim buttons; the poster drifts up and fades, and the header's colour goes from the
    poster's colour back to normal. Only colours, positions and the buttons' height change (the header keeps its size). */
@@ -442,23 +447,31 @@ const parseCol=v=>{v=String(v||'').trim();let m=/^#?([0-9a-f]{6})$/i.exec(v);if(
   m=/rgba?\(([^)]+)\)/.exec(v);if(!m)return [245,245,243,1];const n=m[1].split(',').map(x=>parseFloat(x));return [n[0],n[1],n[2],n.length>3?n[3]:1]};
 const mixC=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
 const TABH=116,TABS=48;
-let pstRaf=0;
-function pstSync(){if(!root)return;const h=$('#hdr');if(!h||!main)return;const st=$('#pstStick'),ps=$('#pst'),old=document.body.classList.contains('v3old');
-  const on=!!(S.tab==='test'&&!scrOpen()&&st&&ps&&!old),hh=h.offsetHeight;host&&host.style.setProperty('--hh',hh+'px');
-  main.classList.toggle('pc',!!(on&&PCOL));
-  const meta=document.querySelector('meta[name="theme-color"]');
-  if(!on){h.classList.remove('onpst');h.style.background='';if(!old&&host&&meta)meta.setAttribute('content',getComputedStyle(host).getPropertyValue('--bg').trim()||'#f5f5f3');return}
-  const sy=Math.max(0,scrollY),y0=ps.offsetHeight-hh-96,y1=68,span=Math.max(1,y0-y1),p=Math.min(1,sy/span),q=p*p*(3-2*p);
-  st.style.setProperty('--p',q.toFixed(3));
-  const th=TABH-(TABH-TABS)*q,ty=Math.max(y1,y0-sy);$('#pstTabs').style.transform=`translateY(${ty.toFixed(1)}px)`;
-  const bd=$('#pstBd');bd.style.height=(ty+th+14)+'px';bd.style.opacity=q.toFixed(3);
-  const art=ps.firstElementChild;if(art){art.style.transform=`translateY(${(Math.min(sy,span+200)*.45).toFixed(1)}px)`;art.style.opacity=(1-.9*q).toFixed(3)}
-  if(!PCOL){h.classList.remove('onpst');h.style.background='';return}
-  const base=parseCol(getComputedStyle(host).getPropertyValue('--hdr')),top=PCOL.top.concat(.78),c=mixC(top,base,q);
-  h.style.background=`rgba(${c.slice(0,3).map(Math.round).join(',')},${c[3].toFixed(3)})`;h.classList.toggle('onpst',q<.5);
-  if(meta){const b2=parseCol(getComputedStyle(host).getPropertyValue('--bg')),m2=mixC(PCOL.top,b2.slice(0,3),q);meta.setAttribute('content',`rgb(${m2.map(Math.round).join(',')})`)}}
-addEventListener('scroll',()=>{if(!root||!main||pstRaf)return;if(S.tab!=='test'&&!($('#hdr')&&$('#hdr').style.background))return;pstRaf=requestAnimationFrame(()=>{pstRaf=0;pstSync()})},{passive:true});
-addEventListener('resize',()=>{if(root&&S.tab==='test')pstSync()},{passive:true});
+let pstRaf=0,lastQ=-1,lastMeta='';
+/* sizes are measured once (on draw, resize, picture load), never during the scroll, so every frame only moves things */
+const PM={ok:0};
+function pstMeasure(){const h=$('#hdr'),ps=$('#pst');if(!h||!ps)return;PM.hh=h.offsetHeight;PM.y0=ps.offsetHeight-PM.hh-96;PM.y1=68;PM.span=Math.max(1,PM.y0-PM.y1);
+  PM.bdH=Math.max(220,PM.y0+TABH+14);PM.bg=parseCol(getComputedStyle(host).getPropertyValue('--bg')).slice(0,3);host.style.setProperty('--hh',PM.hh+'px');
+  const bd=$('#pstBd');if(bd)bd.style.height=PM.bdH+'px';PM.ok=1;lastQ=-1}
+function setMeta(c){const m=document.querySelector('meta[name="theme-color"]');if(m&&c!==lastMeta){m.setAttribute('content',c);lastMeta=c}}
+function pstSync(re){if(!root)return;const h=$('#hdr');if(!h||!main)return;const st=$('#pstStick'),ps=$('#pst'),tint=$('#hdrTint'),old=document.body.classList.contains('v3old');
+  const on=!!(S.tab==='test'&&!scrOpen()&&st&&ps&&!old);main.classList.toggle('pc',!!(on&&PCOL));
+  if(!on){if(tint)tint.style.opacity=0;h.classList.remove('onpst');PM.ok=0;lastQ=-1;if(!old&&host)setMeta(getComputedStyle(host).getPropertyValue('--bg').trim()||'#f5f5f3');return}
+  if(re||!PM.ok)pstMeasure();
+  const sy=Math.max(0,scrollY),p=Math.min(1,sy/PM.span),q=p*p*(3-2*p);
+  if(q===1&&lastQ===1)return;lastQ=q;
+  st.style.setProperty('--p',q.toFixed(4));
+  const th=TABH-(TABH-TABS)*q,ty=Math.max(PM.y1,PM.y0-sy);$('#pstTabs').style.transform=`translate3d(0,${ty.toFixed(2)}px,0)`;
+  const bd=$('#pstBd');bd.style.transform=`translate3d(0,${(ty+th+14-PM.bdH).toFixed(2)}px,0)`;bd.style.opacity=Math.min(1,q*1.15).toFixed(3);
+  const art=ps.firstElementChild;if(art){art.style.transform=`translate3d(0,${(Math.min(sy,PM.span+200)*.45).toFixed(2)}px,0)`;art.style.opacity=(1-.92*q).toFixed(3)}
+  if(tint)tint.style.opacity=PCOL?(1-q).toFixed(3):0;h.classList.toggle('onpst',!!PCOL&&q<.5);
+  if(PCOL){const c=mixC(PCOL.top,PM.bg,q).map(v=>Math.round(v/4)*4);setMeta(`rgb(${c.join(',')})`)}}
+addEventListener('scroll',()=>{if(!root||!main||pstRaf)return;if(S.tab!=='test'&&!PM.ok)return;pstRaf=requestAnimationFrame(()=>{pstRaf=0;pstSync()})},{passive:true});
+addEventListener('resize',()=>{if(root&&S.tab==='test')pstSync(true)},{passive:true});
+/* a scroll that stops half way through the change settles to the nearer end, so the bar is never left half shrunk */
+let snapT=0;
+function pstSnap(){if(RM||!root||S.tab!=='test'||scrOpen()||!PM.ok||layer)return;const p=scrollY/PM.span;if(p>.03&&p<.97)scrollTo({top:p<.42?0:Math.ceil(PM.span),behavior:'smooth'})}
+if('onscrollend' in window)addEventListener('scrollend',pstSnap);else addEventListener('scroll',()=>{clearTimeout(snapT);snapT=setTimeout(pstSnap,200)},{passive:true});
 
 /* ---------- store view ---------- */
 function offer3(){const L=(STORE||[]).filter(x=>x.buy_on!==false&&x.price).sort((a,b)=>offPct(b)-offPct(a)).slice(0,3);if(L.length<2)return '';
@@ -494,8 +507,8 @@ function myView(){const c=myCount(),L=TQ.mf==='exp'?[]:mine().filter(s=>TQ.mf===
   return `<div class="seg" role="tablist">${[['paid','Paid',c.paid],['free','Free',c.free],['exp','Expired',c.exp]].map(t=>`<button role="tab" aria-selected="${t[0]===TQ.mf}" class="${t[0]===TQ.mf?'on':''}" data-a="mf" data-v="${t[0]}">${t[1]}<small>${t[2]}</small></button>`).join('')}</div>
   <div class="list">${L.length?L.map(myCard).join(''):`<div class="card empty"><span class="ti">${ic('layers',22)}</span><b>${TQ.mf==='exp'?'No expired test series':TQ.mf==='paid'?'No paid test series yet':'No free test series yet'}</b><p>${TQ.mf==='exp'?'Series whose access has ended will show up here.':'Get one from the store and it shows up here.'}</p>${TQ.mf==='exp'?'':'<button class="btn sm" data-a="toStore">Open the store</button>'}</div>`}</div>`}
 VIEW.test=()=>poster()+`<div id="tBody" class="stack" style="gap:var(--gap)">${storeView()}</div>`;
-function drawT(){const b=$('#tBody');if(!b)return;b.innerHTML=storeView();const n=tfCount(),fb=$('[data-a="tFilter"]');if(fb){fb.className='fb'+(n?' on':'');fb.innerHTML=ic('filter',20)+(n?`<b>${n}</b>`:'')}const x=$('[data-a="tqClear"]');x&&(x.hidden=!TQ.q);const t=$('.tt2');t&&(t.outerHTML=tabs2());autoRail('#tbRail','#tbRailD')}
-AFTER.test=()=>{const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#tbRail','#tbRailD');loadExtras();loadLook();loadPC();pstSync();const pi=$('#pst img');pi&&!pi.complete&&pi.addEventListener('load',pstSync,{once:true});
+function drawT(){const b=$('#tBody');if(!b)return;b.innerHTML=storeView();const n=tfCount(),fb=$('[data-a="tFilter"]');if(fb){fb.className='fb'+(n?' on':'');fb.innerHTML=ic('filter',20)+(n?`<b>${n}</b>`:'')}const x=$('[data-a="tqClear"]');x&&(x.hidden=!TQ.q);const t=$('.tt2');t&&(t.outerHTML=tabs2());autoRail('#tbRail','#tbRailD');reveal(b);lastQ=-1;pstSync()}
+AFTER.test=()=>{const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#tbRail','#tbRailD');loadExtras();loadLook();loadPC();pstSync(true);const pi=$('#pst img');pi&&!pi.complete&&pi.addEventListener('load',()=>pstSync(true),{once:true});
   try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length))promoLoad().then(()=>{if(S.tab==='test'&&!scrOpen())softRender()})}catch(e){}};
 A.toList=()=>{TQ.tile='store';$$('.tt2 button').forEach(b=>b.classList.toggle('on',b.dataset.a==='toList'));const a=$('#allSec');a&&a.scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})};
 A.tqClear=()=>{TQ.q='';$('#tq').value='';drawT();$('#tq').focus()};
