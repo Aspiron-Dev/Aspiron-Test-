@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=7;
+const V3VER=8;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -297,7 +297,7 @@ function upcoming(){const cs=curSeries(),all=upList(),L=all.slice(0,4),done=(C()
   ${L.length?`<div class="card"><div class="ev">${L.map(evRow).join('')}</div></div>`:`<div class="evnone"><span class="ti">${ic('cal',20)}</span><span>${done?'Today’s live tests have ended':'No live or upcoming tests right now'}</span></div>`}
   ${cs?'<button class="obtn" data-a="week">View Weekly Schedule</button>':''}</section>`}
 const ZONE=[['series','layers','My Test Series'],['qb','qb','Question Bank'],['pyq','pyq','PYQ Analyzer'],['gen','spark','Test Generator'],['dl','file','Notes & PDFs'],['mk','pen','Mistakes'],['bm','bookmark','Saved'],['hist','trophy','Results']];
-function zone(){return `<section class="sec"><div class="sh"><h2>Your study zone</h2></div><div class="qgrid">
+function zone(){return `<section class="sec"><div class="sh"><h2>My study zone</h2></div><div class="qgrid">
   ${ZONE.map(z=>`<button class="qi" data-a="zone" data-k="${z[0]}"><span class="ti g">${ic(z[1],24)}</span><span>${z[2]}</span></button>`).join('')}</div></section>`}
 function promoRail(id){let L=[];try{L=(typeof PROMO!=='undefined'&&PROMO)||[]}catch(e){}if(!L.length)return '';
   return `<section class="sec"><div class="rail" id="${id}">${L.slice(0,6).map(x=>{const u=/^https?:\/\/|^#\//i.test(x.link||'')?x.link:'',img=x.img&&/^data:image\/|^https:\/\//.test(x.img)?x.img:'';
@@ -316,7 +316,7 @@ function autoRail(rs,ds){const c=$(rs);if(!c||!c.children.length)return;const do
   if(!RM)every(()=>{if(touched||document.hidden)return;c.scrollTo({left:((i+1)%c.children.length)*st(),behavior:'smooth'})},5000)}
 A.switchSeries=()=>openSheet(`<h2 id="sheetT">Switch test series</h2><p class="sub">Home, upcoming tests and the weekly schedule follow the series you pick.</p><div>${mine().map(s=>{const k=seriesStats(s);return `<button class="opt${s.id===(curSeries()||{}).id?' on':''}" data-a="pickSeries" data-id="${esc3(s.id)}"><div><b>${esc3(s.title)}</b><small>${s.is_free?'Free':'Premium'}, ${k.done} of ${k.n} tests attempted</small></div><span class="ck">${ic('check')}</span></button>`}).join('')}</div><button class="btn lg ghost" style="margin-top:12px" data-a="toStore">${ic('tests',16)}Get more test series</button>`);
 A.pickSeries=el=>{lsSet('cbt_v3_series',el.dataset.id);closeLayer();const b=$('#serBox');if(b){b.style.transition='opacity .2s';b.style.opacity=0}setTimeout(()=>{softRender();toast3('Switched to '+(curSeries()||{}).title)},200)};
-A.zone=el=>{const k=el.dataset.k;({study:()=>go('lib'),series:()=>A.mySeries(),dl:()=>oldHash('#/notes'),hist:()=>oldHash('#/r'),mk:()=>oldHash('#/m'),bm:()=>oldHash('#/b'),qb:()=>oldHash('#/qb'),pyq:()=>oldHash('#/pyq'),gen:()=>oldHash('#/gen')}[k]||(()=>{}))()};
+A.zone=el=>{const k=el.dataset.k;({study:()=>go('lib'),series:()=>A.mySeries(),dl:()=>openNotes(),hist:()=>A.hist(),mk:()=>openMistakes(),bm:()=>openSaved(),qb:()=>oldHash('#/qb'),pyq:()=>oldHash('#/pyq'),gen:()=>oldHash('#/gen')}[k]||(()=>{}))()};
 A.test=el=>{const t=tOf(el.dataset.id);if(!t)return;if(t.locked){oldModal(()=>openTest(t.id));return}oldRun(()=>openTest(t.id))};
 A.review=el=>oldRun(()=>openReview(el.dataset.r));
 
@@ -609,8 +609,7 @@ const RESK=[['schedule','Schedule','cal'],['syllabus','Syllabus','list'],['notes
 function spRes(sid){const fl=(sOf(sid).files||[]),G=RESK.map(k=>[k,fl.filter(f=>(f.kind||'notes')===k[0])]).filter(g=>g[1].length);
   if(!G.length)return `<div class="card empty"><span class="ti">${ic('file',22)}</span><b>No study material yet</b><p>Schedules, syllabus and PDFs for this series will appear here.</p></div>`;
   return `<div class="list">${G.map(([k,L],i)=>`<button class="card rsc" data-a="resOpen" data-id="${esc3(sid)}" data-k="${k[0]}"><span class="rsc-n">RE - ${String(i+1).padStart(2,'0')}</span><b>${k[1]}</b><small>${L.length} ${L.length===1?'file':'files'}</small>${ic('right',18)}</button>`).join('')}</div>`}
-A.resOpen=el=>{const sid=el.dataset.id,k=RESK.find(x=>x[0]===el.dataset.k);push({t:k[1],s:sOf(sid).title,key:'res',html:()=>`<div class="card rows">${(sOf(sid).files||[]).filter(f=>(f.kind||'notes')===k[0]).map(f=>`<button class="row" data-a="fileOpen" data-id="${esc3(f.id)}"><span class="ti g">${ic(k[2],19)}</span><span><b>${esc3(f.title||f.name)}</b><small>${/\.pdf$/i.test(f.name||'')?'PDF':'Picture'}${f.size?`, ${f.size>1048576?(f.size/1048576).toFixed(1)+' MB':Math.max(1,Math.round(f.size/1024))+' KB'}`:''}</small></span>${ic('dl',18)}</button>`).join('')}</div>`})};
-A.fileOpen=el=>oldModal(()=>openFile(el.dataset.id));
+A.resOpen=el=>{const sid=el.dataset.id,k=RESK.find(x=>x[0]===el.dataset.k);push({t:k[1],s:sOf(sid).title,key:'res',html:()=>`<div class="card rows">${(sOf(sid).files||[]).filter(f=>(f.kind||'notes')===k[0]).map(f=>`<button class="row" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}"><span class="ti g">${ic(k[2],19)}</span><span><b>${esc3(f.title||f.name)}</b><small>${/\.pdf$/i.test(f.name||'')?'PDF':'Picture'}${f.size?`, ${f.size>1048576?(f.size/1048576).toFixed(1)+' MB':Math.max(1,Math.round(f.size/1024))+' KB'}`:''}</small></span>${ic('dl',18)}</button>`).join('')}</div>`})};
 /* Tests: category chips (the series' folders), a status filter, the banner from the admin, then the tests in order */
 const TSF=[['all','All'],['att','Attempted'],['non','Not attempted'],['res','Resume'],['up','Upcoming'],['miss','Missed']];
 function tState(t){const st=stOf(t);return st==='prog'?'res':st==='live'?'live':st==='wait'?'up':st==='lock'?'lock':st==='held'?'held':(st==='done'||t.attempts>0)?'att':st==='closed'?'miss':'new'}
@@ -868,6 +867,101 @@ A.focus=()=>push(focusView());
 function histView(){return {t:'Test history',s:`${allRes().length} tests`,html:()=>{const R=allRes().slice().reverse();return R.length?`<div class="card rows">${R.slice(0,60).map(r=>{const t=tOf(r.test_id),s=t&&sOf(t.series_id);return `<div class="item"><span class="ti g">${ic('trophy',18)}</span><div class="bd"><div class="tt"><b>${esc3(titleOf(r))}</b><span class="badge n">${pctOf(r)}%</span></div><small>${s?esc3(s.title)+', ':''}${dS(r.at)}</small><small>${r.score} / ${r.max} marks. ${r.correct} right, ${r.wrong} wrong. Accuracy ${accOf(r)}%${r.used?`, ${Math.round(r.used/60)} min`:''}</small><div class="acts"><button class="btn sm" data-a="review" data-r="${esc3(r.id)}">Result and solutions</button></div></div></div>`}).join('')}</div>${R.length>60?'<p class="hint">Showing your latest 60 tests.</p>':''}`:`<div class="card empty"><span class="ti">${ic('trophy',22)}</span><b>No tests yet</b><p>Your results show up here after your first test.</p></div>`}}}
 A.hist=()=>push(histView());
 
+/* ================= MY STUDY ZONE in the new design: Notes & PDFs, Saved questions, Mistakes, Results =================
+   Same server calls as the classic pages (cbt_test_pdfs, cbt_file_part, cbt_bookmarks / cbt_bookmark,
+   cbt_mistakes / cbt_mistake_done); only the screens are new. */
+const LT='ABCD';
+const imgOk=u=>/^(data:image\/(png|jpe?g|webp|gif);base64,|https:\/\/)/i.test(u||'');
+const qImg=(u,cls)=>imgOk(u)?`<img class="qimg ${cls||''}" src="${esc3(u)}" alt="diagram" loading="lazy">`:'';
+const clearOld=k=>{try{if(k==='bm'&&typeof BMC!=='undefined')BMC=null;if(k==='mk'&&typeof MKC!=='undefined')MKC=null;if(typeof INS!=='undefined')INS=null}catch(e){}};
+
+/* ---------- files: download in parts, then View / Save (the same checks as the classic page) ---------- */
+const FILES3={};
+async function fileGet(id,title){
+  if(FILES3[id])return fileSheet(id);
+  openSheet(`<h2 id="sheetT">${esc3(title||'File')}</h2><p class="sub" id="fpS">Downloading…</p><div class="fbar"><i id="fpB"></i></div>`);
+  const parts=[];let n=0,total=1,name='file';
+  while(n<total){let r=null;try{r=await rpc('cbt_file_part',{p_file:id,p_n:n})}catch(e){}
+    if(!r||!r.ok){closeLayer();toast3(r&&r.error==='not_open'?'This file opens on '+dS(r.opens_at)+'.':r&&r.error==='locked'?'This file is part of a test series you have not joined.':'Could not download. Please try again.');return}
+    total=r.parts;name=r.name||name;parts.push(r.data||'');n++;const b=$('#fpB'),s=$('#fpS');if(b)b.style.width=Math.round(n*100/total)+'%';if(s)s.textContent=`Downloading… ${Math.round(n*100/total)}%`}
+  try{const bin=atob(parts.join('')),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+    const sig=Array.from(u.slice(0,12)).map(c=>c.toString(16).padStart(2,'0')).join('');
+    const real=/^25504446/.test(sig)?'application/pdf':/^89504e47/.test(sig)?'image/png':/^ffd8ff/.test(sig)?'image/jpeg':/^52494646.{8}57454250/.test(sig)?'image/webp':'';
+    FILES3[id]={url:URL.createObjectURL(new Blob([u],{type:real||'application/octet-stream'})),name,view:!!real,title}}catch(e){closeLayer();toast3('This file is damaged.');return}
+  fileSheet(id)}
+function fileSheet(id){const f=FILES3[id];openSheet(`<span class="ti g" style="margin-bottom:12px">${ic('check',22)}</span><h2 id="sheetT">File ready</h2><p class="sub">${esc3(f.title||f.name)}</p>
+  <div class="g2" style="grid-template-columns:${f.view?'1fr 1fr':'1fr'};margin-top:14px">${f.view?`<a class="btn" href="${f.url}" target="_blank" rel="noopener">${ic('file',16)}View</a>`:''}<a class="btn ghost" href="${f.url}" download="${esc3(f.name)}">${ic('dl',16)}Save</a></div>`)}
+A.fileOpen=el=>fileGet(el.dataset.id,el.dataset.t||'');
+
+/* ---------- Notes & PDFs: notes of tests (Google Drive links) and the files of every series ---------- */
+let PDF3=null;
+function notesView(){return {t:'Notes & PDFs',s:'Study material of your test series',key:'notes',html:()=>{
+  const T=(C().tests||[]).filter(t=>PDF3&&PDF3[t.id]),S=mine().filter(s=>(s.files||[]).length);
+  if(PDF3===null)return '<div class="card sk" style="height:90px"></div><div class="card sk" style="height:90px"></div>';
+  if(!T.length&&!S.length)return `<div class="card empty"><span class="ti">${ic('file',22)}</span><b>No notes yet</b><p>When your teacher adds notes or PDFs to your test series, they show up here.</p></div>`;
+  return S.map(s=>`<div class="stack" style="gap:10px"><p class="gh">${esc3(s.title)}</p><div class="card rows">${s.files.map(f=>`<button class="row" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>${({schedule:'Schedule',syllabus:'Syllabus',notes:'Notes'})[f.kind]||'File'}</small></span>${ic('dl',18)}</button>`).join('')}</div></div>`).join('')
+   +(T.length?`<div class="stack" style="gap:10px"><p class="gh">Notes of tests</p><div class="card rows">${T.map(t=>`<button class="row" data-a="pdfOpen" data-id="${esc3(t.id)}"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(PDF3[t.id].label||t.title)}</b><small>${esc3(t.title)}, opens in Google Drive</small></span>${ic('right',18)}</button>`).join('')}</div></div>`:'')}}}
+const pdfLinkOk=u=>typeof u==='string'&&u.length<=500&&/^https:\/\/(drive|docs)\.google\.com\/[A-Za-z0-9/_?=&%.#~+-]+$/.test(u);
+function loadPdf3(){return rpc('cbt_test_pdfs',{}).then(r=>{const o={};if(r&&r.ok&&r.items)for(const k in r.items){const x=r.items[k];if(/^[A-Za-z0-9_-]{1,64}$/.test(k)&&x&&pdfLinkOk(x.url))o[k]={url:x.url,label:String(x.label||'')}}PDF3=o}).catch(()=>{PDF3=PDF3||{}})}
+A.pdfOpen=el=>{const p=PDF3&&PDF3[el.dataset.id];if(!p||!pdfLinkOk(p.url)){toast3('PDF not available');return}const w=window.open(p.url,'_blank','noopener,noreferrer');if(w)w.opener=null};
+function openNotes(){push(notesView());loadPdf3().then(()=>{if(top()&&top().key==='notes')redraw()})}
+
+/* ---------- one question card (Saved and Mistakes) ---------- */
+function qCard(q,o){const rev=o.rev,pick=o.pick;
+  return `<article class="card qc3" id="${o.id}"><div class="qc3-h"><b>Q${q.qidx+1}</b>${q.title||tOf(q.test_id)?`<span class="tag">${esc3(q.title||(tOf(q.test_id)||{}).title)}</span>`:''}${o.badge||''}<span style="flex:1"></span>${o.tools||''}</div>
+  <div class="qc3-q">${esc3(q.q||'')}</div>${qImg(q.img)}
+  <div class="qc3-o">${(q.options||[]).map((op,j)=>{if(!op&&!(q.oimg&&q.oimg[j]))return '';const cls=rev?(j===q.answer?' c':j===pick?' w':''):'';
+    return `<${o.tap&&!rev?`button data-a="${o.tap}" data-n="${o.n}" data-j="${j}"`:'div'} class="opt3${cls}"><span class="k">${LT[j]}</span><span class="ot">${esc3(op||'')}${qImg(q.oimg&&q.oimg[j],'oi')}</span>${rev&&j===q.answer?ic('check',16):''}</${o.tap&&!rev?'button':'div'}>`}).join('')}</div>
+  ${o.note||''}${rev&&(q.explanation||q.eimg)?`<div class="exp3"><b>Explanation</b><p>${esc3(q.explanation||'')}</p>${qImg(q.eimg)}</div>`:''}${o.foot||''}</article>`}
+
+/* ---------- Saved questions ---------- */
+let BM3=null;
+function savedView(){return {t:'Saved questions',get s(){return BM3?`${BM3.length} saved`:''},key:'saved',html:()=>{
+  if(BM3===null)return '<div class="card sk" style="height:180px"></div><div class="card sk" style="height:180px"></div>';
+  if(!BM3.length)return `<div class="card empty"><span class="ti">${ic('bookmark',22)}</span><b>No saved questions yet</b><p>Tap the bookmark on any question during a test or its solutions to keep it here.</p></div>`;
+  const G=new Map();BM3.forEach(x=>{if(!G.has(x.test_id))G.set(x.test_id,{title:x.title||(tOf(x.test_id)||{}).title||'Test',L:[]});G.get(x.test_id).L.push(x)});
+  return [...G].map(([tid,g])=>`<div class="stack" style="gap:12px"><p class="gh">${esc3(g.title)} <span>${g.L.length}</span></p>${g.L.map(q=>qCard(q,{id:'bm'+tid+'_'+q.qidx,rev:!!q.solved,
+     tools:`<button class="ib sm on" data-a="bmOff" data-t="${esc3(tid)}" data-i="${q.qidx}" aria-label="Remove from saved">${ic('bookmark',17)}</button>`,
+     note:q.solved?'':`<p class="qc3-n">${ic('lock',14)}The correct answer shows here after you attempt this test.</p>`})).join('')}</div>`).join('')}}}
+function openSaved(){BM3=null;push(savedView());rpc('cbt_bookmarks',{}).then(r=>{BM3=r&&r.ok?r.items||[]:[];if(!(r&&r.ok))toast3('Could not load saved questions.');if(top()&&top().key==='saved'){$('#scrS').textContent=`${BM3.length} saved`;redraw()}}).catch(()=>{BM3=[];redraw()})}
+A.bmOff=async el=>{const tid=el.dataset.t,i=+el.dataset.i,card=root.getElementById('bm'+tid+'_'+i);if(card)card.classList.add('out3');
+  let r=null;try{r=await rpc('cbt_bookmark',{p_test:tid,p_qidx:i,p_on:false})}catch(e){}
+  if(!r||!r.ok){if(card)card.classList.remove('out3');toast3('Could not remove. Please try again.');return}
+  clearOld('bm');try{if(typeof BM!=='undefined'&&BM)BM.delete(tid+':'+i)}catch(e){}
+  setTimeout(()=>{BM3=BM3.filter(x=>!(x.test_id===tid&&x.qidx===i));$('#scrS').textContent=`${BM3.length} saved`;redraw();toast3('Removed from saved')},RM?0:260)};
+
+/* ---------- Mistakes: wrong and skipped questions to practise ---------- */
+const MK3={kind:'all',sec:'',items:null,more:false,counts:null,st:{},n:0,busy:false};
+async function mkLoad(off){if(MK3.busy)return;MK3.busy=true;let r=null;try{r=await rpc('cbt_mistakes',{p_offset:off,p_limit:15,p_kind:MK3.kind,p_sec:MK3.sec})}catch(e){}MK3.busy=false;
+  if(!r||!r.ok){if(MK3.items===null)MK3.items=[];toast3('Could not load your mistakes. Please try again.');redraw();return}
+  r.items.forEach(x=>{x._n=++MK3.n});MK3.items=off?MK3.items.concat(r.items):r.items;MK3.more=r.more;MK3.counts=r.counts;if(top()&&top().key==='mk')redraw()}
+function mkView(){return {t:'Mistakes',s:'Practise what you got wrong',key:'mk',html:()=>{const c=MK3.counts;
+  if(MK3.items===null||!c)return '<div class="card sk" style="height:110px"></div><div class="card sk" style="height:200px"></div>';
+  const tot=c.wrong+c.skipped;
+  return `<div class="nums"><div><b>${tot}</b><small>To revise</small></div><div><b>${c.wrong}</b><small>Wrong</small></div><div><b>${c.skipped}</b><small>Skipped</small></div><div><b>${c.mastered}</b><small>Mastered</small></div></div>
+  <div class="seg" role="tablist">${[['all','All'],['wrong','Wrong'],['skipped','Skipped']].map(t=>`<button role="tab" aria-selected="${MK3.kind===t[0]}" class="${MK3.kind===t[0]?'on':''}" data-a="mkKind" data-v="${t[0]}">${t[1]}</button>`).join('')}</div>
+  ${(c.secs||[]).length>1?`<div class="chips">${[{sec:'',n:tot}].concat(c.secs).map(s=>`<button class="${MK3.sec===s.sec?'on':''}" data-a="mkSec" data-v="${esc3(s.sec)}">${s.sec?esc3(s.sec):'All subjects'}<small>${s.n}</small></button>`).join('')}</div>`:''}
+  ${MK3.items.length?MK3.items.map(it=>{const S=MK3.st[it._n]||{},rev=S.pick!=null||!!S.show;
+    return qCard(it,{id:'mk'+it._n,n:it._n,rev,pick:S.pick,tap:'mkPick',badge:it.kind==='wrong'?`<span class="st err">You chose ${LT[it.mine]||'-'}</span>`:'<span class="st">Skipped</span>',
+     note:rev&&S.pick!=null?`<p class="qc3-r ${S.pick===it.answer?'ok':'bad'}">${S.pick===it.answer?'Correct! Well done.':`Not quite. The correct answer is ${LT[it.answer]}.`}</p>`:'',
+     foot:rev?`<div class="g2 qc3-f"><button class="btn sm" data-a="mkDone" data-n="${it._n}">${ic('check',15)}Got it, remove</button><button class="btn sm ghost" data-a="mkAgain" data-n="${it._n}">Practise again</button></div>`
+      :`<div class="qc3-f row"><span class="mut" style="flex:1;font-size:13px">Tap an option to practise</span><button class="btn sm ghost" data-a="mkShow" data-n="${it._n}">Show answer</button></div>`})}).join('')
+   +(MK3.more?`<button class="btn lg ghost" data-a="mkMore">Load more</button>`:'')
+   :`<div class="card empty"><span class="ti g">${ic('check',22)}</span><b>${tot?'Nothing here':'All clear!'}</b><p>${tot?'No questions match this filter.':'Questions you get wrong or skip in tests collect here so you can practise them.'}</p></div>`}`}}}
+function openMistakes(){MK3.kind='all';MK3.sec='';MK3.items=null;MK3.st={};push(mkView());mkLoad(0)}
+const mkUpd=n=>{const it=(MK3.items||[]).find(x=>x._n===n);const b=$('#scrB'),y=b.scrollTop;redraw();b.scrollTop=y;return it};
+A.mkPick=el=>{MK3.st[+el.dataset.n]={pick:+el.dataset.j};if(navigator.vibrate)navigator.vibrate(8);mkUpd(+el.dataset.n)};
+A.mkShow=el=>{MK3.st[+el.dataset.n]={show:1};mkUpd(+el.dataset.n)};
+A.mkAgain=el=>{delete MK3.st[+el.dataset.n];mkUpd(+el.dataset.n)};
+A.mkKind=el=>{MK3.kind=el.dataset.v;MK3.st={};MK3.items=null;redraw();mkLoad(0)};
+A.mkSec=el=>{MK3.sec=el.dataset.v;MK3.st={};MK3.items=null;redraw();mkLoad(0)};
+A.mkMore=()=>mkLoad(MK3.items.length);
+A.mkDone=async el=>{const n=+el.dataset.n,it=MK3.items.find(x=>x._n===n);if(!it)return;const card=root.getElementById('mk'+n);if(card)card.classList.add('out3');
+  let r=null;try{r=await rpc('cbt_mistake_done',{p_test:it.test_id,p_qidx:it.qidx,p_on:true})}catch(e){}
+  if(!r||!r.ok){if(card)card.classList.remove('out3');toast3('Could not save. Please try again.');return}
+  clearOld('mk');const c=MK3.counts;c[it.kind]=Math.max(0,c[it.kind]-1);c.mastered++;const s=(c.secs||[]).find(x=>x.sec===it.sec);if(s)s.n--;
+  setTimeout(()=>{MK3.items=MK3.items.filter(x=>x._n!==n);const b=$('#scrB'),y=b.scrollTop;redraw();b.scrollTop=y;toast3('Marked as mastered')},RM?0:260)};
+
 /* ================= MENU: the classic menu's items, plus the switch back ================= */
 A.menu=()=>{const u=unread(),mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' on':''}${cls||''}" data-a="m" data-k="${k}">${ic(i)}<span>${t}</span>${extra?`<em>${extra}</em>`:''}</button>`;
   drawer.innerHTML=`<div class="hero pcard"><div class="who">${avatar()}<div style="min-width:0"><b>${esc3(stuName())}</b><small class="mut">${esc3(stuMeta())}</small></div></div><button class="btn sm onhero ghost blk" data-a="m" data-k="profile">View profile</button></div>
@@ -876,7 +970,7 @@ A.menu=()=>{const u=unread(),mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' o
   <div class="mgp">${mi('gear','Settings','settings')}${mi('info','About Us','about')}${mi('file','Terms & Conditions','terms')}${mi('file','Privacy Policy','privacy')}${mi('file','Refund Policy','refund')}${mi('mail','Contact Us','contact')}</div><div class="mdiv"></div>
   ${mi('swap','Switch to the classic design','classic',0,'','')}${mi('out','Logout','logout',0,'',' out')}`;openLayer(drawer)};
 A.m=el=>{const k=el.dataset.k;closeLayer();
-  const M={profile:A.profile,theme:openTheme,home:()=>go('home'),series:()=>go('test'),history:A.hist,mistakes:()=>oldHash('#/m'),saved:()=>oldHash('#/b'),tracker:()=>oldHash('#/t'),notif:A.bell,cd:A.cdEdit,
+  const M={profile:A.profile,theme:openTheme,home:()=>go('home'),series:()=>go('test'),history:A.hist,mistakes:()=>openMistakes(),saved:()=>openSaved(),tracker:()=>oldHash('#/t'),notif:A.bell,cd:A.cdEdit,
    settings:()=>oldModal(()=>openSettings()),about:()=>oldModal(()=>openAbout()),terms:()=>oldModal(()=>openTerms()),privacy:()=>window.open('privacy','_blank','noopener'),refund:()=>window.open('refund','_blank','noopener'),contact:()=>oldModal(()=>supportSheet()),
    classic:()=>window.v3Disable(),logout:()=>oldModal(()=>signOut())};
   setTimeout(()=>{(M[k]||(()=>{}))()},140)};

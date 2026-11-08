@@ -903,3 +903,36 @@ svg.i .f{fill:currentColor;fill-opacity:0;transition:fill-opacity .3s var(--ease
 .sp-pane:has(.buybar){padding-bottom:96px}
 .pinc-g span{background:none;padding:0;border:0}
 .tc3-f button{text-align:center}
+/* ---- round 8: My study zone pages (notes, saved, mistakes) ---- */
+.fbar{height:6px;border-radius:6px;background:var(--surface2);overflow:hidden;margin-top:14px}
+.fbar i{display:block;height:100%;width:0;background:var(--ink);border-radius:6px;transition:width .3s var(--out)}
+.qc3{padding:16px;display:flex;flex-direction:column;gap:12px;transition:opacity .25s ease,transform .3s var(--out)}
+.qc3.out3{opacity:0;transform:translateX(24px)}
+.qc3-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.qc3-h>b{font-size:15px}
+.qc3-q{font-size:15.5px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.qimg{display:block;max-width:100%;height:auto;border-radius:12px;background:#fff}
+.qimg.oi{max-height:140px;margin-top:6px}
+.qc3-o{display:flex;flex-direction:column;gap:8px}
+.opt3{display:flex;align-items:flex-start;gap:12px;width:100%;padding:12px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);text-align:left;font-size:15px;line-height:1.45;transition:border-color .2s,background .2s,transform .2s var(--spring)}
+button.opt3:active{transform:scale(.985)}
+.opt3 .k{flex:none;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:13px;font-weight:600;background:var(--surface2)}
+.opt3 .ot{flex:1;min-width:0;overflow-wrap:anywhere}
+.opt3>svg{flex:none;color:var(--ok);margin-top:3px}
+.opt3.c{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--surface))}
+.opt3.c .k{background:var(--ok);color:#fff}
+.opt3.w{border-color:var(--err);background:color-mix(in srgb,var(--err) 9%,var(--surface))}
+.opt3.w .k{background:var(--err);color:#fff}
+.exp3{padding:14px;border-radius:14px;background:var(--surface2);font-size:14.5px;line-height:1.6}
+.exp3 b{display:block;margin-bottom:4px;font-size:13.5px}
+.exp3 p{white-space:pre-wrap}
+.qc3-n{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--mut)}
+.qc3-r{font-size:14px;font-weight:600}
+.qc3-r.ok{color:var(--ok)}.qc3-r.bad{color:var(--err)}
+.qc3-f{gap:10px;align-items:center}
+.ib.sm.on{color:var(--acc);background:var(--accSoft);border-color:transparent}
+.nums{grid-template-columns:repeat(auto-fit,minmax(0,1fr))}
+.qc3-f{display:flex}
+.qc3-f.g2{display:grid;grid-template-columns:1fr 1fr}
+.qc3-f .btn{flex:none}
+.qc3-f.g2 .btn{width:100%}
