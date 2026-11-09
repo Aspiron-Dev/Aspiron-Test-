@@ -198,8 +198,14 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
   };
   ({ c, p, errs } = await mk()); await p.route(SUPA + '/auth/v1/**', authRoute);
-  await p.goto(BASE + 'index.html'); await p.waitForSelector('#em');
-  ok(!!(await p.$('.lgo')) && /Continue with Google/.test(await p.textContent('.lgo')), 'login screen: Google button shown');
+  await p.goto(BASE + 'index.html'); await p.waitForSelector('#ph');
+  ok(await p.$('#cd') !== null && await p.$('#lbtn') !== null, 'login screen: the access code form is shown first');
+  ok(await p.evaluate(() => [...document.querySelectorAll('#au3lock input, #au3lock button')].every(e => e.disabled)), 'email + Google block: locked (every field and button disabled)');
+  await p.evaluate(() => authPass()); await p.waitForTimeout(300);
+  ok(!(await p.evaluate(() => localStorage.getItem('cbt_auth'))), 'locked: the email sign-in cannot be used');
+  // email + Google are switched on only for these checks (EMAIL_LOGIN in config.js is false)
+  await p.evaluate(() => { CBT_CONFIG.EMAIL_LOGIN = true; login(); }); await p.waitForSelector('#em');
+  ok(!!(await p.$('.lgo')) && /Continue with Google/.test(await p.textContent('.lgo')), 'login screen: Google button shown (switched on)');
   await p.fill('#em', 'e2e@example.com'); await p.fill('#pw', 'Wrong1234'); await p.click('#abtn'); await p.waitForTimeout(800);
   ok(/incorrect/.test(await p.textContent('#er')), 'email login: wrong password is refused');
   await p.fill('#pw', 'Right1234'); await p.click('#abtn'); await p.waitForSelector('#cd', { timeout: 5000 }).catch(() => {});
@@ -213,7 +219,8 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   ok((await q(`select auth_uid from cbt_private.students where mobile='9000000001'`))[0].auth_uid === 'e2e00000-0000-0000-0000-000000000001', 'join: the login is joined to the student');
   ok(!errs.length, 'no page errors (email login) ' + errs.join(' | ')); await c.close();
   ({ c, p, errs } = await mk()); await p.route(SUPA + '/auth/v1/**', authRoute);
-  await p.goto(BASE + 'index.html'); await p.waitForSelector('#em');
+  await p.goto(BASE + 'index.html'); await p.waitForSelector('#ph');
+  await p.evaluate(() => { CBT_CONFIG.EMAIL_LOGIN = true; login(); }); await p.waitForSelector('#em');
   await p.fill('#em', 'e2e@example.com'); await p.fill('#pw', 'Right1234'); await p.click('#abtn'); await p.waitForTimeout(3000);
   au = await p.evaluate(() => JSON.parse(localStorage.getItem('cbt_auth')));
   ok(au && au.mobile === '9000000001' && await p.$('#cd') === null, 'email login: next time the login alone signs in (no code)');

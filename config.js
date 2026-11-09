@@ -4,6 +4,8 @@
 window.CBT_CONFIG = {
   SUPABASE_URL: "https://klvvhbqkhbdzysgpykpr.supabase.co",
   SUPABASE_KEY: "sb_publishable_pt-b8kuOOsxyyAz277qsNA_q6e8D2G3",
+  // Email + password and Google sign-in: false = shown but locked (nothing can be typed or sent). Set true after PENDING.md 4.3.
+  EMAIL_LOGIN: false,
   SITE_NAME: "Aspiron Education",
   // Student support (chat only, no calls) — shown everywhere a student can ask for help: app, store, payment verify
   SUPPORT_URL: "https://t.me/Students_support_teams",      // Telegram

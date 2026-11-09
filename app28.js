@@ -78,6 +78,7 @@ const F={
 };
 const authBusy=(b,t)=>{if(!b)return;b.dataset.t=b.dataset.t||b.innerHTML;b.disabled=!!t;b.innerHTML=t?`<span class="dot"><i></i><i></i><i></i></span>${t}`:b.dataset.t};
 const authEr=t=>{const e=$('#er');if(!e)return;e.textContent='';if(t)requestAnimationFrame(()=>{e.textContent=t})};
+const emailOn=()=>CFG.EMAIL_LOGIN===true;   // off: email / Google are shown locked
 const okMail=e=>/^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/.test(e);
 function au3Shell(){
   const chip=(i,t)=>`<span>${ic(i)}${t}</span>`;
@@ -110,6 +111,7 @@ function au3Shell(){
 }}
 let AU3NOTE='';
 function authScreen(card,mode,err){
+  if(!emailOn()&&['signup','forgot','mail','newpw','link','wait'].includes(mode))mode='';
   const sb=sbGet();
   if(!mode&&sb){
     if(sb.err){sbSet(null);err=/expired|invalid/i.test(sb.err+sb.errc)?'This link has expired or was already used. Please try again.':sb.err}
@@ -149,22 +151,31 @@ function authScreen(card,mode,err){
      <div class="au3-row c">New student?<button class="au3-link" onclick="login('request')">Request access</button></div>`;
   else if(mode==='request')h=`<div id="rq">${top('Request access','Send your details. Once the admin approves you, you will get a personal access code.',"login('code')")}
      ${F.nm()}${F.ph('rp')}${erBox}<button class="au3-btn pri" id="rbtn" onclick="doRequest()">Send request ${ic('right')}</button></div>`;
-  else h=`${top('Welcome back','Sign in to your tests, results and study material.')}
-     <button class="au3-btn g lgo" onclick="authGoogle()">${gIcon} Continue with Google</button>
-     <div class="au3-or">or with email</div>
-     ${F.em('username')}${F.pw('Password','current-password')}
-     <div class="au3-row"><span></span><button class="au3-link" onclick="login('forgot')">Forgot password?</button></div>
-     ${erBox}<button class="au3-btn pri" id="abtn" style="margin-top:6px" onclick="authPass()">Sign in ${ic('right')}</button>
-     <div class="au3-row c">New here?<button class="au3-link" onclick="login('signup')">Create account</button></div>
-     <div class="au3-or">Have an access code?</div>
-     <button class="au3-btn sec" onclick="login('code')">${ic('key')} Sign in with access code</button>`;
+  else h=`${top('Student sign in','Enter your mobile number and the access code given to you.')}
+     ${F.ph()}${F.cd()}${erBox}<button class="au3-btn pri" id="lbtn" onclick="doLogin()">Sign in ${ic('right')}</button>
+     <div class="au3-row c">New student?<button class="au3-link" onclick="login('request')">Request access</button></div>
+     <div class="au3-or">Email &amp; Google sign-in</div>
+     <div class="au3-lock" id="au3lock">
+      <div class="au3-lockbadge">${ic('lock')}<span>Coming soon</span></div>
+      <button class="au3-btn g lgo" tabindex="-1" onclick="authGoogle()">${gIcon} Continue with Google</button>
+      ${F.em('username')}${F.pw('Password','current-password')}
+      <div class="au3-row"><span></span><button class="au3-link" tabindex="-1" onclick="login('forgot')">Forgot password?</button></div>
+      <button class="au3-btn pri" tabindex="-1" id="abtn" style="margin-top:6px" onclick="authPass()">Sign in ${ic('right')}</button>
+      <div class="au3-row c">New here?<button class="au3-link" tabindex="-1" onclick="login('signup')">Create account</button></div>
+     </div>`;
   card.innerHTML=`<div class="au3-pane">${AU3NOTE&&!mode?`<div class="au3-note" id="afterNote">${esc(AU3NOTE)}</div>`:''}${h}</div>`;
+  if(!emailOn()){
+    const lk=card.querySelector('#au3lock');
+    if(lk){lk.setAttribute('aria-disabled','true');lk.querySelectorAll('input,button').forEach(e=>{e.disabled=true;e.tabIndex=-1})}
+  }
+  if(emailOn()){const lk=card.querySelector('#au3lock');if(lk){lk.querySelectorAll('.au3-lockbadge').forEach(b=>b.remove())}}
   card.querySelectorAll('input').forEach(i=>i.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const b=i.closest('.lsec')?$('#rbtn'):$('#abtn')||$('#lbtn')||$('#rbtn');b&&b.click()}));
   if(mode==='go')authGo();
 }
 let AUTHMSG='',AUTHMAIL='';
-function authGoogle(){location.href=API+'/auth/v1/authorize?provider=google&redirect_to='+encodeURIComponent(sbBack())}
+function authGoogle(){if(!emailOn())return;location.href=API+'/auth/v1/authorize?provider=google&redirect_to='+encodeURIComponent(sbBack())}
 async function authPass(){
+  if(!emailOn())return;
   const e=$('#em').value.trim().toLowerCase(),p=$('#pw').value;
   if(!okMail(e))return authEr('Please enter a valid email address.');
   if(!p)return authEr('Please enter your password.');
@@ -176,6 +187,7 @@ async function authPass(){
   sbSet(sbKeep(r.d));authGo();
 }
 async function authSignup(){
+  if(!emailOn())return;
   const e=$('#em').value.trim().toLowerCase(),p=$('#pw').value;
   if(!okMail(e))return authEr('Please enter a valid email address.');
   if(p.length<8||!/[a-z]/i.test(p)||!/\d/.test(p))return authEr('Password: at least 8 characters, with letters and numbers.');
@@ -191,6 +203,7 @@ async function authResend(btn){
   authBusy(b);authEr(r.ok?'Sent again. Please check your email.':sbErr(r));
 }
 async function authForgot(){
+  if(!emailOn())return;
   const e=$('#em').value.trim().toLowerCase();
   if(!okMail(e))return authEr('Please enter a valid email address.');
   const b=$('#abtn');authBusy(b,'Sending…');authEr('');
