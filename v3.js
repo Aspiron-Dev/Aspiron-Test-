@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=23;
+const V3VER=24;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -581,7 +581,7 @@ A.xp=el=>{const x=(STORE||[]).find(i=>i.id===el.dataset.id);if(!x)return;loadExt
 A.openSD=el=>{const sid=el.dataset.id;if(!sOf(sid))return;loadExtras();loadMeta();if(STORE===null)loadStore();TQ.xt=el.dataset.t||'r';TQ.tf='all';TQ.ts='all';TQ.plan=null;closeLayer();push(ownedPage(sid))};
 A.xt=el=>{TQ.xt=el.dataset.v;redraw()};
 A.sf=el=>{TQ.sf=el.dataset.v;redraw()};
-A.oldSeries=el=>oldHash('#/s/'+el.dataset.id);   // the classic folder page (folders, notes and PDFs of a series)
+A.oldSeries=el=>openSeriesAny(el.dataset.id,'r');   // the series' folders, tests, notes and PDFs in the new design
 A.toStore=()=>{closeLayer();unwind(()=>{if(S.tab==='test'){scrollTo({top:0,behavior:RM?'auto':'smooth'});return}go('test')})};
 
 /* ================= MY TEST SERIES + the series page (Description | Resources | Tests | Reviews) =================
@@ -1629,6 +1629,14 @@ A.rfCopyLink=()=>{if(RF3&&RF3.code)rfCopy3(rfLink(RF3.code),'Link copied')};
 A.rfShare=async()=>{if(!RF3||!RF3.code)return;const t=rfText(RF3.code);if(navigator.share){try{await navigator.share({title:'Aspiron Education',text:t});return}catch(e){if(e&&e.name==='AbortError')return}}rfCopy3(t,'Message copied. Paste it in WhatsApp or Telegram.')};
 A.rfWa=()=>{if(!RF3||!RF3.code)return;const w=window.open('https://wa.me/?text='+encodeURIComponent(rfText(RF3.code)),'_blank','noopener,noreferrer');if(w)w.opener=null};
 V3H.push([/^#\/refer$/,()=>openRefer()]);
+/* every other classic address opens its page in the new design (links in notices, notifications, shared links) */
+function openSeriesAny(sid,tab){const s=sOf(sid);if(!s){go('test');return}loadExtras();loadMeta();if(STORE===null)loadStore();TQ.tf='all';TQ.ts='all';TQ.plan=null;closeLayer();
+  const x=itemOfSeries(sid);if(!s.is_free&&!s.unlocked&&x){TQ.xt='d';push(seriesPage({item:x,sid:null}));return}TQ.xt=tab||'t';push(ownedPage(sid))}
+V3H.push([/^#\/s\/([^/?#]+)$/,m=>openSeriesAny(decodeURIComponent(m[1]),'t')],
+  [/^#\/f\/([^/?#]+)$/,m=>{const f=((C().folders)||[]).find(x=>x.id===decodeURIComponent(m[1]));if(f)openSeriesAny(f.series_id,'t');else go('test')}],
+  [/^#\/m$/,()=>openMistakes()],[/^#\/b$/,()=>openSaved()],[/^#\/notes$/,()=>openNotes()],[/^#\/n$/,()=>A.bell()],
+  [/^#\/h\/.+$/,()=>A.hist()],[/^#\/(series|my)$/,()=>A.mySeries()],
+  [/^#\/lib$/,()=>go('lib')],[/^#\/me$/,()=>go('stats')]);
 
 /* ================= FIRST-TIME SETUP in the new design =================
    Shown once per student on this phone (cbt_v3_onb_<mobile>) when the profile has no class or target exam yet:
