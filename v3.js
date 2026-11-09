@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=15;
+const V3VER=16;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -852,8 +852,8 @@ VIEW.stats=()=>{const R=allRes(),P=stats(R),o=stuProf(),fields=['name','email','
    <div class="lvl"><span class="bdg">${esc3((P.lvl||'B')[0])}</span><div><b>${esc3(P.lvl)}</b><small class="mut">${P.n} tests taken. ${P.n<3?`${3-P.n} more to become a Learner`:P.n<10?`${10-P.n} more to become an Achiever`:P.n<25?`${25-P.n} more to become a Champion`:'Top level reached'}</small><span class="bar"><i style="--p:${Math.min(1,P.n/25).toFixed(3)}"></i></span></div></div>
    <div class="bdgs">${(P.badges||[]).map((b,i)=>`<div class="bdx${b.on?'':' off'}"><span>${ic(b.on?BDI[i%BDI.length]:'lock',20)}</span>${esc3(b.t)}</div>`).join('')}</div></div></section>
   <section class="sec"><div class="sh"><h2>Leaderboard and rewards</h2></div><div class="card rows">
-   <button class="row" data-a="oldGo" data-h="#/r"><span class="ti g">${ic('medal',20)}</span><span><b>Ranks and leaderboards</b><small>Your rank in every test you took</small></span>${ic('right',18)}</button>
-   <button class="row" data-a="oldGo" data-h="#/refer"><span class="ti g">${ic('gift',20)}</span><span><b>Refer and earn</b><small>Your code, friends who joined and wallet money</small></span>${ic('right',18)}</button></div></section>
+   <button class="row" data-a="ranks"><span class="ti g">${ic('medal',20)}</span><span><b>Ranks and leaderboards</b><small>Your rank in every test you took</small></span>${ic('right',18)}</button>
+   <button class="row" data-a="refer"><span class="ti g">${ic('gift',20)}</span><span><b>Refer and earn</b><small>Your code, friends who joined and wallet money</small></span>${ic('right',18)}</button></div></section>
   <section class="sec"><div class="sh"><h2>Profile and history</h2></div><div class="card rows">
    ${[['user','My profile','Name, photo, class and target exam','profile',''],['trophy','Test history',`${R.length} tests`,'hist',''],['pen','Mistake notebook','Questions you got wrong','oldGo','#/m'],['bookmark','Saved questions',`${bmCount()} saved`,'oldGo','#/b'],['cal','Study tracker history','Your weekly plans','oldGo','#/t'],['timer','Focus timer','Timed study sessions','focus','']].map(r=>`<button class="row" data-a="${r[3]}"${r[4]?` data-h="${r[4]}"`:''}><span class="ti">${ic(r[0],20)}</span><span><b>${r[1]}</b><small>${r[2]}</small></span>${ic('right',18)}</button>`).join('')}</div></section>`};
 A.per=el=>{AN.per=el.dataset.v;$$('[data-a="per"]').forEach(x=>{const on=x===el;x.classList.toggle('on',on);x.setAttribute('aria-selected',on)});const o=$('#ovBox');o.innerHTML=ovH();countUp(o);const c=$('#chArea');if(c)c.innerHTML=chartArea()};
@@ -1513,6 +1513,80 @@ A.trMenu=()=>{const it=(a,i,t,s,c)=>`<button class="row${c?' '+c:''}" data-a="${
   openSheet(`<h2 id="sheetT">Tracker options</h2><div class="list trmn">${it('trRename','pen','Rename this week','Change the week name')}${trkLoad().cur>0?it('trCarry','swap','Carry over pending tasks','Copy unfinished tasks from '+esc3(trkLoad().weeks[trkLoad().cur-1].label)):''}${it('trAddWeek','cal','Add a new week','Copies your subjects with empty tasks')}${it('trSubj','book','Add a subject','In this week or every week')}${it('trTargets','target','Set targets','A task goal for each subject')}${it('trGrowth','chart','Growth','Progress across all weeks')}${it('trResetWeek','clock','Reset this week','Mark all tasks as pending')}${it('trResetAll','trash','Delete everything','All weeks, subjects and tasks','bad')}</div>`)};
 ['trSubj','trTargets','trGrowth','trRename'].forEach(k=>{const f=A[k];A[k]=el=>{if(layer){closeLayer();setTimeout(()=>f(el),250)}else f(el)}});
 V3H.push([/^#\/t$/,()=>openTracker()]);
+
+/* ================= RANKS AND LEADERBOARDS in the new design =================
+   Same server and cache as the classic Results page (app10.js): cbt_overall for the overall rank (average score
+   over all tests), cbt_leaderboard for each test (first attempt per student), cached in the classic LBC with lbStale,
+   and the classic list of tests that have ranks (lbTests). */
+const RK3={ov:null,i:0,busy:0};
+const rkFirst=x=>String(x.name||x.student||'Student').split(' ')[0];
+const rkVal=x=>x.pct!=null?x.pct+'%':(x.score!=null?String(x.score):'');
+function rkPod(top,me){const p=[top[1],top[0],top[2]];
+  return `<div class="rkpod">${p.map((x,i)=>{if(!x)return '<div class="rkp z"></div>';const r=x.rank||(i===1?1:i===0?2:3),m=x.me||r===me;
+    return `<div class="rkp r${Math.min(r,3)}${m?' me':''}"><span class="rkav">${esc3((rkFirst(x)[0]||'?').toUpperCase())}${r===1?`<i>${ic('crown',14)}</i>`:''}</span><b>${esc3(rkFirst(x))}${m?' (you)':''}</b><small>${esc3(rkVal(x))}</small>${x.cheat?'<em>Flagged</em>':''}<span class="rkst"><span>${r}</span></span></div>`}).join('')}</div>`}
+function rkRows(top,me,mine){const rest=top.slice(3,10);
+  return `${rest.length?`<div class="card rkl">${rest.map((x,i)=>{const r=x.rank||i+4,m=x.me||r===me;return `<div class="rkr${m?' me':''}"><span class="rkn">${r}</span><span class="rkav sm">${esc3((rkFirst(x)[0]||'?').toUpperCase())}</span><b>${esc3(x.name||x.student||'Student')}${m?' (you)':''}${x.cheat?' <em>Flagged</em>':''}</b><span class="rkv">${esc3(rkVal(x))}</span></div>`}).join('')}</div>`:''}
+   ${me&&me>Math.min(top.length,10)?`<div class="card rkl"><div class="rkr me"><span class="rkn">${me}</span><span class="rkav sm">${esc3(((AUTH&&AUTH.name)||'Y')[0].toUpperCase())}</span><b>You</b><span class="rkv">${esc3(mine)}</span></div></div>`:''}`}
+function rkOverall(){const b=RK3.ov;
+  if(!b)return '<div class="card sk" style="height:180px"></div><div class="card sk" style="height:220px"></div>';
+  if(!b.ok||!b.top||!b.top.length)return `<div class="card empty"><span class="ti">${ic('trophy',22)}</span><b>No ranks yet</b><p>Take a test to get your overall rank.</p></div>`;
+  const tot=b.total||1,beat=b.my_rank?(tot>1?Math.round((tot-b.my_rank)*100/(tot-1)):100):null;
+  return `<section class="mkh rkh"><div class="mkh-top"><div><small>OVERALL RANK · AVERAGE OF ALL TESTS</small><b>${b.my_rank?'#'+b.my_rank:'–'}</b><span>${b.my_rank?`Ahead of ${beat}% of ${fmtN(tot)} students`:`${fmtN(tot)} students ranked`}</span></div><span class="ti qbic">${ic('trophy',28)}</span></div>
+    ${b.my_rank?`<span class="bar"><i style="--p:${(beat/100).toFixed(3)}"></i></span><div class="mkh-st"><div><b>${b.my_pct}%</b><small>Your average</small></div><div><b>${b.top[0].pct}%</b><small>Topper</small></div><div><b>${fmtN(tot)}</b><small>Students</small></div></div>`:''}</section>
+   ${rkPod(b.top,b.my_rank)}${rkRows(b.top,b.my_rank,(b.my_pct!=null?b.my_pct+'%':''))}`}
+function rkTest(t){const r=LBC[t.id];
+  if(!r)return '<div class="card sk" style="height:150px"></div><div class="card sk" style="height:200px"></div>';
+  const go=t.attempts||(typeof isClosed==='function'&&isClosed(t))?'':`<button class="btn sm" data-a="test" data-id="${esc3(t.id)}">Attempt now</button>`;
+  if(r.ok&&r.hidden)return `<div class="card empty"><span class="ti">${ic('clock',22)}</span><b>Ranks come out later</b><p>Ranks will be shown after ${esc3(fmtWhen(r.result_at))}.</p>${go}</div>`;
+  if(!r.ok||!r.top||!r.top.length)return `<div class="card empty"><span class="ti">${ic('trophy',22)}</span><b>No ranks yet</b><p>Nobody has a rank in this test yet.</p>${go}</div>`;
+  const solo=r.total<2;
+  return `${r.my_rank?`<section class="mkh rkh"><div class="mkh-top"><div><small>YOUR RANK</small><b>#${r.my_rank}<em> of ${fmtN(r.total)}</em></b><span>${esc3(t.title)}</span></div><span class="ti qbic">${ic('medal',28)}</span></div>
+     <div class="mkh-st rk4"><div><b>${r.my_score}</b><small>Your score</small></div><div><b>${solo?'–':r.percentile}</b><small>Percentile</small></div><div><b>${r.avg}</b><small>Average</small></div><div><b>${r.top_score}</b><small>Topper</small></div></div></section>`
+    :`<div class="card rkna"><p>${t.attempts?'Only a first attempt submitted on time gets a rank.':'You have not taken this test yet.'}</p>${t.attempts?'':go}</div>`}
+   ${rkPod(r.top,r.my_rank)}${rkRows(r.top,r.my_rank,r.my_score)}<p class="hint" style="text-align:center">${fmtN(r.total)} student${r.total===1?'':'s'} ranked · first attempt per student</p>`}
+function rkView(){return {t:'Ranks and leaderboards',s:'Overall and for every test',key:'rank',html:()=>{let T=[];try{T=lbTests()}catch(e){}RK3.i=Math.min(RK3.i,T.length);
+  return `<div class="chips rktabs"><button class="${RK3.i===0?'on':''}" data-a="rkTab" data-i="0">${ic('trophy',14)} Overall</button>${T.map((t,i)=>`<button class="${RK3.i===i+1?'on':''}" data-a="rkTab" data-i="${i+1}">${esc3(t.title)}</button>`).join('')}</div>
+   <div class="rkbody">${RK3.i===0?rkOverall():rkTest(T[RK3.i-1])}</div>`},
+  after:()=>{const a=$('#scrB .rktabs .on');if(a)try{a.parentNode.scrollLeft=a.offsetLeft-a.parentNode.clientWidth/2+a.clientWidth/2}catch(e){}}}}
+async function rkLoad(t){if(!t)return;try{lbStale(t.id)}catch(e){}if(LBC[t.id])return;let r=null;try{r=await rpc('cbt_leaderboard',{p_test:t.id})}catch(e){}LBC[t.id]=r&&r.ok?r:{ok:false}}
+async function openRanks(){closeLayer();RK3.i=0;if(!(top()&&top().key==='rank'))push(rkView());else redraw();
+  let r=null;try{r=await rpc('cbt_overall',{})}catch(e){}RK3.ov=r||{ok:false};if(r&&r.ok){try{if(typeof INS!=='undefined'&&INS)INS.b=r}catch(e){}}
+  if(top()&&top().key==='rank'&&RK3.i===0)qbKeep()}
+A.rkTab=async el=>{RK3.i=+el.dataset.i;qbKeep();if(!RK3.i)return;let T=[];try{T=lbTests()}catch(e){}const t=T[RK3.i-1],k=RK3.i;await rkLoad(t);if(top()&&top().key==='rank'&&RK3.i===k)qbKeep()};
+A.ranks=()=>openRanks();
+V3H.push([/^#\/r$/,()=>openRanks()]);
+
+/* ================= REFER AND EARN in the new design =================
+   Same server as the classic page (app22.js): cbt_refer_app through the classic rfLoad; the link and the message
+   are the classic rfLink / rfText (the link opens the store). */
+let RF3=null;
+const rfInr=n=>'₹'+Number(n||0).toLocaleString('en-IN');
+function rfCopy3(t,m){const ok=()=>toast3(m||'Copied');const old=()=>{const a=document.createElement('textarea');a.value=t;a.setAttribute('readonly','');a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(e){}a.remove()};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,()=>{old();ok()});else{old();ok()}}
+function rfView(){return {t:'Refer and earn',s:'Wallet money for every friend who buys',key:'refer',html:()=>{const r=RF3;
+  if(!r)return '<div class="card sk" style="height:220px"></div><div class="card sk" style="height:120px"></div>';
+  if(!r.ok)return `<div class="card empty"><span class="ti">${ic('gift',22)}</span><b>${r.error==='missing'?'Coming soon':'Could not load'}</b><p>${r.error==='missing'?'Refer and earn will open here soon.':'Please check your internet and try again.'}</p>${r.error==='missing'?'':'<button class="btn sm" data-a="rfAgain">Try again</button>'}</div>`;
+  const rw=rfInr(r.reward||25),L=r.list||[],H=r.history||[],link=rfLink(r.code);
+  return `<section class="mkh rfh3"><div class="mkh-top"><div><small>${r.active===false?'PAUSED FOR NOW':'REFER AND EARN'}</small><b style="font-size:26px;line-height:1.2">Get ${rw} for every friend who buys</b><span>Share your link. When a new student buys any test series on our store, ${rw} comes to your wallet.</span></div><span class="ti qbic">${ic('gift',28)}</span></div>
+    <div class="rfl3"><span>${esc3(link.replace(/^https?:\/\//,''))}</span><button data-a="rfCopyLink">${ic('copy',15)}Copy</button></div>
+    <div class="rfb3"><button class="btn gold" data-a="rfShare">${ic('share',16)}Share link</button><button class="btn ghost on-dark" data-a="rfWa">WhatsApp</button></div>
+    <p class="rfc3">Your code <b>${esc3(r.code)}</b> · the link opens our store, so your friend can see the series and buy.</p></section>
+   <div class="g2 rfk3"><div class="card"><small>Friends joined</small><b>${fmtN(r.joined||0)}</b></div><div class="card"><small>Friends bought</small><b class="ok">${fmtN(r.bought||0)}</b></div><div class="card"><small>Total earned</small><b>${rfInr(r.earned)}</b></div><div class="card"><small>Wallet balance</small><b class="acc">${rfInr(r.balance)}</b></div></div>
+   <a class="card rsc" href="store"><span class="rsc-n">WALLET</span><b>Use your wallet in the store</b><small>At checkout turn on “Use wallet balance”. It cannot be withdrawn to a bank or UPI.</small>${ic('right',18)}</a>
+   <section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>Your friends</h2><span class="aside">${L.length}</span></div>
+    ${L.length?`<div class="card rkl">${L.map(x=>`<div class="rkr"><span class="rkav sm">${esc3(String(x.name||'S')[0].toUpperCase())}</span><b>${esc3(x.name||'Student')}<small>${esc3(x.mobile||'')} · joined ${fD(x.at,{day:'numeric',month:'short'})}</small></b><span class="st${x.bought?' ok':''}">${x.bought?'Bought · +'+rw:'Not bought yet'}</span></div>`).join('')}</div>`
+      :'<div class="card empty"><b>Nobody yet</b><p>Share your link. Friends who join show here.</p></div>'}</section>
+   <section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>Wallet history</h2></div>
+    ${H.length?`<div class="card rkl">${H.map(x=>`<div class="rkr"><span class="rkav sm ${x.amount>0?'pos':''}">${x.amount>0?'+':'−'}</span><b>${esc3(x.note||'')}<small>${x.order?esc3(x.order)+' · ':''}${fD(x.at,{day:'numeric',month:'short',year:'numeric'})}</small></b><span class="rkv ${x.amount>0?'ok':''}">${x.amount>0?'+':'−'}${rfInr(Math.abs(x.amount))}</span></div>`).join('')}</div>`
+      :'<div class="card empty"><b>Nothing yet</b><p>Referral rewards show here.</p></div>'}</section>
+   <section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>How it works</h2></div>
+    <div class="card p rfo3">${[['share','Share your link','On WhatsApp, Telegram or anywhere.'],['bag','A new friend buys','Any test series on the store. Joining alone gives nothing; the purchase does.'],['gift',`${rw} comes to your wallet`,'After we approve their payment, once per friend.'],['check','Use it at checkout','For your next test series. Wallet money cannot be withdrawn.']].map(([i,t,d],k)=>`<div><span>${k+1}</span><p><b>${t}</b>${d}</p></div>`).join('')}</div></section>`}}}
+async function openRefer(){closeLayer();RF3=null;if(!(top()&&top().key==='refer'))push(rfView());else redraw();let r=null;try{r=await rfLoad(true)}catch(e){}if(!r)r={ok:false,error:'network'};RF3=r;if(top()&&top().key==='refer')redraw()}
+A.refer=()=>openRefer();A.rfAgain=()=>openRefer();
+A.rfCopyLink=()=>{if(RF3&&RF3.code)rfCopy3(rfLink(RF3.code),'Link copied')};
+A.rfShare=async()=>{if(!RF3||!RF3.code)return;const t=rfText(RF3.code);if(navigator.share){try{await navigator.share({title:'Aspiron Education',text:t});return}catch(e){if(e&&e.name==='AbortError')return}}rfCopy3(t,'Message copied. Paste it in WhatsApp or Telegram.')};
+A.rfWa=()=>{if(!RF3||!RF3.code)return;const w=window.open('https://wa.me/?text='+encodeURIComponent(rfText(RF3.code)),'_blank','noopener,noreferrer');if(w)w.opener=null};
+V3H.push([/^#\/refer$/,()=>openRefer()]);
 
 /* ================= MENU: the classic menu's items, plus the switch back ================= */
 A.menu=()=>{const u=unread(),mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' on':''}${cls||''}" data-a="m" data-k="${k}">${ic(i)}<span>${t}</span>${extra?`<em>${extra}</em>`:''}</button>`;
