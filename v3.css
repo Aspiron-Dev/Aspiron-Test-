@@ -1462,3 +1462,27 @@ a.rsc,a.rsc *{color:inherit;text-decoration:none}a.rsc small{color:var(--mut)}
 .nte-i{width:84px;height:84px;border-radius:28px;display:grid;place-items:center;color:var(--acc);background:radial-gradient(circle at 30% 25%,var(--surface),var(--accSoft));box-shadow:0 0 0 8px color-mix(in srgb,var(--accSoft) 45%,transparent);margin-bottom:10px;animation:rise .6s cubic-bezier(.22,1,.36,1) both}
 .nte b{font-size:18px;font-weight:600}.nte p{margin:0;font-size:14px;line-height:1.55;color:var(--mut);max-width:280px}
 @media (prefers-reduced-motion:reduce){.nt3,.nte-i{animation:none}}
+/* ---------- butter pass: lighter menu opening / closing, lighter blur while scrolling ---------- */
+.drawer{will-change:transform;contain:layout paint;width:min(300px,66vw);box-shadow:12px 0 32px -18px rgba(0,0,0,.35);
+  transition:transform .38s cubic-bezier(.32,.72,0,1),visibility 0s linear .38s}
+.drawer.open{transition:transform .42s cubic-bezier(.32,.72,0,1),visibility 0s}
+/* rows are always visible; on opening they rise into place one by one (and simply stay put while it closes) */
+.drawer .mtop,.drawer .mgh,.drawer .mi,.drawer .mdiv{opacity:1;animation:none}
+.drawer.open .mtop,.drawer.open .mgh,.drawer.open .mi,.drawer.open .mdiv{animation:mIn3 .46s cubic-bezier(.22,1,.36,1) backwards;animation-delay:calc(min(var(--i,0),16) * 24ms + 90ms)}
+@keyframes mIn3{from{opacity:0;transform:translate3d(0,12px,0)}}
+/* the page behind: a light blur that is drawn once, and only the dark tint fades */
+.scrim{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;transition:visibility 0s linear .38s}
+.scrim::before{content:"";position:absolute;inset:0;background:rgba(10,10,14,.34);opacity:0;transition:opacity .38s cubic-bezier(.32,.72,0,1)}
+.scrim.open{-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);transition:visibility 0s}
+.scrim.open::before{opacity:1}
+/* header and dock: a smaller blur radius costs much less on every scrolled frame */
+.hdr,.hdr.sc{-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.dock{-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+@media (prefers-reduced-motion:reduce){.drawer.open .mtop,.drawer.open .mgh,.drawer.open .mi,.drawer.open .mdiv{animation:none}}
+.scrim,.scrim.open{opacity:1;-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
+/* ---------- pages open in place (no sliding in from the side): a quick, soft fade ---------- */
+.scr{transform:none;opacity:0;transition:opacity .2s ease-out,visibility 0s linear .2s}
+.scr.open{transform:none;opacity:1;transition:opacity .2s ease-out,visibility 0s}
+.scr-in.fwd,.scr-in.bwd{animation:scrFade .24s ease-out both}
+@keyframes scrFade{from{opacity:0;transform:translate3d(0,6px,0)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.scr,.scr.open{transition:none}.scr-in.fwd,.scr-in.bwd{animation:none}}
