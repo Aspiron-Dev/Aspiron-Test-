@@ -69,6 +69,12 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Setup:** run `supabase_v64_series_page.sql` once (after v63), then `supabase_v35_admin_team.sql` again. Until then the
   pages show no dates, plans or syllabus.
 
+## Study tracker on the account (`supabase_v65_tracker_keep.sql`)
+- The study tracker (weeks, subjects, tasks, targets) and the *done today* counts are now kept on the student's account
+  with the profile and countdown (`cbt_keep`, v56). A new phone or a cleared browser gets the plan back after sign-in.
+  The newest copy wins; *done today* counts are merged. Every value is checked and cut to size on the server.
+- **Setup:** run `supabase_v65_tracker_keep.sql` once (after v56). Until then the tracker stays on the phone as before.
+
 ## Tests page poster and filter (`cx/m-look.js`, `supabase_v61_tests_page.sql`)
 - **Admin → Tests page** (Commerce): the poster at the top of the Tests tab of the new design (best 1080 × 1350 px, 4 : 5;
   keep the top 15% and bottom 25% plain because the search bar and the two big buttons sit there), an optional link, the

@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=18;
+const V3VER=19;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -1539,6 +1539,8 @@ A.trMenu=()=>{const it=(a,i,t,s,c)=>`<button class="row${c?' '+c:''}" data-a="${
   openSheet(`<h2 id="sheetT">Tracker options</h2><div class="list trmn">${it('trRename','pen','Rename this week','Change the week name')}${trkLoad().cur>0?it('trCarry','swap','Carry over pending tasks','Copy unfinished tasks from '+esc3(trkLoad().weeks[trkLoad().cur-1].label)):''}${it('trAddWeek','cal','Add a new week','Copies your subjects with empty tasks')}${it('trSubj','book','Add a subject','In this week or every week')}${it('trTargets','target','Set targets','A task goal for each subject')}${it('trGrowth','chart','Growth','Progress across all weeks')}${it('trResetWeek','clock','Reset this week','Mark all tasks as pending')}${it('trResetAll','trash','Delete everything','All weeks, subjects and tasks','bad')}</div>`)};
 ['trSubj','trTargets','trGrowth','trRename'].forEach(k=>{const f=A[k];A[k]=el=>{if(layer){closeLayer();setTimeout(()=>f(el),250)}else f(el)}});
 V3H.push([/^#\/t$/,()=>openTracker()]);
+/* the account's copy arrived (another phone was newer): show it */
+addEventListener('cbt-keep',()=>{try{if(top()&&top().key==='trk'){TR3.sel=-1;trDraw()}}catch(e){}});
 
 /* ================= RANKS AND LEADERBOARDS in the new design =================
    Same server and cache as the classic Results page (app10.js): cbt_overall for the overall rank (average score
@@ -1698,6 +1700,8 @@ route=async function(){
   if(m3){closeLayer();while(STK.length)pop();try{history.replaceState(null,'','#/')}catch(e){}h='#/';const f=goThen;goThen=()=>{f&&f();m3[1](m3[0])}}
   if(!isNewHash(h)){toOld();return _route.apply(this,arguments)}
   toNew();
+  /* the profile, countdown and study tracker kept on the account (cbt_keep): fetched once per page load, as the classic pages do */
+  try{if(typeof keepPull==='function')setTimeout(keepPull,0)}catch(e){}
   if(!CAT||Date.now()-CATAT>30000){if(!CAT)main.innerHTML='<div class="card sk" style="height:220px;margin-top:8px"></div><div class="card sk" style="height:160px"></div><div class="card sk" style="height:200px"></div>';
     const ok=await loadCat(!!CAT);if(!ok){if(AUTH){toOld()}return}if(INTEST||!AUTH)return}
   if(NOTES===null)loadNotes().then(()=>{if(S.tab==='test')softRender()});

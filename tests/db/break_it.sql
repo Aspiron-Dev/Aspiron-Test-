@@ -871,6 +871,39 @@ select pg_temp.chk('29f meta: Store view-only can look but not save',
   public.cbt_admin_series_meta(:'lvt','get','{}')->>'ok' = 'true'
   and public.cbt_admin_series_meta(:'lvt','save_syllabus','{"test_id":"aaaaaaaa-0000-0000-0000-000000000001","syllabus":"x"}')->>'error' = 'forbidden');
 
+-- ===== 30. study tracker kept on the account (v65): only the owner, only clean values =====
+set role anon;
+select pg_temp.chk('30a tracker: nothing without a valid sign-in',
+  coalesce((public.cbt_keep('9000000002','WRONG999','dev-bbbbbbbb','save','{"trk":{"weeks":[{"label":"W"}]}}')->>'ok')::boolean, false) is not true);
+select public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','save',
+  '{"trk":{"cur":7,"nid":12,"evil":1,"goals":{"s3":25,"bad key":4,"s4":"x"},"weeks":[{"id":"w1","label":"Week <b>1</b>","subjects":[{"id":"s3","name":"Physics","emoji":"⚡","color":"red","tasks":[{"id":4,"text":"Kinematics <script>","done":true,"at":1767225600000},{"id":5,"text":"   "},{"id":"x y","text":"DPP"}]}]}]},
+    "trkat":1767225600000,"trkd":{"2026-11-9":3,"bad":4,"2026-11-8":-2}}') as tsave \gset
+select pg_temp.chk('30b tracker: saved plan comes back, cleaned (markup, colour, empty tasks, bad ids, cur in range)',
+  (:'tsave'::jsonb->>'ok')::boolean
+  and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trk'->'weeks'->0->>'label' = 'Week b1/b'
+  and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trk'->'weeks'->0->'subjects'->0->>'color' = '#6366f1'
+  and jsonb_array_length(public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trk'->'weeks'->0->'subjects'->0->'tasks') = 2
+  and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trk'->'weeks'->0->'subjects'->0->'tasks'->0->>'text' = 'Kinematics script'
+  and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trk'->'weeks'->0->'subjects'->0->'tasks'->1->>'id' = '3'
+  and (public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trk'->>'cur')::int = 0
+  and not (public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trk' ? 'evil')
+  and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trk'->'goals' = '{"s3":25}'::jsonb
+  and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trkd' = '{"2026-11-9":3}'::jsonb
+  and (public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->>'trkat')::bigint = 1767225600000);
+select pg_temp.chk('30c tracker: the profile and countdown are untouched, another student sees nothing',
+  public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'pf' ? 'about'
+  and coalesce(public.cbt_keep('9000000002','BBBB2222','dev-bbbbbbbb','get')->'trk', 'null'::jsonb) = 'null'::jsonb);
+select pg_temp.chk('30d tracker: not a tracker or too big is refused, the saved one stays',
+  public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','save','{"trk":{"weeks":"x"}}')->>'error' = 'trk'
+  and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','save', jsonb_build_object('trk', jsonb_build_object('weeks', jsonb_build_array(jsonb_build_object('label', repeat('x', 160000))))))->>'error' = 'too_big'
+  and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trk'->'weeks'->0->>'label' = 'Week b1/b');
+select pg_temp.chk('30e tracker: a time in the future is not kept; null clears the tracker',
+  (public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','save','{"trk":{"weeks":[{"label":"W"}]},"trkat":99999999999999}')->>'ok')::boolean
+  and (public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->>'trkat')::bigint <= (extract(epoch from now()) * 1000)::bigint + 1000
+  and (public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','save','{"trk":null,"trkd":null}')->>'ok')::boolean
+  and coalesce(public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trk', 'null'::jsonb) = 'null'::jsonb);
+reset role;
+
 -- ===== report =====
 \t off
 \a
