@@ -1087,3 +1087,29 @@ b.c,.rs-sub-m .c{color:var(--ok)}b.w,.rs-sub-m .w{color:var(--err)}
 .held .ti{background:rgba(255,255,255,.12);color:var(--acc1)}
 .held h2{font-size:23px;font-weight:600}.held p{font-size:14.5px;color:var(--heroMut);line-height:1.55}
 .held-at{font-size:17px;font-weight:600}
+/* ---------- question bank and test generator ---------- */
+.qbf{display:flex;flex-direction:column;gap:18px}
+.qbf .fl>span{font-size:13px;font-weight:600;color:var(--tx)}
+.qbf .fl>span em{font-style:normal;font-weight:400;color:var(--faint);margin-left:6px}
+.qbf .seg{max-width:280px}
+.qbpk{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:50px;padding:0 14px;border-radius:14px;border:1px solid var(--line);background:var(--surface2);text-align:left;font-size:14.5px;transition:border-color .2s,transform .2s var(--spring)}
+.qbpk:active{transform:scale(.985)}
+.qbpk b{font-weight:500}.qbpk svg{color:var(--mut);flex:none}
+.qbsel button{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px 0 13px;font-size:13px}
+.qbsel button svg{opacity:.7}
+.qbsr{margin:4px 0 12px}
+.qbl3{display:flex;flex-direction:column;gap:6px;padding-bottom:6px}
+.qbl3 .gh{margin:12px 2px 2px}
+.qbo{display:flex;align-items:center;gap:12px;width:100%;min-height:50px;padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:var(--surface);text-align:left;font-size:14.5px;line-height:1.35;transition:border-color .2s,background .2s}
+.qbo i{flex:none;width:22px;height:22px;border-radius:7px;border:1.5px solid var(--line);display:grid;place-items:center;color:transparent;transition:background .2s,border-color .2s,color .2s}
+.qbo span{flex:1;min-width:0}.qbo small{flex:none;font-size:12.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+.qbo.on{border-color:var(--ink);background:color-mix(in srgb,var(--ink) 5%,var(--surface))}
+.qbo.on i{background:var(--ink);border-color:var(--ink);color:var(--onInk)}
+.qbic{width:58px;height:58px;border-radius:18px;background:rgba(255,255,255,.1);color:var(--heroTx)}
+.qbsubs{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.qbs{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:16px;text-align:left;transition:transform .25s var(--spring)}
+.qbs:active{transform:scale(.98)}
+.qbs b{font-size:15.5px;font-weight:600}.qbs small{font-size:12.5px;color:var(--mut);line-height:1.4}
+.qbs .bar{width:100%;margin-top:6px;background:var(--surface2)}
+.opt3.sel3{border-color:var(--ink);background:color-mix(in srgb,var(--ink) 6%,var(--surface))}
+.opt3.sel3 .k{background:var(--ink);color:var(--onInk)}

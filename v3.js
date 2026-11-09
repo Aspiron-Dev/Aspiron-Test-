@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=12;
+const V3VER=13;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -315,7 +315,7 @@ function autoRail(rs,ds){const c=$(rs);if(!c||!c.children.length)return;const do
   if(!RM)every(()=>{if(touched||document.hidden)return;c.scrollTo({left:((i+1)%c.children.length)*st(),behavior:'smooth'})},5000)}
 A.switchSeries=()=>openSheet(`<h2 id="sheetT">Switch test series</h2><p class="sub">Home, upcoming tests and the weekly schedule follow the series you pick.</p><div>${mine().map(s=>{const k=seriesStats(s);return `<button class="opt${s.id===(curSeries()||{}).id?' on':''}" data-a="pickSeries" data-id="${esc3(s.id)}"><div><b>${esc3(s.title)}</b><small>${s.is_free?'Free':'Premium'}, ${k.done} of ${k.n} tests attempted</small></div><span class="ck">${ic('check')}</span></button>`}).join('')}</div><button class="btn lg ghost" style="margin-top:12px" data-a="toStore">${ic('tests',16)}Get more test series</button>`);
 A.pickSeries=el=>{lsSet('cbt_v3_series',el.dataset.id);closeLayer();const b=$('#serBox');if(b){b.style.transition='opacity .2s';b.style.opacity=0}setTimeout(()=>{softRender();toast3('Switched to '+(curSeries()||{}).title)},200)};
-A.zone=el=>{const k=el.dataset.k;({study:()=>go('lib'),series:()=>A.mySeries(),dl:()=>openNotes(),hist:()=>A.hist(),mk:()=>openMistakes(),bm:()=>openSaved(),qb:()=>oldHash('#/qb'),pyq:()=>oldHash('#/pyq'),gen:()=>oldHash('#/gen')}[k]||(()=>{}))()};
+A.zone=el=>{const k=el.dataset.k;({study:()=>go('lib'),series:()=>A.mySeries(),dl:()=>openNotes(),hist:()=>A.hist(),mk:()=>openMistakes(),bm:()=>openSaved(),qb:()=>openQB(),pyq:()=>oldHash('#/pyq'),gen:()=>openGen()}[k]||(()=>{}))()};
 A.test=el=>{const t=tOf(el.dataset.id);if(!t)return;if(t.locked){oldModal(()=>openTest(t.id));return}oldRun(()=>openTest(t.id))};
 
 /* ---------- weekly schedule of the series chosen on Home: tests by the day they open; any week of any month ---------- */
@@ -798,7 +798,7 @@ VIEW.lib=()=>`<div class="pt"><div><h1>Library</h1><p>Practice, revision and stu
 function drawL(){const b=$('#lBody');if(!b)return;b.innerHTML=LQ.q.trim()?libResults():libHome();$('[data-a="lqClear"]').hidden=!LQ.q}
 AFTER.lib=()=>{const q=$('#lq');q.addEventListener('input',()=>{LQ.q=q.value;drawL()});try{if(typeof loadPdfs==='function'&&pdfCount()===null)loadPdfs().then(()=>{if(S.tab==='lib'&&!LQ.q)drawL()})}catch(e){}};
 A.lqClear=()=>{LQ.q='';const q=$('#lq');if(q)q.value='';drawL()};
-A.lmod=el=>{const h=el.dataset.h,f={'#/b':openSaved,'#/m':openMistakes,'#/notes':openNotes}[h];if(f)f();else oldHash(h)};
+A.lmod=el=>{const h=el.dataset.h,f={'#/b':openSaved,'#/m':openMistakes,'#/notes':openNotes,'#/qb':openQB,'#/gen':openGen}[h];if(f)f();else oldHash(h)};
 
 /* ================= ANALYTICS: from the student's own results (cbt_catalog.results) ================= */
 const AN={per:'all',chart:'marks',table:false};
@@ -1170,6 +1170,180 @@ function heldOpen(title,at){push({t:'Test submitted',s:'',key:'held',html:()=>`<
       if(n==='showResult'&&R&&R.result){let tt='';try{const T0=(typeof CAT!=='undefined'&&CAT&&CAT.tests||[]).find(x=>x.id===R.result.test_id);tt=T0?T0.title:''}catch(e){}rsOpen(R.result,R.review,tt||(typeof CURPEND!=='undefined'&&CURPEND&&CURPEND.title)||'')}else if(n==='showHeld')heldOpen(args[0],args[1])}catch(e){console.error(e)}}
     return r}})})();
 
+/* ================= QUESTION BANK and TEST GENERATOR in the new design =================
+   Same server and data as the classic pages (cbt_qb_meta, cbt_qb_next, cbt_qb_check, cbt_gen_list,
+   cbt_gen_create, cbt_gen_edit, cbt_gen_result; taking a test: cbt_gen_start / save / submit through the classic
+   engine, drawn in the new look). The syllabus lists and counting helpers are the classic ones (app25.js). */
+const QBX={F:null,meta:null,err:null};
+const QBK=[['l','Level',()=>QB_LV],['y','Question type',()=>QB_TY],['o','Source',()=>QB_SR]];
+function qbF0(){let f=null;try{f=Object.assign(qbEmptyF(),lsGet('cbt_qb_f',{}))}catch(e){f={ex:'',s:[],c:[],t:[],l:[],y:[],o:[]}}['s','c','t','l','y','o'].forEach(k=>{if(!Array.isArray(f[k]))f[k]=[]});if(f.ex!=='NEET'&&f.ex!=='JEE')f.ex=qbExamDef();return f}
+function qbTidy3(F){const subs=qbEff(F).s;F.s=F.s.filter(s=>qbExSubs(F).includes(s));
+  F.c=F.c.filter(c=>subs.some(s=>{const sb=qbSyl().find(x=>x.id===s);return sb&&sb.chapters.some(y=>y.id===c)}));
+  const tps=new Set();F.c.forEach(c=>{const s=(qbSyl().find(x=>x.chapters.some(y=>y.id===c))||{}).id,ch=qbChapObj(s,c);if(ch)ch.topics.forEach(t=>tps.add(t.name))});F.t=F.t.filter(t=>tps.has(t))}
+const qbN=(F,extra)=>{try{return qbCount(QBX.meta.rows,Object.assign({},qbEff(F),extra||{}))}catch(e){return 0}};
+/* the filter: exam, subjects, chapters (sheet with search), topics, level, type, source */
+function qbFilter(F,key){const subs=qbExSubs(F),E=qbEff(F);
+  const chips=(g,L)=>`<div class="chips wrap">${L.map(([k,l])=>{const on=F[g].includes(k),n=qbN(F,{[g]:[k]});return `<button class="${on?'on':''}" aria-pressed="${on}" data-a="qbT" data-f="${key}" data-g="${g}" data-k="${esc3(k)}">${esc3(l)}<small>${fmtN(n)}</small></button>`}).join('')}</div>`;
+  const chName=c=>{const s=(qbSyl().find(x=>x.chapters.some(y=>y.id===c))||{}).id;return qbChap(s,c)};
+  return `<div class="qbf"><div class="fl"><span>Exam</span><div class="seg">${['NEET','JEE'].map(x=>`<button class="${F.ex===x?'on':''}" data-a="qbEx" data-f="${key}" data-v="${x}">${x}</button>`).join('')}</div></div>
+   <div class="fl"><span>Subjects <em>none chosen = all</em></span><div class="chips wrap">${subs.map(k=>{const on=F.s.includes(k);return `<button class="${on?'on':''}" aria-pressed="${on}" data-a="qbT" data-f="${key}" data-g="s" data-k="${k}">${esc3(qbSub(k))}<small>${fmtN(qbN(F,{s:[k],c:[],t:[]}))}</small></button>`}).join('')}</div></div>
+   <div class="fl"><span>Chapters</span><button class="qbpk" data-a="qbChap" data-f="${key}" data-g="c"><b>${F.c.length?`${F.c.length} chapter${F.c.length>1?'s':''} chosen`:'All chapters'}</b>${ic('right',18)}</button>
+    ${F.c.length?`<div class="chips wrap qbsel">${F.c.map(c=>`<button class="on" data-a="qbT" data-f="${key}" data-g="c" data-k="${esc3(c)}">${esc3(chName(c))}${ic('x',13)}</button>`).join('')}</div>`:''}</div>
+   ${F.c.length?`<div class="fl"><span>Topics</span><button class="qbpk" data-a="qbChap" data-f="${key}" data-g="t"><b>${F.t.length?`${F.t.length} topic${F.t.length>1?'s':''} chosen`:'All topics of these chapters'}</b>${ic('right',18)}</button></div>`:''}
+   ${QBK.map(([g,l,L])=>`<div class="fl"><span>${l}</span>${chips(g,L())}</div>`).join('')}</div>`}
+const QBFS={};   // key → {F, after}
+function qbPick(key,g){const F=QBFS[key].F;let q='';
+  const list=()=>{const out=[];if(g==='c'){qbEff(F).s.forEach(s=>{const sb=qbSyl().find(x=>x.id===s);if(!sb)return;[11,12].forEach(cl=>{const L=sb.chapters.filter(c=>c.cls===cl&&!c.old);if(!L.length)return;out.push(['h',`${qbSub(s)}, Class ${cl}`]);L.forEach(c=>out.push(['o',c.id,c.name,qbN(F,{c:[c.id],s:[s],t:[]})]))})})}
+    else F.c.forEach(c=>{const s=(qbSyl().find(x=>x.chapters.some(y=>y.id===c))||{}).id,ch=qbChapObj(s,c);if(!ch||!ch.topics.length)return;out.push(['h',ch.name]);ch.topics.forEach(t=>out.push(['o',t.name,t.name,qbN(F,{t:[t.name]})]))});return out};
+  const draw=()=>{const L=list(),qq=q.trim().toLowerCase(),vis=L.filter(x=>x[0]==='h'||!qq||String(x[2]).toLowerCase().includes(qq));
+    sheet.innerHTML=`<div class="grab"></div><h2 id="sheetT">${g==='c'?'Choose chapters':'Choose topics'}</h2><p class="sub">${F[g].length} chosen. None chosen means all.</p>
+     <label class="sbox qbsr">${ic('search',18)}<input id="qbQ" type="search" placeholder="Search" value="${esc3(q)}" autocomplete="off"></label>
+     <div class="qbl3">${vis.map((x,i)=>x[0]==='h'?((vis[i+1]&&vis[i+1][0]==='o')?`<p class="gh">${esc3(x[1])}</p>`:''):`<button class="qbo${F[g].includes(x[1])?' on':''}" data-k="${esc3(x[1])}"><i>${ic('check',13)}</i><span>${esc3(x[2])}</span><small>${fmtN(x[3])}</small></button>`).join('')||'<p class="hint">Nothing matches.</p>'}</div>
+     <div class="sheet-ft"><button class="btn ghost" data-qc>Clear</button><button class="btn" data-qd>Done</button></div>`;
+    const inp=sheet.querySelector('#qbQ');inp.addEventListener('input',()=>{q=inp.value;const y=sheet.scrollTop;draw();sheet.scrollTop=y;const i2=sheet.querySelector('#qbQ');i2.focus();i2.setSelectionRange(q.length,q.length)})};
+  openSheet('');draw();
+  sheet.onclick=e=>{const o=e.target.closest('.qbo');if(o){const A=F[g],k=o.dataset.k,i=A.indexOf(k);i>-1?A.splice(i,1):A.push(k);o.classList.toggle('on',i<0);sheet.querySelector('.sub').textContent=`${A.length} chosen. None chosen means all.`;return}
+   if(e.target.closest('[data-qc]')){F[g]=[];const y=sheet.scrollTop;draw();sheet.scrollTop=y;return}
+   if(e.target.closest('[data-qd]')){closeLayer();qbTidy3(F);QBFS[key].after()}}}
+A.qbChap=el=>qbPick(el.dataset.f,el.dataset.g);
+A.qbT=el=>{const o=QBFS[el.dataset.f];if(!o)return;const A2=o.F[el.dataset.g],k=el.dataset.k,i=A2.indexOf(k);i>-1?A2.splice(i,1):A2.push(k);qbTidy3(o.F);o.after()};
+A.qbEx=el=>{const o=QBFS[el.dataset.f];if(!o||o.F.ex===el.dataset.v)return;o.F.ex=el.dataset.v;o.F.s=[];o.F.c=[];o.F.t=[];o.after()};
+const qbKeep=()=>{const b=$('#scrB'),y=b.scrollTop;redraw();b.scrollTop=y};
+
+/* ---------- question bank home ---------- */
+function qbView(){return {t:'Question bank',s:'Practise with answers and explanations',key:'qb',html:()=>{const M=QBX.meta;
+  if(QBX.err)return `<div class="card empty"><span class="ti">${ic('info',22)}</span><b>${QBX.err==='soon'?'Coming soon':'Could not load'}</b><p>${QBX.err==='soon'?'The question bank is being set up. Please check again later.':esc3(QBX.err)}</p></div>`;
+  if(!M)return '<div class="card sk" style="height:180px"></div><div class="card sk" style="height:300px"></div>';
+  const F=QBX.F,total=M.rows.reduce((a,r)=>a+r.n,0),done=M.mine.reduce((a,r)=>a+(+r[2]||0),0),right=M.mine.reduce((a,r)=>a+(+r[3]||0),0),n=qbN(F);
+  if(!total)return `<div class="card empty"><span class="ti">${ic('qb',22)}</span><b>Questions are being added</b><p>Please check again soon.</p></div>`;
+  const mineS={};M.mine.forEach(r=>{const o=mineS[r[0]]=mineS[r[0]]||{n:0,r:0};o.n+=+r[2]||0;o.r+=+r[3]||0});const subs={};M.rows.forEach(r=>{subs[r.s]=(subs[r.s]||0)+r.n});
+  return `<section class="mkh"><div class="mkh-top"><div><small>QUESTION BANK</small><b>${fmtN(total)}</b><span>questions to practise</span></div><span class="ti qbic">${ic('qb',30)}</span></div>
+    <div class="mkh-st"><div><b>${fmtN(done)}</b><small>Practised</small></div><div><b>${done?Math.round(right/done*100):0}%</b><small>Accuracy</small></div><div><b>${fmtN(Math.max(0,total-done))}</b><small>Not tried</small></div></div></section>
+   <div class="g2 qbsubs">${qbExSubs(F).map(s=>{const t=subs[s]||0,m=mineS[s]||{n:0,r:0},p=t?Math.min(100,Math.round(m.n/t*100)):0;return `<button class="card qbs" data-a="qbSub1" data-s="${esc3(s)}"><b>${esc3(qbSub(s))}</b><small>${fmtN(t)} questions, ${fmtN(m.n)} done${m.n?`, ${Math.round(m.r/m.n*100)}% right`:''}</small><span class="bar"><i style="--p:${(p/100).toFixed(3)}"></i></span></button>`}).join('')}</div>
+   <section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>Choose what to practise</h2><button class="lnk" data-a="qbReset">Clear</button></div><div class="card p">${qbFilter(F,'qb')}</div></section>
+   <div class="buybar"><span><b style="font-size:18px">${fmtN(n)}</b> <span class="mut" style="font-size:13px">questions match</span></span><button class="btn" data-a="qbGo"${n?'':' disabled'}>${ic('play',16)}Start practice</button></div>
+   <button class="card rsc" data-a="genOpen"><span class="rsc-n">NEW</span><b>Make your own test</b><small>Pick chapters, questions, level and time, and schedule it</small>${ic('right',18)}</button>`}}}
+async function openQB(){QBX.err=null;if(!QBX.F)QBX.F=qbF0();QBFS.qb={F:QBX.F,after:()=>{lsSet('cbt_qb_f',QBX.F);qbKeep()}};closeLayer();if(!(top()&&top().key==='qb'))push(qbView());
+  const M=await qbMeta(true).catch(()=>null);if(!M){QBX.err='Please check your internet and try again.';redraw();return}
+  if(!M.ok){QBX.err=qbMissing(M)?'soon':qbErr(M);redraw();return}QBX.meta=M;qbTidy3(QBX.F);if(top()&&top().key==='qb')redraw()}
+A.qbSub1=el=>{QBX.F.s=[el.dataset.s];QBX.F.c=[];QBX.F.t=[];lsSet('cbt_qb_f',QBX.F);qbKeep();qbPick('qb','c')};
+A.qbReset=()=>{QBX.F=Object.assign(qbEmptyF(),{ex:QBX.F.ex});QBFS.qb.F=QBX.F;lsSet('cbt_qb_f',QBX.F);qbKeep()};
+
+/* ---------- practice: one question at a time ---------- */
+let QR=null;
+async function qrFetch(){const R=QR;if(!R||R.end||R.busy)return R&&R.busy;
+  R.busy=rpc('cbt_qb_next',{p_f:R.f,p_skip:R.seen.slice(-400)}).then(r=>{if(!r||!r.ok){R.err=r||{ok:false};return}R.err=null;const it=(r.items||[]).filter(q=>qbUid(q.id)&&!R.seen.includes(q.id));it.forEach(q=>{R.q.push(q);R.seen.push(q.id)});if(!it.length)R.end=true}).catch(()=>{R.err={ok:false}}).finally(()=>{R.busy=null});return R.busy}
+function qrView(){return {t:'Practice',get s(){return QR?`${QR.ok} of ${QR.n} right`:''},key:'qr',html:()=>{const R=QR;if(!R)return '';
+  if(R.stop)return qrSum(false);
+  if(R.i>=R.q.length){if(R.busy||(!R.end&&!R.err))return '<div class="card sk" style="height:300px"></div>';
+   if(R.err&&!R.end)return `<div class="card empty"><span class="ti">${ic('info',22)}</span><b>Could not load questions</b><p>${esc3(qbErr(R.err))}</p><button class="btn sm" data-a="qrMore">Try again</button></div>`;
+   return qrSum(true)}
+  const q=R.q[R.i],a=R.ans[q.id],res=R.res[q.id],tags=[qbSub(q.s),q.c?qbChap(q.s,q.c):'',qbLbl(QB_LV,q.l),qbLbl(QB_TY,q.y),qbLbl(QB_SR,q.o)].filter(Boolean);
+  return `<div class="pr-top"><span>Question <b>${R.i+1}</b></span><span class="pr-sc">${ic('check',14)}${R.ok}/${R.n} right${R.n?`, ${Math.round(R.ok/R.n*100)}%`:''}</span></div>
+   <div class="pr-card"><article class="card qc3"><div class="qc3-h">${tags.map(t=>`<span class="tag">${esc3(t)}</span>`).join('')}</div><div class="qc3-q">${esc3(q.q||'')}</div>${qImg(q.img)}
+    <div class="qc3-o">${(q.options||[]).map((o,j)=>{const cls=res?(j===res.answer?' c':j===a?' w':''):(a===j?' sel3':'');const tag=res||a!=null?'div':'button';return `<${tag} class="opt3${cls}"${tag==='button'?` data-a="qrPick" data-j="${j}"`:''}><span class="k">${LT[j]}</span><span class="ot">${esc3(o||'')}${qImg(q.oimg&&q.oimg[j],'oi')}</span>${res&&j===res.answer?ic('check',16):''}</${tag}>`}).join('')}</div>
+    ${res?`<p class="qc3-r ${res.right?'ok':'bad'}">${res.right?'Correct! Well done.':`Not quite. The correct answer is ${LT[res.answer]}.`}</p>${res.explanation?`<div class="exp3"><b>Explanation</b><p>${esc3(res.explanation)}</p></div>`:''}`:a!=null?'<p class="hint">Checking…</p>':''}</article></div>
+   <div class="pr-ft"><button class="btn ghost" data-a="qrEnd">End</button>${res?'<button class="btn" data-a="qrNext">Next'+ic('right',16)+'</button>':'<button class="btn ghost" data-a="qrNext">Skip</button>'}</div>`}}}
+function qrSum(out){const R=QR,wrong=R.q.filter(q=>R.res[q.id]&&!R.res[q.id].right),p=R.n?Math.round(R.ok/R.n*100):0;
+  return `<section class="mkh pr-end"><div class="mkh-ring" style="margin:0 auto">${rsRing(p,120)}<span><b>${p}%</b><small>right</small></span></div><h2>${out?'You practised every question of your choice!':'Practice finished'}</h2><p><b>${R.n}</b> answered, <b>${R.ok}</b> right, <b>${R.n-R.ok}</b> wrong.</p>
+   <div class="g2" style="grid-template-columns:1fr 1fr;width:100%">${out?'':'<button class="btn gold" data-a="qrCont">Keep practising</button>'}<button class="btn ghost on-dark" data-a="back">Choose again</button></div></section>
+   ${wrong.length?`<div class="sh" style="margin:0"><h2>Revise these</h2><span class="aside">${wrong.length}</span></div>${wrong.map(q=>{const r=R.res[q.id];return qCard(Object.assign({},q,{answer:r.answer,explanation:r.explanation,qidx:-1}),{id:'qw'+q.id,rev:true,pick:R.ans[q.id]}).replace('<b>Q0</b>','')}).join('')}`:''}`}
+A.qbGo=()=>{QR={f:qbEff(QBX.F),q:[],seen:[],i:0,ans:{},res:{},n:0,ok:0,end:false,busy:null,err:null,stop:false};push(qrView());qrFetch().then(()=>{if(top()&&top().key==='qr')redraw()})};
+A.qrPick=async el=>{const R=QR,q=R.q[R.i],j=+el.dataset.j;if(!q||R.ans[q.id]!=null)return;R.ans[q.id]=j;if(navigator.vibrate)navigator.vibrate(8);redraw();
+  let r=null;try{r=await rpc('cbt_qb_check',{p_q:q.id,p_choice:j})}catch(e){}if(QR!==R)return;
+  if(!r||!r.ok){delete R.ans[q.id];toast3(qbErr(r));redraw();return}
+  R.res[q.id]={right:!!r.right,answer:+r.answer,explanation:String(r.explanation||'')};R.n++;if(r.right)R.ok++;try{QB.metaAt=0}catch(e){}$('#scrS').textContent=qrView().s;redraw()};
+A.qrNext=()=>{const R=QR;R.i++;$('#scrB').scrollTop=0;if(R.i>=R.q.length){redraw();qrFetch().then(()=>{if(QR===R)redraw()})}else{redraw();if(R.q.length-R.i<=3)qrFetch()}};
+A.qrMore=()=>{qrFetch().then(()=>redraw());redraw()};
+A.qrEnd=()=>{QR.at=QR.res[(QR.q[QR.i]||{}).id]?QR.i+1:QR.i;QR.stop=true;redraw();$('#scrB').scrollTop=0;QBX.meta=null;qbMeta(true).then(M=>{if(M&&M.ok)QBX.meta=M}).catch(()=>{})};
+A.qrCont=()=>{QR.stop=false;QR.i=Math.min(QR.at||0,QR.q.length);$('#scrB').scrollTop=0;redraw();if(QR.q.length-QR.i<=3)qrFetch().then(()=>{if(top()&&top().key==='qr')redraw()})};
+
+/* ---------- test generator: your tests ---------- */
+let GX=null;
+function genCard3(t){const st=genState(t),f=(t.opts&&t.opts.f)||{},what=[(f.s||[]).map(qbSub).join(' + ')||'All subjects',(f.c||[]).length?`${f.c.length} chapter${f.c.length>1?'s':''}`:'',(f.l||[]).map(k=>qbLbl(QB_LV,k)).join('/')].filter(Boolean).join(', '),id=esc3(t.id);
+  const top3=`<div class="tc3-top">${st==='done'?'<span class="st ok">Completed</span>':st==='run'?'<span class="st live">In progress</span>':st==='live'?'<span class="st live">Live now</span>':'<span class="st gold">Scheduled</span>'}<span class="mut">${st==='done'?qbWhen(t.done):st==='run'?'Ends '+qbWhen(t.ends):st==='live'?'Opened '+qbWhen(t.at):qbWhen(t.at)}</span></div>`;
+  const act=st==='done'?['chart','Result',`data-a="genRes" data-id="${id}"`]:st==='soon'?['clock','Soon','disabled']:['play',st==='run'?'Resume':'Start',`data-a="genGo" data-id="${id}"`];
+  return `<article class="card tc3"><div class="tc3-b">${top3}<h3>${esc3(t.title)}</h3><p class="tc3-m">${ic('list',15)}<span>${t.n} Questions</span><i></i><span>${t.dur} Mins</span><i></i><span>+${t.plus} / −${t.minus}</span></p><p class="tc3-m"><span>${esc3(what)}</span></p>
+   ${st==='done'?`<p class="tc3-m"><span><b style="color:var(--tx)">${+t.score} / ${t.max}</b></span><span class="c" style="color:var(--ok)">${t.correct} right</span><span style="color:var(--err)">${t.wrong} wrong</span></p>`:''}</div>
+   <button class="tc3-go${act[2]==='disabled'?' off':''}" ${act[2]}><span>${ic(act[0],20)}</span><small>${act[1]}</small></button>
+   <div class="tc3-f">${st==='done'?`<button data-a="genAgain" data-id="${id}">Retake</button>`:''}${st==='soon'?`<button data-a="genMove" data-id="${id}">Change time</button>`:''}${st==='done'||st==='run'?'':`<button data-a="genDel" data-id="${id}">Delete</button>`}</div></article>`}
+function genView(){return {t:'Test generator',s:'Make and schedule your own tests',key:'gen',html:()=>{
+  if(GX&&GX.err)return `<div class="card empty"><span class="ti">${ic('info',22)}</span><b>${GX.err==='soon'?'Coming soon':'Could not load'}</b><p>${GX.err==='soon'?'The test generator is being set up. Please check again later.':esc3(GX.err)}</p></div>`;
+  if(!GX)return '<div class="card sk" style="height:160px"></div><div class="card sk" style="height:200px"></div>';
+  const L=QB.list||[],g={run:[],live:[],soon:[],done:[]};L.forEach(t=>g[genState(t)].push(t));g.soon.sort((a,b)=>a.at-b.at);
+  const avg=g.done.length?Math.round(g.done.reduce((s,t)=>s+(t.max?Math.max(0,t.score/t.max):0),0)/g.done.length*100):0;
+  return `<section class="mkh"><div class="mkh-top"><div><small>TEST GENERATOR</small><b style="font-size:26px;line-height:1.2">Your own tests</b><span>Choose chapters, questions and time. Start now or schedule it.</span></div><span class="ti qbic">${ic('spark',28)}</span></div>
+    ${g.done.length?`<div class="mkh-st"><div><b>${g.done.length}</b><small>Taken</small></div><div><b>${avg}%</b><small>Average</small></div><div><b>${g.soon.length}</b><small>Scheduled</small></div></div>`:''}<button class="btn gold lg" data-a="genNew">${ic('spark',17)}Create a new test</button></section>
+   ${[['run','In progress'],['live','Live now'],['soon','Scheduled'],['done','Completed']].map(([k,h])=>g[k].length?`<div class="stack" style="gap:12px"><p class="gh">${h} <span>${g[k].length}</span></p>${g[k].map(genCard3).join('')}</div>`:'').join('')}
+   ${L.length?'':`<div class="card empty"><span class="ti">${ic('cal',22)}</span><b>No tests yet</b><p>Create your first test. It goes live at the time you choose, and you get a full result with solutions.</p></div>`}
+   <button class="card rsc" data-a="qbOpen"><span class="rsc-n">PRACTICE</span><b>Question bank</b><small>Unlimited practice with answers and explanations</small>${ic('right',18)}</button>`}}}
+async function openGen(){closeLayer();GX=null;if(!(top()&&top().key==='gen'))push(genView());else redraw();
+  const r=await genList(true).catch(()=>null);if(!r){GX={err:'Please check your internet and try again.'};redraw();return}
+  GX=r.ok?{}:{err:qbMissing(r)?'soon':qbErr(r)};if(top()&&top().key==='gen')redraw()}
+A.genOpen=()=>openGen();A.qbOpen=()=>openQB();
+A.genGo=el=>{closeLayer();unwind(()=>{genStart(el.dataset.id)})};
+A.genAgain=async el=>{let r=null;try{r=await rpc('cbt_gen_create',{p_d:{copy:el.dataset.id}})}catch(e){}if(!r||!r.ok){toast3(qbErr(r));return}QB.list=null;unwind(()=>genStart(r.id))};
+A.genDel=el=>{const id=el.dataset.id;openSheet(`<h2 id="sheetT">Delete this test?</h2><p class="sub">It will be removed from your list.</p><div class="sheet-ft"><button class="btn ghost" data-a="close">Keep</button><button class="btn danger3" data-a="genDelGo" data-id="${esc3(id)}">Delete</button></div>`)};
+A.genDelGo=async el=>{closeLayer();let r=null;try{r=await rpc('cbt_gen_edit',{p_id:el.dataset.id,p_action:'delete',p_at:null})}catch(e){}if(!r||!r.ok){toast3(qbErr(r));return}toast3('Deleted');openGen()};
+const genTimes=()=>{const o=[];for(let m=0;m<1440;m+=15){let h=Math.floor(m/60),ap=h>=12?'PM':'AM';h=h%12||12;o.push([m,`${h}:${String(m%60).padStart(2,'0')} ${ap}`])}return o};
+const genDays3=()=>{const o=[],t=new Date();t.setHours(0,0,0,0);for(let i=0;i<60;i++){const d=new Date(t.getTime()+i*DAY);o.push([d.getTime(),i===0?'Today':i===1?'Tomorrow':fD(d,{weekday:'short',day:'numeric',month:'short'})])}return o};
+A.genMove=el=>{const t=(QB.list||[]).find(x=>x.id===el.dataset.id);if(!t)return;const d=new Date(t.at),day=new Date(d).setHours(0,0,0,0),hm=Math.min(1425,d.getHours()*60+Math.ceil(d.getMinutes()/15)*15);
+  openSheet(`<h2 id="sheetT">Change the time</h2><p class="sub">${esc3(t.title)}</p><div class="g2"><label class="fl"><span>Day</span><select class="inp" id="mvD">${genDays3().map(([v,l])=>`<option value="${v}"${v===day?' selected':''}>${esc3(l)}</option>`).join('')}</select></label><label class="fl"><span>Time</span><select class="inp" id="mvT">${genTimes().map(([v,l])=>`<option value="${v}"${v===hm?' selected':''}>${l}</option>`).join('')}</select></label></div>
+   <div class="sheet-ft"><button class="btn ghost" data-a="close">Cancel</button><button class="btn" data-a="genMoveGo" data-id="${esc3(t.id)}">Save</button></div>`)};
+A.genMoveGo=async el=>{const at=+sheet.querySelector('#mvD').value+(+sheet.querySelector('#mvT').value)*60000;if(at<Date.now()-60000){toast3('Choose a time in the future');return}closeLayer();
+  let r=null;try{r=await rpc('cbt_gen_edit',{p_id:el.dataset.id,p_action:'reschedule',p_at:at+(QB.off||0)})}catch(e){}if(!r||!r.ok){toast3(qbErr(r));return}toast3('Moved to '+qbWhen(at));openGen()};
+
+/* ---------- create a test ---------- */
+let GF=null;
+const GN=[10,20,30,45,60,90,180],GD=[15,30,45,60,90,120,180];
+function genNewView(){return {t:'Create your test',s:'',key:'gnew',html:()=>{if(!QBX.meta)return '<div class="card sk" style="height:300px"></div>';const F=GF,av=qbN(F.f);
+  return `<label class="fl card p"><span>Test name</span><input class="inp" id="gnT" maxlength="80" placeholder="e.g. Physics, Kinematics revision" value="${esc3(F.title)}"></label>
+   <section class="stack" style="gap:10px"><p class="gh">1. What to ask</p><div class="card p">${qbFilter(F.f,'gen')}<p class="hint" style="margin:12px 0 0"><b style="color:var(--tx)">${fmtN(av)}</b> questions available</p></div></section>
+   <section class="stack" style="gap:10px"><p class="gh">2. Questions, time and marks</p><div class="card p stack" style="gap:16px">
+    <div class="fl"><span>Number of questions</span><div class="chips wrap">${GN.map(n=>`<button class="${F.n===n?'on':''}" data-a="gnN" data-v="${n}">${n}</button>`).join('')}</div></div>
+    <div class="fl"><span>Time (minutes)</span><div class="chips wrap">${GD.map(n=>`<button class="${F.dur===n?'on':''}" data-a="gnD" data-v="${n}">${n}</button>`).join('')}</div><p class="hint" style="margin:0">${av&&av<F.n?`Only ${av} questions match, so your test will have ${av}.`:`About ${Math.round(F.dur*60/F.n)} seconds per question.`}</p></div>
+    <div class="fl"><span>Marking</span><div class="seg"><button class="${F.mark==='4'?'on':''}" data-a="gnM" data-v="4">+4 / −1</button><button class="${F.mark==='1'?'on':''}" data-a="gnM" data-v="1">+1, no minus</button></div></div>
+    <div class="fl"><span>Question order</span><div class="seg"><button class="${F.order==='mix'?'on':''}" data-a="gnO" data-v="mix">Mixed</button><button class="${F.order==='subject'?'on':''}" data-a="gnO" data-v="subject">Subject by subject</button></div></div></div></section>
+   <section class="stack" style="gap:10px"><p class="gh">3. When</p><div class="card p stack" style="gap:14px"><div class="seg"><button class="${F.when==='now'?'on':''}" data-a="gnW" data-v="now">Start now</button><button class="${F.when==='later'?'on':''}" data-a="gnW" data-v="later">Schedule</button></div>
+    ${F.when==='later'?`<div class="g2"><label class="fl"><span>Day</span><select class="inp" id="gnDay">${genDays3().map(([v,l])=>`<option value="${v}"${v===F.day?' selected':''}>${esc3(l)}</option>`).join('')}</select></label><label class="fl"><span>Time</span><select class="inp" id="gnTime">${genTimes().map(([v,l])=>`<option value="${v}"${v===F.hm?' selected':''}>${l}</option>`).join('')}</select></label></div><p class="hint" style="margin:0">It goes live at this time. Open the app then and tap Start; your timer starts when you start.</p>`:''}</div></section>
+   <div class="buybar"><span><b>${Math.min(F.n,av)}</b> <span class="mut" style="font-size:13px">questions, ${F.dur} min</span></span><button class="btn" data-a="gnGo"${av<5?' disabled':''}>${ic('spark',16)}${F.when==='later'?'Schedule test':'Create and start'}</button></div>`},
+  after:()=>{const t=$('#gnT');t&&t.addEventListener('input',()=>{GF.title=t.value});const d=$('#gnDay');d&&d.addEventListener('change',()=>{GF.day=+d.value});const m=$('#gnTime');m&&m.addEventListener('change',()=>{GF.hm=+m.value})}}}
+async function openGenNew(){const def=new Date(Date.now()+36e5);def.setMinutes(0,0,0);
+  GF=GF||{title:'',f:Object.assign(qbEmptyF(),{ex:qbExamDef()}),n:30,dur:45,durAuto:true,mark:'4',order:'mix',when:'now',day:new Date(def).setHours(0,0,0,0),hm:def.getHours()*60};
+  QBFS.gen={F:GF.f,after:qbKeep};push(genNewView());if(!QBX.meta){const M=await qbMeta().catch(()=>null);if(M&&M.ok){QBX.meta=M;redraw()}else{toast3(M&&qbMissing(M)?'The test generator is being set up.':'Could not load. Please try again.');back()}}}
+A.genNew=()=>openGenNew();
+A.gnN=el=>{GF.n=+el.dataset.v;if(GF.durAuto)GF.dur=Math.min(360,Math.max(5,Math.round(GF.n*1.5/5)*5));qbKeep()};
+A.gnD=el=>{GF.dur=+el.dataset.v;GF.durAuto=false;qbKeep()};
+A.gnM=el=>{GF.mark=el.dataset.v;qbKeep()};A.gnO=el=>{GF.order=el.dataset.v;qbKeep()};A.gnW=el=>{GF.when=el.dataset.v;qbKeep()};
+A.gnGo=async el=>{const F=GF;let at=Date.now();if(F.when==='later'){at=F.day+F.hm*60000;if(at<Date.now()-60000){toast3('Choose a time in the future');return}}
+  el.disabled=true;const f=qbEff(F.f);if(!F.f.s.length)f.all=1;let r=null;
+  try{r=await rpc('cbt_gen_create',{p_d:{title:F.title.trim()||genAutoTitle(f),f,n:F.n,dur:F.dur,plus:F.mark==='4'?4:1,minus:F.mark==='4'?1:0,order:F.order,at:F.when==='later'?at+(QB.off||0):0}})}catch(e){}
+  if(!r||!r.ok){el.disabled=false;toast3(qbErr(r));return}
+  GF=null;QB.list=null;try{if(AUTH)LS.set('cbt_gen_has_'+AUTH.mobile,1)}catch(e){}if(r.want&&r.n<r.want)toast3(`Only ${r.n} questions matched, so your test has ${r.n}.`);
+  if(F.when==='later'){toast3('Test scheduled for '+qbWhen(at));back();setTimeout(openGen,350)}else unwind(()=>genStart(r.id))};
+
+/* ---------- a generated test's result ---------- */
+let GR=null,GRF='all';
+function genResView(){return {t:'Result',get s(){return GR?GR.test.title:''},key:'gres',html:()=>{if(!GR)return '<div class="card sk" style="height:240px"></div>';
+  const t=GR.test,Q=GR.questions||[],pc=t.max?Math.max(0,Math.round(t.score/t.max*100)):0,att=t.correct+t.wrong,acc=att?Math.round(t.correct/att*100):0;
+  const by=(key,name)=>{const m={};Q.forEach(q=>{const k=key(q),o=m[k]=m[k]||{name:name(q),n:0,c:0,w:0};o.n++;if(q.my!=null){if(q.my===q.a)o.c++;else o.w++}});return Object.values(m)};
+  const subs=by(q=>q.s,q=>qbSub(q.s)),chs=by(q=>q.s+'|'+q.c,q=>qbChap(q.s,q.c)).sort((a,b)=>a.c/a.n-b.c/b.n);
+  const row=o=>`<div class="card rs-sub"><div class="rs-sub-h"><b>${esc3(o.name)}</b><span>${Math.round(o.c/o.n*100)}% right</span></div><div class="stk3"><i class="c" style="width:${o.c*100/o.n}%"></i><i class="w" style="width:${o.w*100/o.n}%"></i></div><p class="rs-sub-m"><span class="c">${o.c} correct</span><span class="w">${o.w} wrong</span><span>${o.n-o.c-o.w} skipped</span></p></div>`;
+  const show=Q.map((q,i)=>[q,i]).filter(([q])=>GRF==='all'||(GRF==='c'&&q.my===q.a)||(GRF==='w'&&q.my!=null&&q.my!==q.a)||(GRF==='s'&&q.my==null));
+  return `<section class="rsh"><div class="rsh-top"><div class="mkh-ring">${rsRing(pc,132)}<span><b>${+t.score}</b><small>of ${t.max}</small></span></div><div class="rsh-t"><small>${esc3(t.title)}</small><h2>${pc>=75?'Excellent work!':pc>=50?'Good effort!':'Keep practising!'}</h2><p>${pc}% score · ${acc}% accuracy</p></div></div>
+    <div class="rsh-st"><div><b class="c">${t.correct}</b><small>Correct</small></div><div><b class="w">${t.wrong}</b><small>Wrong</small></div><div><b>${t.skipped}</b><small>Skipped</small></div><div><b>${t.n}</b><small>Questions</small></div></div></section>
+   <div class="g2" style="grid-template-columns:1fr 1fr"><button class="btn" data-a="genAgain" data-id="${esc3(t.id)}">Retake</button><button class="btn ghost" data-a="genNew">New test</button></div>
+   <div class="sh" style="margin:0"><h2>Subjects</h2></div>${subs.map(row).join('')}
+   ${chs.length>1?`<div class="sh" style="margin:0"><h2>Chapters</h2><span class="aside">Weakest first</span></div>${chs.map(row).join('')}`:''}
+   <div class="sh" style="margin:0"><h2>Solutions</h2></div>
+   <div class="seg">${[['all','All',Q.length],['w','Wrong',t.wrong],['s','Skipped',t.skipped],['c','Correct',t.correct]].map(([k,l,n])=>`<button class="${GRF===k?'on':''}" data-a="grF" data-v="${k}">${l}<small>${n}</small></button>`).join('')}</div>
+   ${show.length?show.map(([q,i])=>qCard({q:q.q,img:q.img,options:q.options,oimg:q.oimg,answer:q.a,explanation:q.e,qidx:i},{id:'gq'+i,rev:true,pick:q.my,badge:`${q.my==null?'<span class="st">Skipped</span>':q.my===q.a?'<span class="st ok">Correct</span>':'<span class="st err">Wrong</span>'}<span class="tag">${esc3(qbSub(q.s))}</span>`})).join(''):'<div class="card empty"><b>Nothing here</b></div>'}`}}}
+async function openGenRes(id){if(!qbUid(id))return;GR=null;GRF='all';push(genResView());let r=null;try{r=await rpc('cbt_gen_result',{p_id:id})}catch(e){}
+  if(!r||!r.ok){if(r&&r.error==='not_done'){back();unwind(()=>genStart(id));return}back();toast3(qbErr(r));return}GR=r;$('#scrS').textContent=r.test.title;redraw()}
+A.genRes=el=>openGenRes(el.dataset.id);A.grF=el=>{GRF=el.dataset.v;qbKeep()};
+/* classic addresses that open these pages in the new design */
+const V3H=[[/^#\/qb(\/go)?$/,()=>openQB()],[/^#\/gen$/,()=>openGen()],[/^#\/gen\/new$/,()=>openGenNew()],[/^#\/gen\/r\/([0-9a-f-]{36})$/,m=>openGenRes(m[1])]];
+
 /* ================= MENU: the classic menu's items, plus the switch back ================= */
 A.menu=()=>{const u=unread(),mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' on':''}${cls||''}" data-a="m" data-k="${k}">${ic(i)}<span>${t}</span>${extra?`<em>${extra}</em>`:''}</button>`;
   drawer.innerHTML=`<div class="hero pcard"><div class="who">${avatar()}<div style="min-width:0"><b>${esc3(stuName())}</b><small class="mut">${esc3(stuMeta())}</small></div></div><button class="btn sm onhero ghost blk" data-a="m" data-k="profile">View profile</button></div>
@@ -1214,8 +1388,11 @@ const _route=route;
 route=async function(){
   if(!v3On()||typeof AUTH==='undefined'||!AUTH||INTEST){if(!AUTH)document.body.classList.remove('v3on','v3old');return _route.apply(this,arguments)}
   boot();document.body.classList.add('v3on');
-  const h=location.hash||'#/';
+  let h=location.hash||'#/';
   if(lockHash!==null){if(h===lockHash)return;lockHash=null}
+  /* classic addresses of pages that now live in the new design (question bank, test generator) */
+  const m3=V3H.map(([re,f])=>[h.match(re),f]).find(x=>x[0]);
+  if(m3){closeLayer();while(STK.length)pop();try{history.replaceState(null,'','#/')}catch(e){}h='#/';const f=goThen;goThen=()=>{f&&f();m3[1](m3[0])}}
   if(!isNewHash(h)){toOld();return _route.apply(this,arguments)}
   toNew();
   if(!CAT||Date.now()-CATAT>30000){if(!CAT)main.innerHTML='<div class="card sk" style="height:220px;margin-top:8px"></div><div class="card sk" style="height:160px"></div><div class="card sk" style="height:200px"></div>';
@@ -1357,6 +1534,30 @@ draw=function(){if(!on()||!T||!P)return _draw.apply(this,arguments);
 if(typeof instr==='function'){const _in=instr;instr=function(){const r=_in.apply(this,arguments);if(on()){xSync();document.body.classList.add('x3ins');
     const b=document.querySelector('#app .ins > button.btn.ghost');if(b&&window.v3BackNew){b.removeAttribute('onclick');b.addEventListener('click',e=>{e.preventDefault();window.v3BackNew()})}}return r}}
 addEventListener('hashchange',()=>{if(!document.querySelector('#app .ins'))document.body.classList.remove('x3ins')});
+/* a test you made with the test generator: the same classic engine (cbt_gen_start / save / submit), drawn like the exam above */
+if(typeof gDraw==='function'&&typeof gSt==='function'){const _gd=gDraw;
+  const gPal3=()=>{const c={nv:0,na:0,ans:0,mark:0,mans:0};GT.q.forEach((_,i)=>c[gSt(i)]++);
+    return `<div class="x3pal">${GT.q.map((_,i)=>`<button class="${gSt(i)}${i===GP.cur?' cur':''}" onclick="gGo(${i})" aria-label="Question ${i+1}, ${LBL[gSt(i)]}">${i+1}</button>`).join('')}</div>
+    <div class="x3leg">${['ans','na','nv','mark','mans'].map(k=>`<span><i class="${k}">${c[k]}</i>${LBL[k]}</span>`).join('')}</div>`};
+  gDraw=function(){if(!on()||!GT)return _gd.apply(this,arguments);
+    document.body.classList.remove('x3ins');xSync();const n=GT.q.length,q=GT.q[GP.cur],a=GP.ans[q.id],L=['A','B','C','D'];GP.vis[q.id]=1;
+    const done=GT.q.filter(x=>GP.ans[x.id]!=null).length;
+    document.getElementById('app').innerHTML=`<div class="x3">
+     <header class="x3h cbtbar"><div class="x3t"><b class="tb-title">${esc(GT.title)}</b><small>${esc(qbSub(q.s))}${q.c?' · '+esc(qbChap(q.s,q.c)):''}</small></div>
+      <div class="timer x3tm" id="tm">${ic('clock',16)}<span>--:--</span></div><button class="x3sub" onclick="gAsk()">Submit</button></header>
+     <div class="x3bar" aria-hidden="true"><i style="width:${(done/n*100).toFixed(1)}%"></i></div>
+     <div class="x3m"><section class="qcard x3q">
+       <div class="x3qm"><span class="x3qn">Question ${GP.cur+1}<small> of ${n}</small></span><span class="x3mk"><i class="g">+${GT.plus}</i>${GT.minus?`<i class="b">−${GT.minus}</i>`:''}</span>${GP.mark[q.id]?'<span class="x3chip">Marked</span>':''}<span style="flex:1"></span><span class="x3chip">${esc(qbLbl(QB_LV,q.l))}</span></div>
+       <div class="x3qt">${esc(q.q)}</div>${imgTag(q.img)}
+       <div class="x3os">${(q.options||[]).map((o,i)=>`<button class="x3op${a===i?' sel':''}" onclick="gSel(${i})" aria-pressed="${a===i}"><span class="k">${L[i]}</span><span class="t">${esc(o)}${imgTag(q.oimg&&q.oimg[i],'oi')}</span></button>`).join('')}</div>
+       ${a!=null?'<button class="x3clr" onclick="gClr()">Clear response</button>':''}</section>
+      <aside class="x3side"><div class="x3who"><span>${esc(((AUTH&&AUTH.name)||'?').trim()[0].toUpperCase())}</span><div><b>${esc((AUTH&&AUTH.name)||'')}</b><small>Candidate</small></div></div>${gPal3()}<button class="x3sub blk" onclick="gAsk()">Submit test</button></aside></div>
+     <footer class="x3f"><button class="x3nav" ${GP.cur===0?'disabled':''} onclick="gGo(${GP.cur-1})" aria-label="Previous question">${ic('left',20)}</button>
+      <button class="x3pb" onclick="gPalT(true)" aria-label="Question palette">${ic('grid',18)}<span>${done}/${n}</span></button>
+      <button class="x3mn" onclick="gMarkNext()">${ic('flag',16)}<span>Mark &amp; Next</span></button>
+      <button class="x3sn" onclick="gSaveNext()"><span>${GP.cur===n-1?'Save':'Save &amp; Next'}</span>${ic('right',18)}</button></footer>
+     <div class="sheet x3sh ${typeof palOpen!=='undefined'&&palOpen?'open':''}" onclick="if(event.target===this)gPalT(false)"><div class="in"><div class="grab"></div><div class="x3shh"><b>Question palette</b><button onclick="gPalT(false)" aria-label="Close">${ic('x',18)}</button></div>${gPal3()}<button class="x3sub blk" onclick="gAsk()">Submit test</button></div></div></div>`;
+    gTick(true)}}
 const css=document.createElement('style');css.id='x3css';css.textContent=`
 body.v3on.intest{background:var(--x-bg)!important;font-family:Geist,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 body.v3on.intest #app{max-width:none;padding:0}
