@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=13;
+const V3VER=22;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -137,7 +137,7 @@ const THEMES={
   D:['Black & Emerald',{acc:'#6cc09c',a1:'#a8dcc4',a2:'#3f9373',onA:'#04140d',as:'#0f1d17',h1:'#11201a',h2:'#020403',glow:'rgba(95,190,150,.22)',pill:'rgba(108,192,156,.12)'},'Black with deep muted green'],
   E:['Black & Graphite',{s:'#121213',s2:'#1c1c1e',ln:'#2a2a2c',acc:'#a6a6aa',a1:'#d7d7da',a2:'#7c7c80',h1:'#222224',h2:'#0b0b0c',glow:'rgba(255,255,255,.07)'},'Black with graphite cards']}}
 };
-const CHL={light:['#3f72b8','#c4692e','#1f9a72'],dark:['#4f86cc','#c97042','#2a9a74']}; /* validated with the dataviz palette checker */
+const CHL={light:['#3f72b8','#c4692e'],dark:['#4f86cc','#c97042']}; /* validated with the dataviz palette checker */
 
 const MQ=matchMedia('(prefers-color-scheme: dark)');
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -209,7 +209,7 @@ const isNewHash=h=>!h||h==='#'||h==='#/'||/^#\/x\/(test|tools|lib|stats)$/.test(
 function syncDock(){dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab));dock.querySelectorAll('button').forEach(b=>{const on=b.dataset.tab===S.tab;b.classList.toggle('on',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')})}
 let timers=[];
 const every=(fn,ms)=>{const t=setInterval(fn,ms);timers.push(t);return t};
-function render(anim){timers.forEach(clearInterval);timers=[];try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please switch to the classic design from the menu and tell us.</p></div>`}
+function render(anim){timers.forEach(clearInterval);timers=[];main.dataset.tab=S.tab;try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please switch to the classic design from the menu and tell us.</p></div>`}
   main.classList.remove('in');if(anim&&!RM){void main.offsetWidth;main.classList.add('in')}try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);reveal(main)}
 /* content below the first screen fades up into place as it scrolls into view (once; nothing hides if the browser cannot) */
 let rvIO=null;
@@ -295,9 +295,19 @@ function upcoming(){const cs=curSeries(),all=upList(),L=all.slice(0,4),done=(C()
   return `<section class="sec"><div class="sh"><h2>Upcoming Events (${all.length})</h2></div>
   ${L.length?`<div class="card"><div class="ev">${L.map(evRow).join('')}</div></div>`:`<div class="evnone"><span class="ti">${ic('cal',20)}</span><span>${done?'Today’s live tests have ended':'No live or upcoming tests right now'}</span></div>`}
   ${cs?'<button class="obtn" data-a="week">View Weekly Schedule</button>':''}</section>`}
-const ZONE=[['series','layers','My Test Series'],['qb','qb','Question Bank'],['pyq','pyq','PYQ Analyzer'],['gen','spark','Test Generator'],['dl','file','Notes & PDFs'],['mk','pen','Mistakes'],['bm','bookmark','Saved'],['hist','trophy','Results']];
-function zone(){return `<section class="sec"><div class="sh"><h2>My study zone</h2></div><div class="qgrid">
-  ${ZONE.map(z=>`<button class="qi" data-a="zone" data-k="${z[0]}"><span class="ti g">${ic(z[1],24)}</span><span>${z[2]}</span></button>`).join('')}</div></section>`}
+/* study zone: one calm tone for every tile, two-tone line icons */
+Object.assign(P,{
+ zSer:'<rect class="d" x="4" y="6" width="13" height="15" rx="2.5"/><rect x="4" y="6" width="13" height="15" rx="2.5"/><path d="M8 2.8h9.5A2.5 2.5 0 0 1 20 5.3V17"/><path d="M7.8 11h5.4M7.8 15h3.6"/>',
+ zQb:'<rect class="d" x="3" y="3" width="18" height="18" rx="5"/><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 16.8h.01"/>',
+ zPyq:'<path class="d" d="M6.5 2.8H14l5 5v12.4H6.5a2 2 0 0 1-2-2V4.8a2 2 0 0 1 2-2z"/><path d="M19 11V7.8l-5-5H6.5a2 2 0 0 0-2 2v13.4a2 2 0 0 0 2 2H10"/><path d="M14 2.8v5h5"/><circle cx="15.5" cy="16" r="3"/><path d="m17.7 18.2 2.5 2.5"/>',
+ zGen:'<path d="m3.5 20.5 10-10"/><path d="m12 9 3 3"/><path class="d" d="m17.5 2.5 1.2 3 3 1.2-3 1.2-1.2 3-1.2-3-3-1.2 3-1.2z"/><path d="m17.5 2.5 1.2 3 3 1.2-3 1.2-1.2 3-1.2-3-3-1.2 3-1.2z"/><path d="M6.5 3.5v3M5 5h3"/>',
+ zNote:'<path class="d" d="M6 2.8h9l4 4v13.4H6a1.5 1.5 0 0 1-1.5-1.5V4.3A1.5 1.5 0 0 1 6 2.8z"/><path d="M15 2.8H6a1.5 1.5 0 0 0-1.5 1.5v14.4A1.5 1.5 0 0 0 6 20.2h11.5a1.5 1.5 0 0 0 1.5-1.5V6.8z"/><path d="M15 2.8v4h4"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4"/>',
+ zMk:'<circle class="d" cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="9"/><path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6"/>',
+ zBm:'<path class="d" d="M6.5 3h11a1 1 0 0 1 1 1v17l-6.5-4.2L5.5 21V4a1 1 0 0 1 1-1z"/><path d="M6.5 3h11a1 1 0 0 1 1 1v17l-6.5-4.2L5.5 21V4a1 1 0 0 1 1-1z"/>',
+ zRes:'<path class="d" d="M7 3.5h10V9a5 5 0 0 1-10 0z"/><path d="M7 3.5h10V9a5 5 0 0 1-10 0z"/><path d="M7 5.5H4.8a2 2 0 0 0 0 4H7.2M17 5.5h2.2a2 2 0 0 1 0 4h-2.4"/><path d="M12 14v3.5M8 21h8M9.5 21l.6-3.5h3.8l.6 3.5"/>'});
+const ZONE=[['series','zSer','My Test Series'],['qb','zQb','Question Bank'],['pyq','zPyq','PYQ Analyzer'],['gen','zGen','Test Generator'],['dl','zNote','Notes & PDFs'],['mk','zMk','Mistakes'],['bm','zBm','Saved'],['hist','zRes','Results']];
+function zone(){return `<section class="sec"><div class="sh"><h2>My study zone</h2></div><div class="card qgrid zgrid">
+  ${ZONE.map((z,i)=>`<button class="qi zi" data-a="zone" data-k="${z[0]}" style="--zd:${i*35}ms"><span class="zt">${ic(z[1],24)}</span><span class="zl">${z[2]}</span></button>`).join('')}</div></section>`}
 function promoRail(id){let L=[];try{L=(typeof PROMO!=='undefined'&&PROMO)||[]}catch(e){}if(!L.length)return '';
   return `<section class="sec"><div class="rail" id="${id}">${L.slice(0,6).map(x=>{const u=/^https?:\/\/|^#\//i.test(x.link||'')?x.link:'',img=x.img&&/^data:image\/|^https:\/\//.test(x.img)?x.img:'';
    const body=img?`<img src="${esc3(img)}" alt="${esc3(x.title||'Offer')}">`:`<span class="bn-tx"><small class="gold">${esc3(x.label||'Aspiron')}</small><b>${esc3(x.title||'')}</b>${x.text?`<em>${esc3(x.text)}</em>`:''}</span>`;
@@ -315,8 +325,14 @@ function autoRail(rs,ds){const c=$(rs);if(!c||!c.children.length)return;const do
   if(!RM)every(()=>{if(touched||document.hidden)return;c.scrollTo({left:((i+1)%c.children.length)*st(),behavior:'smooth'})},5000)}
 A.switchSeries=()=>openSheet(`<h2 id="sheetT">Switch test series</h2><p class="sub">Home, upcoming tests and the weekly schedule follow the series you pick.</p><div>${mine().map(s=>{const k=seriesStats(s);return `<button class="opt${s.id===(curSeries()||{}).id?' on':''}" data-a="pickSeries" data-id="${esc3(s.id)}"><div><b>${esc3(s.title)}</b><small>${s.is_free?'Free':'Premium'}, ${k.done} of ${k.n} tests attempted</small></div><span class="ck">${ic('check')}</span></button>`}).join('')}</div><button class="btn lg ghost" style="margin-top:12px" data-a="toStore">${ic('tests',16)}Get more test series</button>`);
 A.pickSeries=el=>{lsSet('cbt_v3_series',el.dataset.id);closeLayer();const b=$('#serBox');if(b){b.style.transition='opacity .2s';b.style.opacity=0}setTimeout(()=>{softRender();toast3('Switched to '+(curSeries()||{}).title)},200)};
-A.zone=el=>{const k=el.dataset.k;({study:()=>go('lib'),series:()=>A.mySeries(),dl:()=>openNotes(),hist:()=>A.hist(),mk:()=>openMistakes(),bm:()=>openSaved(),qb:()=>openQB(),pyq:()=>oldHash('#/pyq'),gen:()=>openGen()}[k]||(()=>{}))()};
-A.test=el=>{const t=tOf(el.dataset.id);if(!t)return;if(t.locked){oldModal(()=>openTest(t.id));return}oldRun(()=>openTest(t.id))};
+A.zone=el=>{const k=el.dataset.k;({study:()=>go('lib'),series:()=>A.mySeries(),dl:()=>openNotes(),hist:()=>A.hist(),mk:()=>openMistakes(),bm:()=>openSaved(),qb:()=>openQB(),pyq:()=>openPyq(),gen:()=>openGen()}[k]||(()=>{}))()};
+A.test=el=>{const t=tOf(el.dataset.id);if(!t)return;if(t.locked){lockedSheet(t);return}oldRun(()=>openTest(t.id))};
+/* a locked test: what it is part of, and the way to unlock it (the series page with its price and Buy) */
+function lockedSheet(t){const s=sOf(t.series_id)||{},x=itemOfSeries(t.series_id),n=testsOf(t.series_id).length;
+  openSheet(`<div class="lk3"><span class="lk3i">${ic('lock',26)}</span><h2 id="sheetT">This test is locked</h2>
+   <p class="sub">“${esc3(t.title)}” is part of <b>${esc3(s.title||'a premium series')}</b>${n?`, ${n} test${n>1?'s':''} with All-India rank`:''}.</p>
+   ${x?`<div class="lk3p">${priceH(x)}</div>`:''}<p class="hint">Every test, result and rank opens right after your payment is approved.</p></div>
+   <div class="sheet-ft">${x?`<button class="btn ghost" data-a="xp" data-id="${esc3(x.id)}">See the series</button><a class="btn gold" href="${buyHref(x)}">${x.price?'Unlock now':'Get it free'}</a>`:'<button class="btn" data-a="close">Close</button>'}</div>`)}
 
 /* ---------- weekly schedule of the series chosen on Home: tests by the day they open; any week of any month ---------- */
 const monOf=t=>{const d=new Date(t);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()};
@@ -346,7 +362,7 @@ A.wkMonth=()=>{const T=wkTests(),now=mKey(nowMs()),ks=T.map(t=>mKey(t.opens_at))
    return `<button class="${k===cur?'on':''}${k===now?' now':''}" data-a="wkPick" data-k="${k}"><b>${fD(new Date(y,m,1),{month:'short'})}</b><small>${y}</small><em>${n?n+(n===1?' test':' tests'):'No tests'}</em></button>`}).join('')}</div>`)};
 A.wkPick=el=>{const k=+el.dataset.k,y=Math.floor(k/12),m=k%12,first=new Date(y,m,1).getTime(),next=new Date(y,m+1,1).getTime();closeLayer();
   if(k===mKey(nowMs()))wkGo(nowMs());else{const t=wkTests().filter(x=>x.opens_at>=first&&x.opens_at<next).sort((a,b)=>a.opens_at-b.opens_at)[0];wkGo(t?t.opens_at:first)}redraw()};
-A.oldTracker=()=>oldHash('#/t');
+A.oldTracker=()=>openTracker();
 
 /* ---------- notifications (the classic notices) ---------- */
 function syncBell(){const b=$('#bell');if(!b)return;const u=unread();b.innerHTML=ic('bell',21)+`<span class="dot${u?'':' off'}"></span>`;b.setAttribute('aria-label',u?`Notifications, ${u} unread`:'Notifications')}
@@ -363,8 +379,11 @@ A.readAll=()=>{if(!unread()){toast3('Nothing unread');return}markSeen(Math.max(.
 A.openNote=el=>{const n=(NOTES||[]).find(x=>String(x.id)===el.dataset.id);if(!n)return;markSeen(n.at||0);redraw();$('#scrS').textContent=unread()?`${unread()} unread`:'All caught up';
   const u=/^https?:\/\//i.test(n.link||'')?n.link:'';
   openSheet(`<h2 id="sheetT">${esc3(n.title||'Announcement')}</h2><p class="sub">${n.at?dS(n.at):''}</p><p style="font-size:15px;line-height:1.65;white-space:pre-wrap">${typeof linkify==='function'?linkify(n.text||''):esc3(n.text||'')}</p>
-   <div class="g2" style="margin-top:16px;grid-template-columns:1fr 1fr">${n.img?'<button class="btn ghost" data-a="oldNotices">See the picture</button>':'<span></span>'}${u?`<a class="btn gold" href="${esc3(u)}" target="_blank" rel="noopener noreferrer">${esc3(n.label||'Open link')}</a>`:''}</div>`)};
-A.oldNotices=()=>oldHash('#/n');
+   ${n.img?'<div class="nimg3" id="nImg"><div class="sk" style="height:180px;border-radius:16px"></div></div>':''}
+   ${u?`<a class="btn gold blk" style="margin-top:16px" href="${esc3(u)}" target="_blank" rel="noopener noreferrer">${esc3(n.label||'Open link')}</a>`:''}`);
+  if(n.img)noteImg(n.id).then(im=>{const b=sheet.querySelector('#nImg');if(!b)return;if(im){const i=document.createElement('img');i.src=im;i.alt='Picture with this notice';i.loading='lazy';b.innerHTML='';b.appendChild(i)}else b.innerHTML='<p class="hint">The picture could not be loaded.</p>'})};
+/* the notice picture, from the classic cache (ANNIMG) or cbt_notice_img */
+async function noteImg(id){try{if(typeof ANNIMG!=='undefined'&&ANNIMG[id])return ANNIMG[id]}catch(e){}let r=null;try{r=await rpc('cbt_notice_img',{p_id:id})}catch(e){}const im=r&&r.ok&&imgOk(r.image)?r.image:null;try{if(im&&typeof ANNIMG!=='undefined')ANNIMG[id]=im}catch(e){}return im}
 
 /* ================= TESTS: store + my test series, the store's own data (photos, descriptions, reviews) ================= */
 const TQ={q:'',f:{e:[],c:[],s:[]},mf:'paid',cat:'all',sf:'all',xt:'d',tile:'',tf:'all',ts:'all',plan:null};
@@ -414,10 +433,10 @@ function tabs2(){const c=myCount(),n=(STORE||[]).filter(x=>x.buy_on!==false).len
 function posterImg(){const p=LK().poster||'';return /^data:image\/(jpeg|png|webp);base64,/.test(p)?p:''}
 function poster(){const L=LK(),img=posterImg(),u=/^(https:\/\/|#\/|store\.html#)[^\s"'<>\\]*$/.test(L.link||'')?L.link:'';
   const art=img?`<img src="${esc3(img)}" alt="">`:`<span class="pst-ph"><small>ASPIRON EDUCATION</small><b>Test series</b><em>NEET and JEE, exam-style tests with All India rank</em></span>`;
-  return `<div class="pst-stick" id="pstStick"><div class="pst-bd" id="pstBd"></div>
+  return `<div class="pst-stick" id="pstStick">
    <div class="pst-top"><div class="search"><label class="sbox">${ic('search',19)}<input id="tq" type="search" autocomplete="off" placeholder="Search test series, test name or exam" value="${esc3(TQ.q)}" aria-label="Search test series, test name or exam"><button class="clr" data-a="tqClear" aria-label="Clear search"${TQ.q?'':' hidden'}>${ic('x',17)}</button></label>
    <button class="fb${tfCount()?' on':''}" data-a="tFilter" aria-label="Filter${tfCount()?`, ${tfCount()} on`:''}">${ic('filter',20)}${tfCount()?`<b>${tfCount()}</b>`:''}</button></div></div>
-   <div class="pst-tabs" id="pstTabs">${tabs2()}</div></div>
+   <div class="pst-tabs" id="pstTabs"><div class="pst-bd" id="pstBd"></div>${tabs2()}</div></div>
    <section class="pst${img?'':' noimg'}" id="pst">${u?`<a class="pst-art" href="${esc3(u)}"${/^https:/.test(u)?' target="_blank" rel="noopener noreferrer"':''} aria-label="Offer">${art}</a>`:`<div class="pst-art">${art}</div>`}</section>`}
 
 /* the poster's own colours, read from the picture on the phone: the top edge tints the header, a deep shade colours the
@@ -443,7 +462,7 @@ function loadPC(){const img=posterImg(),key=img?img.length+img.slice(-40):'none'
 const parseCol=v=>{v=String(v||'').trim();let m=/^#?([0-9a-f]{6})$/i.exec(v);if(m)return [0,2,4].map(i=>parseInt(m[1].substr(i,2),16)).concat(1);
   m=/rgba?\(([^)]+)\)/.exec(v);if(!m)return [245,245,243,1];const n=m[1].split(',').map(x=>parseFloat(x));return [n[0],n[1],n[2],n.length>3?n[3]:1]};
 const mixC=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
-const TABH=116,TABS=48;
+const TABH=116;
 let pstRaf=0,lastQ=-1,lastMeta='';
 /* sizes are measured once (on draw, resize, picture load), never during the scroll, so every frame only moves things */
 const PM={ok:0};
@@ -453,22 +472,23 @@ function pstMeasure(){const h=$('#hdr'),ps=$('#pst');if(!h||!ps)return;PM.hh=h.o
 function setMeta(c){const m=document.querySelector('meta[name="theme-color"]');if(m&&c!==lastMeta){m.setAttribute('content',c);lastMeta=c}}
 function pstSync(re){if(!root)return;const h=$('#hdr');if(!h||!main)return;const st=$('#pstStick'),ps=$('#pst'),tint=$('#hdrTint'),old=document.body.classList.contains('v3old');
   const on=!!(S.tab==='test'&&!scrOpen()&&st&&ps&&!old);main.classList.toggle('pc',!!(on&&PCOL));
-  if(!on){if(tint)tint.style.opacity=0;h.classList.remove('onpst');PM.ok=0;lastQ=-1;if(!old&&host)setMeta(getComputedStyle(host).getPropertyValue('--bg').trim()||'#f5f5f3');return}
+  h.classList.toggle('tp',on);
+  if(!on){h.classList.remove('tpfull');if(tint)tint.style.opacity=0;h.classList.remove('onpst');PM.ok=0;lastQ=-1;if(!old&&host)setMeta(getComputedStyle(host).getPropertyValue('--bg').trim()||'#f5f5f3');return}
   if(re||!PM.ok)pstMeasure();
   const sy=Math.max(0,scrollY),p=Math.min(1,sy/PM.span),q=p*p*(3-2*p);
   if(q===1&&lastQ===1)return;lastQ=q;
-  st.style.setProperty('--p',q.toFixed(4));
-  const th=TABH-(TABH-TABS)*q,ty=Math.max(PM.y1,PM.y0-sy);$('#pstTabs').style.transform=`translate3d(0,${ty.toFixed(2)}px,0)`;
-  const bd=$('#pstBd');bd.style.transform=`translate3d(0,${(ty+th+14-PM.bdH).toFixed(2)}px,0)`;bd.style.opacity=Math.min(1,q*1.15).toFixed(3);
+  /* every frame only moves and fades things (no size change, so no layout while the finger moves): the buttons go
+     slim once, by a short CSS transition, when the poster is half gone; the backdrop rides inside the bar */
+  st.classList.toggle('slim',q>.5);
+  const ty=Math.max(PM.y1,PM.y0-sy);$('#pstTabs').style.transform=`translate3d(0,${ty.toFixed(1)}px,0)`;
+  $('#pstBd').style.opacity=Math.min(1,q*1.15).toFixed(3);
   const art=ps.firstElementChild;if(art){art.style.transform=`translate3d(0,${(Math.min(sy,PM.span+200)*.45).toFixed(2)}px,0)`;art.style.opacity=(1-.92*q).toFixed(3)}
-  if(tint)tint.style.opacity=PCOL?(1-q).toFixed(3):0;h.classList.toggle('onpst',!!PCOL&&q<.5);
-  if(PCOL){const c=mixC(PCOL.top,PM.bg,q).map(v=>Math.round(v/4)*4);setMeta(`rgb(${c.join(',')})`)}}
+  /* the header sits on the poster with no band of its own; its normal background fades in as the poster leaves */
+  if(tint)tint.style.opacity=q.toFixed(3);h.classList.toggle('onpst',!!PCOL&&q<.5);h.classList.toggle('tpfull',q>.98);
+  /* the phone's status bar colour changes in a few steps only: repainting it every frame makes Android stutter */
+  if(PCOL){const k=Math.round(q*4)/4,c=mixC(PCOL.top,PM.bg,k).map(Math.round);setMeta(`rgb(${c.join(',')})`)}}
 addEventListener('scroll',()=>{if(!root||!main||pstRaf)return;if(S.tab!=='test'&&!PM.ok)return;pstRaf=requestAnimationFrame(()=>{pstRaf=0;pstSync()})},{passive:true});
 addEventListener('resize',()=>{if(root&&S.tab==='test')pstSync(true)},{passive:true});
-/* a scroll that stops half way through the change settles to the nearer end, so the bar is never left half shrunk */
-let snapT=0;
-function pstSnap(){if(RM||!root||S.tab!=='test'||scrOpen()||!PM.ok||layer)return;const p=scrollY/PM.span;if(p>.03&&p<.97)scrollTo({top:p<.42?0:Math.ceil(PM.span),behavior:'smooth'})}
-if('onscrollend' in window)addEventListener('scrollend',pstSnap);else addEventListener('scroll',()=>{clearTimeout(snapT);snapT=setTimeout(pstSnap,200)},{passive:true});
 
 /* ---------- store view ---------- */
 function offer3(){const L=(STORE||[]).filter(x=>x.buy_on!==false&&x.price).sort((a,b)=>offPct(b)-offPct(a)).slice(0,3);if(L.length<2)return '';
@@ -496,7 +516,10 @@ function storeView(){
 VIEW.test=()=>poster()+`<div id="tBody" class="stack" style="gap:var(--gap)">${storeView()}</div>`;
 function drawT(){const b=$('#tBody');if(!b)return;b.innerHTML=storeView();const n=tfCount(),fb=$('[data-a="tFilter"]');if(fb){fb.className='fb'+(n?' on':'');fb.innerHTML=ic('filter',20)+(n?`<b>${n}</b>`:'')}const x=$('[data-a="tqClear"]');x&&(x.hidden=!TQ.q);const t=$('.tt2');t&&(t.outerHTML=tabs2());autoRail('#tbRail','#tbRailD');reveal(b);lastQ=-1;pstSync()}
 AFTER.test=()=>{loadMeta();const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#tbRail','#tbRailD');loadExtras();loadLook();loadPC();pstSync(true);const pi=$('#pst img');pi&&!pi.complete&&pi.addEventListener('load',()=>pstSync(true),{once:true});
-  try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length))promoLoad().then(()=>{if(S.tab==='test'&&!scrOpen())softRender()})}catch(e){}};
+  /* at most one try a minute: with no banners (or no network) the redraw below used to start the next load at once,
+     an endless loop of requests and redraws that made the Tests page stutter */
+  try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length)&&Date.now()-promoAt>6e4){promoAt=Date.now();promoLoad().then(()=>{if(S.tab==='test'&&!scrOpen()&&typeof PROMO!=='undefined'&&PROMO&&PROMO.length)softRender()})}}catch(e){}};
+let promoAt=0;
 A.toList=()=>{TQ.tile='store';$$('.tt2 button').forEach(b=>b.classList.toggle('on',b.dataset.a==='toList'));const a=$('#allSec');a&&a.scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})};
 A.tqClear=()=>{TQ.q='';$('#tq').value='';drawT();$('#tq').focus()};
 A.tClear=()=>{TQ.q='';TQ.f={e:[],c:[],s:[]};const q=$('#tq');if(q)q.value='';drawT()};
@@ -558,7 +581,7 @@ A.xp=el=>{const x=(STORE||[]).find(i=>i.id===el.dataset.id);if(!x)return;loadExt
 A.openSD=el=>{const sid=el.dataset.id;if(!sOf(sid))return;loadExtras();loadMeta();if(STORE===null)loadStore();TQ.xt=el.dataset.t||'r';TQ.tf='all';TQ.ts='all';TQ.plan=null;closeLayer();push(ownedPage(sid))};
 A.xt=el=>{TQ.xt=el.dataset.v;redraw()};
 A.sf=el=>{TQ.sf=el.dataset.v;redraw()};
-A.oldSeries=el=>oldHash('#/s/'+el.dataset.id);
+A.oldSeries=el=>oldHash('#/s/'+el.dataset.id);   // the classic folder page (folders, notes and PDFs of a series)
 A.toStore=()=>{closeLayer();unwind(()=>{if(S.tab==='test'){scrollTo({top:0,behavior:RM?'auto':'smooth'});return}go('test')})};
 
 /* ================= MY TEST SERIES + the series page (Description | Resources | Tests | Reviews) =================
@@ -719,13 +742,13 @@ function epos(z){const P=[[1,2,1],[3,10,2],[11,18,3],[19,36,4],[37,54,5],[55,86,
   if(p<=3)return {r:p,c:i<2?i+1:i+11,p,b:i<2?'s':'p'};
   if(p<=5)return {r:p,c:i+1,p,b:i<2?'s':i<12?'d':'p'};
   if(i<2)return {r:p,c:i+1,p,b:'s'};if(i<=16)return {r:p+3,c:i+1,p,b:'f'};return {r:p,c:i-13,p,b:i<26?'d':'p'}}
-let PQ='';
+let PTQ='';
 const BLK={s:'s-block',p:'p-block',d:'d-block (transition)',f:'f-block (lanthanoids, actinoids)'};
-function ptView(){return {t:'Periodic table',s:'Tap an element for details',html:()=>`<label class="sbox">${ic('search',18)}<input id="ptq" type="search" placeholder="Search by name, symbol or number" value="${esc3(PQ)}" aria-label="Search elements"></label>
+function ptView(){return {t:'Periodic table',s:'Tap an element for details',html:()=>`<label class="sbox">${ic('search',18)}<input id="ptq" type="search" placeholder="Search by name, symbol or number" value="${esc3(PTQ)}" aria-label="Search elements"></label>
   <div class="lg"><span><i style="background:color-mix(in srgb,var(--c1) 40%,var(--surface))"></i>s-block</span><span><i style="background:color-mix(in srgb,var(--c3) 40%,var(--surface))"></i>p-block</span><span><i style="background:color-mix(in srgb,var(--c2) 40%,var(--surface))"></i>d-block</span><span><i style="background:var(--acc1)"></i>f-block</span></div>
   <div class="ptable"><div class="pgrid" id="pgrid">${PSYM.map((s,i)=>{const z=i+1,q=epos(z);return `<button class="el b${q.b}" style="grid-row:${q.r};grid-column:${q.c}" data-a="el" data-z="${z}" aria-label="${PNAME[i]}, ${z}"><small>${z}</small>${s}</button>`}).join('')}
    <span style="grid-row:6;grid-column:3;display:grid;place-items:center;font-size:9px;color:var(--faint)">57–71</span><span style="grid-row:7;grid-column:3;display:grid;place-items:center;font-size:9px;color:var(--faint)">89–103</span><span style="grid-row:8;height:10px"></span></div></div>
-  <p class="hint">Swipe sideways to see the full table.</p>`,after:()=>{const i=$('#ptq');const f=()=>{PQ=i.value.trim().toLowerCase();$$('#pgrid .el').forEach(b=>{const z=+b.dataset.z,m=!PQ||String(z)===PQ||PSYM[z-1].toLowerCase()===PQ||PNAME[z-1].toLowerCase().includes(PQ);b.classList.toggle('dim',!m);b.classList.toggle('hit',!!PQ&&m)});const h=$('#pgrid .el.hit');h&&h.scrollIntoView({block:'nearest',inline:'center',behavior:RM?'auto':'smooth'})};i.oninput=f;f()}}}
+  <p class="hint">Swipe sideways to see the full table.</p>`,after:()=>{const i=$('#ptq');const f=()=>{PTQ=i.value.trim().toLowerCase();$$('#pgrid .el').forEach(b=>{const z=+b.dataset.z,m=!PTQ||String(z)===PTQ||PSYM[z-1].toLowerCase()===PTQ||PNAME[z-1].toLowerCase().includes(PTQ);b.classList.toggle('dim',!m);b.classList.toggle('hit',!!PTQ&&m)});const h=$('#pgrid .el.hit');h&&h.scrollIntoView({block:'nearest',inline:'center',behavior:RM?'auto':'smooth'})};i.oninput=f;f()}}}
 A.el=el=>{const z=+el.dataset.z,q=epos(z),g=q.b==='f'?'3 (f-block)':q.c;openSheet(`<div style="display:flex;gap:16px;align-items:center"><span class="ti k" style="width:72px;height:72px;border-radius:20px;font-size:26px;font-weight:600;flex-direction:column;gap:0"><small style="font-size:11px;color:var(--heroMut)">${z}</small>${PSYM[z-1]}</span><div><h2 id="sheetT">${PNAME[z-1]}</h2><p class="sub" style="margin:2px 0 0">${BLK[q.b]}</p></div></div>
   <div class="kv two" style="margin-top:18px"><div><small>Atomic number</small><b>${z}</b></div><div><small>Atomic mass (u)</small><b>${PMASS[z-1]}</b></div><div><small>Period</small><b>${q.p}</b></div><div><small>Group</small><b>${g}</b></div></div>
   <p class="hint" style="margin-top:14px">Masses in brackets are for the most stable isotope.</p>`)};
@@ -798,7 +821,7 @@ VIEW.lib=()=>`<div class="pt"><div><h1>Library</h1><p>Practice, revision and stu
 function drawL(){const b=$('#lBody');if(!b)return;b.innerHTML=LQ.q.trim()?libResults():libHome();$('[data-a="lqClear"]').hidden=!LQ.q}
 AFTER.lib=()=>{const q=$('#lq');q.addEventListener('input',()=>{LQ.q=q.value;drawL()});try{if(typeof loadPdfs==='function'&&pdfCount()===null)loadPdfs().then(()=>{if(S.tab==='lib'&&!LQ.q)drawL()})}catch(e){}};
 A.lqClear=()=>{LQ.q='';const q=$('#lq');if(q)q.value='';drawL()};
-A.lmod=el=>{const h=el.dataset.h,f={'#/b':openSaved,'#/m':openMistakes,'#/notes':openNotes,'#/qb':openQB,'#/gen':openGen}[h];if(f)f();else oldHash(h)};
+A.lmod=el=>{const h=el.dataset.h,f={'#/b':openSaved,'#/m':openMistakes,'#/notes':openNotes,'#/qb':openQB,'#/gen':openGen,'#/pyq':()=>openPyq()}[h];if(f)f();else oldHash(h)};
 
 /* ================= ANALYTICS: from the student's own results (cbt_catalog.results) ================= */
 const AN={per:'all',chart:'marks',table:false};
@@ -852,14 +875,14 @@ VIEW.stats=()=>{const R=allRes(),P=stats(R),o=stuProf(),fields=['name','email','
    <div class="lvl"><span class="bdg">${esc3((P.lvl||'B')[0])}</span><div><b>${esc3(P.lvl)}</b><small class="mut">${P.n} tests taken. ${P.n<3?`${3-P.n} more to become a Learner`:P.n<10?`${10-P.n} more to become an Achiever`:P.n<25?`${25-P.n} more to become a Champion`:'Top level reached'}</small><span class="bar"><i style="--p:${Math.min(1,P.n/25).toFixed(3)}"></i></span></div></div>
    <div class="bdgs">${(P.badges||[]).map((b,i)=>`<div class="bdx${b.on?'':' off'}"><span>${ic(b.on?BDI[i%BDI.length]:'lock',20)}</span>${esc3(b.t)}</div>`).join('')}</div></div></section>
   <section class="sec"><div class="sh"><h2>Leaderboard and rewards</h2></div><div class="card rows">
-   <button class="row" data-a="oldGo" data-h="#/r"><span class="ti g">${ic('medal',20)}</span><span><b>Ranks and leaderboards</b><small>Your rank in every test you took</small></span>${ic('right',18)}</button>
-   <button class="row" data-a="oldGo" data-h="#/refer"><span class="ti g">${ic('gift',20)}</span><span><b>Refer and earn</b><small>Your code, friends who joined and wallet money</small></span>${ic('right',18)}</button></div></section>
+   <button class="row" data-a="ranks"><span class="ti g">${ic('medal',20)}</span><span><b>Ranks and leaderboards</b><small>Your rank in every test you took</small></span>${ic('right',18)}</button>
+   <button class="row" data-a="refer"><span class="ti g">${ic('gift',20)}</span><span><b>Refer and earn</b><small>Your code, friends who joined and wallet money</small></span>${ic('right',18)}</button></div></section>
   <section class="sec"><div class="sh"><h2>Profile and history</h2></div><div class="card rows">
    ${[['user','My profile','Name, photo, class and target exam','profile',''],['trophy','Test history',`${R.length} tests`,'hist',''],['pen','Mistake notebook','Questions you got wrong','oldGo','#/m'],['bookmark','Saved questions',`${bmCount()} saved`,'oldGo','#/b'],['cal','Study tracker history','Your weekly plans','oldGo','#/t'],['timer','Focus timer','Timed study sessions','focus','']].map(r=>`<button class="row" data-a="${r[3]}"${r[4]?` data-h="${r[4]}"`:''}><span class="ti">${ic(r[0],20)}</span><span><b>${r[1]}</b><small>${r[2]}</small></span>${ic('right',18)}</button>`).join('')}</div></section>`};
 A.per=el=>{AN.per=el.dataset.v;$$('[data-a="per"]').forEach(x=>{const on=x===el;x.classList.toggle('on',on);x.setAttribute('aria-selected',on)});const o=$('#ovBox');o.innerHTML=ovH();countUp(o);const c=$('#chArea');if(c)c.innerHTML=chartArea()};
 A.chSel=el=>{AN.chart=el.dataset.v;$('#chArea').innerHTML=chartArea()};
 A.chTbl=()=>{AN.table=!AN.table;$('#chArea').innerHTML=chartArea()};
-A.oldGo=el=>oldHash(el.dataset.h);
+A.oldGo=el=>{const f={'#/m':openMistakes,'#/b':openSaved,'#/t':openTracker,'#/notes':openNotes}[el.dataset.h];if(f)f();else oldHash(el.dataset.h)};
 A.focus=()=>push(focusView());
 function histView(){return {t:'Test history',s:`${allRes().length} tests`,html:()=>{const R=allRes().slice().reverse();return R.length?`<div class="card rows">${R.slice(0,60).map(r=>{const t=tOf(r.test_id),s=t&&sOf(t.series_id);return `<div class="item"><span class="ti g">${ic('trophy',18)}</span><div class="bd"><div class="tt"><b>${esc3(titleOf(r))}</b><span class="badge n">${pctOf(r)}%</span></div><small>${s?esc3(s.title)+', ':''}${dS(r.at)}</small><small>${r.score} / ${r.max} marks. ${r.correct} right, ${r.wrong} wrong. Accuracy ${accOf(r)}%${r.used?`, ${Math.round(r.used/60)} min`:''}</small><div class="acts"><button class="btn sm" data-a="review" data-r="${esc3(r.id)}">Result and solutions</button></div></div></div>`}).join('')}</div>${R.length>60?'<p class="hint">Showing your latest 60 tests.</p>':''}`:`<div class="card empty"><span class="ti">${ic('trophy',22)}</span><b>No tests yet</b><p>Your results show up here after your first test.</p></div>`}}}
 A.hist=()=>push(histView());
@@ -1084,6 +1107,23 @@ A.setTerms=()=>legalPage('Terms and conditions',()=>openTerms());
 A.setHelp=()=>{let b='';try{SUPMSG='';b=supBtns()}catch(e){}openSheet(`<span class="ti g" style="margin-bottom:12px">${ic('mail',22)}</span><h2 id="sheetT">Chat with support</h2><p class="sub">Our student support team replies on chat. Choose where you want to talk.</p><div class="sup3">${b}</div><p class="hint" style="text-align:center">Chat only. Calls are not available.</p>`)};
 A.setOut=()=>openSheet(`<span class="ti" style="margin-bottom:12px">${ic('out',22)}</span><h2 id="sheetT">Sign out?</h2><p class="sub">Your tests, results and notes stay on your account. Sign in again with your mobile number any time.</p><div class="sheet-ft"><button class="btn ghost" data-a="close">Cancel</button><button class="btn danger3" data-a="setOutGo">Sign out</button></div>`);
 A.setOutGo=()=>{closeLayer();unwind(()=>{try{doSignOut()}catch(e){location.reload()}})};
+/* "turn on notifications" help in the new look: the same steps as the classic npHelp (app9.js), shown in a v3 sheet
+   while the new design is on screen; the classic one is used everywhere else */
+if(typeof npHelp==='function'){const _nh=npHelp;npHelp=function(kind){
+  if(!booted||!document.body.classList.contains('v3on')||document.body.classList.contains('v3old')||INTEST)return _nh.apply(this,arguments);
+  const ua=navigator.userAgent,ios=/iphone|ipad|ipod/i.test(ua);if(kind==='app'&&ios&&!(typeof npInApp==='function'&&npInApp()))kind='ask';
+  const url=location.href.split('#')[0],chrome=/android/i.test(ua)?`intent://${url.replace(/^https?:\/\//,'')}#Intent;scheme=https;package=com.android.chrome;end`:url;
+  const steps=kind==='app'?(ios?['Tap <b>⋯</b> or the share button at the top','Choose <b>Open in Safari</b>','Add the site to your Home Screen, open it from there and turn notifications on']
+      :['Tap <b>⋮</b> at the top right','Choose <b>Open in Chrome</b> (or “Open in browser”)','Open Settings there and turn notifications on'])
+    :ios?['Add this site to your <b>Home Screen</b> (Share, then Add to Home Screen)','Open it from the Home Screen icon','Turn on Phone notifications again and tap <b>Allow</b>']
+    :['Tap the <b>⋮</b> menu at the top right, then <b>Settings</b>','Tap <b>Notifications</b> and make sure <b>Site notifications</b> is on','Tap <b>Site settings</b>, then <b>Notifications</b>, find this site under <b>Blocked</b>, tap it and choose <b>Allow</b>'];
+  openSheet(`<div class="lk3"><span class="lk3i np3">${ic('bell',26)}</span><h2 id="sheetT">Turn on notifications</h2>
+    <p class="sub">${kind==='app'?'You opened the site inside another app (like WhatsApp or Telegram). Notifications only work in your phone’s browser.':kind==='blocked'?'Notifications were blocked for this site earlier. Only you can unblock them, and it takes 10 seconds:':'Tap <b>Allow</b> when your phone asks. If no question appeared, do this once:'}</p></div>
+   <div class="card p rfo3 np3s" style="margin-top:12px">${steps.map((x,i)=>`<div><span>${i+1}</span><p>${x}</p></div>`).join('')}</div>
+   <div class="sheet-ft">${kind==='app'?`<a class="btn blk" href="${esc3(chrome)}">Open in Chrome</a>`:'<button class="btn blk" data-a="npAgain">I have allowed it, check again</button>'}</div>
+   <p class="hint" style="text-align:center;margin-top:10px">Notices always appear on the bell inside the app too.</p>`)}}
+A.npAgain=async()=>{let r='denied';try{const N=window.Notification;r=N?N.permission:'denied';if(r==='default')r=await N.requestPermission()}catch(e){}
+  if(r==='granted'){closeLayer();try{npEnable()}catch(e){}toast3('Notifications are on');setTimeout(()=>{if(top()&&top().key==='set')redraw()},300)}else toast3('Still blocked. Follow the steps above.')};
 
 /* ================= RESULT AND SOLUTIONS in the new design =================
    Opened from any "Result" button (cbt_review) and right after a test is submitted (the classic exam screen still
@@ -1344,6 +1384,283 @@ A.genRes=el=>openGenRes(el.dataset.id);A.grF=el=>{GRF=el.dataset.v;qbKeep()};
 /* classic addresses that open these pages in the new design */
 const V3H=[[/^#\/qb(\/go)?$/,()=>openQB()],[/^#\/gen$/,()=>openGen()],[/^#\/gen\/new$/,()=>openGenNew()],[/^#\/gen\/r\/([0-9a-f-]{36})$/,m=>openGenRes(m[1])]];
 
+/* ================= PYQ ANALYZER in the new design =================
+   Same data as the classic page (app11.js): cbt_pyq_summary for the exam, cbt_pyq_chapter for one chapter,
+   the PQ state, the syllabus (PYQ_SYL) and the classic helpers pqSummary, pqAgg, pqYears, pqChap. */
+const PQS={hi:0,lo:0};
+const pqWt=n=>!n?'':n>=PQS.hi?'<span class="pqw3 h">High</span>':n>PQS.lo?'<span class="pqw3 m">Medium</span>':'<span class="pqw3 l">Low</span>';
+function pqMini3(o,Y){const mx=Math.max(1,...Y.map(y=>o&&o.y[y]||0));return `<span class="pqm3" aria-hidden="true">${Y.map(y=>{const n=o&&o.y[y]||0;return `<i class="${n?'':'z'}" style="--h:${n?Math.max(.18,n/mx).toFixed(2):.08}"></i>`}).join('')}</span>`}
+function pyqView(){return {t:'PYQ Analyzer',get s(){try{return PYQ_SYL[PQ.exam].name}catch(e){return ''}},key:'pyq',html:()=>{
+  const E=PYQ_SYL,ex=E[PQ.exam];if(!ex||ex.soon)return '';
+  if(!PQ.sum)return '<div class="card sk" style="height:200px"></div><div class="card sk" style="height:320px"></div>';
+  const A=pqAgg(),S=pqSubj(),Y=pqYears(),chs=S.chapters.map(c=>({c,o:A.ch[c.id]})),total=(PQ.sum||[]).reduce((a,r)=>a+r[5],0);
+  const tots=chs.map(x=>x.o?x.o.n:0).filter(Boolean).sort((a,b)=>b-a);PQS.hi=tots[Math.floor(tots.length*.25)]||1;PQS.lo=tots[Math.floor(tots.length*.7)]||0;
+  const top=chs.filter(x=>x.o).sort((a,b)=>b.o.n-a.o.n).slice(0,6),tmx=Math.max(1,...top.map(x=>x.o.n));
+  const row=({c,o})=>`<button class="pqr3" data-a="pqCh" data-id="${esc3(c.id)}"><span class="pqr3-t"><b>${esc3(c.name)}</b><small>${o?`${o.n} Qs · ${Object.keys(o.y).length} yr${Object.keys(o.y).length>1?'s':''} · ${o.p.size} paper${o.p.size>1?'s':''}`:'No questions yet'}${c.old?' · <em>not in current syllabus</em>':''}</small></span>${pqWt(o&&o.n)}${pqMini3(o,Y.slice(-8))}${ic('right',16)}</button>`;
+  const grp=cls=>{let l=chs.filter(x=>x.c.cls===cls);if(!l.length)return '';if(PQ.sort==='most')l=[...l].sort((a,b)=>(b.o?b.o.n:0)-(a.o?a.o.n:0));return `<div class="stack" style="gap:10px"><p class="gh">Class ${cls} <span>${l.length} chapters</span></p><div class="card pql3">${l.map(row).join('')}</div></div>`};
+  return `<section class="mkh"><div class="mkh-top"><div><small>${esc3(ex.name)} PYQ</small><b>${fmtN(total)}</b><span>questions from ${A.papers.size} paper${A.papers.size===1?'':'s'}, chapter-wise</span></div><span class="ti qbic">${ic('pyq',30)}</span></div>
+    <div class="pqx3">${Object.keys(E).map(k=>`<button class="${k===PQ.exam?'on':''}${E[k].soon?' soon':''}" ${E[k].soon?'disabled':`data-a="pqEx" data-v="${k}"`}>${esc3(E[k].name)}${E[k].soon?'<small>Soon</small>':''}</button>`).join('')}</div></section>
+   <div class="seg">${ex.subjects.map(s=>`<button class="${s.id===S.id?'on':''}" data-a="pqSub" data-v="${s.id}">${esc3(s.name)}<small>${fmtN(A.sub[s.id]||0)}</small></button>`).join('')}</div>
+   ${PQ.err?'<div class="card empty"><b>Being set up</b><p>PYQ data is being added. Please check back soon.</p></div>':''}
+   ${top.length?`<section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>Most asked chapters</h2><span class="aside">${esc3(S.name)}</span></div>
+     <div class="card p pqt3">${top.map((x,i)=>`<button data-a="pqCh" data-id="${esc3(x.c.id)}"><span class="pqt3-n">${i+1}</span><span class="pqt3-b"><b>${esc3(x.c.name)}</b><span class="bar"><i style="--p:${(x.o.n/tmx).toFixed(3)}"></i></span></span><em>${x.o.n}</em></button>`).join('')}</div></section>`
+    :`<div class="card empty"><span class="ti">${ic('pyq',22)}</span><b>Questions are being added</b><p>${esc3(S.name)} questions are added paper by paper. The chapter list is ready below.</p></div>`}
+   <div class="sh" style="margin:0;align-items:center"><h2>All chapters</h2><div class="seg pqs3"><button class="${PQ.sort!=='most'?'on':''}" data-a="pqSort" data-v="ncert">NCERT order</button><button class="${PQ.sort==='most'?'on':''}" data-a="pqSort" data-v="most">Most asked</button></div></div>
+   ${grp(11)}${grp(12)}`}}}
+async function openPyq(exam){closeLayer();if(exam&&PYQ_SYL[exam]&&!PYQ_SYL[exam].soon)PQ.exam=exam;if(!(top()&&top().key==='pyq'))push(pyqView());else redraw();
+  await pqSummary().catch(()=>{});if(top()&&top().key==='pyq')redraw()}
+A.pyqOpen=()=>openPyq();
+A.pqEx=async el=>{if(PQ.exam===el.dataset.v)return;PQ.exam=el.dataset.v;PQ.sum=null;PQ.ch={};redraw();await pqSummary(true).catch(()=>{});redraw()};
+A.pqSub=el=>{PQ.sub=el.dataset.v;lsSet('cbt_pq_sub',PQ.sub);qbKeep()};
+A.pqSort=el=>{PQ.sort=el.dataset.v;qbKeep()};
+A.pqCh=el=>openPyqCh(el.dataset.id);
+
+/* ---------- one chapter ---------- */
+let PQC=null;
+const PQCOL=['#6d5bd0','#0f8fd1','#14966b','#d08a12','#d14848','#9b5bd0','#0f9d93'];
+function pqCard3(q){const op=PQ.open[q.id],reps=(q.rep||[]).filter(Boolean),r=reps.length>1;
+  return `<article class="card qc3${r?' pqrep3':''}"><div class="qc3-h"><span class="tag">${esc3(q.p)}${q.n?' · Q'+q.n:''}</span>${q.t?`<span class="tag mutd">${esc3(q.t)}</span>`:''}${r?`<span class="st gold">${ic('swap',13)}Asked ${reps.length}×</span>`:''}</div>
+   ${r?`<p class="pqal3">Also asked in ${reps.filter(p=>p!==q.p).map(p=>`<b>${esc3(p)}</b>`).join(', ')}</p>`:''}
+   <div class="qc3-q">${esc3(q.q||'')}</div>${q.img?'<p class="hint">This question has a diagram. See the original paper.</p>':''}
+   <div class="qc3-o">${(q.o||[]).map((o,j)=>o?`<div class="opt3${op&&j===q.a?' c':''}"><span class="k">${LT[j]}</span><span class="ot">${esc3(o)}</span>${op&&j===q.a?ic('check',16):''}</div>`:'').join('')}</div>
+   ${op?(q.e?`<div class="exp3"><b>Explanation</b><p>${esc3(q.e)}</p></div>`:''):`<button class="btn ghost sm" data-a="pqAns" data-id="${esc3(q.id)}">Show answer</button>`}</article>`}
+function pyqChView(){return {get t(){return PQC?PQC.c.name:'Chapter'},get s(){return PQC?`Class ${PQC.c.cls} · ${PQC.s.name}`:''},key:'pyqc',html:()=>{const X=PQC;if(!X)return '';const L=PQ.ch[X.c.id];
+  if(!L)return '<div class="card sk" style="height:150px"></div><div class="card sk" style="height:220px"></div>';
+  const c=X.c;if(!L.length)return `<div class="card empty"><span class="ti">${ic('pyq',22)}</span><b>No questions added yet</b><p>Questions of this chapter are being added. Its topics:</p></div><div class="card p chips wrap">${c.topics.map(t=>`<span class="tag mutd">${esc3(t.name)}</span>`).join('')}</div>`;
+  const by={};L.forEach(q=>{by[q.y]=(by[q.y]||0)+1});const Y0=pqYears(),dy=Object.keys(by).map(Number),yMax=Math.max(...Y0,...dy),yMin=Math.min(...dy,yMax-9),Y=Y0.concat(dy).filter((y,i,a)=>y>=yMin&&a.indexOf(y)===i).sort((a,b)=>a-b);const ymx=Math.max(1,...Object.values(by));
+  const tp={};c.topics.forEach(t=>{tp[t.name]=0});L.forEach(q=>{tp[q.t||'Other']=(tp[q.t||'Other']||0)+1});
+  const tl=Object.entries(tp).sort((a,b)=>b[1]-a[1]),tmx=Math.max(1,...tl.map(x=>x[1]));
+  const rep=L.filter(q=>q.rep&&q.rep.length>1),repN=new Set(rep.map(q=>q.k)).size,yrs=Object.keys(by).map(Number),last=yrs.length?Math.max(...yrs):null,papers=new Set(L.map(q=>q.p)).size;
+  const f=PQ.f,shown=L.filter(q=>(!f.t||(q.t||'Other')===f.t)&&(!f.y||q.y==f.y)&&(!f.rep||(q.rep&&q.rep.length>1))),lim=PQ.lim||20;
+  return `<section class="mkh"><div class="mkh-top"><div><small>CHAPTER ANALYSIS</small><b style="font-size:24px;line-height:1.25">${esc3(c.name)}</b><span>${last?`Last asked in ${last}`:''}${c.old?' · not in current syllabus':''}</span></div></div>
+    <div class="mkh-st pqk3"><div><b>${L.length}</b><small>Questions</small></div><div><b>${papers?(L.length/papers).toFixed(1):0}</b><small>Per paper</small></div><div><b>${yrs.length}</b><small>Years</small></div><div><b>${repN}</b><small>Repeated</small></div></div></section>
+   <section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>Year-wise</h2><span class="aside">Tap a year</span></div>
+    <div class="card p"><div class="pqy3">${Y.map(y=>`<button class="${f.y==y?'on':''}${by[y]?'':' z'}" data-a="pqYr" data-v="${y}" aria-label="${y}: ${by[y]||0} questions"><b>${by[y]||''}</b><i style="--h:${by[y]?Math.max(.08,by[y]/ymx).toFixed(2):.03}"></i><span>'${String(y).slice(2)}</span></button>`).join('')}</div></div></section>
+   <section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>Topic weightage</h2><span class="aside">Tap a topic</span></div>
+    <div class="card p pqtp3">${tl.map(([n,v],i)=>`<button class="${f.t===n?'on':''}" data-a="pqTp" data-v="${esc3(n)}"><span><b>${esc3(n)}</b><em>${v}<small> · ${Math.round(v*100/L.length)}%</small></em></span><span class="bar"><i style="--p:${(v/tmx).toFixed(3)};background:${PQCOL[i%PQCOL.length]}"></i></span></button>`).join('')}</div></section>
+   <div class="sh" style="margin:0"><h2>Questions</h2><span class="aside">${shown.length}</span></div>
+   <div class="chips">${[['','All topics'],...tl.filter(x=>x[1]).map(x=>[x[0],x[0]])].map(([k,t])=>`<button class="${f.t===k?'on':''}" data-a="pqTp" data-v="${esc3(k)}" data-set="1">${esc3(t)}</button>`).join('')}</div>
+   <div class="chips"><button class="${f.y?'':'on'}" data-a="pqYr" data-v="">All years</button>${[...yrs].sort((a,b)=>b-a).map(y=>`<button class="${f.y==y?'on':''}" data-a="pqYr" data-v="${y}">${y}</button>`).join('')}<button class="${f.rep?'on':''}" data-a="pqRep">Repeated only<small>${rep.length}</small></button></div>
+   ${shown.length?shown.slice(0,lim).map(pqCard3).join('')+(shown.length>lim?`<button class="btn ghost" data-a="pqMore">Load more (${shown.length-lim} left)</button>`:''):'<div class="card empty"><b>Nothing here</b><p>No questions match this filter.</p></div>'}`}}}
+async function openPyqCh(cid){const X=pqChap(cid);if(!X){toast3('Chapter not found');return}
+  PQ.sub=X.s.id;if(PQ.cid!==cid){PQ.cid=cid;PQ.f={t:'',y:'',rep:0};PQ.open={};PQ.lim=20}PQC=X;push(pyqChView());
+  if(!PQ.sum)pqSummary().catch(()=>{});
+  if(!PQ.ch[cid]){let r=null;try{r=await rpc('cbt_pyq_chapter',{p_exam:PQ.exam,p_chapter:cid})}catch(e){}if(!r||!r.ok){if(top()&&top().key==='pyqc'){back();toast3('Could not load this chapter. Please try again.')}return}PQ.ch[cid]=r.items||[]}
+  if(top()&&top().key==='pyqc'&&PQC===X)redraw()}
+A.pqYr=el=>{const v=el.dataset.v;PQ.lim=20;PQ.f.y=(v===''||PQ.f.y==v)?'':+v;qbKeep()};
+A.pqTp=el=>{const v=el.dataset.v;PQ.lim=20;PQ.f.t=el.dataset.set?v:(PQ.f.t===v?'':v);qbKeep()};
+A.pqRep=()=>{PQ.lim=20;PQ.f.rep=PQ.f.rep?0:1;qbKeep()};
+A.pqMore=()=>{PQ.lim=(PQ.lim||20)+20;qbKeep()};
+A.pqAns=el=>{PQ.open[el.dataset.id]=1;qbKeep()};
+V3H.push([/^#\/pyq(\/([A-Z0-9]+))?$/,m=>openPyq(m[2])],[/^#\/pyq\/([A-Z0-9]+)\/([\w-]+)$/,m=>{if(PYQ_SYL[m[1]]&&!PYQ_SYL[m[1]].soon)PQ.exam=m[1];openPyqCh(m[2])}]);
+
+/* ================= STUDY TRACKER in the new design =================
+   The same tracker data as the classic page (app6.js / app9.js): weeks, subjects and tasks in cbt_trk_<mobile>,
+   ticks per day in cbt_trkd_<mobile>, read and written through the classic helpers (trkLoad, trkSave, trkStats,
+   trkW, trkId, trkDays, trkStreak, tDay). */
+const TR3={sel:-1,flt:'all',undo:null,ut:0};
+const TREM=['📘','⚡','🧪','📐','🌿','🧬','🌍','💻','📊','📖','🧠','🔬','📝','🎨','🔢','🗣️','⚖️','🏛️','💰','🎯'];
+const TRCO=['#10b981','#6366f1','#f59e0b','#ec4899','#14b8a6','#f97316','#8b5cf6','#06b6d4','#ef4444','#84cc16','#3b82f6','#a855f7'];
+const trSafe=c=>/^#[0-9a-f]{6}$/i.test(c||'')?c:'#6366f1';
+function trRing(p,sz){const R=sz/2-7,C=2*Math.PI*R;return `<svg viewBox="0 0 ${sz} ${sz}" width="${sz}" height="${sz}" aria-hidden="true"><circle cx="${sz/2}" cy="${sz/2}" r="${R}" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="8"/><circle cx="${sz/2}" cy="${sz/2}" r="${R}" fill="none" stroke="var(--acc1)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-p/100)).toFixed(1)}" transform="rotate(-90 ${sz/2} ${sz/2})" class="mkr"/></svg>`}
+function trTip(w){const s=trkStats(w);if(!w.subjects.length||!s.total)return '';let low=null,lp=101;
+  w.subjects.forEach(x=>{const t=x.tasks.length;if(!t)return;const p=Math.round(x.tasks.filter(k=>k.done).length*100/t);if(p<lp){lp=p;low=x}});
+  const nm=x=>`<b>${esc3(x.emoji+' '+x.name)}</b>`;
+  return s.pct===100?['ok',`Week complete. All ${s.total} tasks done. Great work!`]:s.done===0?['',`${s.total} tasks are waiting. Start with ${nm(w.subjects.find(x=>x.tasks.length)||w.subjects[0])}.`]
+   :low&&lp<30?['warn',`${nm(low)} needs attention. Only ${lp}% done.`]:s.pct>=75?['',`Almost there. Only ${s.total-s.done} task${s.total-s.done>1?'s':''} left.`]:['',`${s.pct}% done. Focus on ${low?nm(low):'pending tasks'} next.`]}
+function trView(){return {t:'Study tracker',get s(){try{return trkW().label}catch(e){return ''}},key:'trk',right:()=>`<button class="ib" data-a="trMenu" aria-label="Tracker options">${ic('gear',19)}</button>`,html:()=>{
+  const T=trkLoad(),w=T.weeks[T.cur],st=trkStats(w),o=trkDays(),td=o[tDay()]||0,sk=trkStreak(),wk=[];
+  for(let k=6;k>=0;k--){const d=new Date();d.setDate(d.getDate()-k);wk.push({l:d.toLocaleDateString('en-IN',{weekday:'narrow'}),n:o[tDay(d)]||0,t:k===0})}const mx=Math.max(1,...wk.map(x=>x.n)),tip=trTip(w);
+  let h=`<section class="mkh trh"><div class="trh-top"><div class="mkh-ring">${trRing(st.pct,104)}<span><b>${st.pct}%</b><small>done</small></span></div>
+     <div class="trh-t"><button class="trwn" data-a="trRename"><b>${esc3(w.label)}</b>${ic('pen',14)}</button><p><b>${st.done}</b> done · <b>${st.total-st.done}</b> left · <b>${st.total}</b> tasks</p>
+      <div class="trday"><span><b>${td}</b> today</span><span><b>${sk}</b> day streak</span></div></div></div>
+    <div class="trwk">${wk.map(x=>`<div class="${x.t?'t':''}"><i class="${x.n?'':'z'}" style="--h:${x.n?Math.max(.16,x.n/mx).toFixed(2):.06}"></i><span>${x.l}</span></div>`).join('')}</div>
+    <div class="trq"><button data-a="trGrowth">${ic('chart',17)}<span>Growth</span></button><button data-a="trTargets">${ic('target',17)}<span>Targets</span></button><button data-a="trWeeks">${ic('cal',17)}<span>Weeks</span></button><button data-a="trAddWeek">${ic('spark',17)}<span>New week</span></button></div></section>
+   ${tip?`<div class="trtip ${tip[0]}">${ic(tip[0]==='ok'?'trophy':tip[0]==='warn'?'info':'target',18)}<p>${tip[1]}</p></div>`:''}
+   <div class="chips trwks">${T.weeks.map((x,i)=>`<button class="${i===T.cur?'on':''}" data-a="trWeek" data-i="${i}">${esc3(x.label)}<small>${trkStats(x).pct}%</small></button>`).join('')}<button data-a="trAddWeek">${ic('spark',14)} Add</button></div>`;
+  if(!w.subjects.length)return h+`<div class="card empty"><span class="ti">${ic('book',22)}</span><b>Add your subjects</b><p>Pick one to start, or add your own.</p>
+    <div class="chips wrap" style="justify-content:center">${['Physics','Chemistry','Maths','Biology','English','Reasoning'].map(n=>`<button data-a="trQuick" data-v="${n}">${n}</button>`).join('')}</div><button class="btn" data-a="trSubj">Add a subject</button></div>`;
+  h+=`<div class="chips"><button class="${TR3.sel===-1?'on':''}" data-a="trSel" data-i="-1">All subjects</button>${w.subjects.map((s,i)=>`<button class="${TR3.sel===i?'on':''}" data-a="trSel" data-i="${i}">${esc3(s.emoji)} ${esc3(s.name)}</button>`).join('')}<button data-a="trSubj">${ic('spark',14)} Subject</button></div>
+   <div class="seg">${[['all','All'],['pending','Pending'],['done','Done']].map(([k,l])=>`<button class="${TR3.flt===k?'on':''}" data-a="trFlt" data-v="${k}">${l}</button>`).join('')}</div>`;
+  w.subjects.forEach((s,si)=>{if(TR3.sel!==-1&&TR3.sel!==si)return;
+    const d=s.tasks.filter(x=>x.done).length,t=s.tasks.length,p=t?Math.round(d*100/t):0,goal=T.goals[s.id];
+    const rows=s.tasks.map((x,ti)=>({x,ti})).filter(r=>TR3.flt==='all'||(TR3.flt==='done'?r.x.done:!r.x.done));
+    h+=`<article class="card trs" style="--sc:${trSafe(s.color)}"><div class="trs-h"><span class="trem">${esc3(s.emoji)}</span><span class="trs-t"><b>${esc3(s.name)}</b><small>${d} of ${t} done${goal?` · target ${goal}`:''}</small></span><em>${p}%</em><button class="trib" data-a="trDelSubj" data-i="${si}" aria-label="Remove ${esc3(s.name)}">${ic('trash',17)}</button></div>
+     <span class="trbar"><i style="--p:${(p/100).toFixed(3)}"></i></span>
+     <div class="trl">${rows.length?rows.map(r=>`<div class="trt${r.x.done?' dn':''}"><button class="trck" data-a="trTog" data-s="${si}" data-t="${r.ti}" aria-pressed="${!!r.x.done}" aria-label="Done">${ic('check',14)}</button><button class="trtx" data-a="trEdit" data-s="${si}" data-t="${r.ti}">${esc3(r.x.text)}</button><button class="trx" data-a="trDel" data-s="${si}" data-t="${r.ti}" aria-label="Delete task">${ic('x',15)}</button></div>`).join(''):`<p class="hint">${t?'Nothing here for this filter.':'No tasks yet. Add your first one below.'}</p>`}</div>
+     <form class="tradd" data-s="${si}"><input class="inp" maxlength="120" placeholder="Add a task" aria-label="New task for ${esc3(s.name)}"><button class="btn sm">Add</button></form></article>`});
+  return h},
+  after:()=>{$$('#scrB .tradd').forEach(f=>f.addEventListener('submit',e=>{e.preventDefault();const i=f.querySelector('input'),v=i.value.trim();if(!v)return;
+    trkW().subjects[+f.dataset.s].tasks.push({id:trkId(),text:v.slice(0,120),done:false});trkSave();const si=f.dataset.s;qbKeep();const n=$(`#scrB .tradd[data-s="${si}"] input`);n&&n.focus({preventScroll:true})}));
+    const a=$('#scrB .trwks .on');if(a)try{a.parentNode.scrollLeft=a.offsetLeft-a.parentNode.clientWidth/2+a.clientWidth/2}catch(e){}}}}
+function openTracker(){closeLayer();trkLoad();TR3.sel=-1;TR3.flt='all';if(!(top()&&top().key==='trk'))push(trView());else redraw()}
+const trDraw=()=>{if(top()&&top().key==='trk'){qbKeep();$('#scrS').textContent=trkW().label}};
+A.trSel=el=>{TR3.sel=+el.dataset.i;qbKeep()};A.trFlt=el=>{TR3.flt=el.dataset.v;qbKeep()};
+A.trWeek=el=>{const i=+el.dataset.i;if(i===trkLoad().cur)return;trkLoad().cur=i;TR3.sel=-1;trkSave();trDraw()};
+A.trTog=el=>{const s=trkW().subjects[+el.dataset.s],t=s&&s.tasks[+el.dataset.t];if(!t)return;t.done=!t.done;
+  if(t.done){t.at=Date.now();trkDays(1);if(navigator.vibrate)navigator.vibrate(12)}else{if(t.at&&tDay(new Date(t.at))===tDay())trkDays(-1);delete t.at}
+  trkSave();trDraw();if(t.done){const all=trkStats(trkW());if(all.total&&all.done===all.total)toast3('Week complete! Amazing work');else if(s.tasks.every(x=>x.done))toast3(`${s.name} done for this week!`)}};
+A.trDel=el=>{const s=trkW().subjects[+el.dataset.s],ti=+el.dataset.t,t=s&&s.tasks.splice(ti,1)[0];if(!t)return;TR3.undo={sid:s.id,ti,t};trkSave();trDraw();
+  const b=$('#trUndo');if(b)b.remove();const u=document.createElement('div');u.id='trUndo';u.className='undo3';u.innerHTML='<span>Task deleted</span><button data-a="trUndo">Undo</button>';root.querySelector('#app3').appendChild(u);
+  clearTimeout(TR3.ut);TR3.ut=setTimeout(()=>{u.remove();TR3.undo=null},4500)};
+A.trUndo=()=>{const u=TR3.undo;TR3.undo=null;const b=$('#trUndo');if(b)b.remove();if(!u)return;const s=trkW().subjects.find(x=>x.id===u.sid);if(!s)return;s.tasks.splice(Math.min(u.ti,s.tasks.length),0,u.t);trkSave();trDraw()};
+function trAsk(title,val,ph,cb){openSheet(`<h2 id="sheetT">${esc3(title)}</h2><form id="trAskF" class="stack" style="gap:14px;margin-top:6px"><input class="inp" id="trAskI" maxlength="120" value="${esc3(val||'')}" placeholder="${esc3(ph||'')}"><div class="sheet-ft" style="margin:0"><button type="button" class="btn ghost" data-a="close">Cancel</button><button class="btn">Save</button></div></form>`);
+  const f=sheet.querySelector('#trAskF'),i=sheet.querySelector('#trAskI');setTimeout(()=>{i.focus();i.select()},120);f.addEventListener('submit',e=>{e.preventDefault();const v=i.value.trim();if(!v)return;closeLayer();cb(v)})}
+function trConfirm(title,msg,ok,cb){openSheet(`<h2 id="sheetT">${esc3(title)}</h2><p class="sub">${msg}</p><div class="sheet-ft"><button class="btn ghost" data-a="close">No, keep it</button><button class="btn danger3" id="trYes">${esc3(ok)}</button></div>`);sheet.querySelector('#trYes').addEventListener('click',()=>{closeLayer();cb()})}
+A.trEdit=el=>{const si=+el.dataset.s,ti=+el.dataset.t,t=trkW().subjects[si].tasks[ti];if(!t)return;trAsk('Edit task',t.text,'',v=>{t.text=v.slice(0,120);trkSave();trDraw()})};
+A.trRename=()=>trAsk('Rename this week',trkW().label,'e.g. Week 3, Revision week',v=>{trkW().label=v.slice(0,30);trkSave();trDraw()});
+A.trAddWeek=()=>{closeLayer();const prev=trkW(),n=trkLoad().weeks.length+1;trkLoad().weeks.push({id:'w'+trkId(),label:'Week '+n,subjects:prev.subjects.map(s=>({id:s.id,name:s.name,emoji:s.emoji,color:s.color,tasks:[]}))});trkLoad().cur=trkLoad().weeks.length-1;TR3.sel=-1;trkSave();trDraw();toast3('Week '+n+' added')};
+A.trDelWeek=el=>{const i=+el.dataset.i,w=trkLoad().weeks[i];if(i<1||!w)return;const s=trkStats(w);
+  trConfirm(`Delete ${w.label}?`,`This week${s.total?` and its <b>${s.total} task${s.total>1?'s':''}</b>`:''} will be deleted. This cannot be undone.`,'Yes, delete',()=>{trkLoad().weeks.splice(i,1);if(trkLoad().cur>=trkLoad().weeks.length)trkLoad().cur=trkLoad().weeks.length-1;else if(trkLoad().cur>i)trkLoad().cur--;trkSave();trDraw();toast3(w.label+' deleted')})};
+A.trDelSubj=el=>{const si=+el.dataset.i,s=trkW().subjects[si];if(!s)return;trConfirm(`Remove ${s.name}?`,`It will be removed from this week${s.tasks.length?` with its <b>${s.tasks.length} task${s.tasks.length>1?'s':''}</b>`:''}.`,'Yes, remove',()=>{trkW().subjects.splice(si,1);TR3.sel=-1;trkSave();trDraw()})};
+A.trQuick=el=>{const n=el.dataset.v,i=trkW().subjects.length,e=['⚡','🧪','📐','🌿','📖','🧠'],s={id:'s'+trkId(),name:n,emoji:e[i%e.length],color:TRCO[i%TRCO.length]};trkLoad().weeks.forEach(w=>w.subjects.push(Object.assign({tasks:[]},s)));trkSave();trDraw()};
+let TRN=null;
+function trSubjDraw(){const n=TRN;sheet.innerHTML=`<div class="grab"></div><h2 id="sheetT">Add a subject</h2>
+  <div class="trprev" style="--sc:${n.color}"><span class="trem">${esc3(n.emoji)}</span><b id="trPn">${esc3(n.name||'Subject name')}</b></div>
+  <input class="inp" id="trSn" maxlength="24" placeholder="e.g. Biology, Physics" value="${esc3(n.name)}">
+  <p class="gh" style="margin:14px 0 8px">Icon</p><div class="trpick">${TREM.map(e=>`<button class="${e===n.emoji?'on':''}" data-e="${e}">${e}</button>`).join('')}</div>
+  <p class="gh" style="margin:14px 0 8px">Colour</p><div class="trpick col">${TRCO.map(c=>`<button class="${c===n.color?'on':''}" data-c="${c}" style="background:${c}" aria-label="Colour"></button>`).join('')}</div>
+  <button class="row trall" data-all><span><b>Add to every week</b><small>Otherwise only this week</small></span><span class="sw${n.all?' on':''}" aria-hidden="true"></span></button>
+  <div class="sheet-ft"><button class="btn ghost" data-a="close">Cancel</button><button class="btn" data-ok>Add subject</button></div>`;
+  const i=sheet.querySelector('#trSn');i.addEventListener('input',()=>{n.name=i.value;sheet.querySelector('#trPn').textContent=i.value||'Subject name'})}
+A.trSubj=()=>{TRN={name:'',emoji:TREM[0],color:TRCO[0],all:trkLoad().weeks.length>1};openSheet('');trSubjDraw();
+  sheet.onclick=e=>{const n=TRN;if(!n)return;const b=e.target.closest('button');if(!b)return;
+    if(b.dataset.e){n.emoji=b.dataset.e;trSubjDraw();return}if(b.dataset.c){n.color=b.dataset.c;trSubjDraw();return}
+    if(b.hasAttribute('data-all')){n.all=!n.all;trSubjDraw();return}
+    if(b.hasAttribute('data-ok')){const nm=(n.name||'').trim();if(!nm){toast3('Enter a subject name');return}const id='s'+trkId(),mk=()=>({id,name:nm,emoji:n.emoji,color:n.color,tasks:[]});
+      if(n.all)trkLoad().weeks.forEach(w=>w.subjects.push(mk()));else trkW().subjects.push(mk());TRN=null;trkSave();closeLayer();trDraw();toast3('Subject added')}}};
+A.trTargets=()=>{const T=trkLoad(),w=trkW();if(!w.subjects.length){toast3('Add a subject first');return}
+  openSheet(`<h2 id="sheetT">Weekly targets</h2><p class="sub">How many tasks do you want to finish in each subject this week?</p><div class="stack" style="gap:10px">${w.subjects.map(s=>{const d=s.tasks.filter(x=>x.done).length,g=T.goals[s.id]||10,p=Math.min(100,Math.round(d*100/g));
+    return `<div class="card p trg" style="--sc:${trSafe(s.color)}"><div class="trg-h"><span class="trem">${esc3(s.emoji)}</span><b>${esc3(s.name)}</b><input class="inp" type="number" min="1" max="999" inputmode="numeric" value="${g}" data-g="${esc3(s.id)}" aria-label="Target for ${esc3(s.name)}"></div><span class="trbar"><i style="--p:${(p/100).toFixed(3)}"></i></span><small>${d} of ${g} done</small></div>`}).join('')}</div>
+    <div class="sheet-ft"><button class="btn" data-a="close">Done</button></div>`);
+  sheet.querySelectorAll('[data-g]').forEach(i=>i.addEventListener('change',()=>{T.goals[i.dataset.g]=Math.max(1,Math.min(999,parseInt(i.value)||1));i.value=T.goals[i.dataset.g];trkSave();trDraw()}))};
+A.trGrowth=()=>{const T=trkLoad(),W=T.weeks,cw=trkW(),P=W.map(w=>trkStats(w).pct),best=P.indexOf(Math.max(...P)),avg=Math.round(P.reduce((a,b)=>a+b,0)/Math.max(W.length,1));
+  openSheet(`<h2 id="sheetT">Your growth</h2><p class="sub">How much of each week you finished</p>
+   <div class="trgw">${W.map((w,i)=>`<div class="${i===T.cur?'on':''}"><b>${P[i]?P[i]+'%':''}</b><i style="--h:${Math.max(.04,P[i]/100).toFixed(2)}"></i><span>W${i+1}</span></div>`).join('')}</div>
+   <div class="mkh-st trgs"><div><b>${W.length}</b><small>Weeks</small></div><div><b>${avg}%</b><small>Average</small></div><div><b>W${best+1}</b><small>Best week</small></div></div>
+   <p class="gh" style="margin:16px 0 8px">Subjects · ${esc3(cw.label)}</p>${cw.subjects.map(s=>{const d=s.tasks.filter(x=>x.done).length,t=s.tasks.length,p=t?Math.round(d*100/t):0;return `<div class="trgr" style="--sc:${trSafe(s.color)}"><span class="trem">${esc3(s.emoji)}</span><span class="trgr-b"><b>${esc3(s.name)}</b><span class="trbar"><i style="--p:${(p/100).toFixed(3)}"></i></span></span><em>${p}%</em></div>`}).join('')||'<p class="hint">No subjects yet.</p>'}
+   <div class="sheet-ft"><button class="btn" data-a="close">Close</button></div>`)};
+A.trWeeks=()=>{const T=trkLoad();openSheet(`<h2 id="sheetT">All weeks</h2><div class="stack" style="gap:8px;margin-top:8px">${T.weeks.map((w,i)=>{const s=trkStats(w);return `<div class="trwr${i===T.cur?' on':''}"><button data-a="trWeekGo" data-i="${i}"><b>${esc3(w.label)}</b><span class="trbar"><i style="--p:${(s.pct/100).toFixed(3)}"></i></span><small>${s.done} of ${s.total} done</small></button>${i>0?`<button class="trib" data-a="trDelWeek" data-i="${i}" aria-label="Delete ${esc3(w.label)}">${ic('trash',17)}</button>`:''}</div>`}).join('')}</div>
+  <div class="sheet-ft"><button class="btn ghost" data-a="close">Close</button><button class="btn" data-a="trAddWeek">New week</button></div>`)};
+A.trWeekGo=el=>{closeLayer();A.trWeek(el)};
+A.trCarry=()=>{closeLayer();const T=trkLoad(),i=T.cur;if(i<1){toast3('There is no previous week');return}const prev=T.weeks[i-1],cur=T.weeks[i];let n=0;
+  prev.subjects.forEach(ps=>{const p=ps.tasks.filter(t=>!t.done);if(!p.length)return;let cs=cur.subjects.find(x=>x.id===ps.id);if(!cs){cs={id:ps.id,name:ps.name,emoji:ps.emoji,color:ps.color,tasks:[]};cur.subjects.push(cs)}
+    p.forEach(t=>{if(!cs.tasks.some(x=>x.text===t.text)){cs.tasks.push({id:trkId(),text:t.text,done:false});n++}})});
+  trkSave();trDraw();toast3(n?`${n} pending task${n>1?'s':''} moved from ${prev.label}`:'No pending tasks in '+prev.label)};
+A.trResetWeek=()=>{closeLayer();setTimeout(()=>trConfirm('Reset this week?','All tasks of this week will be marked as pending again.','Yes, reset',()=>{trkW().subjects.forEach(s=>s.tasks.forEach(t=>{t.done=false;delete t.at}));trkSave();trDraw();toast3('Week reset')}),250)};
+A.trResetAll=()=>{closeLayer();setTimeout(()=>trConfirm('Delete everything?','<b>All weeks, subjects and tasks</b> will be deleted. This cannot be undone.','Yes, delete all',()=>{const T=trkLoad();LS.del(trkDayKey());T.cur=0;T.nid=1;T.weeks=[{id:'w1',label:'Week 1',subjects:[]}];T.goals={};trkSave();TR3.sel=-1;trDraw();toast3('Tracker reset')}),250)};
+A.trMenu=()=>{const it=(a,i,t,s,c)=>`<button class="row${c?' '+c:''}" data-a="${a}"><span class="ti">${ic(i,19)}</span><span><b>${t}</b><small>${s}</small></span></button>`;
+  openSheet(`<h2 id="sheetT">Tracker options</h2><div class="list trmn">${it('trRename','pen','Rename this week','Change the week name')}${trkLoad().cur>0?it('trCarry','swap','Carry over pending tasks','Copy unfinished tasks from '+esc3(trkLoad().weeks[trkLoad().cur-1].label)):''}${it('trAddWeek','cal','Add a new week','Copies your subjects with empty tasks')}${it('trSubj','book','Add a subject','In this week or every week')}${it('trTargets','target','Set targets','A task goal for each subject')}${it('trGrowth','chart','Growth','Progress across all weeks')}${it('trResetWeek','clock','Reset this week','Mark all tasks as pending')}${it('trResetAll','trash','Delete everything','All weeks, subjects and tasks','bad')}</div>`)};
+['trSubj','trTargets','trGrowth','trRename'].forEach(k=>{const f=A[k];A[k]=el=>{if(layer){closeLayer();setTimeout(()=>f(el),250)}else f(el)}});
+V3H.push([/^#\/t$/,()=>openTracker()]);
+
+/* ================= RANKS AND LEADERBOARDS in the new design =================
+   Same server and cache as the classic Results page (app10.js): cbt_overall for the overall rank (average score
+   over all tests), cbt_leaderboard for each test (first attempt per student), cached in the classic LBC with lbStale,
+   and the classic list of tests that have ranks (lbTests). */
+const RK3={ov:null,i:0,busy:0};
+const rkFirst=x=>String(x.name||x.student||'Student').split(' ')[0];
+const rkVal=x=>x.pct!=null?x.pct+'%':(x.score!=null?String(x.score):'');
+function rkPod(top,me){const p=[top[1],top[0],top[2]];
+  return `<div class="rkpod">${p.map((x,i)=>{if(!x)return '<div class="rkp z"></div>';const r=x.rank||(i===1?1:i===0?2:3),m=x.me||r===me;
+    return `<div class="rkp r${Math.min(r,3)}${m?' me':''}"><span class="rkav">${esc3((rkFirst(x)[0]||'?').toUpperCase())}${r===1?`<i>${ic('crown',14)}</i>`:''}</span><b>${esc3(rkFirst(x))}${m?' (you)':''}</b><small>${esc3(rkVal(x))}</small>${x.cheat?'<em>Flagged</em>':''}<span class="rkst"><span>${r}</span></span></div>`}).join('')}</div>`}
+function rkRows(top,me,mine){const rest=top.slice(3,10);
+  return `${rest.length?`<div class="card rkl">${rest.map((x,i)=>{const r=x.rank||i+4,m=x.me||r===me;return `<div class="rkr${m?' me':''}"><span class="rkn">${r}</span><span class="rkav sm">${esc3((rkFirst(x)[0]||'?').toUpperCase())}</span><b>${esc3(x.name||x.student||'Student')}${m?' (you)':''}${x.cheat?' <em>Flagged</em>':''}</b><span class="rkv">${esc3(rkVal(x))}</span></div>`}).join('')}</div>`:''}
+   ${me&&me>Math.min(top.length,10)?`<div class="card rkl"><div class="rkr me"><span class="rkn">${me}</span><span class="rkav sm">${esc3(((AUTH&&AUTH.name)||'Y')[0].toUpperCase())}</span><b>You</b><span class="rkv">${esc3(mine)}</span></div></div>`:''}`}
+function rkOverall(){const b=RK3.ov;
+  if(!b)return '<div class="card sk" style="height:180px"></div><div class="card sk" style="height:220px"></div>';
+  if(!b.ok||!b.top||!b.top.length)return `<div class="card empty"><span class="ti">${ic('trophy',22)}</span><b>No ranks yet</b><p>Take a test to get your overall rank.</p></div>`;
+  const tot=b.total||1,beat=b.my_rank?(tot>1?Math.round((tot-b.my_rank)*100/(tot-1)):100):null;
+  return `<section class="mkh rkh"><div class="mkh-top"><div><small>OVERALL RANK · AVERAGE OF ALL TESTS</small><b>${b.my_rank?'#'+b.my_rank:'–'}</b><span>${b.my_rank?`Ahead of ${beat}% of ${fmtN(tot)} students`:`${fmtN(tot)} students ranked`}</span></div><span class="ti qbic">${ic('trophy',28)}</span></div>
+    ${b.my_rank?`<span class="bar"><i style="--p:${(beat/100).toFixed(3)}"></i></span><div class="mkh-st"><div><b>${b.my_pct}%</b><small>Your average</small></div><div><b>${b.top[0].pct}%</b><small>Topper</small></div><div><b>${fmtN(tot)}</b><small>Students</small></div></div>`:''}</section>
+   ${rkPod(b.top,b.my_rank)}${rkRows(b.top,b.my_rank,(b.my_pct!=null?b.my_pct+'%':''))}`}
+function rkTest(t){const r=LBC[t.id];
+  if(!r)return '<div class="card sk" style="height:150px"></div><div class="card sk" style="height:200px"></div>';
+  const go=t.attempts||(typeof isClosed==='function'&&isClosed(t))?'':`<button class="btn sm" data-a="test" data-id="${esc3(t.id)}">Attempt now</button>`;
+  if(r.ok&&r.hidden)return `<div class="card empty"><span class="ti">${ic('clock',22)}</span><b>Ranks come out later</b><p>Ranks will be shown after ${esc3(fmtWhen(r.result_at))}.</p>${go}</div>`;
+  if(!r.ok||!r.top||!r.top.length)return `<div class="card empty"><span class="ti">${ic('trophy',22)}</span><b>No ranks yet</b><p>Nobody has a rank in this test yet.</p>${go}</div>`;
+  const solo=r.total<2;
+  return `${r.my_rank?`<section class="mkh rkh"><div class="mkh-top"><div><small>YOUR RANK</small><b>#${r.my_rank}<em> of ${fmtN(r.total)}</em></b><span>${esc3(t.title)}</span></div><span class="ti qbic">${ic('medal',28)}</span></div>
+     <div class="mkh-st rk4"><div><b>${r.my_score}</b><small>Your score</small></div><div><b>${solo?'–':r.percentile}</b><small>Percentile</small></div><div><b>${r.avg}</b><small>Average</small></div><div><b>${r.top_score}</b><small>Topper</small></div></div></section>`
+    :`<div class="card rkna"><p>${t.attempts?'Only a first attempt submitted on time gets a rank.':'You have not taken this test yet.'}</p>${t.attempts?'':go}</div>`}
+   ${rkPod(r.top,r.my_rank)}${rkRows(r.top,r.my_rank,r.my_score)}<p class="hint" style="text-align:center">${fmtN(r.total)} student${r.total===1?'':'s'} ranked · first attempt per student</p>`}
+function rkView(){return {t:'Ranks and leaderboards',s:'Overall and for every test',key:'rank',html:()=>{let T=[];try{T=lbTests()}catch(e){}RK3.i=Math.min(RK3.i,T.length);
+  return `<div class="chips rktabs"><button class="${RK3.i===0?'on':''}" data-a="rkTab" data-i="0">${ic('trophy',14)} Overall</button>${T.map((t,i)=>`<button class="${RK3.i===i+1?'on':''}" data-a="rkTab" data-i="${i+1}">${esc3(t.title)}</button>`).join('')}</div>
+   <div class="rkbody">${RK3.i===0?rkOverall():rkTest(T[RK3.i-1])}</div>`},
+  after:()=>{const a=$('#scrB .rktabs .on');if(a)try{a.parentNode.scrollLeft=a.offsetLeft-a.parentNode.clientWidth/2+a.clientWidth/2}catch(e){}}}}
+async function rkLoad(t){if(!t)return;try{lbStale(t.id)}catch(e){}if(LBC[t.id])return;let r=null;try{r=await rpc('cbt_leaderboard',{p_test:t.id})}catch(e){}LBC[t.id]=r&&r.ok?r:{ok:false}}
+async function openRanks(){closeLayer();RK3.i=0;if(!(top()&&top().key==='rank'))push(rkView());else redraw();
+  let r=null;try{r=await rpc('cbt_overall',{})}catch(e){}RK3.ov=r||{ok:false};if(r&&r.ok){try{if(typeof INS!=='undefined'&&INS)INS.b=r}catch(e){}}
+  if(top()&&top().key==='rank'&&RK3.i===0)qbKeep()}
+A.rkTab=async el=>{RK3.i=+el.dataset.i;qbKeep();if(!RK3.i)return;let T=[];try{T=lbTests()}catch(e){}const t=T[RK3.i-1],k=RK3.i;await rkLoad(t);if(top()&&top().key==='rank'&&RK3.i===k)qbKeep()};
+A.ranks=()=>openRanks();
+V3H.push([/^#\/r$/,()=>openRanks()]);
+
+/* ================= REFER AND EARN in the new design =================
+   Same server as the classic page (app22.js): cbt_refer_app through the classic rfLoad; the link and the message
+   are the classic rfLink / rfText (the link opens the store). */
+let RF3=null;
+const rfInr=n=>'₹'+Number(n||0).toLocaleString('en-IN');
+function rfCopy3(t,m){const ok=()=>toast3(m||'Copied');const old=()=>{const a=document.createElement('textarea');a.value=t;a.setAttribute('readonly','');a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(e){}a.remove()};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,()=>{old();ok()});else{old();ok()}}
+function rfView(){return {t:'Refer and earn',s:'Wallet money for every friend who buys',key:'refer',html:()=>{const r=RF3;
+  if(!r)return '<div class="card sk" style="height:220px"></div><div class="card sk" style="height:120px"></div>';
+  if(!r.ok)return `<div class="card empty"><span class="ti">${ic('gift',22)}</span><b>${r.error==='missing'?'Coming soon':'Could not load'}</b><p>${r.error==='missing'?'Refer and earn will open here soon.':'Please check your internet and try again.'}</p>${r.error==='missing'?'':'<button class="btn sm" data-a="rfAgain">Try again</button>'}</div>`;
+  const rw=rfInr(r.reward||25),L=r.list||[],H=r.history||[],link=rfLink(r.code);
+  return `<section class="mkh rfh3"><div class="mkh-top"><div><small>${r.active===false?'PAUSED FOR NOW':'REFER AND EARN'}</small><b style="font-size:26px;line-height:1.2">Get ${rw} for every friend who buys</b><span>Share your link. When a new student buys any test series on our store, ${rw} comes to your wallet.</span></div><span class="ti qbic">${ic('gift',28)}</span></div>
+    <div class="rfl3"><span>${esc3(link.replace(/^https?:\/\//,''))}</span><button data-a="rfCopyLink">${ic('copy',15)}Copy</button></div>
+    <div class="rfb3"><button class="btn gold" data-a="rfShare">${ic('share',16)}Share link</button><button class="btn ghost on-dark" data-a="rfWa">WhatsApp</button></div>
+    <p class="rfc3">Your code <b>${esc3(r.code)}</b> · the link opens our store, so your friend can see the series and buy.</p></section>
+   <div class="g2 rfk3"><div class="card"><small>Friends joined</small><b>${fmtN(r.joined||0)}</b></div><div class="card"><small>Friends bought</small><b class="ok">${fmtN(r.bought||0)}</b></div><div class="card"><small>Total earned</small><b>${rfInr(r.earned)}</b></div><div class="card"><small>Wallet balance</small><b class="acc">${rfInr(r.balance)}</b></div></div>
+   <a class="card rsc" href="store"><span class="rsc-n">WALLET</span><b>Use your wallet in the store</b><small>At checkout turn on “Use wallet balance”. It cannot be withdrawn to a bank or UPI.</small>${ic('right',18)}</a>
+   <section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>Your friends</h2><span class="aside">${L.length}</span></div>
+    ${L.length?`<div class="card rkl">${L.map(x=>`<div class="rkr"><span class="rkav sm">${esc3(String(x.name||'S')[0].toUpperCase())}</span><b>${esc3(x.name||'Student')}<small>${esc3(x.mobile||'')} · joined ${fD(x.at,{day:'numeric',month:'short'})}</small></b><span class="st${x.bought?' ok':''}">${x.bought?'Bought · +'+rw:'Not bought yet'}</span></div>`).join('')}</div>`
+      :'<div class="card empty"><b>Nobody yet</b><p>Share your link. Friends who join show here.</p></div>'}</section>
+   <section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>Wallet history</h2></div>
+    ${H.length?`<div class="card rkl">${H.map(x=>`<div class="rkr"><span class="rkav sm ${x.amount>0?'pos':''}">${x.amount>0?'+':'−'}</span><b>${esc3(x.note||'')}<small>${x.order?esc3(x.order)+' · ':''}${fD(x.at,{day:'numeric',month:'short',year:'numeric'})}</small></b><span class="rkv ${x.amount>0?'ok':''}">${x.amount>0?'+':'−'}${rfInr(Math.abs(x.amount))}</span></div>`).join('')}</div>`
+      :'<div class="card empty"><b>Nothing yet</b><p>Referral rewards show here.</p></div>'}</section>
+   <section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>How it works</h2></div>
+    <div class="card p rfo3">${[['share','Share your link','On WhatsApp, Telegram or anywhere.'],['bag','A new friend buys','Any test series on the store. Joining alone gives nothing; the purchase does.'],['gift',`${rw} comes to your wallet`,'After we approve their payment, once per friend.'],['check','Use it at checkout','For your next test series. Wallet money cannot be withdrawn.']].map(([i,t,d],k)=>`<div><span>${k+1}</span><p><b>${t}</b>${d}</p></div>`).join('')}</div></section>`}}}
+async function openRefer(){closeLayer();RF3=null;if(!(top()&&top().key==='refer'))push(rfView());else redraw();let r=null;try{r=await rfLoad(true)}catch(e){}if(!r)r={ok:false,error:'network'};RF3=r;if(top()&&top().key==='refer')redraw()}
+A.refer=()=>openRefer();A.rfAgain=()=>openRefer();
+A.rfCopyLink=()=>{if(RF3&&RF3.code)rfCopy3(rfLink(RF3.code),'Link copied')};
+A.rfShare=async()=>{if(!RF3||!RF3.code)return;const t=rfText(RF3.code);if(navigator.share){try{await navigator.share({title:'Aspiron Education',text:t});return}catch(e){if(e&&e.name==='AbortError')return}}rfCopy3(t,'Message copied. Paste it in WhatsApp or Telegram.')};
+A.rfWa=()=>{if(!RF3||!RF3.code)return;const w=window.open('https://wa.me/?text='+encodeURIComponent(rfText(RF3.code)),'_blank','noopener,noreferrer');if(w)w.opener=null};
+V3H.push([/^#\/refer$/,()=>openRefer()]);
+
+/* ================= FIRST-TIME SETUP in the new design =================
+   Shown once per student on this phone (cbt_v3_onb_<mobile>) when the profile has no class or target exam yet:
+   welcome, class and target exam (saved in the classic profile cbt_pf_<mobile>, which is kept on the account by
+   cbt_keep), then notifications and install. Skip closes it for good; everything can be changed later in Profile. */
+const OB={st:0,d:null,el:null};
+const obKey=()=>'cbt_v3_onb_'+((AUTH&&AUTH.mobile)||'');
+function maybeOnb(){try{if(!AUTH||INTEST||OB.el||lsGet(obKey(),0)||layer||scrOpen()||document.body.classList.contains('v3old'))return;const p=stuProf();if(p.cls&&p.exam){lsSet(obKey(),1);return}openOnb()}catch(e){}}
+function obStep(){const d=OB.d,nm=String((AUTH&&AUTH.name)||'').trim().split(' ')[0]||'there';
+  if(OB.st===0)return `<div class="ob-art">${ic('spark',34)}</div><small class="ob-k">WELCOME</small><h1>Hi ${esc3(nm)}, let’s set up your study space</h1><p>Two quick choices so your tests, schedule and tips fit you. It takes 20 seconds.</p>`;
+  if(OB.st===1)return `<small class="ob-k">STEP 1 OF 2</small><h1>About you</h1><p>We use this to show the right series and tips.</p>
+    <div class="fl"><span>Your class</span><div class="chips wrap">${PF3.cls.map(c=>`<button class="${d.cls===c?'on':''}" aria-pressed="${d.cls===c}" data-ob="cls" data-v="${c}">${c}</button>`).join('')}</div></div>
+    <div class="fl"><span>Target exam</span><div class="chips wrap">${PF3.exam.map(c=>`<button class="${d.exam===c?'on':''}" aria-pressed="${d.exam===c}" data-ob="exam" data-v="${c}">${c}</button>`).join('')}</div></div>`;
+  const np=npOn3(),inst=standalone3();
+  return `<small class="ob-k">STEP 2 OF 2</small><h1>Never miss a test</h1><p>Get an alert when a test goes live and when your result is out.</p>
+    <div class="card rows ob-rows"><button class="row" data-ob="np"><span class="ti g">${ic('bell',20)}</span><span><b>Phone notifications</b><small>${np?'On. You are all set.':'Test alerts, results and notices'}</small></span><span class="sw${np?' on':''}" aria-hidden="true"></span></button>
+     ${inst?'':`<button class="row" data-ob="inst"><span class="ti g">${ic('dl',20)}</span><span><b>Install the app</b><small>Open it from your home screen</small></span>${ic('right',18)}</button>`}</div>`}
+function obDraw(dir){const el=OB.el;if(!el)return;const last=OB.st===2,ok=OB.st!==1||(OB.d.cls&&OB.d.exam);
+  el.innerHTML=`<div class="ob-in"><div class="ob-top"><div class="ob-dots">${[0,1,2].map(i=>`<i class="${i===OB.st?'on':i<OB.st?'done':''}"></i>`).join('')}</div><button class="ob-skip" data-ob="skip">${last?'Close':'Skip'}</button></div>
+   <div class="ob-b ${dir||''}">${obStep()}</div>
+   <div class="ob-ft">${OB.st?'<button class="btn ghost" data-ob="back">Back</button>':''}<button class="btn ${OB.st===0?'gold lg':''}" data-ob="next"${ok?'':' disabled'}>${OB.st===0?'Let’s start':last?'Finish':'Continue'}${ic('right',16)}</button></div></div>`}
+function openOnb(){const p=stuProf();OB.d={cls:p.cls||'',exam:p.exam||''};OB.st=0;
+  const el=document.createElement('div');el.className='ob3';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-label','Set up your study space');OB.el=el;root.querySelector('#app3').appendChild(el);obDraw('');
+  requestAnimationFrame(()=>el.classList.add('open'));
+  el.addEventListener('click',async e=>{const b=e.target.closest('[data-ob]');if(!b)return;const k=b.dataset.ob;
+    if(k==='cls'||k==='exam'){OB.d[k]=b.dataset.v;obDraw('');return}
+    if(k==='skip'){obClose(OB.st===2);return}
+    if(k==='back'){OB.st=Math.max(0,OB.st-1);obDraw(RM?'':'bwd');return}
+    if(k==='next'){if(OB.st===1){if(!OB.d.cls||!OB.d.exam)return;try{pfSave(Object.assign({},stuProf(),{cls:OB.d.cls,exam:OB.d.exam}));if(typeof pfHdr==='function')pfHdr()}catch(err){}}
+      if(OB.st===2){obClose(true);return}OB.st++;obDraw(RM?'':'fwd');return}
+    if(k==='np'){try{await npToggle()}catch(err){}setTimeout(()=>{if(OB.el&&OB.st===2)obDraw('')},400);return}
+    if(k==='inst'){try{A.setInstall()}catch(err){}}})}
+function obClose(done){lsSet(obKey(),1);const el=OB.el;OB.el=null;if(!el)return;el.classList.remove('open');setTimeout(()=>el.remove(),RM?0:420);if(done)toast3('All set. You can change these in your profile.');try{softRender()}catch(e){}}
+
 /* ================= MENU: the classic menu's items, plus the switch back ================= */
 A.menu=()=>{const u=unread(),mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' on':''}${cls||''}" data-a="m" data-k="${k}">${ic(i)}<span>${t}</span>${extra?`<em>${extra}</em>`:''}</button>`;
   drawer.innerHTML=`<div class="hero pcard"><div class="who">${avatar()}<div style="min-width:0"><b>${esc3(stuName())}</b><small class="mut">${esc3(stuMeta())}</small></div></div><button class="btn sm onhero ghost blk" data-a="m" data-k="profile">View profile</button></div>
@@ -1352,7 +1669,7 @@ A.menu=()=>{const u=unread(),mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' o
   <div class="mgp">${mi('gear','Settings','settings')}${mi('info','About Us','about')}${mi('file','Terms & Conditions','terms')}${mi('file','Privacy Policy','privacy')}${mi('file','Refund Policy','refund')}${mi('mail','Contact Us','contact')}</div><div class="mdiv"></div>
   ${mi('swap','Switch to the classic design','classic',0,'','')}${mi('out','Logout','logout',0,'',' out')}`;openLayer(drawer)};
 A.m=el=>{const k=el.dataset.k;closeLayer();
-  const M={profile:A.profile,theme:openTheme,home:()=>go('home'),series:()=>go('test'),history:A.hist,mistakes:()=>openMistakes(),saved:()=>openSaved(),tracker:()=>oldHash('#/t'),notif:A.bell,cd:A.cdEdit,
+  const M={profile:A.profile,theme:openTheme,home:()=>go('home'),series:()=>go('test'),history:A.hist,mistakes:()=>openMistakes(),saved:()=>openSaved(),tracker:()=>openTracker(),notif:A.bell,cd:A.cdEdit,
    settings:A.settings,about:A.setAbout,terms:A.setTerms,privacy:()=>window.open('privacy','_blank','noopener'),refund:()=>window.open('refund','_blank','noopener'),contact:A.setHelp,
    classic:()=>window.v3Disable(),logout:A.setOut};
   setTimeout(()=>{(M[k]||(()=>{}))()},140)};
@@ -1398,7 +1715,7 @@ route=async function(){
   if(!CAT||Date.now()-CATAT>30000){if(!CAT)main.innerHTML='<div class="card sk" style="height:220px;margin-top:8px"></div><div class="card sk" style="height:160px"></div><div class="card sk" style="height:200px"></div>';
     const ok=await loadCat(!!CAT);if(!ok){if(AUTH){toOld()}return}if(INTEST||!AUTH)return}
   if(NOTES===null)loadNotes().then(()=>{if(S.tab==='test')softRender()});
-  const tab=tabOf(h),changed=tab!==S.tab||!main.children.length||main.querySelector('.sk');S.tab=tab;syncDock();if(changed)scrollTo(0,0);render(changed);
+  const tab=tabOf(h),changed=tab!==S.tab||!main.children.length||main.querySelector('.sk');S.tab=tab;syncDock();if(changed)scrollTo(0,0);render(changed);if(tab==='home'&&!goThen)setTimeout(maybeOnb,1100);
   if(goThen){const f=goThen;goThen=null;setTimeout(f,0)}};
 if(typeof login==='function'){const _login=login;login=function(){document.body.classList.remove('v3on','v3old');return _login.apply(this,arguments)}}
 if(typeof cdRefresh==='function'){const _cdr=cdRefresh;cdRefresh=function(){const r=_cdr.apply(this,arguments);if(booted&&document.body.classList.contains('v3on')&&!document.body.classList.contains('v3old')&&(S.tab==='home'||S.tab==='tools'))softRender();return r}}
