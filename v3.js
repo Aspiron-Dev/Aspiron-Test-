@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=33;
+const V3VER=34;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',true)!==false;
@@ -209,14 +209,25 @@ const isNewHash=h=>!h||h==='#'||h==='#/'||/^#\/x\/(test|tools|lib|stats)$/.test(
 /* ---------- desktop website parts (shown from 1024 px wide; phones never see them) ---------- */
 const DNAV=[['home','Home'],['test','Test Series'],['tools','Tools'],['lib','Library'],['stats','Analytics']];
 function deskSync(){const n=$('#dnav');if(!n)return;
-  if(!n.firstChild){n.innerHTML=DNAV.map(([k,l])=>`<button data-a="tab" data-tab="${k}">${l}</button>`).join('')+`<button data-a="dk" data-k="pyq">PYQ</button><button data-a="dk" data-k="qb">Question Bank</button><button data-a="dk" data-k="ranks">Ranks</button>`;
+  if(!n.firstChild){n.innerHTML=DNAV.map(([k,l])=>`<button data-a="tab" data-tab="${k}">${l}</button>`).join('');const th=$('#dth');if(th)th.innerHTML=ic('sun',19);
     const f=$('#dfoot');if(f)f.innerHTML=`<div class="df-in"><div class="df-b"><span class="bmk" aria-hidden="true"><i class="bmk-w"><i class="bmk-s"></i></i><span class="bmk-e"><span>EDUCATION</span></span></span><p>NEET and JEE test series with the real exam pattern, All-India rank and detailed analysis.</p></div>
      <div class="df-c"><b>Study</b><button data-a="tab" data-tab="test">Test series</button><button data-a="dk" data-k="pyq">PYQ Analyzer</button><button data-a="dk" data-k="qb">Question bank</button><button data-a="dk" data-k="gen">Test generator</button></div>
      <div class="df-c"><b>Your progress</b><button data-a="dk" data-k="ranks">Ranks</button><button data-a="dk" data-k="hist">Test history</button><button data-a="dk" data-k="mk">Mistake notebook</button><button data-a="dk" data-k="trk">Study tracker</button></div>
      <div class="df-c"><b>Help</b><button data-a="setHelp">Contact us</button><button data-a="setAbout">About us</button><button data-a="setTerms">Terms</button><a href="privacy" target="_blank" rel="noopener">Privacy</a><a href="refund" target="_blank" rel="noopener">Refund</a></div></div>
-     <div class="df-bot"><span>© ${new Date().getFullYear()} Aspiron Education</span><a href="store">Store</a></div>`}
+     <div class="df-bot"><span>© ${new Date().getFullYear()} Aspiron Education. All rights reserved.</span><nav><a href="privacy" target="_blank" rel="noopener">Privacy Policy</a><a href="terms" target="_blank" rel="noopener">Terms &amp; Conditions</a><a href="refund" target="_blank" rel="noopener">Refund Policy</a><a href="store">Store</a></nav></div>`}
   n.querySelectorAll('[data-tab]').forEach(b=>{const on=b.dataset.tab===S.tab;b.classList.toggle('on',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')});
   const d=$('#dav');if(d){const h=avatar('dav-i');if(d.innerHTML!==h)d.innerHTML=h}}
+/* the profile picture in the top bar: a small menu (profile, settings, sign out); the theme has its own button */
+const dmClose=()=>{const m=$('#dmenu');if(m)m.classList.remove('open');const d=$('#dav');if(d)d.setAttribute('aria-expanded','false')};
+A.davM=()=>{const m=$('#dmenu');if(!m)return;if(m.classList.contains('open')){dmClose();return}
+  m.innerHTML=`<div class="dm-h">${avatar('dm-av')}<span><b>${esc3(stuName())}</b><small>${esc3(stuMeta())}</small></span></div>
+   <button role="menuitem" data-a="dmGo" data-k="profile">${ic('user',18)}Edit profile</button><button role="menuitem" data-a="dmGo" data-k="settings">${ic('gear',18)}Settings</button>
+   <button role="menuitem" class="dm-out" data-a="dmGo" data-k="out">${ic('out',18)}Logout</button>`;
+  m.classList.add('open');$('#dav').setAttribute('aria-expanded','true');
+  setTimeout(()=>{const off=e=>{if(!e.composedPath().includes(m)&&!e.composedPath().includes($('#dav'))){dmClose();document.removeEventListener('pointerdown',off,true)}};document.addEventListener('pointerdown',off,true)},0)};
+A.dmGo=el=>{dmClose();({profile:A.profile,settings:A.settings,out:A.setOut}[el.dataset.k]||(()=>{}))()};
+A.theme3=()=>{dmClose();openTheme()};
+addEventListener('keydown',e=>{if(e.key==='Escape')dmClose()});
 A.dk=el=>({pyq:()=>openPyq(),qb:()=>openQB(),gen:()=>openGen(),ranks:()=>openRanks(),hist:()=>A.hist(),mk:()=>openMistakes(),trk:()=>openTracker()}[el.dataset.k]||(()=>{}))();
 function syncDock(){try{deskSync()}catch(e){}dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab));dock.querySelectorAll('button').forEach(b=>{const on=b.dataset.tab===S.tab;b.classList.toggle('on',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')})}
 let timers=[];
@@ -239,7 +250,9 @@ const SKEL=`<header class="hdr" id="hdr"><i class="hdr-tint" id="hdrTint" aria-h
   <a class="brand" href="#/" data-a="tab" data-tab="home" aria-label="Aspiron Education, go to Home"><span class="bmk" aria-hidden="true"><i class="bmk-w" id="bmk"><i class="bmk-s"></i></i><span class="bmk-e"><span>EDUCATION</span></span></span></a>
   <nav class="dnav" id="dnav" aria-label="Main"></nav>
   <button class="ib" data-a="bell" aria-label="Notifications" id="bell"></button>
-  <button class="dav" data-a="menu" aria-label="Your account and menu" id="dav"></button></div></header>
+  <button class="ib dth" data-a="theme3" aria-label="Theme and colours" id="dth"></button>
+  <button class="dav" data-a="davM" aria-label="Your profile" aria-haspopup="menu" id="dav"></button>
+  <div class="dmenu" id="dmenu" role="menu"></div></div></header>
  <main class="main" id="main"></main>
  <footer class="dfoot" id="dfoot"></footer>
  <nav class="dock" id="dock" aria-label="Main"></nav>
