@@ -574,7 +574,7 @@ function tActs(t){const st=stOf(t),r=resOf(t.id)[0],id=esc3(t.id);let p;try{p=ty
   if(st==='wait')return `<button class="btn sm ghost" disabled>${ic('clock',15)}Opens ${fD(t.opens_at,{day:'numeric',month:'short'})}, ${fT(t.opens_at)}</button>${alBtn3(t.id)}`;
   if(st==='held')return `<button class="btn sm ghost" disabled>${ic('lock',14)}Result after ${p&&p.result_at?fD(p.result_at,{day:'numeric',month:'short'})+', '+fT(p.result_at):'the test closes'}</button>`;
   if(st==='closed')return r&&!p?`<button class="btn sm ghost" data-a="review" data-r="${esc3(r.id)}">View result</button>`:`<button class="btn sm ghost" disabled>${ic('lock',14)}Closed</button>`;
-  if(PDF3===null&&!pdf3Asked){pdf3Asked=1;loadPdf3().then(()=>{if(PDF3&&Object.keys(PDF3).length){try{if(scrOpen())redraw();else softRender()}catch(e){}}})}
+  pdf3Ask();
   const pdf=PDF3&&PDF3[t.id]?`<button class="btn sm ghost" data-a="pdfOpen" data-id="${id}">${ic('file',14)}Answer key PDF</button>`:'';
   const start=pdf+`<button class="btn sm${st==='done'?' ghost':' gold'}" data-a="test" data-id="${id}">${ic('play',14)}${st==='prog'?'Resume test':st==='done'?'Re-attempt':'Start test'}</button>`;
   return (r&&!p?`<button class="btn sm" data-a="review" data-r="${esc3(r.id)}">Result and solutions</button>`:'')+start}
@@ -663,9 +663,12 @@ function spDesc(sid){const s=sOf(sid),it=itemOfSeries(sid),m=MT(sid),ups=upgrade
 A.plan=el=>{TQ.plan=+el.dataset.i;redraw()};
 /* Resources: the series' files (schedule, syllabus, notes) grouped, each group opens its own list */
 const RESK=[['schedule','Schedule','cal'],['syllabus','Syllabus','list'],['notes','Notes and PDFs','file']];
-function spRes(sid){const fl=(sOf(sid).files||[]),G=RESK.map(k=>[k,fl.filter(f=>(f.kind||'notes')===k[0])]).filter(g=>g[1].length);
+function spRes(sid){const fl=(sOf(sid).files||[]),G=RESK.map(k=>[k,fl.filter(f=>(f.kind||'notes')===k[0])]).filter(g=>g[1].length);pdf3Ask();
+  const KT=testsOf(sid).filter(t=>PDF3&&PDF3[t.id]);   // v68: result & answer key PDFs (Google Drive)
+  const KH=KT.length?`<div class="stack" style="gap:10px"><p class="gh">Result &amp; answer key PDFs <span>${KT.length}</span></p><div class="card rows">${KT.map(t=>`<div class="row"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(PDF3[t.id].label||t.title)}</b><small>${esc3(t.title)}, Google Drive</small></span><button class="btn sm ghost" data-a="pdfOpen" data-id="${esc3(t.id)}">Open</button><button class="btn sm" data-a="pdfDl" data-id="${esc3(t.id)}">${ic('dl',15)}Download</button></div>`).join('')}</div></div>`:'';
+  if(!G.length&&KH)return KH;
   if(!G.length)return `<div class="card empty"><span class="ti">${ic('file',22)}</span><b>No study material yet</b><p>Schedules, syllabus and PDFs for this series will appear here.</p></div>`;
-  return `<div class="list">${G.map(([k,L],i)=>`<button class="card rsc" data-a="resOpen" data-id="${esc3(sid)}" data-k="${k[0]}"><span class="rsc-n">RE - ${String(i+1).padStart(2,'0')}</span><b>${k[1]}</b><small>${L.length} ${L.length===1?'file':'files'}</small>${ic('right',18)}</button>`).join('')}</div>`}
+  return KH+`<div class="list">${G.map(([k,L],i)=>`<button class="card rsc" data-a="resOpen" data-id="${esc3(sid)}" data-k="${k[0]}"><span class="rsc-n">RE - ${String(i+1).padStart(2,'0')}</span><b>${k[1]}</b><small>${L.length} ${L.length===1?'file':'files'}</small>${ic('right',18)}</button>`).join('')}</div>`}
 A.resOpen=el=>{const sid=el.dataset.id,k=RESK.find(x=>x[0]===el.dataset.k);push({t:k[1],s:sOf(sid).title,key:'res',html:()=>`<div class="card rows">${(sOf(sid).files||[]).filter(f=>(f.kind||'notes')===k[0]).map(f=>`<button class="row" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}"><span class="ti g">${ic(k[2],19)}</span><span><b>${esc3(f.title||f.name)}</b><small>${/\.pdf$/i.test(f.name||'')?'PDF':'Picture'}${f.size?`, ${f.size>1048576?(f.size/1048576).toFixed(1)+' MB':Math.max(1,Math.round(f.size/1024))+' KB'}`:''}</small></span>${ic('dl',18)}</button>`).join('')}</div>`})};
 /* Tests: category chips (the series' folders), a status filter, the banner from the admin, then the tests in order */
 const TSF=[['all','All'],['att','Attempted'],['non','Not attempted'],['res','Resume'],['up','Upcoming'],['miss','Missed']];
@@ -681,7 +684,8 @@ function tCard(t){const s=tState(t),r=resOf(t.id)[0],syl=((META||{}).syl||{})[t.
    <p class="tc3-m">${ic('hist',15)}<span>Attempts: ${t.attempts||0}${r&&t.best!=null&&t.best_max?`, best ${t.best}/${t.best_max}`:''}</span></p>
    ${s==='held'&&p&&p.result_at?`<p class="tc3-m">${ic('clock',15)}<span>Result after ${fD(p.result_at,{day:'numeric',month:'short'})}, ${fT(p.result_at)}</span></p>`:''}</div>
    <button class="tc3-go${act[2]?'':' off'}${act[2]==='alT'&&alOn3(t.id)?' alon':''}" ${act[2]==='test'||act[2]==='alT'?`data-a="${act[2]}" data-id="${esc3(t.id)}"`:act[2]==='review'?`data-a="review" data-r="${esc3(r.id)}"`:'disabled'}><span>${ic(act[0],20)}</span><small>${act[1]}</small></button>
-   ${syl||(r&&!p&&s==='att')?`<div class="tc3-f">${syl?`<button data-a="syl" data-id="${esc3(t.id)}">View syllabus</button>`:''}${r&&!p&&s==='att'?`<button data-a="review" data-r="${esc3(r.id)}">Result and solutions</button>`:''}</div>`:''}</article>`}
+   ${pdf3Ask()}${(()=>{const pdf=PDF3&&PDF3[t.id],again=s==='att'&&r&&!p;   // v68: re-attempt any number of times + answer key PDF
+     return syl||(r&&!p&&s==='att')||pdf?`<div class="tc3-f">${syl?`<button data-a="syl" data-id="${esc3(t.id)}">View syllabus</button>`:''}${r&&!p&&s==='att'?`<button data-a="review" data-r="${esc3(r.id)}">Result and solutions</button>`:''}${again?`<button data-a="test" data-id="${esc3(t.id)}">${ic('play',14)} Re-attempt</button>`:''}${pdf?`<button data-a="pdfOpen" data-id="${esc3(t.id)}">${ic('file',14)} Answer key PDF</button>`:''}</div>`:''})()}</article>`}
 const TORD=[['live','Live now'],['res','Continue'],['up','Upcoming'],['new','Available'],['held','Waiting for result'],['att','Attempted'],['miss','Missed'],['lock','Locked']];
 function spTests(sid){const all=testsOf(sid),F=(C().folders||[]).filter(f=>f.series_id===sid&&all.some(t=>t.folder_id===f.id)),loose=all.some(t=>!t.folder_id);
   if(TQ.tf!=='all'&&TQ.tf!=='none'&&!F.some(f=>f.id===TQ.tf))TQ.tf='all';
@@ -951,6 +955,7 @@ A.fileOpen=el=>fileGet(el.dataset.id,el.dataset.t||'');
 
 /* ---------- Notes & PDFs: notes of tests (Google Drive links) and the files of every series ---------- */
 let PDF3=null,pdf3Asked=0;
+function pdf3Ask(){if(PDF3===null&&!pdf3Asked){pdf3Asked=1;loadPdf3().then(()=>{if(PDF3&&Object.keys(PDF3).length){try{if(scrOpen())redraw();else softRender()}catch(e){}}})}return ''}
 function notesView(){return {t:'Notes & PDFs',s:'Study material of your test series',key:'notes',html:()=>{
   const T=(C().tests||[]).filter(t=>PDF3&&PDF3[t.id]),S=mine().filter(s=>(s.files||[]).length);
   if(PDF3===null)return '<div class="card sk" style="height:90px"></div><div class="card sk" style="height:90px"></div>';
