@@ -660,9 +660,9 @@ async function pdfLink(t) {
   const g = await AX.api.call('cbt_admin_test_pdf', 'get');
   if (!g || !g.ok) { if (g && g.error === 'missing') UI.toast('Run supabase_v51_test_pdf.sql in Supabase first.', { tone: 'warn' }); else UI.err(g); return; }
   const cur = (g.items || {})[String(t.id)] || {};
-  const v = await UI.prompt({ title: 'PDF notes link', label: 'Google Drive link', value: cur.url || '', required: false,
+  const v = await UI.prompt({ title: 'Result & answer key PDF (Google Drive link)', label: 'Google Drive link', value: cur.url || '', required: false,
     placeholder: 'https://drive.google.com/file/d/…/view',
-    hint: 'Share the file as "Anyone with the link → Viewer". Students see a PDF button next to this test. Leave empty to remove.' });
+    hint: 'Share the file as "Anyone with the link → Viewer". Students see an "Answer key PDF" button on this test (after its result time) and Open / Download in Notes & PDFs. Leave empty to remove.' });
   if (v == null) return;
   const url = String(v).trim();
   if (url && (url.length > 500 || !PDF_RE.test(url))) { UI.toast('Only drive.google.com or docs.google.com links.', { tone: 'bad' }); return; }

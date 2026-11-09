@@ -559,7 +559,9 @@ function tActs(t){const st=stOf(t),r=resOf(t.id)[0],id=esc3(t.id);let p;try{p=ty
   if(st==='wait')return `<button class="btn sm ghost" disabled>${ic('clock',15)}Opens ${fD(t.opens_at,{day:'numeric',month:'short'})}, ${fT(t.opens_at)}</button>${alBtn3(t.id)}`;
   if(st==='held')return `<button class="btn sm ghost" disabled>${ic('lock',14)}Result after ${p&&p.result_at?fD(p.result_at,{day:'numeric',month:'short'})+', '+fT(p.result_at):'the test closes'}</button>`;
   if(st==='closed')return r&&!p?`<button class="btn sm ghost" data-a="review" data-r="${esc3(r.id)}">View result</button>`:`<button class="btn sm ghost" disabled>${ic('lock',14)}Closed</button>`;
-  const start=`<button class="btn sm${st==='done'?' ghost':' gold'}" data-a="test" data-id="${id}">${ic('play',14)}${st==='prog'?'Resume test':st==='done'?'Re-attempt':'Start test'}</button>`;
+  if(PDF3===null&&!pdf3Asked){pdf3Asked=1;loadPdf3().then(()=>{if(PDF3&&Object.keys(PDF3).length){try{if(scrOpen())redraw();else softRender()}catch(e){}}})}
+  const pdf=PDF3&&PDF3[t.id]?`<button class="btn sm ghost" data-a="pdfOpen" data-id="${id}">${ic('file',14)}Answer key PDF</button>`:'';
+  const start=pdf+`<button class="btn sm${st==='done'?' ghost':' gold'}" data-a="test" data-id="${id}">${ic('play',14)}${st==='prog'?'Resume test':st==='done'?'Re-attempt':'Start test'}</button>`;
   return (r&&!p?`<button class="btn sm" data-a="review" data-r="${esc3(r.id)}">Result and solutions</button>`:'')+start}
 function tRow(t){const st=stOf(t),r=resOf(t.id)[0],fo=t.folder_id&&(C().folders||[]).find(f=>f.id===t.folder_id);
   return `<article class="card tr${['closed','lock'].includes(st)?' dim':''}"><div class="tr-h"><b>${esc3(t.title)}</b>${stBadge(t)}</div>
@@ -933,16 +935,21 @@ function fileSheet(id){const f=FILES3[id];openSheet(`<span class="ti g" style="m
 A.fileOpen=el=>fileGet(el.dataset.id,el.dataset.t||'');
 
 /* ---------- Notes & PDFs: notes of tests (Google Drive links) and the files of every series ---------- */
-let PDF3=null;
+let PDF3=null,pdf3Asked=0;
 function notesView(){return {t:'Notes & PDFs',s:'Study material of your test series',key:'notes',html:()=>{
   const T=(C().tests||[]).filter(t=>PDF3&&PDF3[t.id]),S=mine().filter(s=>(s.files||[]).length);
   if(PDF3===null)return '<div class="card sk" style="height:90px"></div><div class="card sk" style="height:90px"></div>';
   if(!T.length&&!S.length)return `<div class="card empty"><span class="ti">${ic('file',22)}</span><b>No notes yet</b><p>When your teacher adds notes or PDFs to your test series, they show up here.</p></div>`;
   return S.map(s=>`<div class="stack" style="gap:10px"><p class="gh">${esc3(s.title)}</p><div class="card rows">${s.files.map(f=>`<button class="row" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>${({schedule:'Schedule',syllabus:'Syllabus',notes:'Notes'})[f.kind]||'File'}</small></span>${ic('dl',18)}</button>`).join('')}</div></div>`).join('')
-   +(T.length?`<div class="stack" style="gap:10px"><p class="gh">Notes of tests</p><div class="card rows">${T.map(t=>`<button class="row" data-a="pdfOpen" data-id="${esc3(t.id)}"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(PDF3[t.id].label||t.title)}</b><small>${esc3(t.title)}, opens in Google Drive</small></span>${ic('right',18)}</button>`).join('')}</div></div>`:'')}}}
+   +(T.length?`<div class="stack" style="gap:10px"><p class="gh">Notes of tests</p><div class="card rows">${T.map(t=>`<div class="row"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(PDF3[t.id].label||t.title)}</b><small>${esc3(t.title)}, Google Drive</small></span><button class="btn sm ghost" data-a="pdfOpen" data-id="${esc3(t.id)}">Open</button><button class="btn sm" data-a="pdfDl" data-id="${esc3(t.id)}">${ic('dl',15)}Download</button></div>`).join('')}</div></div>`:'')}}}
 const pdfLinkOk=u=>typeof u==='string'&&u.length<=500&&/^https:\/\/(drive|docs)\.google\.com\/[A-Za-z0-9/_?=&%.#~+-]+$/.test(u);
 function loadPdf3(){return rpc('cbt_test_pdfs',{}).then(r=>{const o={};if(r&&r.ok&&r.items)for(const k in r.items){const x=r.items[k];if(/^[A-Za-z0-9_-]{1,64}$/.test(k)&&x&&pdfLinkOk(x.url))o[k]={url:x.url,label:String(x.label||'')}}PDF3=o}).catch(()=>{PDF3=PDF3||{}})}
 A.pdfOpen=el=>{const p=PDF3&&PDF3[el.dataset.id];if(!p||!pdfLinkOk(p.url)){toast3('PDF not available');return}const w=window.open(p.url,'_blank','noopener,noreferrer');if(w)w.opener=null};
+// v68: direct download of a Google Drive / Docs file
+const pdfDl3=u=>{let m=/\/file\/d\/([A-Za-z0-9_-]{10,})/.exec(u)||/[?&]id=([A-Za-z0-9_-]{10,})/.exec(u);
+  if(m&&/^https:\/\/drive\.google\.com\//.test(u))return 'https://drive.google.com/uc?export=download&id='+m[1];
+  m=/^https:\/\/docs\.google\.com\/(document|spreadsheets|presentation)\/d\/([A-Za-z0-9_-]{10,})/.exec(u);return m?'https://docs.google.com/'+m[1]+'/d/'+m[2]+'/export?format=pdf':u};
+A.pdfDl=el=>{const p=PDF3&&PDF3[el.dataset.id];if(!p||!pdfLinkOk(p.url)){toast3('PDF not available');return}const w=window.open(pdfDl3(p.url),'_blank','noopener,noreferrer');if(w)w.opener=null};
 function openNotes(){push(notesView());loadPdf3().then(()=>{if(top()&&top().key==='notes')redraw()})}
 
 /* ---------- one question card (Saved and Mistakes) ---------- */

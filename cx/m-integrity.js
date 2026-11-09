@@ -76,17 +76,32 @@ const API = AX.integrity = {
   }
 };
 
+/* v68: first attempts with 90 %+ in 6 minutes or less (supabase_v68_reattempt_cheat_pdf.sql, cbt_admin_suspects) */
+let SUSP = [];
+const mmss = s => Math.floor((s || 0) / 60) + 'm ' + String((s || 0) % 60).padStart(2, '0') + 's';
+function suspHtml(sp) {
+  if (!sp || !sp.ok) return sp && sp.error === 'missing' ? h`<div class="callout warn mb16">${icon('info')}<div class="sm">Cheating alerts: run <b>supabase_v68_reattempt_cheat_pdf.sql</b>, then <b>supabase_v35_admin_team.sql</b> once in Supabase.</div></div>` : '';
+  SUSP = sp.items || [];
+  return h`<div class="section-t">⚠️ Suspicious attempts (last 30 days) · ${SUSP.length}</div>
+    <p class="sm mut mb8">First attempts with 90 % or more marks in 6 minutes or less. Re-attempts are not counted. Check and tag 🚩, or mark "Looks fine".</p>
+    <div class="card pad0 list mb16">${SUSP.length ? join(SUSP, x => h`<div class="li"><span class="av sm" style="--c:#f59e0b">${icon('flag', 14)}</span><div class="grow"><div class="t">${x.name || 'Student'} <span class="xs mut">${fmt.mobile(x.mobile)}</span></div>
+        <div class="s">${x.title} · <b>${x.score}/${x.max}</b> in <b>${mmss(x.used)}</b> (test time ${x.duration} min) · ${fmt.dt(x.at)}</div></div>
+        ${x.flagged ? UI.pill('🚩 Tagged', 'bad') : can() ? h`<button class="btn sm danger" data-act="tag" data-id="${x.id}">🚩 Tag cheating</button>` : ''}${can() ? h`<button class="btn sm ghost" data-act="fine" data-id="${x.id}">Looks fine</button>` : ''}</div>`)
+      : UI.empty({ icon: 'checkCircle', title: 'Nothing suspicious', text: 'Nobody got 90 %+ in 6 minutes or less.' })}</div>`;
+}
+
 AX.mod({
   id: 'integrity', title: 'Integrity', icon: 'shieldCheck', group: 'Academics', order: 50, perm: 'integrity',
   sub: 'Cheating tags and suspensions.',
   async render(ctx) {
     ctx.head({ title: 'Integrity', sub: 'Report cheating from Results (🚩), suspend from here or from a student\'s profile. A suspended student sees a full-screen notice with a Support button until you lift it.' });
     AX.set(ctx.el, UI.skeleton(4));
-    const [r, cat] = await Promise.all([load(true), AX.data.catalog()]);
+    const [r, cat, sp] = await Promise.all([load(true), AX.data.catalog(), AX.api.call('cbt_admin_suspects', 'get', { days: 30 })]);
     if (!ctx.alive()) return;
     if (!r.ok) { AX.set(ctx.el, r.error === 'missing' ? h`<div class="card">${UI.empty({ tone: 'lock', icon: 'db', title: 'One-time setup needed', text: 'Run supabase_v24_cheating.sql once in Supabase → SQL Editor.' })}</div>` : UI.errorBox(r)); AX.act(ctx.el, { retry: () => ctx.reload() }); return; }
     const tt = id => ((cat.ok && cat.tests) || []).find(t => t.id === id)?.title || 'Test';
     AX.set(ctx.el, h`<div class="kpis">${UI.kpi({ label: 'Suspended now', value: CH.suspended.length, icon: 'ban', tone: 'bad' })}${UI.kpi({ label: 'Results tagged', value: CH.flags.length, icon: 'flag', tone: 'warn' })}${UI.kpi({ label: 'Students tagged', value: new Set(CH.flags.map(f => f.mobile)).size, icon: 'users' })}</div>
+      ${suspHtml(sp)}
       <div class="section-t">Suspended now · ${CH.suspended.length}</div>
       <div class="col gap16">${CH.suspended.length ? join(CH.suspended, s => h`<div class="card row wrap" style="gap:14px;border-left:3px solid var(--bad)">${UI.avatar(s.name || 'Student', s.mobile)}<div class="grow"><b>${s.name || 'Student'}</b> <span class="xs mut">${fmt.mobile(s.mobile)}</span><div class="sm mut">Since ${fmt.dt(s.at)} · ${s.until ? 'until ' + fmt.dt(s.until) : 'until you lift it'}</div>${s.reason ? h`<p class="sm mt4">${s.reason}</p>` : ''}</div>
           <a class="btn sm" href="${AX.u.wa(s.mobile, 'Hi ' + String(s.name || '').split(' ')[0] + ', ')}" target="_blank" rel="noopener">${icon('whatsapp', 15)} WhatsApp</a>${can() ? h`<button class="btn sm soft" data-act="lift" data-m="${s.mobile}" data-n="${s.name || ''}">${icon('check', 15)} Lift suspension</button>` : ''}</div>`)
@@ -97,6 +112,12 @@ AX.mod({
         : UI.empty({ icon: 'flag', title: 'No cheating reports', text: 'Tag a result from Results & analytics with the 🚩 button.' })}</div>`);
     AX.act(ctx.el, {
       retry: () => ctx.reload(),
+      tag(el) { const x = SUSP.find(s => s.id === el.dataset.id); if (x) API.report({ id: x.id, student: x.name || 'Student', mobile: x.mobile, test_id: x.test_id, title: x.title, score: x.score, max: x.max }); },
+      async fine(el) {
+        const y = await AX.api.call('cbt_admin_suspects', 'ok', { result_id: el.dataset.id });
+        if (!y.ok) return UI.toast(AX.errText(y), { tone: 'bad' });
+        AX.cache.drop('suspects'); UI.toast('Removed from the list'); ctx.reload();
+      },
       async lift(el) { if (await API.lift(el.dataset.m, el.dataset.n)) ctx.reload(); },
       sus: el => API.suspend(el.dataset.m, el.dataset.n, el.dataset.t),
       async unflag(el) {
@@ -109,8 +130,11 @@ AX.mod({
     const off = AX.on('integrity:changed', () => { if (ctx.alive()) ctx.reload(); else off(); });
   },
   async attention() {
-    const r = await load(); if (!r.ok) return [];
-    return CH.suspended.length ? [{ title: 'Students suspended', sub: 'Lift when the matter is solved', count: CH.suspended.length, go: '#/integrity', icon: 'ban', tone: 'gold' }] : [];
+    const [r, c] = await Promise.all([load(), AX.cache.get('suspects', () => AX.api.call('cbt_admin_suspects', 'count'), 60000)]);
+    const out = [];
+    if (c && c.ok && c.count) out.push({ title: 'Possible cheating', sub: 'Full marks in 6 minutes or less (last 7 days)', count: c.count, go: '#/integrity', icon: 'flag', tone: 'bad' });
+    if (r.ok && CH.suspended.length) out.push({ title: 'Students suspended', sub: 'Lift when the matter is solved', count: CH.suspended.length, go: '#/integrity', icon: 'ban', tone: 'gold' });
+    return out;
   }
 });
 })();
