@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=22;
+const V3VER=23;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -1553,6 +1553,8 @@ A.trMenu=()=>{const it=(a,i,t,s,c)=>`<button class="row${c?' '+c:''}" data-a="${
   openSheet(`<h2 id="sheetT">Tracker options</h2><div class="list trmn">${it('trRename','pen','Rename this week','Change the week name')}${trkLoad().cur>0?it('trCarry','swap','Carry over pending tasks','Copy unfinished tasks from '+esc3(trkLoad().weeks[trkLoad().cur-1].label)):''}${it('trAddWeek','cal','Add a new week','Copies your subjects with empty tasks')}${it('trSubj','book','Add a subject','In this week or every week')}${it('trTargets','target','Set targets','A task goal for each subject')}${it('trGrowth','chart','Growth','Progress across all weeks')}${it('trResetWeek','clock','Reset this week','Mark all tasks as pending')}${it('trResetAll','trash','Delete everything','All weeks, subjects and tasks','bad')}</div>`)};
 ['trSubj','trTargets','trGrowth','trRename'].forEach(k=>{const f=A[k];A[k]=el=>{if(layer){closeLayer();setTimeout(()=>f(el),250)}else f(el)}});
 V3H.push([/^#\/t$/,()=>openTracker()]);
+/* the account's copy arrived (another phone was newer): show it */
+addEventListener('cbt-keep',()=>{try{if(top()&&top().key==='trk'){TR3.sel=-1;trDraw()}}catch(e){}});
 
 /* ================= RANKS AND LEADERBOARDS in the new design =================
    Same server and cache as the classic Results page (app10.js): cbt_overall for the overall rank (average score
@@ -1712,6 +1714,8 @@ route=async function(){
   if(m3){closeLayer();while(STK.length)pop();try{history.replaceState(null,'','#/')}catch(e){}h='#/';const f=goThen;goThen=()=>{f&&f();m3[1](m3[0])}}
   if(!isNewHash(h)){toOld();return _route.apply(this,arguments)}
   toNew();
+  /* the profile, countdown and study tracker kept on the account (cbt_keep): fetched once per page load, as the classic pages do */
+  try{if(typeof keepPull==='function')setTimeout(keepPull,0)}catch(e){}
   if(!CAT||Date.now()-CATAT>30000){if(!CAT)main.innerHTML='<div class="card sk" style="height:220px;margin-top:8px"></div><div class="card sk" style="height:160px"></div><div class="card sk" style="height:200px"></div>';
     const ok=await loadCat(!!CAT);if(!ok){if(AUTH){toOld()}return}if(INTEST||!AUTH)return}
   if(NOTES===null)loadNotes().then(()=>{if(S.tab==='test')softRender()});
@@ -1726,7 +1730,8 @@ window.v3Disable=function(){lsSet('cbt_v3',false);closeLayer();unwind(()=>{docum
 if(v3On()&&typeof AUTH!=='undefined'&&AUTH&&!INTEST){boot();document.body.classList.add('v3on');if(!isNewHash(location.hash||'#/'))toOld();else route()}
 
 /* ================= REVIEW REQUEST after a test (both designs) =================
-   After every submitted test the student is asked to rate the test series: stars AND a short comment (at least 15
+   After every submitted test the student is asked to rate THAT TEST (v66: cbt_test_review_save, private to the admin;
+   before v66 is run, the test series is asked for instead): stars AND a short comment (at least 15
    letters) are needed to send. Closing once shows a gentle "just 20 seconds" note; closing again lets them go.
    Not asked again once they have written a review with a comment. Saved with cbt_review_save (v23), one review per
    series, which the student can change any time from the series page (Reviews). */
@@ -1764,10 +1769,14 @@ const RVI={star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.5 2.3
   heart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-9.2-9A5 5 0 0 1 12 5.6 5 5 0 0 1 21.2 11C19 15.6 12 20 12 20z"/></svg>'};
 const RVW=['','Poor','Could be better','Good','Very good','Excellent'];
 function rvClose(){if(!rvHost)return;const h=rvHost;rvHost=null;const w=h.shadowRoot.querySelector('.w');w.classList.remove('on');setTimeout(()=>h.remove(),RM?0:420)}
-async function rvAsk(sid,title,manual){
-  if(rvHost||!sid||typeof rpc!=='function')return;
+async function rvAsk(sid,title,manual,test){
+  if(rvHost||(!sid&&!test)||typeof rpc!=='function')return;
   if(!manual&&document.body.classList.contains('intest'))return;
-  let mine=null;try{const r=await rpc('cbt_review_mine',{p_series:sid});if(!r||!r.ok){if(manual&&typeof toast==='function')toast('Could not open reviews. Please try again.');return}mine=r.review}catch(e){return}
+  let mine=null;
+  /* one test (v66); if the server does not have it yet, the series as before */
+  if(test&&test.id){try{const r=await rpc('cbt_test_review_mine',{p_test:test.id});if(r&&r.ok)mine=r.review;else if(r&&r.error==='server'&&r.status===404){test=null}else return}catch(e){return}
+    if(!test&&!sid)return}
+  if(!test){try{const r=await rpc('cbt_review_mine',{p_series:sid});if(!r||!r.ok){if(manual&&typeof toast==='function')toast('Could not open reviews. Please try again.');return}mine=r.review}catch(e){return}}
   if(!manual&&mine&&String(mine.body||'').trim().length>=RVMIN)return;
   if(rvHost||(!manual&&document.body.classList.contains('intest')))return;
   const d=rvDark(),T=d?{s:'#1e1f22',s2:'#27282c',tx:'#ededee',mut:'#a3a5aa',line:'#34353a',line2:'#45464c',ink:'#ededee',on:'#161719',acc:'#d6b878',soft:'#2c271d'}
@@ -1778,7 +1787,7 @@ async function rvAsk(sid,title,manual){
    <div class="w" role="dialog" aria-modal="true" aria-labelledby="rvT"><div class="bg"></div><div class="c"><button class="x" aria-label="Close">${RVI.x}</button><div class="body"></div></div></div>`;
   const W=R.querySelector('.w'),B=R.querySelector('.body');
   const form=()=>{B.innerHTML=`<div class="ic">${RVI.star}</div><h2 id="rvT">${manual?'Your review':'How was your test?'}</h2>
-    <p class="s">Rate <b>${esc3(title||'this test series')}</b>. Your words help other students choose, and help us make every test better.</p>
+    <p class="s">${test?`Rate <b>${esc3(test.title||'this test')}</b>. Tell us about the questions, the level and the time. It goes straight to our team.`:`Rate <b>${esc3(title||'this test series')}</b>. Your words help other students choose, and help us make every test better.`}</p>
     <div class="st" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(n=>`<button role="radio" aria-checked="${rating===n}" aria-label="${n} star${n>1?'s':''}" data-n="${n}" class="${n<=rating?'on':''}">${RVI.star}</button>`).join('')}</div>
     <p class="lb">${rating?RVW[rating]:'Tap a star'}</p>
     <textarea maxlength="600" placeholder="What did you like? What can we do better? (at least ${RVMIN} letters)" aria-label="Your review">${esc3(mine&&mine.body||'')}</textarea>
@@ -1790,12 +1799,13 @@ async function rvAsk(sid,title,manual){
       b.classList.add('pop');setTimeout(()=>b.classList.remove('pop'),220);B.querySelector('.lb').textContent=RVW[rating];sync();const ta=B.querySelector('textarea');if(!ta.value.trim())ta.focus({preventScroll:true})}));
     B.querySelector('textarea').addEventListener('input',sync);B.querySelector('.go').addEventListener('click',send);sync()};
   const send=async()=>{const ta=B.querySelector('textarea'),go=B.querySelector('.go'),er=B.querySelector('.er'),body=ta.value.trim();if(!rating||body.length<RVMIN)return;
-    go.disabled=true;go.textContent='Sending…';er.textContent='';let r=null;try{r=await rpc('cbt_review_save',{p_series:sid,p_rating:rating,p_body:body,p_photo:''})}catch(e){}
-    if(!r||!r.ok){go.textContent='Submit review';sync();er.textContent=r&&r.error==='busy'?'Please wait a few seconds and try again.':r&&r.error==='not_unlocked'?'Reviews open once this series is unlocked for you.':'Could not send. Please check your internet and try again.';return}
-    try{SRV&&delete SRV[(itemOfSeries(sid)||{}).id];XD=null}catch(e){}
-    B.innerHTML=`<div class="ty"><div class="ic">${RVI.heart}</div><h2>Thank you!</h2><p class="s">${r.status==='pending'?'Your review will show after a quick check.':'Your review is live on the series page.'}</p></div>`;
+    go.disabled=true;go.textContent='Sending…';er.textContent='';let r=null;
+    try{r=test?await rpc('cbt_test_review_save',{p_test:test.id,p_rating:rating,p_body:body}):await rpc('cbt_review_save',{p_series:sid,p_rating:rating,p_body:body,p_photo:''})}catch(e){}
+    if(!r||!r.ok){go.textContent='Submit review';sync();er.textContent=r&&r.error==='busy'?'Please wait a few seconds and try again.':r&&r.error==='not_unlocked'?'Reviews open once this series is unlocked for you.':r&&r.error==='short'?`Please write at least ${RVMIN} letters.`:'Could not send. Please check your internet and try again.';return}
+    if(!test){try{SRV&&delete SRV[(itemOfSeries(sid)||{}).id];XD=null}catch(e){}}
+    B.innerHTML=`<div class="ty"><div class="ic">${RVI.heart}</div><h2>Thank you!</h2><p class="s">${test?'Your feedback has reached our team. It helps us make every test better.':r.status==='pending'?'Your review will show after a quick check.':'Your review is live on the series page.'}</p></div>`;
     setTimeout(rvClose,1800);if(scrOpen()&&top()&&top().key==='sp')setTimeout(()=>{loadExtras();redraw()},400)};
-  const nudge=()=>{nudged=true;B.innerHTML=`<div class="ty"><div class="ic">${RVI.heart}</div><h2 id="rvT">Just 20 seconds?</h2><p class="s">Two lines from you help hundreds of students pick the right test series, and tell us what to improve next.</p></div>
+  const nudge=()=>{nudged=true;B.innerHTML=`<div class="ty"><div class="ic">${RVI.heart}</div><h2 id="rvT">Just 20 seconds?</h2><p class="s">${test?'Two lines from you tell us what to improve in the next test.':'Two lines from you help hundreds of students pick the right test series, and tell us what to improve next.'}</p></div>
     <button class="go">Write my review</button><button class="ln">Not now</button>`;B.querySelector('.go').addEventListener('click',form);B.querySelector('.ln').addEventListener('click',rvClose)};
   R.querySelector('.x').addEventListener('click',()=>{const ta=B.querySelector('textarea');if(!manual&&!nudged&&!(ta&&ta.value.trim().length>=RVMIN))nudge();else rvClose()});
   R.querySelector('.bg').addEventListener('click',()=>{if(manual)rvClose()});
@@ -1803,8 +1813,8 @@ async function rvAsk(sid,title,manual){
 /* after a test is submitted (result shown, or "result after …"): ask once the screen has settled */
 (function(){if(typeof sendPending!=='function')return;let just=null;
   const _sp=sendPending;sendPending=function(it){try{const L=(typeof CAT!=='undefined'&&CAT)||null,t=L&&(L.tests||[]).find(x=>x.id===(it&&it.tid)),s=t&&(L.series||[]).find(x=>x.id===t.series_id);
-    just=s&&s.unlocked?{sid:s.id,title:s.title,at:Date.now()}:null}catch(e){just=null}return _sp.apply(this,arguments)};
-  const after=()=>{if(!just||Date.now()-just.at>120000)return;const j=just;just=null;setTimeout(()=>rvAsk(j.sid,j.title,false),1400)};
+    just=t?{sid:s&&s.unlocked?s.id:null,title:s&&s.title,test:{id:t.id,title:t.title},at:Date.now()}:null}catch(e){just=null}return _sp.apply(this,arguments)};
+  const after=()=>{if(!just||Date.now()-just.at>120000)return;const j=just;just=null;setTimeout(()=>rvAsk(j.sid,j.title,false,j.test),1400)};
   ['showHeld','showResult'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;window[n]=function(){const r=f.apply(this,arguments);try{after()}catch(e){}return r}})})();
 })();
 

@@ -1,5 +1,5 @@
 /* ===== app26: profile details + exam countdown are kept on the account =====
-   Server: supabase_v56_student_keep.sql (cbt_keep get | save). Before it is run the app works as before: the details
+   Server: supabase_v56_student_keep.sql (cbt_keep get | save); v66 adds the study tracker (supabase_v66_tracker_keep.sql). Before it is run the app works as before: the details
    stay on this phone only and nothing here makes a request that fails twice.
    Why: the profile (photo, alternate phone, school, city, class, exam, about) and the exam countdown lived only in
    one browser's storage. Clearing site data, a full phone, or opening the site in another browser / on another phone
@@ -9,10 +9,12 @@
    what only this phone has is sent up once, so existing profiles are backed up without the student doing anything.
    A countdown the student removes stays removed on their other phones. */
 const KEEP={on:undefined,mob:null,q:null,tm:0,skip:0,busy:0};
-const keepWhat=k=>AUTH?(k==='cbt_pf_'+AUTH.mobile?'pf':k==='cbt_cd_'+AUTH.mobile?'cd':''):'';
+const keepWhat=k=>AUTH?(k==='cbt_pf_'+AUTH.mobile?'pf':k==='cbt_cd_'+AUTH.mobile?'cd':k==='cbt_trk_'+AUTH.mobile?'trk':k==='cbt_trkd_'+AUTH.mobile?'trkd':''):'';
+/* v66: the study tracker goes with them; cbt_trkat_<mobile> is when it last changed on this phone (the newest copy wins) */
+const keepTrkAt=()=>AUTH?+LS.get('cbt_trkat_'+AUTH.mobile,0)||0:0;
 {const _s=LS.set,_d=LS.del;
-  LS.set=function(k,v){const r=_s.call(this,k,v),w=keepWhat(k);if(w&&!KEEP.skip)keepQ(w,v);return r};
-  LS.del=function(k){const r=_d.call(this,k),w=keepWhat(k);if(w&&!KEEP.skip)keepQ(w,null);return r};
+  LS.set=function(k,v){const r=_s.call(this,k,v),w=keepWhat(k);if(w&&!KEEP.skip){if(w==='trk'){const at=Date.now();_s.call(this,'cbt_trkat_'+AUTH.mobile,at);if(JSON.stringify(v||{}).length<140000){keepQ('trk',v);keepQ('trkat',at)}}else keepQ(w,v)}return r};
+  LS.del=function(k){const r=_d.call(this,k),w=keepWhat(k);if(w&&!KEEP.skip){if(w==='trk'){const at=Date.now();_s.call(this,'cbt_trkat_'+AUTH.mobile,at);keepQ('trk',null);keepQ('trkat',at)}else keepQ(w,null)}return r};
 }
 function keepQ(w,v){
   if(KEEP.on===false||!AUTH)return;
@@ -63,11 +65,26 @@ async function keepPull(){
       if(r.cdgone){KEEP.skip=1;try{LS.del('cbt_cd_'+mob)}finally{KEEP.skip=0}back=true}
       else up.cd=lc;
     }
+    // study tracker (v66): the newer copy wins; a phone with no plan yet takes the account's. Day counts: the larger wins.
+    if('trkat' in r){
+      const lt=LS.get('cbt_trk_'+mob,null),lat=keepTrkAt(),sat=+r.trkat||0;
+      const empty=!lt||!Array.isArray(lt.weeks)||!lt.weeks.some(w=>(w.subjects||[]).length);
+      if(r.trk&&Array.isArray(r.trk.weeks)&&(empty||sat>lat)){
+        KEEP.skip=1;try{LS.set('cbt_trk_'+mob,r.trk);LS.set('cbt_trkat_'+mob,sat||Date.now())}finally{KEEP.skip=0}
+        try{if(typeof TK!=='undefined')TK=null}catch(e){}back=true;
+      }else if(!empty&&(!r.trk||lat>sat)&&JSON.stringify(lt).length<140000){up.trk=lt;up.trkat=lat||Date.now()}
+      const ld=LS.get('cbt_trkd_'+mob,{})||{},sd=r.trkd||{},md=Object.assign({},sd);
+      for(const k in ld)md[k]=Math.max(+ld[k]||0,+md[k]||0);
+      const same=(a,b)=>Object.keys(a).length===Object.keys(b).length&&Object.keys(a).every(k=>+a[k]===+b[k]);
+      if(!same(md,ld)){KEEP.skip=1;try{LS.set('cbt_trkd_'+mob,md)}finally{KEEP.skip=0}back=true}
+      if(!same(md,sd))up.trkd=md;
+    }
     if(Object.keys(up).length){const x=await rpc('cbt_keep',{p_action:'save',p_data:up});if(x&&x.error==='server'&&x.status===404)KEEP.on=false}
     if(back&&AUTH&&AUTH.mobile===mob){
       try{pfHdr()}catch(e){}
       try{if(typeof cdRefresh==='function')cdRefresh()}catch(e){}
       try{if((location.hash||'#/')==='#/'&&typeof route==='function'&&!INTEST)route()}catch(e){}
+      try{dispatchEvent(new Event('cbt-keep'))}catch(e){}
     }
   }catch(e){}finally{KEEP.busy=0}
 }
