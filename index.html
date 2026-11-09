@@ -3,7 +3,9 @@
 <head>
 <meta charset="utf-8">
 <script>/* never inside another site's frame (clickjacking) */if(window.top!==window.self){try{window.top.location.replace(window.location.href)}catch(e){}document.documentElement.style.display='none'}</script>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<style>/* app-like on phones: no double-tap zoom, no grey tap flash, no zoom when a field gets focus */html{touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%;text-size-adjust:100%}@media (max-width:820px){input,select,textarea{font-size:16px}}</style>
+<script>/* iPhone Safari ignores user-scalable=no: block its pinch zoom here */document.addEventListener("gesturestart",function(e){e.preventDefault()},{passive:false});</script>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co; frame-src 'self' blob: data:; media-src 'self' data: blob:; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="theme-color" content="#f3f6f9">
@@ -1821,7 +1823,7 @@ if(base)h.dataset.lite='1';try{if(n.getBattery)n.getBattery().then(function(b){v
 <script>(function(){var h=document.documentElement;function g(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}try{var ds='classic';/* the new look (design-v2.css) is switched off: everyone gets the original design */h.dataset.ds=ds;var t=g('cbt_theme');if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';h.dataset.accent=ds==='v2'?(g('cbt_accent_v2')||'gold'):(g('cbt_accent')||'cyber')}catch(e){h.dataset.ds='classic';h.dataset.theme='light';h.dataset.accent='cyber'}})()</script>
 <script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6', 'app7', 'app8', 'app9', 'app10', 'app11', 'app12', 'app13', 'app14', 'app15', 'app16', 'app17', 'app18', 'app19', 'app21', 'app22', 'app23', 'app24', 'app25', 'app26', 'app28'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
 <script src="config.js?v=12"></script>
-<link rel="stylesheet" href="web.css?v=6">
+<link rel="stylesheet" href="web.css?v=7">
 <link rel="stylesheet" href="login.css?v=1">
 </head>
 <body>
@@ -1929,7 +1931,7 @@ try{}catch(e){}})();</script>
 <script src="app27.js?v=2" onerror="(window.__miss=window.__miss||[]).push('app27.js')"></script>
 <script src="app28.js?v=2" onerror="(window.__miss=window.__miss||[]).push('app28.js')"></script>
 <!-- new student design (beta): off by default, turned on from the menu; the classic design stays as it is -->
-<script src="v3.js?v=28"></script>
+<script src="v3.js?v=29"></script>
 
 <script>
 /* blur the page behind whenever the side menu / a pop-up / a sheet is open (watches #layer) */

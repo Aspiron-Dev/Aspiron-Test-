@@ -76,3 +76,6 @@ body.intest .wfoot{display:none!important}
 }
 /* sign-in page in a browser: the footer with the policy links sits right under the card */
 html.web body.wout #app{min-height:calc(100dvh - 150px)}
+/* the new design (v3) has its own header, menu and bottom bar: the classic side menu and footer stay hidden under it */
+html.web body.v3on:not(.v3old) #wside,html.web body.v3on:not(.v3old) .wfoot{display:none!important}
+html.web body.v3on:not(.v3old){--wsw:0px}
