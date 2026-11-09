@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=23;
+const V3VER=25;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -581,7 +581,7 @@ A.xp=el=>{const x=(STORE||[]).find(i=>i.id===el.dataset.id);if(!x)return;loadExt
 A.openSD=el=>{const sid=el.dataset.id;if(!sOf(sid))return;loadExtras();loadMeta();if(STORE===null)loadStore();TQ.xt=el.dataset.t||'r';TQ.tf='all';TQ.ts='all';TQ.plan=null;closeLayer();push(ownedPage(sid))};
 A.xt=el=>{TQ.xt=el.dataset.v;redraw()};
 A.sf=el=>{TQ.sf=el.dataset.v;redraw()};
-A.oldSeries=el=>oldHash('#/s/'+el.dataset.id);   // the classic folder page (folders, notes and PDFs of a series)
+A.oldSeries=el=>openSeriesAny(el.dataset.id,'r');   // the series' folders, tests, notes and PDFs in the new design
 A.toStore=()=>{closeLayer();unwind(()=>{if(S.tab==='test'){scrollTo({top:0,behavior:RM?'auto':'smooth'});return}go('test')})};
 
 /* ================= MY TEST SERIES + the series page (Description | Resources | Tests | Reviews) =================
@@ -1629,6 +1629,14 @@ A.rfCopyLink=()=>{if(RF3&&RF3.code)rfCopy3(rfLink(RF3.code),'Link copied')};
 A.rfShare=async()=>{if(!RF3||!RF3.code)return;const t=rfText(RF3.code);if(navigator.share){try{await navigator.share({title:'Aspiron Education',text:t});return}catch(e){if(e&&e.name==='AbortError')return}}rfCopy3(t,'Message copied. Paste it in WhatsApp or Telegram.')};
 A.rfWa=()=>{if(!RF3||!RF3.code)return;const w=window.open('https://wa.me/?text='+encodeURIComponent(rfText(RF3.code)),'_blank','noopener,noreferrer');if(w)w.opener=null};
 V3H.push([/^#\/refer$/,()=>openRefer()]);
+/* every other classic address opens its page in the new design (links in notices, notifications, shared links) */
+function openSeriesAny(sid,tab){const s=sOf(sid);if(!s){go('test');return}loadExtras();loadMeta();if(STORE===null)loadStore();TQ.tf='all';TQ.ts='all';TQ.plan=null;closeLayer();
+  const x=itemOfSeries(sid);if(!s.is_free&&!s.unlocked&&x){TQ.xt='d';push(seriesPage({item:x,sid:null}));return}TQ.xt=tab||'t';push(ownedPage(sid))}
+V3H.push([/^#\/s\/([^/?#]+)$/,m=>openSeriesAny(decodeURIComponent(m[1]),'t')],
+  [/^#\/f\/([^/?#]+)$/,m=>{const f=((C().folders)||[]).find(x=>x.id===decodeURIComponent(m[1]));if(f)openSeriesAny(f.series_id,'t');else go('test')}],
+  [/^#\/m$/,()=>openMistakes()],[/^#\/b$/,()=>openSaved()],[/^#\/notes$/,()=>openNotes()],[/^#\/n$/,()=>A.bell()],
+  [/^#\/h\/.+$/,()=>A.hist()],[/^#\/(series|my)$/,()=>A.mySeries()],
+  [/^#\/lib$/,()=>go('lib')],[/^#\/me$/,()=>go('stats')]);
 
 /* ================= FIRST-TIME SETUP in the new design =================
    Shown once per student on this phone (cbt_v3_onb_<mobile>) when the profile has no class or target exam yet:
@@ -1663,15 +1671,21 @@ function openOnb(){const p=stuProf();OB.d={cls:p.cls||'',exam:p.exam||''};OB.st=
     if(k==='inst'){try{A.setInstall()}catch(err){}}})}
 function obClose(done){lsSet(obKey(),1);const el=OB.el;OB.el=null;if(!el)return;el.classList.remove('open');setTimeout(()=>el.remove(),RM?0:420);if(done)toast3('All set. You can change these in your profile.');try{softRender()}catch(e){}}
 
-/* ================= MENU: the classic menu's items, plus the switch back ================= */
-A.menu=()=>{const u=unread(),mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' on':''}${cls||''}" data-a="m" data-k="${k}">${ic(i)}<span>${t}</span>${extra?`<em>${extra}</em>`:''}</button>`;
-  drawer.innerHTML=`<div class="hero pcard"><div class="who">${avatar()}<div style="min-width:0"><b>${esc3(stuName())}</b><small class="mut">${esc3(stuMeta())}</small></div></div><button class="btn sm onhero ghost blk" data-a="m" data-k="profile">View profile</button></div>
-  <div class="mgp">${mi('sun','Theme settings','theme',0,THEMES[resolveMode(TH.mode)].name)}</div><div class="mdiv"></div>
-  <div class="mgp">${mi('home','Home','home',S.tab==='home')}${mi('tests','Test Series','series',S.tab==='test')}${mi('hist','Test History','history')}${mi('pen','Mistake Notebook','mistakes')}${mi('bookmark','Saved Questions','saved')}${mi('cal','Study Tracker','tracker')}${mi('bell','Notifications','notif',0,u?u+' new':'')}${mi('target','Exam Countdown','cd')}</div><div class="mdiv"></div>
-  <div class="mgp">${mi('gear','Settings','settings')}${mi('info','About Us','about')}${mi('file','Terms & Conditions','terms')}${mi('file','Privacy Policy','privacy')}${mi('file','Refund Policy','refund')}${mi('mail','Contact Us','contact')}</div><div class="mdiv"></div>
-  ${mi('swap','Switch to the classic design','classic',0,'','')}${mi('out','Logout','logout',0,'',' out')}`;openLayer(drawer)};
+/* ================= MENU: the classic menu's look (profile on top, grouped list, NEW tags, Logout last) =================
+   About two thirds of the screen wide, the page behind blurred, and the items come in one after another from the top. */
+A.menu=()=>{const u=unread();let n=0;const web=!standalone3();
+  const mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' on':''}${cls||''}" data-a="m" data-k="${k}" style="--i:${n++}">${ic(i)}<span>${t}</span>${extra||''}</button>`;
+  const nw='<em class="mnew">NEW</em>',gh=t=>`<p class="mgh" style="--i:${n++}">${t}</p>`;
+  drawer.innerHTML=`<div class="mtop" style="--i:${n++}"><button class="mx" data-a="close" aria-label="Close menu">${ic('x',18)}</button>${avatar('mav')}<b>${esc3(stuName())}</b><small>${esc3(stuMeta())}</small><button class="mvp" data-a="m" data-k="profile">View Profile <span aria-hidden="true">→</span></button></div>
+  <div class="mlist">${gh('Study')}${mi('home','Home','home',S.tab==='home')}${mi('tests','Test Series','series',S.tab==='test')}${mi('lib','Library','lib',S.tab==='lib')}${mi('pyq','PYQ Analysis','pyq',0,nw)}${mi('qb','Question Bank','qb',0,nw)}${mi('spark','Test Generator','gen',0,nw)}
+   ${gh('My progress')}${mi('trophy','Results & Ranks','ranks')}${mi('hist','Test History','history')}${mi('pen','Mistake Notebook','mistakes')}${mi('bookmark','Saved Questions','saved')}${mi('cal','Study Tracker','tracker')}
+   ${gh('Explore')}${mi('layers','Store','store')}${mi('gift','Refer & Earn','refer')}${mi('bell','Notifications','notif',0,u?`<em class="mcnt">${u}</em>`:'')}${mi('target','Exam Countdown','cd')}
+   ${gh('Help & settings')}${mi('sun','Theme Settings','theme',0,`<em class="mval">${THEMES[resolveMode(TH.mode)].name}</em>`)}${mi('gear','Settings','settings')}${mi('info','About Us','about')}${mi('mail','Contact Us','contact')}
+   ${web?gh('Policies')+mi('file','Terms & Conditions','terms')+mi('file','Privacy Policy','privacy')+mi('file','Refund Policy','refund'):''}
+   <div class="mdiv" style="--i:${n++}"></div>${mi('swap','Switch to the classic design','classic',0,'',' sm')}${mi('out','Logout','logout',0,'',' mout')}</div>`;
+  drawer.scrollTop=0;openLayer(drawer)};
 A.m=el=>{const k=el.dataset.k;closeLayer();
-  const M={profile:A.profile,theme:openTheme,home:()=>go('home'),series:()=>go('test'),history:A.hist,mistakes:()=>openMistakes(),saved:()=>openSaved(),tracker:()=>openTracker(),notif:A.bell,cd:A.cdEdit,
+  const M={profile:A.profile,theme:openTheme,home:()=>go('home'),series:()=>go('test'),lib:()=>go('lib'),pyq:()=>openPyq(),qb:()=>openQB(),gen:()=>openGen(),ranks:()=>openRanks(),refer:()=>openRefer(),store:()=>{location.href='store'},history:A.hist,mistakes:()=>openMistakes(),saved:()=>openSaved(),tracker:()=>openTracker(),notif:A.bell,cd:A.cdEdit,
    settings:A.settings,about:A.setAbout,terms:A.setTerms,privacy:()=>window.open('privacy','_blank','noopener'),refund:()=>window.open('refund','_blank','noopener'),contact:A.setHelp,
    classic:()=>window.v3Disable(),logout:A.setOut};
   setTimeout(()=>{(M[k]||(()=>{}))()},140)};
