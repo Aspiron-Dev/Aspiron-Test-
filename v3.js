@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=25;
+const V3VER=27;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -57,7 +57,7 @@ const P={star:'<path d="M11.5 2.3a.6.6 0 0 1 1 0l2.6 5.4 5.9.9a.6.6 0 0 1 .3 1l-
  tools:'<rect class="f" x="3.5" y="3.5" width="7" height="7" rx="2"/><rect class="f" x="13.5" y="3.5" width="7" height="7" rx="2"/><rect class="f" x="3.5" y="13.5" width="7" height="7" rx="2"/><path d="M17 13.8v6.4"/><path d="M13.8 17h6.4"/>',
  lib:'<rect class="f" x="3.5" y="4" width="4.6" height="16.5" rx="1.3"/><rect class="f" x="9.7" y="4" width="4.6" height="16.5" rx="1.3"/><rect class="f" x="16.2" y="4.6" width="4.6" height="16" rx="1.3" transform="rotate(-12 18.5 12.6)"/><path d="M5.8 8h0"/><path d="M12 8h0"/>',
  stats:'<rect class="f" x="3.5" y="12" width="4.6" height="8.5" rx="1.3"/><rect class="f" x="9.7" y="7" width="4.6" height="13.5" rx="1.3"/><rect class="f" x="15.9" y="3.5" width="4.6" height="17" rx="1.3"/>',
- menu:'<path d="M4 8.5h16"/><path d="M4 15.5h10"/>',
+ menu:'<path d="M4.5 6.5h15"/><path d="M8 12h8"/><path d="M4.5 17.5h15"/>',
  bell:'<path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/>',
  back:'<path d="m15 18-6-6 6-6"/>',right:'<path d="m9 18 6-6-6-6"/>',down:'<path d="m6 9 6 6 6-6"/>',x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
  check:'<path d="M20 6 9 17l-5-5"/>',checks:'<path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/>',
@@ -210,7 +210,7 @@ function syncDock(){dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab))
 let timers=[];
 const every=(fn,ms)=>{const t=setInterval(fn,ms);timers.push(t);return t};
 function render(anim){timers.forEach(clearInterval);timers=[];main.dataset.tab=S.tab;try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please switch to the classic design from the menu and tell us.</p></div>`}
-  main.classList.remove('in');if(anim&&!RM){void main.offsetWidth;main.classList.add('in')}try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);reveal(main)}
+  main.classList.remove('in','swl','swr');if(anim&&!RM){void main.offsetWidth;main.classList.add(SWD==='l'?'swl':SWD==='r'?'swr':'in')}SWD='';try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);reveal(main)}
 /* content below the first screen fades up into place as it scrolls into view (once; nothing hides if the browser cannot) */
 let rvIO=null;
 function reveal(r){if(RM||!r||!('IntersectionObserver' in window))return;
@@ -365,12 +365,19 @@ A.wkPick=el=>{const k=+el.dataset.k,y=Math.floor(k/12),m=k%12,first=new Date(y,m
 A.oldTracker=()=>openTracker();
 
 /* ---------- notifications (the classic notices) ---------- */
-function syncBell(){const b=$('#bell');if(!b)return;const u=unread();b.innerHTML=ic('bell',21)+`<span class="dot${u?'':' off'}"></span>`;b.setAttribute('aria-label',u?`Notifications, ${u} unread`:'Notifications')}
+function syncBell(){const b=$('#bell');if(!b)return;const u=unread();b.innerHTML=ic('bell',20)+`<span class="dot${u?'':' off'}">${u?(u>9?'9+':u):''}</span>`;b.setAttribute('aria-label',u?`Notifications, ${u} unread`:'Notifications')}
 const grpOf=t=>{const k=Math.round((day0(nowMs())-day0(t))/DAY);return k<=0?'Today':k===1?'Yesterday':'Earlier'};
-function notifView(){return {t:'Notifications',s:unread()?`${unread()} unread`:'All caught up',key:'notif',right:()=>`<button class="ib" data-a="readAll" aria-label="Mark all as read">${ic('checks',19)}</button>`,
-  html:()=>{const L=(NOTES||[]).slice().sort((a,b)=>(b.at||0)-(a.at||0)),G=[...new Set(L.map(n=>grpOf(n.at)))],s=seenAt();
-  return NOTES===null?`<div class="card rows"><div class="item sk" style="height:70px"></div><div class="item sk" style="height:70px;margin-top:8px"></div></div>`:L.length?G.map(g=>`<div class="stack" style="gap:10px"><p class="gh">${g}</p><div class="card rows">${L.filter(n=>grpOf(n.at)===g).map(n=>`<button class="nt${n.at>s?' un':''}" data-a="openNote" data-id="${esc3(n.id)}"><span class="ti">${ic(n.img?'file':n.link?'mega':'bell',19)}</span><span style="min-width:0"><span class="nh"><b>${esc3(n.title||'Announcement')}</b><time>${n.at?dayWord(n.at):''}</time></span><p>${esc3((n.text||'').slice(0,120))}</p></span></button>`).join('')}</div></div>`).join('')
-   :`<div class="card empty"><span class="ti">${ic('bell',22)}</span><b>No notifications yet</b><p>Notices from Aspiron show up here.</p></div>`}}}
+let NF='all';
+const ntKind=n=>n.img?['img','Picture','file']:n.link?['link',n.label||'Link','mega']:['msg','Notice','bell'];
+function notifView(){return {t:'Notifications',get s(){return unread()?`${unread()} unread`:'All caught up'},key:'notif',right:()=>`<button class="ib" data-a="readAll" aria-label="Mark all as read">${ic('checks',19)}</button>`,
+  html:()=>{if(NOTES===null)return '<div class="card sk" style="height:96px"></div><div class="card sk" style="height:96px"></div><div class="card sk" style="height:96px"></div>';
+  const s=seenAt(),All=(NOTES||[]).slice().sort((a,b)=>(b.at||0)-(a.at||0)),un=All.filter(n=>n.at>s).length,L=NF==='un'?All.filter(n=>n.at>s):All,G=[...new Set(L.map(n=>grpOf(n.at)))];
+  if(!All.length)return `<div class="nte"><span class="nte-i">${ic('bell',30)}</span><b>You’re all caught up</b><p>Test alerts, results and notices from Aspiron will show up here.</p></div>`;
+  return `<div class="ntt"><div class="seg"><button class="${NF==='all'?'on':''}" data-a="ntF" data-v="all">All<small>${All.length}</small></button><button class="${NF==='un'?'on':''}" data-a="ntF" data-v="un">Unread<small>${un}</small></button></div>${un?`<button class="lnk" data-a="readAll">${ic('checks',16)}Mark all read</button>`:''}</div>
+   ${L.length?G.map(g=>`<section class="nts"><p class="gh">${g}</p>${L.filter(n=>grpOf(n.at)===g).map((n,i)=>{const k=ntKind(n),u=n.at>s;
+     return `<button class="nt3 k-${k[0]}${u?' un':''}" data-a="openNote" data-id="${esc3(n.id)}" style="--d:${Math.min(i,8)*35}ms"><span class="nt3-i">${ic(k[2],19)}</span><span class="nt3-b"><span class="nt3-h"><b>${esc3(n.title||'Announcement')}</b>${u?'<i class="nt3-dot" aria-label="Unread"></i>':''}</span><p>${esc3((n.text||'').replace(/\s+/g,' ').slice(0,160))}</p><span class="nt3-m"><time>${n.at?dayWord(n.at):''}</time>${k[0]!=='msg'?`<em>${esc3(k[1])}</em>`:''}</span></span>${ic('right',16)}</button>`}).join('')}</section>`).join('')
+    :`<div class="nte sm"><span class="nte-i">${ic('checks',26)}</span><b>No unread notices</b><p>You have read everything.</p></div>`}`}}}
+A.ntF=el=>{NF=el.dataset.v;qbKeep()};
 let bellBusy=false;
 A.bell=()=>{if(bellBusy||(top()&&top().key==='notif'))return;bellBusy=true;closeLayer();const b=$('#bell');b.classList.remove('ringing');void b.offsetWidth;b.classList.add('ringing');setTimeout(()=>b.classList.remove('ringing'),700);
   setTimeout(()=>{push(notifView());bellBusy=false;loadNotes().then(()=>{if(top()&&top().key==='notif'){redraw();$('#scrS').textContent=unread()?`${unread()} unread`:'All caught up'}})},RM?0:180)};
@@ -1707,6 +1714,45 @@ A.thp=el=>{THP.pal[resolveMode(THP.mode)]=el.dataset.v;applyTheme(THP);redraw()}
 A.thApply=()=>{TH=clone(THP);saveTheme();toast3('Theme applied: '+themeLabel())};
 A.thReset=()=>{THP=clone(DEF_TH);applyTheme(THP);redraw();toast3('Default theme shown. Tap Apply theme to keep it.')};
 
+
+/* ================= SWIPE BETWEEN TABS, and SLIDE ALONG THE DOCK =================
+   Like a phone's home screens: drag the screen left / right to go to the next / previous tab (the page follows the
+   finger; a short flick is enough). Tapping the dock works as before. On the dock, keep the finger down and slide it:
+   each tab it passes is shown, with a light buzz on every step. Inner rows that scroll sideways (chips, posters,
+   carousels) keep their own swipe; vertical scrolling is untouched. */
+const hap=ms=>{try{navigator.vibrate&&navigator.vibrate(ms||8)}catch(e){}};
+const tabIx=()=>Math.max(0,NAV.findIndex(n=>n[0]===S.tab));
+let SWD='';
+function swTo(i,dir){if(i<0||i>=NAV.length||NAV[i][0]===S.tab)return false;SWD=dir||'';hap(8);go(NAV[i][0]);return true}
+function hScroller(el){for(let e=el;e&&e!==main;e=e.parentElement){if(e.closest&&e.closest('[data-noswipe],input,textarea,select,[contenteditable]'))return true;
+  if(e.scrollWidth>e.clientWidth+4){const o=getComputedStyle(e).overflowX;if(o==='auto'||o==='scroll')return true}}return false}
+function swipeInit(){if(swipeInit.done)return;swipeInit.done=true;
+  /* ---- the screen ---- */
+  let x0=0,y0=0,t0=0,dx=0,mode='',w=1;
+  const reset=anim=>{main.style.transition=anim&&!RM?'transform .38s cubic-bezier(.2,.9,.25,1),opacity .38s':'';main.style.transform='';main.style.opacity='';setTimeout(()=>{main.style.transition=''},400)};
+  main.addEventListener('touchstart',e=>{mode='';dx=0;if(e.touches.length!==1||STK.length||layer||INTEST||hScroller(e.target)){mode='no';return}
+    const p=e.touches[0];x0=p.clientX;y0=p.clientY;t0=Date.now();w=main.clientWidth||window.innerWidth},{passive:true});
+  main.addEventListener('touchmove',e=>{if(mode==='no'||mode==='v'||e.touches.length!==1)return;const p=e.touches[0],mx=p.clientX-x0,my=p.clientY-y0;
+    if(!mode){if(Math.abs(mx)<10&&Math.abs(my)<10)return;mode=Math.abs(mx)>Math.abs(my)*1.15?'h':'v';if(mode==='v')return}
+    e.preventDefault();const i=tabIx(),edge=(mx>0&&i===0)||(mx<0&&i===NAV.length-1);dx=edge?mx*.25:mx;
+    if(!RM){main.style.transition='';main.style.transform=`translate3d(${dx}px,0,0)`;main.style.opacity=String(1-Math.min(.35,Math.abs(dx)/w*.6))}},{passive:false});
+  const end=()=>{if(mode!=='h'){mode='';return}mode='';const v=Math.abs(dx)/Math.max(1,Date.now()-t0),i=tabIx(),go2=Math.abs(dx)>Math.min(90,w*.22)||(v>.45&&Math.abs(dx)>30);
+    const n=dx<0?i+1:i-1;
+    if(go2&&n>=0&&n<NAV.length){if(!RM){main.style.transition='transform .16s ease-in,opacity .16s ease-in';main.style.transform=`translate3d(${dx<0?-w*.35:w*.35}px,0,0)`;main.style.opacity='0'}
+      setTimeout(()=>{main.style.transition='';main.style.transform='';main.style.opacity='';swTo(n,dx<0?'l':'r')},RM?0:150)}else reset(true)};
+  main.addEventListener('touchend',end,{passive:true});main.addEventListener('touchcancel',()=>{if(mode==='h'){mode='';reset(true)}},{passive:true});
+  /* ---- the dock: slide the finger along it ---- */
+  let dk=false,moved=false,cur=-1,tmr=0,sx=0;
+  const ixAt=x=>{const r=dock.getBoundingClientRect();return Math.max(0,Math.min(NAV.length-1,Math.floor((x-r.left)/(r.width/NAV.length))))};
+  dock.addEventListener('touchstart',e=>{if(e.touches.length!==1)return;dk=true;moved=false;sx=e.touches[0].clientX;cur=ixAt(sx)},{passive:true});
+  dock.addEventListener('touchmove',e=>{if(!dk)return;const x=e.touches[0].clientX;if(!moved&&Math.abs(x-sx)<8)return;moved=true;e.preventDefault();
+    const i=ixAt(x);if(i===cur)return;cur=i;hap(6);dock.classList.add('drag');dock.style.setProperty('--i',i);
+    dock.querySelectorAll('button').forEach((b,j)=>b.classList.toggle('hov',j===i));
+    clearTimeout(tmr);tmr=setTimeout(()=>{if(NAV[cur][0]!==S.tab){SWD='';go(NAV[cur][0])}},110)},{passive:false});
+  const dEnd=()=>{if(!dk)return;dk=false;dock.classList.remove('drag');dock.querySelectorAll('button.hov').forEach(b=>b.classList.remove('hov'));
+    if(moved){clearTimeout(tmr);if(NAV[cur]&&NAV[cur][0]!==S.tab){SWD='';go(NAV[cur][0])}else syncDock();
+      const stop=ev=>{ev.stopPropagation();ev.preventDefault()};dock.addEventListener('click',stop,{capture:true,once:true});setTimeout(()=>dock.removeEventListener('click',stop,{capture:true}),400)}};
+  dock.addEventListener('touchend',dEnd,{passive:true});dock.addEventListener('touchcancel',dEnd,{passive:true})}
 /* ================= WIRING INTO THE CLASSIC APP ================= */
 function boot(){if(booted)return;ensureHost();booted=true;
   main=$('#main');dock=$('#dock');scr=$('#scr');sheet=$('#sheet');drawer=$('#drawer');scrim=$('#scrim');
@@ -1716,7 +1762,7 @@ function boot(){if(booted)return;ensureHost();booted=true;
   $('#mnu').innerHTML=ic('menu',22);$('#scrBack').innerHTML=ic('back',20);syncBell();
   /* the header looks the same at every scroll position (no class toggled on scroll) */
   if(!RM){const w=$('#bmk');const sh=()=>{if(document.hidden||document.body.classList.contains('v3old')||!document.body.classList.contains('v3on'))return;w.classList.remove('go');void w.offsetWidth;w.classList.add('go')};setTimeout(sh,900);setInterval(sh,9000)}
-  applyTheme(TH);syncDock()}
+  applyTheme(TH);syncDock();try{swipeInit()}catch(e){}}
 const _route=route;
 route=async function(){
   if(!v3On()||typeof AUTH==='undefined'||!AUTH||INTEST){if(!AUTH)document.body.classList.remove('v3on','v3old');return _route.apply(this,arguments)}
