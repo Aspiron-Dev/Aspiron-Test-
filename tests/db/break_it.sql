@@ -978,6 +978,34 @@ select pg_temp.chk('31e tracker: a time in the future is not kept; null clears t
   and coalesce(public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trk', 'null'::jsonb) = 'null'::jsonb);
 reset role;
 
+-- ===== 32. test feedback (v67): only a student who took the test, private to the admin =====
+insert into cbt_private.results (student_id, test_id, test_title, score, max_score, correct, wrong, skipped, used_seconds, answers)
+select id, 'aaaaaaaa-0000-0000-0000-000000000004', 'Open mock', 4, 8, 1, 0, 1, 60, '{}' from cbt_private.students where mobile = '9000000001';
+set role anon;
+select pg_temp.chk('32a test feedback: only after taking the test, with stars and 15+ letters',
+  public.cbt_test_review_save('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000001',5,'Great test, loved it')->>'error' = 'not_taken'
+  and public.cbt_test_review_save('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000004',5,'too short')->>'error' = 'short'
+  and public.cbt_test_review_save('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000004',0,'Great test, loved it')->>'error' = 'rating'
+  and public.cbt_test_review_save('9000000001','AAAA1111','dev-aaaaaaaa','not-a-test',5,'Great test, loved it')->>'error' = 'test');
+select public.cbt_test_review_save('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000004',4,'Good <b>questions</b>, a bit long') as tr1 \gset
+select pg_temp.chk('32b test feedback: saved, cleaned, and only the student sees their own',
+  (:'tr1'::jsonb->>'ok')::boolean
+  and public.cbt_test_review_mine('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000004')->'review'->>'body' = 'Good bquestions/b, a bit long'
+  and (public.cbt_test_review_mine('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000004')->'review'->>'rating')::int = 4
+  and coalesce(public.cbt_test_review_mine('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-000000000004')->'review', 'null'::jsonb) = 'null'::jsonb
+  and public.cbt_test_review_save('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000004',5,'Changed my mind, great test')->>'error' = 'busy');
+select coalesce((public.cbt_admin_test_reviews('wrong-password','get')->>'ok')::boolean, false) as trw \gset
+select public.cbt_admin_test_reviews(:'ow5','get') as trg \gset
+select pg_temp.chk('32c test feedback: the admin sees each test with its average and the comment; others cannot',
+  not :'trw'::boolean
+  and (:'trg'::jsonb->'tests'->0->>'n')::int = 1 and (:'trg'::jsonb->'tests'->0->>'avg')::numeric = 4
+  and :'trg'::jsonb->'items'->0->>'mobile' = '9000000001'
+  and public.cbt_admin_test_reviews(:'lvt','get')->>'error' = 'forbidden');
+select pg_temp.chk('32d test feedback: the owner can delete a rating',
+  (public.cbt_admin_test_reviews(:'ow5','delete', jsonb_build_object('id', :'trg'::jsonb->'items'->0->>'id'))->>'ok')::boolean
+  and jsonb_array_length(public.cbt_admin_test_reviews(:'ow5','get')->'items') = 0);
+reset role;
+
 -- ===== report =====
 \t off
 \a

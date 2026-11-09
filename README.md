@@ -79,6 +79,15 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Setup:** run `supabase_v64_series_page.sql` once (after v63), then `supabase_v35_admin_team.sql` again. Until then the
   pages show no dates, plans or syllabus.
 
+## Test feedback (`cx/m-testfb.js`, `supabase_v67_test_reviews.sql`)
+- After a student submits a test the app asks **How was your test?** about that test: stars and a comment of at least 15
+  letters. One rating per student per test (it can be changed); only a student who submitted the test can rate it.
+- These ratings are private: **Admin → Test feedback** shows every rated test with its average, the 1–2 star ones, and
+  each comment with name and mobile. Who can see it: Reviews = View; deleting needs Reviews = Full access.
+- The series review on the store (v23) stays as it was and is still written from the series page.
+- **Setup:** run `supabase_v67_test_reviews.sql` once (after v66), then `supabase_v35_admin_team.sql` again. Until then
+  the app asks for the series review after a test, as before.
+
 ## Study tracker on the account (`supabase_v66_tracker_keep.sql`)
 - The study tracker (weeks, subjects, tasks, targets) and the *done today* counts are now kept on the student's account
   with the profile and countdown (`cbt_keep`, v56). A new phone or a cleared browser gets the plan back after sign-in.
