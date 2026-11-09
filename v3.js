@@ -7,10 +7,10 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=28;
+const V3VER=29;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
-const v3On=()=>lsGet('cbt_v3',false)===true;
+const v3On=()=>lsGet('cbt_v3',true)!==false;
 
 /* ---------- classic-menu entries (always added, so the beta can be found) ---------- */
 function addEntry(){
@@ -210,7 +210,7 @@ function syncDock(){dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab))
 let timers=[];
 const every=(fn,ms)=>{const t=setInterval(fn,ms);timers.push(t);return t};
 function render(anim){timers.forEach(clearInterval);timers=[];main.dataset.tab=S.tab;try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please switch to the classic design from the menu and tell us.</p></div>`}
-  main.classList.remove('in','swl','swr');if(anim&&!RM){void main.offsetWidth;main.classList.add(SWD==='l'?'swl':SWD==='r'?'swr':'in')}SWD='';try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);reveal(main)}
+  main.classList.remove('in','swl','swr');if(swGhost){const g=swGhost;swGhost=null;main.style.transition='';main.style.transform='';dock&&dock.classList.remove('swp');requestAnimationFrame(()=>g.remove())}else if(anim&&!RM){void main.offsetWidth;main.classList.add(SWD==='l'?'swl':SWD==='r'?'swr':'in')}SWD='';try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);reveal(main)}
 /* content below the first screen fades up into place as it scrolls into view (once; nothing hides if the browser cannot) */
 let rvIO=null;
 function reveal(r){if(RM||!r||!('IntersectionObserver' in window))return;
@@ -542,9 +542,21 @@ A.tFilter=()=>{loadLook();const G=[['e','Exam',LK().exams],['c','Class',LK().cla
 /* ---------- one test series page: photo, Description | Resources | Reviews, buy bar ---------- */
 const SF=[['all','All'],['open','Available'],['up','Upcoming'],['att','Attempted'],['done','Completed'],['closed','Closed'],['lock','Locked']];
 const grp=st=>({prog:'open',live:'open',new:'open',wait:'up',held:'att',done:'done',closed:'closed',lock:'lock'}[st]||'open');
+/* test alerts (classic app12.js, cbt_alert_set): a phone notification the moment an upcoming test goes live */
+const alOn3=id=>{try{return typeof alOn==='function'&&alOn(id)}catch(e){return false}};
+const alBtn3=id=>typeof alOn==='function'?`<button class="btn sm${alOn3(id)?'':' ghost'} albt" data-a="alT" data-id="${esc3(id)}" aria-pressed="${alOn3(id)}">${ic('bell',15)}${alOn3(id)?'Alert on':'Notify me'}</button>`:'';
+let alBusy3=0;
+A.alT=async el=>{const id=el.dataset.id,t=tOf(id);if(!t||alBusy3||typeof alOn!=='function')return;const on=alOn(id);
+  if(!on){if(!t.opens_at||t.opens_at<=srvNow()){toast3('This test is already live. Open it now.');return}
+    try{if(!npSup()||npInApp()){npHelp('app');return}let pm=window.Notification.permission;if(pm==='default'){try{pm=await window.Notification.requestPermission()}catch(e){pm=window.Notification.permission}}
+      if(pm!=='granted'){npHelp('blocked');return}if(!npOn())npEnable();else await pushSync(true)}catch(e){toast3('Could not turn on notifications');return}}
+  alBusy3=1;let r=null;try{r=await rpc('cbt_alert_set',{p_test:id,p_on:!on})}catch(e){}alBusy3=0;
+  if(!r||!r.ok){toast3(r&&r.error==='already_live'?'This test is already live. Open it now.':r&&r.status===404?'Test alerts are not set up yet.':'Could not save. Please try again.');return}
+  const m=alGet();if(on)delete m[id];else m[id]=t.opens_at;LS.set(alKey(),m);hap(8);toast3(on?'Alert off':`Done! We will notify you when “${t.title}” goes live`);
+  if(scrOpen())redraw();else softRender()};
 function tActs(t){const st=stOf(t),r=resOf(t.id)[0],id=esc3(t.id);let p;try{p=typeof pendOf==='function'&&pendOf(t.id)}catch(e){}
   if(st==='lock')return `<button class="btn sm gold" data-a="test" data-id="${id}">${ic('lock',14)}Unlock</button>`;
-  if(st==='wait')return `<button class="btn sm ghost" disabled>${ic('clock',15)}Opens ${fD(t.opens_at,{day:'numeric',month:'short'})}, ${fT(t.opens_at)}</button>`;
+  if(st==='wait')return `<button class="btn sm ghost" disabled>${ic('clock',15)}Opens ${fD(t.opens_at,{day:'numeric',month:'short'})}, ${fT(t.opens_at)}</button>${alBtn3(t.id)}`;
   if(st==='held')return `<button class="btn sm ghost" disabled>${ic('lock',14)}Result after ${p&&p.result_at?fD(p.result_at,{day:'numeric',month:'short'})+', '+fT(p.result_at):'the test closes'}</button>`;
   if(st==='closed')return r&&!p?`<button class="btn sm ghost" data-a="review" data-r="${esc3(r.id)}">View result</button>`:`<button class="btn sm ghost" disabled>${ic('lock',14)}Closed</button>`;
   const start=`<button class="btn sm${st==='done'?' ghost':' gold'}" data-a="test" data-id="${id}">${ic('play',14)}${st==='prog'?'Resume test':st==='done'?'Re-attempt':'Start test'}</button>`;
@@ -643,7 +655,7 @@ const TSF=[['all','All'],['att','Attempted'],['non','Not attempted'],['res','Res
 function tState(t){const st=stOf(t);return st==='prog'?'res':st==='live'?'live':st==='wait'?'up':st==='lock'?'lock':st==='held'?'held':(st==='done'||t.attempts>0)?'att':st==='closed'?'miss':'new'}
 const TSL={live:['live','Live'],res:['live','Resume'],up:['','Upcoming'],new:['ok','Available'],held:['gold','Result soon'],att:['ok','Attempted'],miss:['err','Missed'],lock:['','Locked']};
 function tCard(t){const s=tState(t),r=resOf(t.id)[0],syl=((META||{}).syl||{})[t.id],marks=(t.questions||0)*(t.correct||4),when=t.opens_at;let p;try{p=typeof pendOf==='function'&&pendOf(t.id)}catch(e){}
-  const act=s==='lock'?['lock','Unlock','test']:s==='up'?['clock','Opens','']:s==='held'?['clock','Result','']:s==='miss'?(r&&!p?['chart','Result','review']:['lock','Closed','']):s==='res'?['play','Resume','test']:s==='att'?(r&&!p?['chart','Result','review']:['play','Again','test']):['play','Start','test'];
+  const act=s==='lock'?['lock','Unlock','test']:s==='up'?['bell',alOn3(t.id)?'Alert on':'Notify me','alT']:s==='held'?['clock','Result','']:s==='miss'?(r&&!p?['chart','Result','review']:['lock','Closed','']):s==='res'?['play','Resume','test']:s==='att'?(r&&!p?['chart','Result','review']:['play','Again','test']):['play','Start','test'];
   const L=TSL[s];
   return `<article class="card tc3${s==='miss'||s==='lock'?' dim':''}"><div class="tc3-b">
    <div class="tc3-top"><span class="st ${L[0]}">${L[1]}</span>${when?`<span class="mut">${s==='up'?'Opens':'Held on'} ${fD(when,{day:'numeric',month:'short'})}, ${fT(when)}</span>`:''}</div>
@@ -651,7 +663,7 @@ function tCard(t){const s=tState(t),r=resOf(t.id)[0],syl=((META||{}).syl||{})[t.
    <p class="tc3-m">${ic('list',15)}<span>${t.questions||0} Question${t.questions===1?'':'s'}</span><i></i><span>${fmtN(marks)} Marks</span><i></i><span>${t.duration||0} Mins</span></p>
    <p class="tc3-m">${ic('hist',15)}<span>Attempts: ${t.attempts||0}${r&&t.best!=null&&t.best_max?`, best ${t.best}/${t.best_max}`:''}</span></p>
    ${s==='held'&&p&&p.result_at?`<p class="tc3-m">${ic('clock',15)}<span>Result after ${fD(p.result_at,{day:'numeric',month:'short'})}, ${fT(p.result_at)}</span></p>`:''}</div>
-   <button class="tc3-go${act[2]?'':' off'}" ${act[2]==='test'?`data-a="test" data-id="${esc3(t.id)}"`:act[2]==='review'?`data-a="review" data-r="${esc3(r.id)}"`:'disabled'}><span>${ic(act[0],20)}</span><small>${act[1]}</small></button>
+   <button class="tc3-go${act[2]?'':' off'}${act[2]==='alT'&&alOn3(t.id)?' alon':''}" ${act[2]==='test'||act[2]==='alT'?`data-a="${act[2]}" data-id="${esc3(t.id)}"`:act[2]==='review'?`data-a="review" data-r="${esc3(r.id)}"`:'disabled'}><span>${ic(act[0],20)}</span><small>${act[1]}</small></button>
    ${syl||(r&&!p&&s==='att')?`<div class="tc3-f">${syl?`<button data-a="syl" data-id="${esc3(t.id)}">View syllabus</button>`:''}${r&&!p&&s==='att'?`<button data-a="review" data-r="${esc3(r.id)}">Result and solutions</button>`:''}</div>`:''}</article>`}
 const TORD=[['live','Live now'],['res','Continue'],['up','Upcoming'],['new','Available'],['held','Waiting for result'],['att','Attempted'],['miss','Missed'],['lock','Locked']];
 function spTests(sid){const all=testsOf(sid),F=(C().folders||[]).filter(f=>f.series_id===sid&&all.some(t=>t.folder_id===f.id)),loose=all.some(t=>!t.folder_id);
@@ -1689,7 +1701,7 @@ A.menu=()=>{const u=unread();let n=0;const web=!standalone3();
    ${gh('Explore')}${mi('layers','Store','store')}${mi('gift','Refer & Earn','refer')}${mi('bell','Notifications','notif',0,u?`<em class="mcnt">${u}</em>`:'')}${mi('target','Exam Countdown','cd')}
    ${gh('Help & settings')}${mi('sun','Theme Settings','theme',0,`<em class="mval">${THEMES[resolveMode(TH.mode)].name}</em>`)}${mi('gear','Settings','settings')}${mi('info','About Us','about')}${mi('mail','Contact Us','contact')}
    ${web?gh('Policies')+mi('file','Terms & Conditions','terms')+mi('file','Privacy Policy','privacy')+mi('file','Refund Policy','refund'):''}
-   <div class="mdiv" style="--i:${n++}"></div>${mi('swap','Switch to the classic design','classic',0,'',' sm')}${mi('out','Logout','logout',0,'',' mout')}</div>`;
+   <div class="mdiv" style="--i:${n++}"></div>${mi('out','Logout','logout',0,'',' mout')}</div>`;
   drawer.scrollTop=0;openLayer(drawer)};
 A.m=el=>{const k=el.dataset.k;closeLayer();
   const M={profile:A.profile,theme:openTheme,home:()=>go('home'),series:()=>go('test'),lib:()=>go('lib'),pyq:()=>openPyq(),qb:()=>openQB(),gen:()=>openGen(),ranks:()=>openRanks(),refer:()=>openRefer(),store:()=>{location.href='store'},history:A.hist,mistakes:()=>openMistakes(),saved:()=>openSaved(),tracker:()=>openTracker(),notif:A.bell,cd:A.cdEdit,
@@ -1722,25 +1734,42 @@ A.thReset=()=>{THP=clone(DEF_TH);applyTheme(THP);redraw();toast3('Default theme 
    carousels) keep their own swipe; vertical scrolling is untouched. */
 const hap=ms=>{try{navigator.vibrate&&navigator.vibrate(ms||8)}catch(e){}};
 const tabIx=()=>Math.max(0,NAV.findIndex(n=>n[0]===S.tab));
-let SWD='';
+let SWD='',swGhost=null;
 function swTo(i,dir){if(i<0||i>=NAV.length||NAV[i][0]===S.tab)return false;SWD=dir||'';hap(8);go(NAV[i][0]);return true}
 function hScroller(el){for(let e=el;e&&e!==main;e=e.parentElement){if(e.closest&&e.closest('[data-noswipe],input,textarea,select,[contenteditable]'))return true;
   if(e.scrollWidth>e.clientWidth+4){const o=getComputedStyle(e).overflowX;if(o==='auto'||o==='scroll')return true}}return false}
 function swipeInit(){if(swipeInit.done)return;swipeInit.done=true;
-  /* ---- the screen ---- */
-  let x0=0,y0=0,t0=0,dx=0,mode='',w=1,swF=0;
-  const reset=anim=>{main.style.transition=anim&&!RM?'transform .38s cubic-bezier(.2,.9,.25,1),opacity .38s':'';main.style.transform='';main.style.opacity='';setTimeout(()=>{main.style.transition=''},400)};
+  /* ---- the screen: the next / previous tab is drawn beside the page and comes in with the finger ---- */
+  let x0=0,y0=0,t0=0,dx=0,mode='',w=1,swF=0,gh=null,gd=0,gtop=0;
+  const GAP=14,ease='cubic-bezier(.22,1,.36,1)';
+  const ghostFor=d=>{const n=tabIx()+d;if(n<0||n>=NAV.length)return null;const g=document.createElement('div');g.className='main swg';g.setAttribute('aria-hidden','true');
+    const keep=S.tab;S.tab=NAV[n][0];try{g.innerHTML=VIEW[S.tab]()}catch(e){g.innerHTML=''}S.tab=keep;
+    const r=main.getBoundingClientRect(),hd=$('#hdr');gtop=hd?Math.max(0,hd.getBoundingClientRect().bottom):0;
+    g.style.cssText=`position:fixed;top:${gtop}px;left:${r.left}px;width:${r.width}px;height:${window.innerHeight-gtop}px;overflow:hidden;margin:0;z-index:4;pointer-events:none;will-change:transform`;
+    main.parentElement.appendChild(g);return g};
+  const dropGhost=()=>{if(gh){gh.remove();gh=null}gd=0};
+  const paint=()=>{main.style.transform=`translate3d(${dx}px,0,0)`;if(gh)gh.style.transform=`translate3d(${dx+gd*(w+GAP)}px,0,0)`;
+    dock.style.setProperty('--i',Math.max(0,Math.min(NAV.length-1,tabIx()-dx/w*(gh?1:.25))))};
+  const settle=(cb,ms)=>{main.style.transition=gh?`transform ${ms}ms ${ease}`:'';if(gh)gh.style.transition=`transform ${ms}ms ${ease}`;dock.classList.add('swp');setTimeout(cb,RM?0:ms)};
   main.addEventListener('touchstart',e=>{mode='';dx=0;if(e.touches.length!==1||STK.length||layer||INTEST||hScroller(e.target)){mode='no';return}
     const p=e.touches[0];x0=p.clientX;y0=p.clientY;t0=Date.now();w=main.clientWidth||window.innerWidth},{passive:true});
   main.addEventListener('touchmove',e=>{if(mode==='no'||mode==='v'||e.touches.length!==1)return;const p=e.touches[0],mx=p.clientX-x0,my=p.clientY-y0;
-    if(!mode){if(Math.abs(mx)<10&&Math.abs(my)<10)return;mode=Math.abs(mx)>Math.abs(my)*1.15?'h':'v';if(mode==='v')return}
-    const i=tabIx(),edge=(mx>0&&i===0)||(mx<0&&i===NAV.length-1);dx=edge?mx*.25:mx;
-    if(!RM&&!swF){swF=requestAnimationFrame(()=>{swF=0;if(mode!=='h')return;main.style.transition='';main.style.transform=`translate3d(${dx}px,0,0)`;main.style.opacity=String(1-Math.min(.35,Math.abs(dx)/w*.6))})}},{passive:true});
+    if(!mode){if(Math.abs(mx)<10&&Math.abs(my)<10)return;mode=Math.abs(mx)>Math.abs(my)*1.15?'h':'v';if(mode==='v')return;dock.classList.add('swp')}
+    const d=mx<0?1:-1;if(d!==gd){dropGhost();if(!RM){gh=ghostFor(d);gd=gh?d:0}}
+    dx=gh||RM?mx:mx*.25;
+    if(!RM&&!swF){swF=requestAnimationFrame(()=>{swF=0;if(mode!=='h')return;main.style.transition='';paint()})}},{passive:true});
+  const back=()=>{dx=0;if(RM){dropGhost();main.style.transform='';dock.classList.remove('swp');syncDock();return}
+    main.style.transition=`transform .34s ${ease}`;if(gh)gh.style.transition=`transform .34s ${ease}`;main.style.transform='';if(gh)gh.style.transform=`translate3d(${gd*(w+GAP)}px,0,0)`;syncDock();
+    setTimeout(()=>{main.style.transition='';dropGhost();dock.classList.remove('swp')},360)};
   const end=()=>{if(mode!=='h'){mode='';return}mode='';const v=Math.abs(dx)/Math.max(1,Date.now()-t0),i=tabIx(),go2=Math.abs(dx)>Math.min(90,w*.22)||(v>.45&&Math.abs(dx)>30);
     const n=dx<0?i+1:i-1;
-    if(go2&&n>=0&&n<NAV.length){if(!RM){main.style.transition='transform .16s ease-in,opacity .16s ease-in';main.style.transform=`translate3d(${dx<0?-w*.35:w*.35}px,0,0)`;main.style.opacity='0'}
-      setTimeout(()=>{main.style.transition='';main.style.transform='';main.style.opacity='';swTo(n,dx<0?'l':'r')},RM?0:150)}else reset(true)};
-  main.addEventListener('touchend',end,{passive:true});main.addEventListener('touchcancel',()=>{if(mode==='h'){mode='';reset(true)}},{passive:true});
+    if(!(go2&&n>=0&&n<NAV.length&&(gh||RM))){back();return}
+    if(RM){dropGhost();SWD='';hap(8);go(NAV[n][0]);return}
+    const ms=Math.max(160,Math.min(300,Math.round((w-Math.abs(dx))/Math.max(.9,v)))),g=gh;
+    main.style.transition=`transform ${ms}ms ${ease}`;g.style.transition=`transform ${ms}ms ${ease}`;main.style.transform=`translate3d(${-gd*(w+GAP)}px,0,0)`;g.style.transform='translate3d(0,0,0)';
+    dock.style.setProperty('--i',n);hap(8);
+    setTimeout(()=>{SWD='';swGhost=g;gh=null;gd=0;go(NAV[n][0])},ms)};
+  main.addEventListener('touchend',end,{passive:true});main.addEventListener('touchcancel',()=>{if(mode==='h'){mode='';back()}},{passive:true});
   /* ---- the dock: slide the finger along it ---- */
   let dk=false,moved=false,cur=-1,tmr=0,sx=0;
   const ixAt=x=>{const r=dock.getBoundingClientRect();return Math.max(0,Math.min(NAV.length-1,Math.floor((x-r.left)/(r.width/NAV.length))))};
