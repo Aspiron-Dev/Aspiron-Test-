@@ -1506,7 +1506,7 @@ button,a,.chips button,.seg button{touch-action:manipulation}
    a wide content area in columns, centred dialogs, hover states and a footer. No bottom bar, no swipe.
    ===================================================================================================== */
 .dnav,.dav,.dfoot{display:none}
-@media (min-width:1024px){
+@media (min-width:960px){
   :host{--dw:1200px;--gap:22px}
   /* ---- top bar ---- */
   .hdr{position:sticky;top:0;background:color-mix(in srgb,var(--bg) 82%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 1px 0 var(--line)}
@@ -1598,5 +1598,5 @@ button,a,.chips button,.seg button{touch-action:manipulation}
   .main.in>*:nth-child(2){animation-delay:.05s}.main.in>*:nth-child(3){animation-delay:.1s}.main.in>*:nth-child(4){animation-delay:.15s}.main.in>*:nth-child(n+5){animation-delay:.2s}
   @keyframes dkIn{from{opacity:0;transform:translate3d(0,16px,0)}}
 }
-@media (min-width:1024px) and (max-width:1199px){.dnav [data-a="dk"]{display:none}.hdr-in{gap:18px}}
+@media (min-width:960px) and (max-width:1199px){.dnav [data-a="dk"]{display:none}.hdr-in{gap:18px}}
 .tc3-f{flex-wrap:wrap}.tc3-f button{min-width:30%;display:inline-flex;align-items:center;justify-content:center;gap:6px}
