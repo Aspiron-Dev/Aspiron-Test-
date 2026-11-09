@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=33;
+const V3VER=34;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',true)!==false;
@@ -206,17 +206,22 @@ const VIEW={},AFTER={};
 let main,dock;
 const tabOf=h=>{const m=/^#\/x\/(test|tools|lib|stats)$/.exec(h||'');return m?m[1]:'home'};
 const isNewHash=h=>!h||h==='#'||h==='#/'||/^#\/x\/(test|tools|lib|stats)$/.test(h);
+/* ---------- social media links (Admin → Social media; config.js): menu, desktop footer, Contact sheet. "" when none is On ---------- */
+const socH=()=>{try{return typeof socialLinksHTML==='function'?socialLinksHTML():''}catch(e){return ''}};
+function socSync(){const e=$('#dfSoc');if(!e)return;const h=socH();if(e.innerHTML!==h)e.innerHTML=h;e.hidden=!h}
+document.addEventListener('social:change',()=>{try{socSync()}catch(e){}});
 /* ---------- desktop website parts (shown from 1024 px wide; phones never see them) ---------- */
 const DNAV=[['home','Home'],['test','Test Series'],['tools','Tools'],['lib','Library'],['stats','Analytics']];
 function deskSync(){const n=$('#dnav');if(!n)return;
   if(!n.firstChild){n.innerHTML=DNAV.map(([k,l])=>`<button data-a="tab" data-tab="${k}">${l}</button>`).join('')+`<button data-a="dk" data-k="pyq">PYQ</button><button data-a="dk" data-k="qb">Question Bank</button><button data-a="dk" data-k="ranks">Ranks</button>`;
-    const f=$('#dfoot');if(f)f.innerHTML=`<div class="df-in"><div class="df-b"><span class="bmk" aria-hidden="true"><i class="bmk-w"><i class="bmk-s"></i></i><span class="bmk-e"><span>EDUCATION</span></span></span><p>NEET and JEE test series with the real exam pattern, All-India rank and detailed analysis.</p></div>
+    const f=$('#dfoot');if(f)f.innerHTML=`<div class="df-in"><div class="df-b"><span class="bmk" aria-hidden="true"><i class="bmk-w"><i class="bmk-s"></i></i><span class="bmk-e"><span>EDUCATION</span></span></span><p>NEET and JEE test series with the real exam pattern, All-India rank and detailed analysis.</p><div class="df-soc" id="dfSoc" aria-label="Follow us" hidden></div></div>
      <div class="df-c"><b>Study</b><button data-a="tab" data-tab="test">Test series</button><button data-a="dk" data-k="pyq">PYQ Analyzer</button><button data-a="dk" data-k="qb">Question bank</button><button data-a="dk" data-k="gen">Test generator</button></div>
      <div class="df-c"><b>Your progress</b><button data-a="dk" data-k="ranks">Ranks</button><button data-a="dk" data-k="hist">Test history</button><button data-a="dk" data-k="mk">Mistake notebook</button><button data-a="dk" data-k="trk">Study tracker</button></div>
      <div class="df-c"><b>Help</b><button data-a="setHelp">Contact us</button><button data-a="setAbout">About us</button><button data-a="setTerms">Terms</button><a href="privacy" target="_blank" rel="noopener">Privacy</a><a href="refund" target="_blank" rel="noopener">Refund</a></div></div>
      <div class="df-bot"><span>© ${new Date().getFullYear()} Aspiron Education</span><a href="store">Store</a></div>`}
   n.querySelectorAll('[data-tab]').forEach(b=>{const on=b.dataset.tab===S.tab;b.classList.toggle('on',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')});
-  const d=$('#dav');if(d){const h=avatar('dav-i');if(d.innerHTML!==h)d.innerHTML=h}}
+  const d=$('#dav');if(d){const h=avatar('dav-i');if(d.innerHTML!==h)d.innerHTML=h}
+  socSync()}
 A.dk=el=>({pyq:()=>openPyq(),qb:()=>openQB(),gen:()=>openGen(),ranks:()=>openRanks(),hist:()=>A.hist(),mk:()=>openMistakes(),trk:()=>openTracker()}[el.dataset.k]||(()=>{}))();
 function syncDock(){try{deskSync()}catch(e){}dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab));dock.querySelectorAll('button').forEach(b=>{const on=b.dataset.tab===S.tab;b.classList.toggle('on',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')})}
 let timers=[];
@@ -1150,7 +1155,7 @@ function grabSheet(fn){let h='';try{const s=window.sheet;window.sheet=x=>{h=x};t
 function legalPage(t,fn){const raw=grabSheet(fn),i=raw.indexOf('<div class="legal">');push({t,s:'',key:'legal',html:()=>i>-1?`<div class="card p legal3">${raw.slice(i)}</div>`:`<div class="card empty"><b>Could not open this page</b></div>`})}
 A.setAbout=()=>legalPage('About us',()=>openAbout());
 A.setTerms=()=>legalPage('Terms and conditions',()=>openTerms());
-A.setHelp=()=>{let b='';try{SUPMSG='';b=supBtns()}catch(e){}openSheet(`<span class="ti g" style="margin-bottom:12px">${ic('mail',22)}</span><h2 id="sheetT">Chat with support</h2><p class="sub">Our student support team replies on chat. Choose where you want to talk.</p><div class="sup3">${b}</div><p class="hint" style="text-align:center">Chat only. Calls are not available.</p>`)};
+A.setHelp=()=>{let b='';try{SUPMSG='';b=supBtns()}catch(e){}openSheet(`<span class="ti g" style="margin-bottom:12px">${ic('mail',22)}</span><h2 id="sheetT">Chat with support</h2><p class="sub">Our student support team replies on chat. Choose where you want to talk.</p><div class="sup3">${b}</div><p class="hint" style="text-align:center">Chat only. Calls are not available.</p>${socH()?`<p class="hsoc-t">Follow us</p><div class="hsoc">${socH()}</div>`:''}`)};
 A.setOut=()=>openSheet(`<span class="ti" style="margin-bottom:12px">${ic('out',22)}</span><h2 id="sheetT">Sign out?</h2><p class="sub">Your tests, results and notes stay on your account. Sign in again with your mobile number any time.</p><div class="sheet-ft"><button class="btn ghost" data-a="close">Cancel</button><button class="btn danger3" data-a="setOutGo">Sign out</button></div>`);
 A.setOutGo=()=>{closeLayer();unwind(()=>{try{doSignOut()}catch(e){location.reload()}})};
 /* "turn on notifications" help in the new look: the same steps as the classic npHelp (app9.js), shown in a v3 sheet
@@ -1744,6 +1749,7 @@ A.menu=()=>{const u=unread();let n=0;const web=!standalone3();
    ${gh('Explore')}${mi('layers','Store','store')}${mi('gift','Refer & Earn','refer')}${mi('bell','Notifications','notif',0,u?`<em class="mcnt">${u}</em>`:'')}${mi('target','Exam Countdown','cd')}
    ${gh('Help & settings')}${mi('sun','Theme Settings','theme',0,`<em class="mval">${THEMES[resolveMode(TH.mode)].name}</em>`)}${mi('gear','Settings','settings')}${mi('info','About Us','about')}${mi('mail','Contact Us','contact')}
    ${web?gh('Policies')+mi('file','Terms & Conditions','terms')+mi('file','Privacy Policy','privacy')+mi('file','Refund Policy','refund'):''}
+   ${socH()?gh('Follow us')+`<div class="msoc" style="--i:${n++}">${socH()}</div>`:''}
    <div class="mdiv" style="--i:${n++}"></div>${mi('out','Logout','logout',0,'',' mout')}</div>`;
   drawer.scrollTop=0;openLayer(drawer)};
 A.m=el=>{const k=el.dataset.k;closeLayer();
