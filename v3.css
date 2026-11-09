@@ -1405,3 +1405,17 @@ a.rsc,a.rsc *{color:inherit;text-decoration:none}a.rsc small{color:var(--mut)}
 .mval{flex:none;font-style:normal;font-size:12px;color:var(--faint)}
 .drawer .mdiv{height:1px;background:var(--line);margin:10px 12px}
 .drawer .mlist .mi{flex-direction:row!important;justify-content:flex-start!important;align-items:center!important;text-align:left!important;margin:0!important}
+/* ---------- swipe between tabs; slide along the dock ---------- */
+.main{touch-action:pan-y;will-change:auto}
+.main.swl>*{animation:swL .42s cubic-bezier(.2,.9,.25,1) backwards}
+.main.swr>*{animation:swR .42s cubic-bezier(.2,.9,.25,1) backwards}
+.main.swl>*:nth-child(2),.main.swr>*:nth-child(2){animation-delay:.03s}
+.main.swl>*:nth-child(n+3),.main.swr>*:nth-child(n+3){animation-delay:.06s}
+@keyframes swL{from{opacity:0;transform:translate3d(48px,0,0)}}
+@keyframes swR{from{opacity:0;transform:translate3d(-48px,0,0)}}
+.dock{touch-action:none}
+.dock.drag::before{transition:transform .22s cubic-bezier(.2,.9,.25,1)}
+.dock.drag button.on{color:var(--faint);font-weight:500}
+.dock button.hov{color:var(--tx)!important;font-weight:600!important}
+.dock button.hov svg.i{transform:translateY(-3px) scale(1.08)}
+@media (prefers-reduced-motion:reduce){.main.swl>*,.main.swr>*{animation:none}}

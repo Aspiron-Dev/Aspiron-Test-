@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=25;
+const V3VER=26;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -210,7 +210,7 @@ function syncDock(){dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab))
 let timers=[];
 const every=(fn,ms)=>{const t=setInterval(fn,ms);timers.push(t);return t};
 function render(anim){timers.forEach(clearInterval);timers=[];main.dataset.tab=S.tab;try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please switch to the classic design from the menu and tell us.</p></div>`}
-  main.classList.remove('in');if(anim&&!RM){void main.offsetWidth;main.classList.add('in')}try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);reveal(main)}
+  main.classList.remove('in','swl','swr');if(anim&&!RM){void main.offsetWidth;main.classList.add(SWD==='l'?'swl':SWD==='r'?'swr':'in')}SWD='';try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);reveal(main)}
 /* content below the first screen fades up into place as it scrolls into view (once; nothing hides if the browser cannot) */
 let rvIO=null;
 function reveal(r){if(RM||!r||!('IntersectionObserver' in window))return;
@@ -1707,6 +1707,45 @@ A.thp=el=>{THP.pal[resolveMode(THP.mode)]=el.dataset.v;applyTheme(THP);redraw()}
 A.thApply=()=>{TH=clone(THP);saveTheme();toast3('Theme applied: '+themeLabel())};
 A.thReset=()=>{THP=clone(DEF_TH);applyTheme(THP);redraw();toast3('Default theme shown. Tap Apply theme to keep it.')};
 
+
+/* ================= SWIPE BETWEEN TABS, and SLIDE ALONG THE DOCK =================
+   Like a phone's home screens: drag the screen left / right to go to the next / previous tab (the page follows the
+   finger; a short flick is enough). Tapping the dock works as before. On the dock, keep the finger down and slide it:
+   each tab it passes is shown, with a light buzz on every step. Inner rows that scroll sideways (chips, posters,
+   carousels) keep their own swipe; vertical scrolling is untouched. */
+const hap=ms=>{try{navigator.vibrate&&navigator.vibrate(ms||8)}catch(e){}};
+const tabIx=()=>Math.max(0,NAV.findIndex(n=>n[0]===S.tab));
+let SWD='';
+function swTo(i,dir){if(i<0||i>=NAV.length||NAV[i][0]===S.tab)return false;SWD=dir||'';hap(8);go(NAV[i][0]);return true}
+function hScroller(el){for(let e=el;e&&e!==main;e=e.parentElement){if(e.closest&&e.closest('[data-noswipe],input,textarea,select,[contenteditable]'))return true;
+  if(e.scrollWidth>e.clientWidth+4){const o=getComputedStyle(e).overflowX;if(o==='auto'||o==='scroll')return true}}return false}
+function swipeInit(){if(swipeInit.done)return;swipeInit.done=true;
+  /* ---- the screen ---- */
+  let x0=0,y0=0,t0=0,dx=0,mode='',w=1;
+  const reset=anim=>{main.style.transition=anim&&!RM?'transform .38s cubic-bezier(.2,.9,.25,1),opacity .38s':'';main.style.transform='';main.style.opacity='';setTimeout(()=>{main.style.transition=''},400)};
+  main.addEventListener('touchstart',e=>{mode='';dx=0;if(e.touches.length!==1||STK.length||layer||INTEST||hScroller(e.target)){mode='no';return}
+    const p=e.touches[0];x0=p.clientX;y0=p.clientY;t0=Date.now();w=main.clientWidth||window.innerWidth},{passive:true});
+  main.addEventListener('touchmove',e=>{if(mode==='no'||mode==='v'||e.touches.length!==1)return;const p=e.touches[0],mx=p.clientX-x0,my=p.clientY-y0;
+    if(!mode){if(Math.abs(mx)<10&&Math.abs(my)<10)return;mode=Math.abs(mx)>Math.abs(my)*1.15?'h':'v';if(mode==='v')return}
+    e.preventDefault();const i=tabIx(),edge=(mx>0&&i===0)||(mx<0&&i===NAV.length-1);dx=edge?mx*.25:mx;
+    if(!RM){main.style.transition='';main.style.transform=`translate3d(${dx}px,0,0)`;main.style.opacity=String(1-Math.min(.35,Math.abs(dx)/w*.6))}},{passive:false});
+  const end=()=>{if(mode!=='h'){mode='';return}mode='';const v=Math.abs(dx)/Math.max(1,Date.now()-t0),i=tabIx(),go2=Math.abs(dx)>Math.min(90,w*.22)||(v>.45&&Math.abs(dx)>30);
+    const n=dx<0?i+1:i-1;
+    if(go2&&n>=0&&n<NAV.length){if(!RM){main.style.transition='transform .16s ease-in,opacity .16s ease-in';main.style.transform=`translate3d(${dx<0?-w*.35:w*.35}px,0,0)`;main.style.opacity='0'}
+      setTimeout(()=>{main.style.transition='';main.style.transform='';main.style.opacity='';swTo(n,dx<0?'l':'r')},RM?0:150)}else reset(true)};
+  main.addEventListener('touchend',end,{passive:true});main.addEventListener('touchcancel',()=>{if(mode==='h'){mode='';reset(true)}},{passive:true});
+  /* ---- the dock: slide the finger along it ---- */
+  let dk=false,moved=false,cur=-1,tmr=0,sx=0;
+  const ixAt=x=>{const r=dock.getBoundingClientRect();return Math.max(0,Math.min(NAV.length-1,Math.floor((x-r.left)/(r.width/NAV.length))))};
+  dock.addEventListener('touchstart',e=>{if(e.touches.length!==1)return;dk=true;moved=false;sx=e.touches[0].clientX;cur=ixAt(sx)},{passive:true});
+  dock.addEventListener('touchmove',e=>{if(!dk)return;const x=e.touches[0].clientX;if(!moved&&Math.abs(x-sx)<8)return;moved=true;e.preventDefault();
+    const i=ixAt(x);if(i===cur)return;cur=i;hap(6);dock.classList.add('drag');dock.style.setProperty('--i',i);
+    dock.querySelectorAll('button').forEach((b,j)=>b.classList.toggle('hov',j===i));
+    clearTimeout(tmr);tmr=setTimeout(()=>{if(NAV[cur][0]!==S.tab){SWD='';go(NAV[cur][0])}},110)},{passive:false});
+  const dEnd=()=>{if(!dk)return;dk=false;dock.classList.remove('drag');dock.querySelectorAll('button.hov').forEach(b=>b.classList.remove('hov'));
+    if(moved){clearTimeout(tmr);if(NAV[cur]&&NAV[cur][0]!==S.tab){SWD='';go(NAV[cur][0])}else syncDock();
+      const stop=ev=>{ev.stopPropagation();ev.preventDefault()};dock.addEventListener('click',stop,{capture:true,once:true});setTimeout(()=>dock.removeEventListener('click',stop,{capture:true}),400)}};
+  dock.addEventListener('touchend',dEnd,{passive:true});dock.addEventListener('touchcancel',dEnd,{passive:true})}
 /* ================= WIRING INTO THE CLASSIC APP ================= */
 function boot(){if(booted)return;ensureHost();booted=true;
   main=$('#main');dock=$('#dock');scr=$('#scr');sheet=$('#sheet');drawer=$('#drawer');scrim=$('#scrim');
@@ -1716,7 +1755,7 @@ function boot(){if(booted)return;ensureHost();booted=true;
   $('#mnu').innerHTML=ic('menu',22);$('#scrBack').innerHTML=ic('back',20);syncBell();
   /* the header looks the same at every scroll position (no class toggled on scroll) */
   if(!RM){const w=$('#bmk');const sh=()=>{if(document.hidden||document.body.classList.contains('v3old')||!document.body.classList.contains('v3on'))return;w.classList.remove('go');void w.offsetWidth;w.classList.add('go')};setTimeout(sh,900);setInterval(sh,9000)}
-  applyTheme(TH);syncDock()}
+  applyTheme(TH);syncDock();try{swipeInit()}catch(e){}}
 const _route=route;
 route=async function(){
   if(!v3On()||typeof AUTH==='undefined'||!AUTH||INTEST){if(!AUTH)document.body.classList.remove('v3on','v3old');return _route.apply(this,arguments)}
