@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=27;
+const V3VER=28;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -170,7 +170,7 @@ const top=()=>STK[STK.length-1],scrOpen=()=>STK.length>0;
 function drawScr(dir){const v=top();if(!v)return;$('#scrT').textContent=v.t;$('#scrS').textContent=v.s||'';$('#scrR').innerHTML=v.right?v.right():'';
   $('#scrB').innerHTML=`<div class="scr-in${dir?' '+dir:''}">${v.html()}</div>`;v.after&&v.after()}
 function push(v){const was=STK.length>0;STK.push(v);try{history.pushState({v3s:STK.length},'',location.href)}catch(e){}
-  drawScr(was&&!RM?'fwd':'');try{pstSync()}catch(e){}$('#scrB').scrollTop=0;if(!scr.classList.contains('open')){scr.classList.add('open');scr.setAttribute('aria-hidden','false')}setTimeout(()=>$('#scrBack').focus({preventScroll:true}),60)}
+  drawScr(!RM?'fwd':'');try{pstSync()}catch(e){}$('#scrB').scrollTop=0;if(!scr.classList.contains('open')){scr.classList.add('open');scr.setAttribute('aria-hidden','false')}setTimeout(()=>$('#scrBack').focus({preventScroll:true}),60)}
 function pop(){const v=STK.pop();v&&v.leave&&v.leave();if(STK.length){drawScr(RM?'':'bwd')}else{scr.classList.remove('open');scr.setAttribute('aria-hidden','true');$('#scrB').innerHTML='';try{pstSync()}catch(e){}}}
 function back(){if(!STK.length)return;history.back()}
 /* close every page first, wait for the browser history to settle, then run cb (so a hash change is never undone) */
@@ -474,7 +474,7 @@ let pstRaf=0,lastQ=-1,lastMeta='';
 /* sizes are measured once (on draw, resize, picture load), never during the scroll, so every frame only moves things */
 const PM={ok:0};
 function pstMeasure(){const h=$('#hdr'),ps=$('#pst');if(!h||!ps)return;PM.hh=h.offsetHeight;PM.y0=ps.offsetHeight-PM.hh-96;PM.y1=68;PM.span=Math.max(1,PM.y0-PM.y1);
-  PM.bdH=Math.max(220,PM.y0+TABH+14);PM.bg=parseCol(getComputedStyle(host).getPropertyValue('--bg')).slice(0,3);host.style.setProperty('--hh',PM.hh+'px');
+  PM.bdH=Math.max(220,PM.y0+TABH+14);PM.tabs=$('#pstTabs');PM.bd=$('#pstBd');PM.slim=PM.op=PM.tf=undefined;PM.bg=parseCol(getComputedStyle(host).getPropertyValue('--bg')).slice(0,3);host.style.setProperty('--hh',PM.hh+'px');
   const bd=$('#pstBd');if(bd)bd.style.height=PM.bdH+'px';PM.ok=1;lastQ=-1}
 function setMeta(c){const m=document.querySelector('meta[name="theme-color"]');if(m&&c!==lastMeta){m.setAttribute('content',c);lastMeta=c}}
 function pstSync(re){if(!root)return;const h=$('#hdr');if(!h||!main)return;const st=$('#pstStick'),ps=$('#pst'),tint=$('#hdrTint'),old=document.body.classList.contains('v3old');
@@ -486,12 +486,12 @@ function pstSync(re){if(!root)return;const h=$('#hdr');if(!h||!main)return;const
   if(q===1&&lastQ===1)return;lastQ=q;
   /* every frame only moves and fades things (no size change, so no layout while the finger moves): the buttons go
      slim once, by a short CSS transition, when the poster is half gone; the backdrop rides inside the bar */
-  st.classList.toggle('slim',q>.5);
-  const ty=Math.max(PM.y1,PM.y0-sy);$('#pstTabs').style.transform=`translate3d(0,${ty.toFixed(1)}px,0)`;
-  $('#pstBd').style.opacity=Math.min(1,q*1.15).toFixed(3);
+  const slim=q>.5;if(PM.slim!==slim){PM.slim=slim;st.classList.toggle('slim',slim)}
+  const ty=Math.max(PM.y1,PM.y0-sy);if(!PM.tabs||!PM.tabs.isConnected){PM.tabs=$('#pstTabs');PM.bd=$('#pstBd')}
+  PM.tabs.style.transform=`translate3d(0,${ty.toFixed(1)}px,0)`;if(PM.bd)PM.bd.style.opacity=Math.min(1,q*1.15).toFixed(3);
   const art=ps.firstElementChild;if(art){art.style.transform=`translate3d(0,${(Math.min(sy,PM.span+200)*.45).toFixed(2)}px,0)`;art.style.opacity=(1-.92*q).toFixed(3)}
   /* the header sits on the poster with no band of its own; its normal background fades in as the poster leaves */
-  if(tint)tint.style.opacity=q.toFixed(3);h.classList.toggle('onpst',!!PCOL&&q<.5);h.classList.toggle('tpfull',q>.98);
+  if(tint)tint.style.opacity=q.toFixed(3);const op=!!PCOL&&q<.5,tf=q>.98;if(PM.op!==op){PM.op=op;h.classList.toggle('onpst',op)}if(PM.tf!==tf){PM.tf=tf;h.classList.toggle('tpfull',tf)}
   /* the phone's status bar colour changes in a few steps only: repainting it every frame makes Android stutter */
   if(PCOL){const k=Math.round(q*4)/4,c=mixC(PCOL.top,PM.bg,k).map(Math.round);setMeta(`rgb(${c.join(',')})`)}}
 addEventListener('scroll',()=>{if(!root||!main||pstRaf)return;if(S.tab!=='test'&&!PM.ok)return;pstRaf=requestAnimationFrame(()=>{pstRaf=0;pstSync()})},{passive:true});
@@ -1728,14 +1728,14 @@ function hScroller(el){for(let e=el;e&&e!==main;e=e.parentElement){if(e.closest&
   if(e.scrollWidth>e.clientWidth+4){const o=getComputedStyle(e).overflowX;if(o==='auto'||o==='scroll')return true}}return false}
 function swipeInit(){if(swipeInit.done)return;swipeInit.done=true;
   /* ---- the screen ---- */
-  let x0=0,y0=0,t0=0,dx=0,mode='',w=1;
+  let x0=0,y0=0,t0=0,dx=0,mode='',w=1,swF=0;
   const reset=anim=>{main.style.transition=anim&&!RM?'transform .38s cubic-bezier(.2,.9,.25,1),opacity .38s':'';main.style.transform='';main.style.opacity='';setTimeout(()=>{main.style.transition=''},400)};
   main.addEventListener('touchstart',e=>{mode='';dx=0;if(e.touches.length!==1||STK.length||layer||INTEST||hScroller(e.target)){mode='no';return}
     const p=e.touches[0];x0=p.clientX;y0=p.clientY;t0=Date.now();w=main.clientWidth||window.innerWidth},{passive:true});
   main.addEventListener('touchmove',e=>{if(mode==='no'||mode==='v'||e.touches.length!==1)return;const p=e.touches[0],mx=p.clientX-x0,my=p.clientY-y0;
     if(!mode){if(Math.abs(mx)<10&&Math.abs(my)<10)return;mode=Math.abs(mx)>Math.abs(my)*1.15?'h':'v';if(mode==='v')return}
-    e.preventDefault();const i=tabIx(),edge=(mx>0&&i===0)||(mx<0&&i===NAV.length-1);dx=edge?mx*.25:mx;
-    if(!RM){main.style.transition='';main.style.transform=`translate3d(${dx}px,0,0)`;main.style.opacity=String(1-Math.min(.35,Math.abs(dx)/w*.6))}},{passive:false});
+    const i=tabIx(),edge=(mx>0&&i===0)||(mx<0&&i===NAV.length-1);dx=edge?mx*.25:mx;
+    if(!RM&&!swF){swF=requestAnimationFrame(()=>{swF=0;if(mode!=='h')return;main.style.transition='';main.style.transform=`translate3d(${dx}px,0,0)`;main.style.opacity=String(1-Math.min(.35,Math.abs(dx)/w*.6))})}},{passive:true});
   const end=()=>{if(mode!=='h'){mode='';return}mode='';const v=Math.abs(dx)/Math.max(1,Date.now()-t0),i=tabIx(),go2=Math.abs(dx)>Math.min(90,w*.22)||(v>.45&&Math.abs(dx)>30);
     const n=dx<0?i+1:i-1;
     if(go2&&n>=0&&n<NAV.length){if(!RM){main.style.transition='transform .16s ease-in,opacity .16s ease-in';main.style.transform=`translate3d(${dx<0?-w*.35:w*.35}px,0,0)`;main.style.opacity='0'}

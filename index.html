@@ -1337,6 +1337,8 @@ html[data-oled="1"] #splash{background:radial-gradient(110% 75% at 50% 40%,#1015
 #splash.go .sp-ld{animation-delay:2.2s}
 #splash.q .sp-in{animation:spFade .2s ease-out both}
 #splash.hold .sp-in{opacity:0}
+/* nothing of the logo is painted before the show starts (no plain logo first, then the animation) */
+#splash:not(.go):not(.q):not(.off) .sp-in{opacity:0}
 html[data-lite] #splash .sp-glow,html[data-lite] #splash .sp-flare{display:none}
 @keyframes spFade{from{opacity:0}}
 @keyframes spLdIn{to{opacity:1}}
@@ -1883,7 +1885,7 @@ var done=false,play=function(){if(done||!c)return;done=true;var el=(performance.
 /* sound: only where the phone lets the page play it at once (installed app). A browser tab that blocks sound stays
    silent: no late chime seconds after the show. The show waits for the sound at most 0.45 s. */
 if(!q&&!rm&&snd){try{AC=window.AudioContext||window.webkitAudioContext;if(AC){c=new AC();if(c.state==='running')start();else{var r0=c.resume();if(r0&&r0.then)r0.then(function(){if(c.state==='running')start()},function(){})}}}catch(e){c=null}}
-s.classList.add('hold');setTimeout(start,c?450:0);
+s.classList.add('hold');setTimeout(start,c?120:0);
 try{}catch(e){}})();</script>
 <header class="hdr"><div class="hdr-in">
   <button class="iconbtn" id="mnu" aria-label="Menu" onclick="openMenu()" style="display:none"></button>
@@ -1927,7 +1929,7 @@ try{}catch(e){}})();</script>
 <script src="app27.js?v=2" onerror="(window.__miss=window.__miss||[]).push('app27.js')"></script>
 <script src="app28.js?v=2" onerror="(window.__miss=window.__miss||[]).push('app28.js')"></script>
 <!-- new student design (beta): off by default, turned on from the menu; the classic design stays as it is -->
-<script src="v3.js?v=27"></script>
+<script src="v3.js?v=28"></script>
 
 <script>
 /* blur the page behind whenever the side menu / a pop-up / a sheet is open (watches #layer) */
