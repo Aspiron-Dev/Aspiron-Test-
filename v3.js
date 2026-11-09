@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=17;
+const V3VER=18;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -1614,6 +1614,39 @@ A.rfShare=async()=>{if(!RF3||!RF3.code)return;const t=rfText(RF3.code);if(naviga
 A.rfWa=()=>{if(!RF3||!RF3.code)return;const w=window.open('https://wa.me/?text='+encodeURIComponent(rfText(RF3.code)),'_blank','noopener,noreferrer');if(w)w.opener=null};
 V3H.push([/^#\/refer$/,()=>openRefer()]);
 
+/* ================= FIRST-TIME SETUP in the new design =================
+   Shown once per student on this phone (cbt_v3_onb_<mobile>) when the profile has no class or target exam yet:
+   welcome, class and target exam (saved in the classic profile cbt_pf_<mobile>, which is kept on the account by
+   cbt_keep), then notifications and install. Skip closes it for good; everything can be changed later in Profile. */
+const OB={st:0,d:null,el:null};
+const obKey=()=>'cbt_v3_onb_'+((AUTH&&AUTH.mobile)||'');
+function maybeOnb(){try{if(!AUTH||INTEST||OB.el||lsGet(obKey(),0)||layer||scrOpen()||document.body.classList.contains('v3old'))return;const p=stuProf();if(p.cls&&p.exam){lsSet(obKey(),1);return}openOnb()}catch(e){}}
+function obStep(){const d=OB.d,nm=String((AUTH&&AUTH.name)||'').trim().split(' ')[0]||'there';
+  if(OB.st===0)return `<div class="ob-art">${ic('spark',34)}</div><small class="ob-k">WELCOME</small><h1>Hi ${esc3(nm)}, let’s set up your study space</h1><p>Two quick choices so your tests, schedule and tips fit you. It takes 20 seconds.</p>`;
+  if(OB.st===1)return `<small class="ob-k">STEP 1 OF 2</small><h1>About you</h1><p>We use this to show the right series and tips.</p>
+    <div class="fl"><span>Your class</span><div class="chips wrap">${PF3.cls.map(c=>`<button class="${d.cls===c?'on':''}" aria-pressed="${d.cls===c}" data-ob="cls" data-v="${c}">${c}</button>`).join('')}</div></div>
+    <div class="fl"><span>Target exam</span><div class="chips wrap">${PF3.exam.map(c=>`<button class="${d.exam===c?'on':''}" aria-pressed="${d.exam===c}" data-ob="exam" data-v="${c}">${c}</button>`).join('')}</div></div>`;
+  const np=npOn3(),inst=standalone3();
+  return `<small class="ob-k">STEP 2 OF 2</small><h1>Never miss a test</h1><p>Get an alert when a test goes live and when your result is out.</p>
+    <div class="card rows ob-rows"><button class="row" data-ob="np"><span class="ti g">${ic('bell',20)}</span><span><b>Phone notifications</b><small>${np?'On. You are all set.':'Test alerts, results and notices'}</small></span><span class="sw${np?' on':''}" aria-hidden="true"></span></button>
+     ${inst?'':`<button class="row" data-ob="inst"><span class="ti g">${ic('dl',20)}</span><span><b>Install the app</b><small>Open it from your home screen</small></span>${ic('right',18)}</button>`}</div>`}
+function obDraw(dir){const el=OB.el;if(!el)return;const last=OB.st===2,ok=OB.st!==1||(OB.d.cls&&OB.d.exam);
+  el.innerHTML=`<div class="ob-in"><div class="ob-top"><div class="ob-dots">${[0,1,2].map(i=>`<i class="${i===OB.st?'on':i<OB.st?'done':''}"></i>`).join('')}</div><button class="ob-skip" data-ob="skip">${last?'Close':'Skip'}</button></div>
+   <div class="ob-b ${dir||''}">${obStep()}</div>
+   <div class="ob-ft">${OB.st?'<button class="btn ghost" data-ob="back">Back</button>':''}<button class="btn ${OB.st===0?'gold lg':''}" data-ob="next"${ok?'':' disabled'}>${OB.st===0?'Let’s start':last?'Finish':'Continue'}${ic('right',16)}</button></div></div>`}
+function openOnb(){const p=stuProf();OB.d={cls:p.cls||'',exam:p.exam||''};OB.st=0;
+  const el=document.createElement('div');el.className='ob3';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-label','Set up your study space');OB.el=el;root.querySelector('#app3').appendChild(el);obDraw('');
+  requestAnimationFrame(()=>el.classList.add('open'));
+  el.addEventListener('click',async e=>{const b=e.target.closest('[data-ob]');if(!b)return;const k=b.dataset.ob;
+    if(k==='cls'||k==='exam'){OB.d[k]=b.dataset.v;obDraw('');return}
+    if(k==='skip'){obClose(OB.st===2);return}
+    if(k==='back'){OB.st=Math.max(0,OB.st-1);obDraw(RM?'':'bwd');return}
+    if(k==='next'){if(OB.st===1){if(!OB.d.cls||!OB.d.exam)return;try{pfSave(Object.assign({},stuProf(),{cls:OB.d.cls,exam:OB.d.exam}));if(typeof pfHdr==='function')pfHdr()}catch(err){}}
+      if(OB.st===2){obClose(true);return}OB.st++;obDraw(RM?'':'fwd');return}
+    if(k==='np'){try{await npToggle()}catch(err){}setTimeout(()=>{if(OB.el&&OB.st===2)obDraw('')},400);return}
+    if(k==='inst'){try{A.setInstall()}catch(err){}}})}
+function obClose(done){lsSet(obKey(),1);const el=OB.el;OB.el=null;if(!el)return;el.classList.remove('open');setTimeout(()=>el.remove(),RM?0:420);if(done)toast3('All set. You can change these in your profile.');try{softRender()}catch(e){}}
+
 /* ================= MENU: the classic menu's items, plus the switch back ================= */
 A.menu=()=>{const u=unread(),mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' on':''}${cls||''}" data-a="m" data-k="${k}">${ic(i)}<span>${t}</span>${extra?`<em>${extra}</em>`:''}</button>`;
   drawer.innerHTML=`<div class="hero pcard"><div class="who">${avatar()}<div style="min-width:0"><b>${esc3(stuName())}</b><small class="mut">${esc3(stuMeta())}</small></div></div><button class="btn sm onhero ghost blk" data-a="m" data-k="profile">View profile</button></div>
@@ -1668,7 +1701,7 @@ route=async function(){
   if(!CAT||Date.now()-CATAT>30000){if(!CAT)main.innerHTML='<div class="card sk" style="height:220px;margin-top:8px"></div><div class="card sk" style="height:160px"></div><div class="card sk" style="height:200px"></div>';
     const ok=await loadCat(!!CAT);if(!ok){if(AUTH){toOld()}return}if(INTEST||!AUTH)return}
   if(NOTES===null)loadNotes().then(()=>{if(S.tab==='test')softRender()});
-  const tab=tabOf(h),changed=tab!==S.tab||!main.children.length||main.querySelector('.sk');S.tab=tab;syncDock();if(changed)scrollTo(0,0);render(changed);
+  const tab=tabOf(h),changed=tab!==S.tab||!main.children.length||main.querySelector('.sk');S.tab=tab;syncDock();if(changed)scrollTo(0,0);render(changed);if(tab==='home'&&!goThen)setTimeout(maybeOnb,1100);
   if(goThen){const f=goThen;goThen=null;setTimeout(f,0)}};
 if(typeof login==='function'){const _login=login;login=function(){document.body.classList.remove('v3on','v3old');return _login.apply(this,arguments)}}
 if(typeof cdRefresh==='function'){const _cdr=cdRefresh;cdRefresh=function(){const r=_cdr.apply(this,arguments);if(booted&&document.body.classList.contains('v3on')&&!document.body.classList.contains('v3old')&&(S.tab==='home'||S.tab==='tools'))softRender();return r}}
