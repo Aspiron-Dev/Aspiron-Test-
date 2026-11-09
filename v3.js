@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=14;
+const V3VER=15;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -346,7 +346,7 @@ A.wkMonth=()=>{const T=wkTests(),now=mKey(nowMs()),ks=T.map(t=>mKey(t.opens_at))
    return `<button class="${k===cur?'on':''}${k===now?' now':''}" data-a="wkPick" data-k="${k}"><b>${fD(new Date(y,m,1),{month:'short'})}</b><small>${y}</small><em>${n?n+(n===1?' test':' tests'):'No tests'}</em></button>`}).join('')}</div>`)};
 A.wkPick=el=>{const k=+el.dataset.k,y=Math.floor(k/12),m=k%12,first=new Date(y,m,1).getTime(),next=new Date(y,m+1,1).getTime();closeLayer();
   if(k===mKey(nowMs()))wkGo(nowMs());else{const t=wkTests().filter(x=>x.opens_at>=first&&x.opens_at<next).sort((a,b)=>a.opens_at-b.opens_at)[0];wkGo(t?t.opens_at:first)}redraw()};
-A.oldTracker=()=>oldHash('#/t');
+A.oldTracker=()=>openTracker();
 
 /* ---------- notifications (the classic notices) ---------- */
 function syncBell(){const b=$('#bell');if(!b)return;const u=unread();b.innerHTML=ic('bell',21)+`<span class="dot${u?'':' off'}"></span>`;b.setAttribute('aria-label',u?`Notifications, ${u} unread`:'Notifications')}
@@ -1414,6 +1414,106 @@ A.pqMore=()=>{PQ.lim=(PQ.lim||20)+20;qbKeep()};
 A.pqAns=el=>{PQ.open[el.dataset.id]=1;qbKeep()};
 V3H.push([/^#\/pyq(\/([A-Z0-9]+))?$/,m=>openPyq(m[2])],[/^#\/pyq\/([A-Z0-9]+)\/([\w-]+)$/,m=>{if(PYQ_SYL[m[1]]&&!PYQ_SYL[m[1]].soon)PQ.exam=m[1];openPyqCh(m[2])}]);
 
+/* ================= STUDY TRACKER in the new design =================
+   The same tracker data as the classic page (app6.js / app9.js): weeks, subjects and tasks in cbt_trk_<mobile>,
+   ticks per day in cbt_trkd_<mobile>, read and written through the classic helpers (trkLoad, trkSave, trkStats,
+   trkW, trkId, trkDays, trkStreak, tDay). */
+const TR3={sel:-1,flt:'all',undo:null,ut:0};
+const TREM=['📘','⚡','🧪','📐','🌿','🧬','🌍','💻','📊','📖','🧠','🔬','📝','🎨','🔢','🗣️','⚖️','🏛️','💰','🎯'];
+const TRCO=['#10b981','#6366f1','#f59e0b','#ec4899','#14b8a6','#f97316','#8b5cf6','#06b6d4','#ef4444','#84cc16','#3b82f6','#a855f7'];
+const trSafe=c=>/^#[0-9a-f]{6}$/i.test(c||'')?c:'#6366f1';
+function trRing(p,sz){const R=sz/2-7,C=2*Math.PI*R;return `<svg viewBox="0 0 ${sz} ${sz}" width="${sz}" height="${sz}" aria-hidden="true"><circle cx="${sz/2}" cy="${sz/2}" r="${R}" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="8"/><circle cx="${sz/2}" cy="${sz/2}" r="${R}" fill="none" stroke="var(--acc1)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-p/100)).toFixed(1)}" transform="rotate(-90 ${sz/2} ${sz/2})" class="mkr"/></svg>`}
+function trTip(w){const s=trkStats(w);if(!w.subjects.length||!s.total)return '';let low=null,lp=101;
+  w.subjects.forEach(x=>{const t=x.tasks.length;if(!t)return;const p=Math.round(x.tasks.filter(k=>k.done).length*100/t);if(p<lp){lp=p;low=x}});
+  const nm=x=>`<b>${esc3(x.emoji+' '+x.name)}</b>`;
+  return s.pct===100?['ok',`Week complete. All ${s.total} tasks done. Great work!`]:s.done===0?['',`${s.total} tasks are waiting. Start with ${nm(w.subjects.find(x=>x.tasks.length)||w.subjects[0])}.`]
+   :low&&lp<30?['warn',`${nm(low)} needs attention. Only ${lp}% done.`]:s.pct>=75?['',`Almost there. Only ${s.total-s.done} task${s.total-s.done>1?'s':''} left.`]:['',`${s.pct}% done. Focus on ${low?nm(low):'pending tasks'} next.`]}
+function trView(){return {t:'Study tracker',get s(){try{return trkW().label}catch(e){return ''}},key:'trk',right:()=>`<button class="ib" data-a="trMenu" aria-label="Tracker options">${ic('gear',19)}</button>`,html:()=>{
+  const T=trkLoad(),w=T.weeks[T.cur],st=trkStats(w),o=trkDays(),td=o[tDay()]||0,sk=trkStreak(),wk=[];
+  for(let k=6;k>=0;k--){const d=new Date();d.setDate(d.getDate()-k);wk.push({l:d.toLocaleDateString('en-IN',{weekday:'narrow'}),n:o[tDay(d)]||0,t:k===0})}const mx=Math.max(1,...wk.map(x=>x.n)),tip=trTip(w);
+  let h=`<section class="mkh trh"><div class="trh-top"><div class="mkh-ring">${trRing(st.pct,104)}<span><b>${st.pct}%</b><small>done</small></span></div>
+     <div class="trh-t"><button class="trwn" data-a="trRename"><b>${esc3(w.label)}</b>${ic('pen',14)}</button><p><b>${st.done}</b> done · <b>${st.total-st.done}</b> left · <b>${st.total}</b> tasks</p>
+      <div class="trday"><span><b>${td}</b> today</span><span><b>${sk}</b> day streak</span></div></div></div>
+    <div class="trwk">${wk.map(x=>`<div class="${x.t?'t':''}"><i class="${x.n?'':'z'}" style="--h:${x.n?Math.max(.16,x.n/mx).toFixed(2):.06}"></i><span>${x.l}</span></div>`).join('')}</div>
+    <div class="trq"><button data-a="trGrowth">${ic('chart',17)}<span>Growth</span></button><button data-a="trTargets">${ic('target',17)}<span>Targets</span></button><button data-a="trWeeks">${ic('cal',17)}<span>Weeks</span></button><button data-a="trAddWeek">${ic('spark',17)}<span>New week</span></button></div></section>
+   ${tip?`<div class="trtip ${tip[0]}">${ic(tip[0]==='ok'?'trophy':tip[0]==='warn'?'info':'target',18)}<p>${tip[1]}</p></div>`:''}
+   <div class="chips trwks">${T.weeks.map((x,i)=>`<button class="${i===T.cur?'on':''}" data-a="trWeek" data-i="${i}">${esc3(x.label)}<small>${trkStats(x).pct}%</small></button>`).join('')}<button data-a="trAddWeek">${ic('spark',14)} Add</button></div>`;
+  if(!w.subjects.length)return h+`<div class="card empty"><span class="ti">${ic('book',22)}</span><b>Add your subjects</b><p>Pick one to start, or add your own.</p>
+    <div class="chips wrap" style="justify-content:center">${['Physics','Chemistry','Maths','Biology','English','Reasoning'].map(n=>`<button data-a="trQuick" data-v="${n}">${n}</button>`).join('')}</div><button class="btn" data-a="trSubj">Add a subject</button></div>`;
+  h+=`<div class="chips"><button class="${TR3.sel===-1?'on':''}" data-a="trSel" data-i="-1">All subjects</button>${w.subjects.map((s,i)=>`<button class="${TR3.sel===i?'on':''}" data-a="trSel" data-i="${i}">${esc3(s.emoji)} ${esc3(s.name)}</button>`).join('')}<button data-a="trSubj">${ic('spark',14)} Subject</button></div>
+   <div class="seg">${[['all','All'],['pending','Pending'],['done','Done']].map(([k,l])=>`<button class="${TR3.flt===k?'on':''}" data-a="trFlt" data-v="${k}">${l}</button>`).join('')}</div>`;
+  w.subjects.forEach((s,si)=>{if(TR3.sel!==-1&&TR3.sel!==si)return;
+    const d=s.tasks.filter(x=>x.done).length,t=s.tasks.length,p=t?Math.round(d*100/t):0,goal=T.goals[s.id];
+    const rows=s.tasks.map((x,ti)=>({x,ti})).filter(r=>TR3.flt==='all'||(TR3.flt==='done'?r.x.done:!r.x.done));
+    h+=`<article class="card trs" style="--sc:${trSafe(s.color)}"><div class="trs-h"><span class="trem">${esc3(s.emoji)}</span><span class="trs-t"><b>${esc3(s.name)}</b><small>${d} of ${t} done${goal?` · target ${goal}`:''}</small></span><em>${p}%</em><button class="trib" data-a="trDelSubj" data-i="${si}" aria-label="Remove ${esc3(s.name)}">${ic('trash',17)}</button></div>
+     <span class="trbar"><i style="--p:${(p/100).toFixed(3)}"></i></span>
+     <div class="trl">${rows.length?rows.map(r=>`<div class="trt${r.x.done?' dn':''}"><button class="trck" data-a="trTog" data-s="${si}" data-t="${r.ti}" aria-pressed="${!!r.x.done}" aria-label="Done">${ic('check',14)}</button><button class="trtx" data-a="trEdit" data-s="${si}" data-t="${r.ti}">${esc3(r.x.text)}</button><button class="trx" data-a="trDel" data-s="${si}" data-t="${r.ti}" aria-label="Delete task">${ic('x',15)}</button></div>`).join(''):`<p class="hint">${t?'Nothing here for this filter.':'No tasks yet. Add your first one below.'}</p>`}</div>
+     <form class="tradd" data-s="${si}"><input class="inp" maxlength="120" placeholder="Add a task" aria-label="New task for ${esc3(s.name)}"><button class="btn sm">Add</button></form></article>`});
+  return h},
+  after:()=>{$$('#scrB .tradd').forEach(f=>f.addEventListener('submit',e=>{e.preventDefault();const i=f.querySelector('input'),v=i.value.trim();if(!v)return;
+    trkW().subjects[+f.dataset.s].tasks.push({id:trkId(),text:v.slice(0,120),done:false});trkSave();const si=f.dataset.s;qbKeep();const n=$(`#scrB .tradd[data-s="${si}"] input`);n&&n.focus({preventScroll:true})}));
+    const a=$('#scrB .trwks .on');if(a)try{a.parentNode.scrollLeft=a.offsetLeft-a.parentNode.clientWidth/2+a.clientWidth/2}catch(e){}}}}
+function openTracker(){closeLayer();trkLoad();TR3.sel=-1;TR3.flt='all';if(!(top()&&top().key==='trk'))push(trView());else redraw()}
+const trDraw=()=>{if(top()&&top().key==='trk'){qbKeep();$('#scrS').textContent=trkW().label}};
+A.trSel=el=>{TR3.sel=+el.dataset.i;qbKeep()};A.trFlt=el=>{TR3.flt=el.dataset.v;qbKeep()};
+A.trWeek=el=>{const i=+el.dataset.i;if(i===trkLoad().cur)return;trkLoad().cur=i;TR3.sel=-1;trkSave();trDraw()};
+A.trTog=el=>{const s=trkW().subjects[+el.dataset.s],t=s&&s.tasks[+el.dataset.t];if(!t)return;t.done=!t.done;
+  if(t.done){t.at=Date.now();trkDays(1);if(navigator.vibrate)navigator.vibrate(12)}else{if(t.at&&tDay(new Date(t.at))===tDay())trkDays(-1);delete t.at}
+  trkSave();trDraw();if(t.done){const all=trkStats(trkW());if(all.total&&all.done===all.total)toast3('Week complete! Amazing work');else if(s.tasks.every(x=>x.done))toast3(`${s.name} done for this week!`)}};
+A.trDel=el=>{const s=trkW().subjects[+el.dataset.s],ti=+el.dataset.t,t=s&&s.tasks.splice(ti,1)[0];if(!t)return;TR3.undo={sid:s.id,ti,t};trkSave();trDraw();
+  const b=$('#trUndo');if(b)b.remove();const u=document.createElement('div');u.id='trUndo';u.className='undo3';u.innerHTML='<span>Task deleted</span><button data-a="trUndo">Undo</button>';root.querySelector('#app3').appendChild(u);
+  clearTimeout(TR3.ut);TR3.ut=setTimeout(()=>{u.remove();TR3.undo=null},4500)};
+A.trUndo=()=>{const u=TR3.undo;TR3.undo=null;const b=$('#trUndo');if(b)b.remove();if(!u)return;const s=trkW().subjects.find(x=>x.id===u.sid);if(!s)return;s.tasks.splice(Math.min(u.ti,s.tasks.length),0,u.t);trkSave();trDraw()};
+function trAsk(title,val,ph,cb){openSheet(`<h2 id="sheetT">${esc3(title)}</h2><form id="trAskF" class="stack" style="gap:14px;margin-top:6px"><input class="inp" id="trAskI" maxlength="120" value="${esc3(val||'')}" placeholder="${esc3(ph||'')}"><div class="sheet-ft" style="margin:0"><button type="button" class="btn ghost" data-a="close">Cancel</button><button class="btn">Save</button></div></form>`);
+  const f=sheet.querySelector('#trAskF'),i=sheet.querySelector('#trAskI');setTimeout(()=>{i.focus();i.select()},120);f.addEventListener('submit',e=>{e.preventDefault();const v=i.value.trim();if(!v)return;closeLayer();cb(v)})}
+function trConfirm(title,msg,ok,cb){openSheet(`<h2 id="sheetT">${esc3(title)}</h2><p class="sub">${msg}</p><div class="sheet-ft"><button class="btn ghost" data-a="close">No, keep it</button><button class="btn danger3" id="trYes">${esc3(ok)}</button></div>`);sheet.querySelector('#trYes').addEventListener('click',()=>{closeLayer();cb()})}
+A.trEdit=el=>{const si=+el.dataset.s,ti=+el.dataset.t,t=trkW().subjects[si].tasks[ti];if(!t)return;trAsk('Edit task',t.text,'',v=>{t.text=v.slice(0,120);trkSave();trDraw()})};
+A.trRename=()=>trAsk('Rename this week',trkW().label,'e.g. Week 3, Revision week',v=>{trkW().label=v.slice(0,30);trkSave();trDraw()});
+A.trAddWeek=()=>{closeLayer();const prev=trkW(),n=trkLoad().weeks.length+1;trkLoad().weeks.push({id:'w'+trkId(),label:'Week '+n,subjects:prev.subjects.map(s=>({id:s.id,name:s.name,emoji:s.emoji,color:s.color,tasks:[]}))});trkLoad().cur=trkLoad().weeks.length-1;TR3.sel=-1;trkSave();trDraw();toast3('Week '+n+' added')};
+A.trDelWeek=el=>{const i=+el.dataset.i,w=trkLoad().weeks[i];if(i<1||!w)return;const s=trkStats(w);
+  trConfirm(`Delete ${w.label}?`,`This week${s.total?` and its <b>${s.total} task${s.total>1?'s':''}</b>`:''} will be deleted. This cannot be undone.`,'Yes, delete',()=>{trkLoad().weeks.splice(i,1);if(trkLoad().cur>=trkLoad().weeks.length)trkLoad().cur=trkLoad().weeks.length-1;else if(trkLoad().cur>i)trkLoad().cur--;trkSave();trDraw();toast3(w.label+' deleted')})};
+A.trDelSubj=el=>{const si=+el.dataset.i,s=trkW().subjects[si];if(!s)return;trConfirm(`Remove ${s.name}?`,`It will be removed from this week${s.tasks.length?` with its <b>${s.tasks.length} task${s.tasks.length>1?'s':''}</b>`:''}.`,'Yes, remove',()=>{trkW().subjects.splice(si,1);TR3.sel=-1;trkSave();trDraw()})};
+A.trQuick=el=>{const n=el.dataset.v,i=trkW().subjects.length,e=['⚡','🧪','📐','🌿','📖','🧠'],s={id:'s'+trkId(),name:n,emoji:e[i%e.length],color:TRCO[i%TRCO.length]};trkLoad().weeks.forEach(w=>w.subjects.push(Object.assign({tasks:[]},s)));trkSave();trDraw()};
+let TRN=null;
+function trSubjDraw(){const n=TRN;sheet.innerHTML=`<div class="grab"></div><h2 id="sheetT">Add a subject</h2>
+  <div class="trprev" style="--sc:${n.color}"><span class="trem">${esc3(n.emoji)}</span><b id="trPn">${esc3(n.name||'Subject name')}</b></div>
+  <input class="inp" id="trSn" maxlength="24" placeholder="e.g. Biology, Physics" value="${esc3(n.name)}">
+  <p class="gh" style="margin:14px 0 8px">Icon</p><div class="trpick">${TREM.map(e=>`<button class="${e===n.emoji?'on':''}" data-e="${e}">${e}</button>`).join('')}</div>
+  <p class="gh" style="margin:14px 0 8px">Colour</p><div class="trpick col">${TRCO.map(c=>`<button class="${c===n.color?'on':''}" data-c="${c}" style="background:${c}" aria-label="Colour"></button>`).join('')}</div>
+  <button class="row trall" data-all><span><b>Add to every week</b><small>Otherwise only this week</small></span><span class="sw${n.all?' on':''}" aria-hidden="true"></span></button>
+  <div class="sheet-ft"><button class="btn ghost" data-a="close">Cancel</button><button class="btn" data-ok>Add subject</button></div>`;
+  const i=sheet.querySelector('#trSn');i.addEventListener('input',()=>{n.name=i.value;sheet.querySelector('#trPn').textContent=i.value||'Subject name'})}
+A.trSubj=()=>{TRN={name:'',emoji:TREM[0],color:TRCO[0],all:trkLoad().weeks.length>1};openSheet('');trSubjDraw();
+  sheet.onclick=e=>{const n=TRN;if(!n)return;const b=e.target.closest('button');if(!b)return;
+    if(b.dataset.e){n.emoji=b.dataset.e;trSubjDraw();return}if(b.dataset.c){n.color=b.dataset.c;trSubjDraw();return}
+    if(b.hasAttribute('data-all')){n.all=!n.all;trSubjDraw();return}
+    if(b.hasAttribute('data-ok')){const nm=(n.name||'').trim();if(!nm){toast3('Enter a subject name');return}const id='s'+trkId(),mk=()=>({id,name:nm,emoji:n.emoji,color:n.color,tasks:[]});
+      if(n.all)trkLoad().weeks.forEach(w=>w.subjects.push(mk()));else trkW().subjects.push(mk());TRN=null;trkSave();closeLayer();trDraw();toast3('Subject added')}}};
+A.trTargets=()=>{const T=trkLoad(),w=trkW();if(!w.subjects.length){toast3('Add a subject first');return}
+  openSheet(`<h2 id="sheetT">Weekly targets</h2><p class="sub">How many tasks do you want to finish in each subject this week?</p><div class="stack" style="gap:10px">${w.subjects.map(s=>{const d=s.tasks.filter(x=>x.done).length,g=T.goals[s.id]||10,p=Math.min(100,Math.round(d*100/g));
+    return `<div class="card p trg" style="--sc:${trSafe(s.color)}"><div class="trg-h"><span class="trem">${esc3(s.emoji)}</span><b>${esc3(s.name)}</b><input class="inp" type="number" min="1" max="999" inputmode="numeric" value="${g}" data-g="${esc3(s.id)}" aria-label="Target for ${esc3(s.name)}"></div><span class="trbar"><i style="--p:${(p/100).toFixed(3)}"></i></span><small>${d} of ${g} done</small></div>`}).join('')}</div>
+    <div class="sheet-ft"><button class="btn" data-a="close">Done</button></div>`);
+  sheet.querySelectorAll('[data-g]').forEach(i=>i.addEventListener('change',()=>{T.goals[i.dataset.g]=Math.max(1,Math.min(999,parseInt(i.value)||1));i.value=T.goals[i.dataset.g];trkSave();trDraw()}))};
+A.trGrowth=()=>{const T=trkLoad(),W=T.weeks,cw=trkW(),P=W.map(w=>trkStats(w).pct),best=P.indexOf(Math.max(...P)),avg=Math.round(P.reduce((a,b)=>a+b,0)/Math.max(W.length,1));
+  openSheet(`<h2 id="sheetT">Your growth</h2><p class="sub">How much of each week you finished</p>
+   <div class="trgw">${W.map((w,i)=>`<div class="${i===T.cur?'on':''}"><b>${P[i]?P[i]+'%':''}</b><i style="--h:${Math.max(.04,P[i]/100).toFixed(2)}"></i><span>W${i+1}</span></div>`).join('')}</div>
+   <div class="mkh-st trgs"><div><b>${W.length}</b><small>Weeks</small></div><div><b>${avg}%</b><small>Average</small></div><div><b>W${best+1}</b><small>Best week</small></div></div>
+   <p class="gh" style="margin:16px 0 8px">Subjects · ${esc3(cw.label)}</p>${cw.subjects.map(s=>{const d=s.tasks.filter(x=>x.done).length,t=s.tasks.length,p=t?Math.round(d*100/t):0;return `<div class="trgr" style="--sc:${trSafe(s.color)}"><span class="trem">${esc3(s.emoji)}</span><span class="trgr-b"><b>${esc3(s.name)}</b><span class="trbar"><i style="--p:${(p/100).toFixed(3)}"></i></span></span><em>${p}%</em></div>`}).join('')||'<p class="hint">No subjects yet.</p>'}
+   <div class="sheet-ft"><button class="btn" data-a="close">Close</button></div>`)};
+A.trWeeks=()=>{const T=trkLoad();openSheet(`<h2 id="sheetT">All weeks</h2><div class="stack" style="gap:8px;margin-top:8px">${T.weeks.map((w,i)=>{const s=trkStats(w);return `<div class="trwr${i===T.cur?' on':''}"><button data-a="trWeekGo" data-i="${i}"><b>${esc3(w.label)}</b><span class="trbar"><i style="--p:${(s.pct/100).toFixed(3)}"></i></span><small>${s.done} of ${s.total} done</small></button>${i>0?`<button class="trib" data-a="trDelWeek" data-i="${i}" aria-label="Delete ${esc3(w.label)}">${ic('trash',17)}</button>`:''}</div>`}).join('')}</div>
+  <div class="sheet-ft"><button class="btn ghost" data-a="close">Close</button><button class="btn" data-a="trAddWeek">New week</button></div>`)};
+A.trWeekGo=el=>{closeLayer();A.trWeek(el)};
+A.trCarry=()=>{closeLayer();const T=trkLoad(),i=T.cur;if(i<1){toast3('There is no previous week');return}const prev=T.weeks[i-1],cur=T.weeks[i];let n=0;
+  prev.subjects.forEach(ps=>{const p=ps.tasks.filter(t=>!t.done);if(!p.length)return;let cs=cur.subjects.find(x=>x.id===ps.id);if(!cs){cs={id:ps.id,name:ps.name,emoji:ps.emoji,color:ps.color,tasks:[]};cur.subjects.push(cs)}
+    p.forEach(t=>{if(!cs.tasks.some(x=>x.text===t.text)){cs.tasks.push({id:trkId(),text:t.text,done:false});n++}})});
+  trkSave();trDraw();toast3(n?`${n} pending task${n>1?'s':''} moved from ${prev.label}`:'No pending tasks in '+prev.label)};
+A.trResetWeek=()=>{closeLayer();setTimeout(()=>trConfirm('Reset this week?','All tasks of this week will be marked as pending again.','Yes, reset',()=>{trkW().subjects.forEach(s=>s.tasks.forEach(t=>{t.done=false;delete t.at}));trkSave();trDraw();toast3('Week reset')}),250)};
+A.trResetAll=()=>{closeLayer();setTimeout(()=>trConfirm('Delete everything?','<b>All weeks, subjects and tasks</b> will be deleted. This cannot be undone.','Yes, delete all',()=>{const T=trkLoad();LS.del(trkDayKey());T.cur=0;T.nid=1;T.weeks=[{id:'w1',label:'Week 1',subjects:[]}];T.goals={};trkSave();TR3.sel=-1;trDraw();toast3('Tracker reset')}),250)};
+A.trMenu=()=>{const it=(a,i,t,s,c)=>`<button class="row${c?' '+c:''}" data-a="${a}"><span class="ti">${ic(i,19)}</span><span><b>${t}</b><small>${s}</small></span></button>`;
+  openSheet(`<h2 id="sheetT">Tracker options</h2><div class="list trmn">${it('trRename','pen','Rename this week','Change the week name')}${trkLoad().cur>0?it('trCarry','swap','Carry over pending tasks','Copy unfinished tasks from '+esc3(trkLoad().weeks[trkLoad().cur-1].label)):''}${it('trAddWeek','cal','Add a new week','Copies your subjects with empty tasks')}${it('trSubj','book','Add a subject','In this week or every week')}${it('trTargets','target','Set targets','A task goal for each subject')}${it('trGrowth','chart','Growth','Progress across all weeks')}${it('trResetWeek','clock','Reset this week','Mark all tasks as pending')}${it('trResetAll','trash','Delete everything','All weeks, subjects and tasks','bad')}</div>`)};
+['trSubj','trTargets','trGrowth','trRename'].forEach(k=>{const f=A[k];A[k]=el=>{if(layer){closeLayer();setTimeout(()=>f(el),250)}else f(el)}});
+V3H.push([/^#\/t$/,()=>openTracker()]);
+
 /* ================= MENU: the classic menu's items, plus the switch back ================= */
 A.menu=()=>{const u=unread(),mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' on':''}${cls||''}" data-a="m" data-k="${k}">${ic(i)}<span>${t}</span>${extra?`<em>${extra}</em>`:''}</button>`;
   drawer.innerHTML=`<div class="hero pcard"><div class="who">${avatar()}<div style="min-width:0"><b>${esc3(stuName())}</b><small class="mut">${esc3(stuMeta())}</small></div></div><button class="btn sm onhero ghost blk" data-a="m" data-k="profile">View profile</button></div>
@@ -1422,7 +1522,7 @@ A.menu=()=>{const u=unread(),mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' o
   <div class="mgp">${mi('gear','Settings','settings')}${mi('info','About Us','about')}${mi('file','Terms & Conditions','terms')}${mi('file','Privacy Policy','privacy')}${mi('file','Refund Policy','refund')}${mi('mail','Contact Us','contact')}</div><div class="mdiv"></div>
   ${mi('swap','Switch to the classic design','classic',0,'','')}${mi('out','Logout','logout',0,'',' out')}`;openLayer(drawer)};
 A.m=el=>{const k=el.dataset.k;closeLayer();
-  const M={profile:A.profile,theme:openTheme,home:()=>go('home'),series:()=>go('test'),history:A.hist,mistakes:()=>openMistakes(),saved:()=>openSaved(),tracker:()=>oldHash('#/t'),notif:A.bell,cd:A.cdEdit,
+  const M={profile:A.profile,theme:openTheme,home:()=>go('home'),series:()=>go('test'),history:A.hist,mistakes:()=>openMistakes(),saved:()=>openSaved(),tracker:()=>openTracker(),notif:A.bell,cd:A.cdEdit,
    settings:A.settings,about:A.setAbout,terms:A.setTerms,privacy:()=>window.open('privacy','_blank','noopener'),refund:()=>window.open('refund','_blank','noopener'),contact:A.setHelp,
    classic:()=>window.v3Disable(),logout:A.setOut};
   setTimeout(()=>{(M[k]||(()=>{}))()},140)};
