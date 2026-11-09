@@ -1599,3 +1599,4 @@ button,a,.chips button,.seg button{touch-action:manipulation}
   @keyframes dkIn{from{opacity:0;transform:translate3d(0,16px,0)}}
 }
 @media (min-width:1024px) and (max-width:1199px){.dnav [data-a="dk"]{display:none}.hdr-in{gap:18px}}
+.tc3-f{flex-wrap:wrap}.tc3-f button{min-width:30%;display:inline-flex;align-items:center;justify-content:center;gap:6px}
