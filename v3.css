@@ -1500,3 +1500,102 @@ button,a,.chips button,.seg button{touch-action:manipulation}
 .su-r{display:flex;align-items:center;gap:12px;padding:14px;border-radius:18px;background:var(--surface);border:1px solid var(--line)}
 .su-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.su-t b{font-size:15px;font-weight:600}.su-t small{font-size:12.5px;color:var(--mut);line-height:1.4}
 .su-r .btn{flex:none}
+/* =====================================================================================================
+   DESKTOP WEBSITE (1024 px and wider). Everything below is inside this media query, so phones and
+   tablets keep the app exactly as it is. The page becomes a website: a top bar with the main links,
+   a wide content area in columns, centred dialogs, hover states and a footer. No bottom bar, no swipe.
+   ===================================================================================================== */
+.dnav,.dav,.dfoot{display:none}
+@media (min-width:1024px){
+  :host{--dw:1200px;--gap:22px}
+  /* ---- top bar ---- */
+  .hdr{position:sticky;top:0;background:color-mix(in srgb,var(--bg) 82%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 1px 0 var(--line)}
+  .hdr-in{max-width:var(--dw);display:flex!important;align-items:center;gap:28px;padding:14px 32px!important}
+  #mnu{display:none}
+  .hdr-in .brand{order:0;flex:none;justify-self:auto;margin:0}
+  .dnav{order:1;display:flex;align-items:center;gap:4px;flex:1;min-width:0}
+  .dnav button{position:relative;height:40px;padding:0 14px;border-radius:12px;font-size:14.5px;font-weight:500;color:var(--mut);white-space:nowrap;transition:color .2s,background .2s}
+  .dnav button:hover{color:var(--tx);background:var(--surface2)}
+  .dnav button.on{color:var(--tx);font-weight:600}
+  .dnav button.on::after{content:"";position:absolute;left:14px;right:14px;bottom:3px;height:2px;border-radius:2px;background:var(--acc1);animation:dnU .35s cubic-bezier(.22,1,.36,1)}
+  @keyframes dnU{from{transform:scaleX(0)}}
+  #bell{order:2}
+  .dav{order:3;display:grid;place-items:center;width:42px;height:42px;padding:0;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line),0 4px 14px -6px rgba(0,0,0,.25);overflow:hidden;transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}
+  .dav:hover{transform:translateY(-1px);box-shadow:0 0 0 2px var(--acc1),0 8px 20px -8px rgba(0,0,0,.3)}
+  .dav .av{width:100%;height:100%;border-radius:50%;font-size:16px}
+  /* the Tests poster header keeps its look on desktop too */
+  .hdr.tp .dnav button{color:rgba(255,255,255,.78)}.hdr.tp .dnav button.on,.hdr.tp .dnav button:hover{color:#fff;background:rgba(255,255,255,.1)}
+  .hdr.tp.tpfull .dnav button{color:var(--mut)}.hdr.tp.tpfull .dnav button.on{color:var(--tx)}
+  /* ---- no app bottom bar on a website ---- */
+  .dock{display:none!important}
+  /* ---- content: wide, in columns ---- */
+  .main{max-width:var(--dw);padding:28px 32px 72px!important;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:26px 28px;align-items:start}
+  .main>*{grid-column:1/-1;min-width:0}
+  .main[data-tab="home"]>.sec{grid-column:span 6}
+  .main[data-tab="home"]>.band{border-radius:24px;overflow:hidden}
+  .main[data-tab="home"]>.band .band-in{max-width:none;padding:26px 36px 30px}
+  .main[data-tab="tools"]>.sec{grid-column:span 4}
+  .main[data-tab="stats"]>.sec{grid-column:span 6}
+  .main[data-tab="stats"]>.sec:first-of-type{grid-column:1/-1}
+  .main #lBody{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 28px;align-items:start}
+  .main #lBody>*{min-width:0}
+  .main #tBody{gap:30px}
+  .main #tBody .list{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
+  .df-b .bmk{display:inline-flex;margin:0}
+  .main .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+  .main .g2{gap:14px}
+  .main .chips{margin-inline:0;padding:0;flex-wrap:wrap;overflow:visible}
+  .main .pt h1,.main .pt h2{font-size:34px;letter-spacing:-.02em}
+  /* the Tests tab poster: a wide banner under the top bar (not the tall phone poster) */
+  .main[data-tab="test"]{padding-top:0!important}
+  .main[data-tab="test"] .pst{width:auto;margin-left:0;margin-right:0}
+  .main[data-tab="test"] .pst-art{border-radius:0 0 30px 30px}
+  .main[data-tab="test"] .pst.noimg .pst-art{aspect-ratio:auto;height:430px}
+  .main[data-tab="test"] .pst-art img{max-height:470px;height:470px;object-fit:cover;object-position:center}
+  .main[data-tab="test"] .pst-ph{padding:calc(var(--hh,62px) + 70px) 56px 150px}
+  .main[data-tab="test"] .pst-ph b{font-size:46px}
+  .main[data-tab="test"] .pst-ph em{max-width:460px;font-size:16px}
+  .main[data-tab="test"] .pst-tabs .tt2{max-width:720px}
+  /* ---- footer ---- */
+  .dfoot{display:block;border-top:1px solid var(--line);background:var(--surface);margin-top:24px}
+  .df-in{max-width:var(--dw);margin:0 auto;padding:44px 32px 28px;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px}
+  .df-b p{margin:14px 0 0;font-size:14px;line-height:1.6;color:var(--mut);max-width:340px}
+  .df-c{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+  .df-c b{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+  .df-c button,.df-c a{font-size:14.5px;color:var(--mut);text-decoration:none;transition:color .2s}
+  .df-c button:hover,.df-c a:hover{color:var(--tx)}
+  .df-bot{max-width:var(--dw);margin:0 auto;padding:18px 32px 28px;display:flex;justify-content:space-between;font-size:13px;color:var(--faint);border-top:1px solid var(--line)}
+  .df-bot a{color:var(--mut);text-decoration:none}
+  /* ---- pages (Settings, Results, a series…) open as wide website pages, under the site's top bar ---- */
+  .scr{left:0;right:0;top:70px}
+  .hdr{z-index:52}
+  /* offer banners: three across instead of one wide slide */
+  .main .rail{gap:18px;scroll-snap-type:x mandatory}
+  .main .rail>.pbn{flex:0 0 calc((100% - 36px)/3);scroll-snap-align:start}
+  .scr-h{max-width:var(--dw);margin:0 auto;width:100%;padding-left:32px!important;padding-right:32px!important}
+  .scr-in{max-width:980px;padding-left:32px!important;padding-right:32px!important}
+  .scr-in .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+  /* ---- sheets become centred dialogs ---- */
+  .sheet{left:50%;right:auto;top:50%;bottom:auto;width:min(560px,92vw);max-width:none;max-height:84vh;border-radius:24px;padding:22px 26px 26px;
+    transform:translate3d(-50%,-46%,0) scale(.97);opacity:0;transition:transform .32s cubic-bezier(.22,1,.36,1),opacity .24s ease,visibility 0s linear .32s;box-shadow:0 40px 90px -30px rgba(0,0,0,.45)}
+  .sheet.open{transform:translate3d(-50%,-50%,0);opacity:1;transition:transform .36s cubic-bezier(.22,1,.36,1),opacity .24s ease,visibility 0s}
+  .sheet .grab{display:none}
+  /* ---- the account menu slides in from the right, next to the avatar ---- */
+  .drawer{left:auto;right:0;width:340px;border-radius:26px 0 0 26px;transform:translate3d(105%,0,0)}
+  .drawer.open{transform:none}
+  /* ---- the first-time setup and the review prompt: centred too ---- */
+  .ob3{align-items:center}.ob-in{border-radius:30px;max-width:560px}
+  /* ---- hover, like a website ---- */
+  @media (hover:hover){
+    .card,.tc3,.ftile,.qbs,.nt3,.evr,.rsc,.pqr3,.trs,.band{transition:transform .28s cubic-bezier(.22,1,.36,1),box-shadow .28s,border-color .28s}
+    button.card:hover,a.card:hover,.tc3:hover,.ftile:hover,.qbs:hover,.nt3:hover,.rsc:hover,.evr:hover{transform:translateY(-3px);box-shadow:0 22px 44px -26px rgba(0,0,0,.35)}
+    .btn{transition:transform .2s,box-shadow .2s,filter .2s}.btn:hover{filter:brightness(1.06);box-shadow:0 10px 24px -14px rgba(0,0,0,.4)}
+    .row:hover,.item:hover{background:color-mix(in srgb,var(--surface2) 60%,transparent)}
+    .chips button:hover,.seg button:hover{color:var(--tx)}
+  }
+  /* page content fades up as it loads (calm, once) */
+  .main.in>*{animation:dkIn .6s cubic-bezier(.22,1,.36,1) backwards}
+  .main.in>*:nth-child(2){animation-delay:.05s}.main.in>*:nth-child(3){animation-delay:.1s}.main.in>*:nth-child(4){animation-delay:.15s}.main.in>*:nth-child(n+5){animation-delay:.2s}
+  @keyframes dkIn{from{opacity:0;transform:translate3d(0,16px,0)}}
+}
+@media (min-width:1024px) and (max-width:1199px){.dnav [data-a="dk"]{display:none}.hdr-in{gap:18px}}
