@@ -148,7 +148,7 @@ function xRow(t,i){
   return `<div class="xrw st-${st}"><span class="xrn">${xNo(i)}</span>
    <div class="xri"><h4>${esc(t.title)}</h4><div class="xrm">${t.questions} questions · ${t.duration} min${t.practice?' · Practice':''}${t.free_preview&&t.locked===false?' · <em>Free preview</em>':''}</div>
     ${chip||note?`<div class="xrs">${chip}${note?`<span class="xrnote">${note}</span>`:''}</div>`:''}</div>
-   <div class="xra">${pdf?`<button class="xb soft sm ic" aria-label="PDF notes" onclick="openPdf('${esc(String(t.id))}')">${ic('pdf',15)}</button>`:''}${last&&!pd?`<button class="xb soft sm" onclick="openReview('${last.id}')">${ic('eye',14)}<span>Review</span></button>`:''}${cta}</div></div>`;
+   <div class="xra">${pdf?`<button class="xb soft sm" aria-label="Result and answer key PDF" onclick="openPdf('${esc(String(t.id))}')">${ic('pdf',15)}<span>PDF</span></button>`:''}${last&&!pd?`<button class="xb soft sm" onclick="openReview('${last.id}')">${ic('eye',14)}<span>Review</span></button>`:''}${cta}</div></div>`;
 }
 
 /* ---------- series page ---------- */

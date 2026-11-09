@@ -79,6 +79,19 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Setup:** run `supabase_v64_series_page.sql` once (after v63), then `supabase_v35_admin_team.sql` again. Until then the
   pages show no dates, plans or syllabus.
 
+## Re-attempt, cheating alerts, answer-key PDF (`supabase_v68_reattempt_cheat_pdf.sql`)
+
+- **Setup:** run `supabase_v68_reattempt_cheat_pdf.sql` once (after v67), then `supabase_v35_admin_team.sql` again.
+- **Re-attempt:** on the live day a student gets one attempt; after the "Result & answer key" time the test opens again
+  and can be re-attempted any number of times. Re-attempts never change the live result or rank (rank = first attempt).
+  Fixed: a test with only "Live ends" set (no result time) used to stay *Closed* for ever; now it opens at "Live ends".
+- **Cheating alerts:** Admin → Integrity → *Suspicious attempts* lists first attempts with 90 %+ marks in 6 minutes or
+  less (and under half the test time). The admin home shows a *Possible cheating* alert. Tag 🚩 or mark *Looks fine*.
+- **Answer-key PDF:** upload the PDF to Google Drive (Share → Anyone with the link → Viewer), copy the link, and paste it
+  in Admin → Test studio → a test's ⋯ → *PDF notes link*. Students get an *Answer key PDF* button on the test and
+  *Open / Download* in Library → Notes & PDFs. Nothing is stored in Supabase. For a live test the link is given only
+  after its result time, so the answer key cannot leak during the test.
+
 ## Test feedback (`cx/m-testfb.js`, `supabase_v67_test_reviews.sql`)
 - After a student submits a test the app asks **How was your test?** about that test: stars and a comment of at least 15
   letters. One rating per student per test (it can be changed); only a student who submitted the test can rate it.

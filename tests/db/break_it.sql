@@ -1006,6 +1006,38 @@ select pg_temp.chk('32d test feedback: the owner can delete a rating',
   and jsonb_array_length(public.cbt_admin_test_reviews(:'ow5','get')->'items') = 0);
 reset role;
 
+-- ===== 33. v68: re-attempt after "Live ends" only, too-fast full marks, answer-key PDF after the result =====
+insert into cbt_private.tests (id, series_id, title, duration, data, question_count, closes_at)
+select 'aaaaaaaa-0000-0000-0000-000000000068', series_id, 'Ended live', 60, data, question_count, cbt_private.now_ms() - 60000
+  from cbt_private.tests where id = 'aaaaaaaa-0000-0000-0000-000000000004';
+insert into cbt_private.results (student_id, test_id, test_title, score, max_score, correct, wrong, skipped, used_seconds, answers, created_at)
+select id, 'aaaaaaaa-0000-0000-0000-000000000068', 'Ended live', 8, 8, 2, 0, 0, 150, '{}', now() - interval '2 hours' from cbt_private.students where mobile = '9000000002';
+insert into cbt_private.results (student_id, test_id, test_title, score, max_score, correct, wrong, skipped, used_seconds, answers)
+select id, 'aaaaaaaa-0000-0000-0000-000000000068', 'Ended live', 8, 8, 2, 0, 0, 100, '{}' from cbt_private.students where mobile = '9000000002';
+insert into cbt_private.test_pdfs (test_id, url) values ('aaaaaaaa-0000-0000-0000-000000000068', 'https://drive.google.com/file/d/abc/view')
+  on conflict (test_id) do update set url = excluded.url;
+set role anon;
+select pg_temp.chk('33a re-attempt: "Live ends" passed with no result time -> the test opens again',
+  (public.cbt_start('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-000000000068')->>'ok')::boolean);
+select pg_temp.chk('33b answer-key PDF: given once the result time (here "Live ends") has passed',
+  public.cbt_test_pdfs('9000000002','BBBB2222','dev-bbbbbbbb')->'items' ? 'aaaaaaaa-0000-0000-0000-000000000068');
+reset role;
+update cbt_private.tests set closes_at = cbt_private.now_ms() + 3600000 where id = 'aaaaaaaa-0000-0000-0000-000000000068';
+set role anon;
+select pg_temp.chk('33c answer-key PDF: hidden while the test is live',
+  not (public.cbt_test_pdfs('9000000002','BBBB2222','dev-bbbbbbbb')->'items' ? 'aaaaaaaa-0000-0000-0000-000000000068'));
+select public.cbt_admin_suspects(:'ow5','get') as sus \gset
+select pg_temp.chk('33d suspicious: only the FIRST fast full-marks attempt is listed; others cannot see the list',
+  (select count(*) from jsonb_array_elements(:'sus'::jsonb->'items') i where i->>'test_id' = 'aaaaaaaa-0000-0000-0000-000000000068') = 1
+  and (select (i->>'used')::int from jsonb_array_elements(:'sus'::jsonb->'items') i where i->>'test_id' = 'aaaaaaaa-0000-0000-0000-000000000068') = 150
+  and coalesce((public.cbt_admin_suspects('wrong-password','get')->>'ok')::boolean, false) is false
+  and (public.cbt_admin_suspects(:'ow5','count')->>'count')::int >= 1);
+select pg_temp.chk('33e suspicious: "Looks fine" removes it from the list',
+  (public.cbt_admin_suspects(:'ow5','ok', jsonb_build_object('result_id',
+     (select i->>'id' from jsonb_array_elements(:'sus'::jsonb->'items') i where i->>'test_id' = 'aaaaaaaa-0000-0000-0000-000000000068')))->>'ok')::boolean
+  and not exists (select 1 from jsonb_array_elements(public.cbt_admin_suspects(:'ow5','get')->'items') i where i->>'test_id' = 'aaaaaaaa-0000-0000-0000-000000000068'));
+reset role;
+
 -- ===== report =====
 \t off
 \a
