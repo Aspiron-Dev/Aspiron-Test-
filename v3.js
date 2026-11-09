@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=29;
+const V3VER=30;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',true)!==false;
@@ -1688,7 +1688,23 @@ function openOnb(){const p=stuProf();OB.d={cls:p.cls||'',exam:p.exam||''};OB.st=
       if(OB.st===2){obClose(true);return}OB.st++;obDraw(RM?'':'fwd');return}
     if(k==='np'){try{await npToggle()}catch(err){}setTimeout(()=>{if(OB.el&&OB.st===2)obDraw('')},400);return}
     if(k==='inst'){try{A.setInstall()}catch(err){}}})}
-function obClose(done){lsSet(obKey(),1);const el=OB.el;OB.el=null;if(!el)return;el.classList.remove('open');setTimeout(()=>el.remove(),RM?0:420);if(done)toast3('All set. You can change these in your profile.');try{softRender()}catch(e){}}
+/* ================= "TWO QUICK THINGS" on every app open (new design) =================
+   Install the app and turn on phone notifications: only what is still missing is shown (the classic setupNeed:
+   installed = opened as the app, or Chrome says it is on the phone, or installed here before). Nothing when both are
+   done. Skip hides it for this open only; it comes back on the next open until both are done. */
+let SU3=false;
+async function maybeSetup(){try{if(SU3||!AUTH||INTEST||OB.el||layer||scrOpen()||document.body.classList.contains('v3old')||typeof setupNeed!=='function')return;
+  if(typeof npInApp==='function'&&npInApp())return;SU3=true;const need=await setupNeed();if(!need.length||layer||scrOpen()||INTEST)return;suDraw(need)}catch(e){}}
+function suDraw(need){const row=(k,i,t,d,b)=>`<div class="su-r"><span class="ti g">${ic(i,20)}</span><span class="su-t"><b>${t}</b><small>${d}</small></span><button class="btn sm" data-a="${k}">${b}</button></div>`;
+  let blocked=false;try{blocked=window.Notification&&window.Notification.permission==='denied'}catch(e){}
+  openSheet(`<h2 id="sheetT">Two quick things</h2><p class="sub">So you never miss a test or a result. Each takes one tap.</p>
+   <div class="su-l">${need.includes('install')?row('suInst','dl','Install the app','Open it from your home screen, like an app','Install'):''}${need.includes('notify')?row('suNp','bell','Turn on notifications','Test alerts and results, even when the app is closed',blocked?'How?':'Turn on'):''}</div>
+   <button class="btn ghost blk" data-a="close" style="margin-top:14px">Skip for now</button>`)}
+const suAgain=()=>setTimeout(async()=>{try{const n=await setupNeed();if(!n.length){closeLayer();toast3('All set!');return}if(layer===sheet&&sheet.querySelector('.su-l'))suDraw(n)}catch(e){}},700);
+A.suInst=()=>{closeLayer();setTimeout(()=>{A.setInstall()},200)};
+A.suNp=async()=>{let r='denied';try{const N=window.Notification;r=N?N.permission:'denied';if(r==='default')r=await N.requestPermission()}catch(e){}
+  if(r==='granted'){try{npEnable()}catch(e){}hap(8);suAgain()}else{closeLayer();setTimeout(()=>npHelp(r==='denied'?'blocked':'ask'),200)}};
+function obClose(done){lsSet(obKey(),1);const el=OB.el;OB.el=null;if(!el)return;setTimeout(maybeSetup,900);el.classList.remove('open');setTimeout(()=>el.remove(),RM?0:420);if(done)toast3('All set. You can change these in your profile.');try{softRender()}catch(e){}}
 
 /* ================= MENU: the classic menu's look (profile on top, grouped list, NEW tags, Logout last) =================
    About two thirds of the screen wide, the page behind blurred, and the items come in one after another from the top. */
@@ -1808,7 +1824,7 @@ route=async function(){
   if(!CAT||Date.now()-CATAT>30000){if(!CAT)main.innerHTML='<div class="card sk" style="height:220px;margin-top:8px"></div><div class="card sk" style="height:160px"></div><div class="card sk" style="height:200px"></div>';
     const ok=await loadCat(!!CAT);if(!ok){if(AUTH){toOld()}return}if(INTEST||!AUTH)return}
   if(NOTES===null)loadNotes().then(()=>{if(S.tab==='test')softRender()});
-  const tab=tabOf(h),changed=tab!==S.tab||!main.children.length||main.querySelector('.sk');S.tab=tab;syncDock();if(changed)scrollTo(0,0);render(changed);if(tab==='home'&&!goThen)setTimeout(maybeOnb,1100);
+  const tab=tabOf(h),changed=tab!==S.tab||!main.children.length||main.querySelector('.sk');S.tab=tab;syncDock();if(changed)scrollTo(0,0);render(changed);if(tab==='home'&&!goThen)setTimeout(maybeOnb,1100);if(tab==='home'&&!goThen)setTimeout(maybeSetup,1700);
   if(goThen){const f=goThen;goThen=null;setTimeout(f,0)}};
 if(typeof login==='function'){const _login=login;login=function(){document.body.classList.remove('v3on','v3old');return _login.apply(this,arguments)}}
 if(typeof cdRefresh==='function'){const _cdr=cdRefresh;cdRefresh=function(){const r=_cdr.apply(this,arguments);if(booted&&document.body.classList.contains('v3on')&&!document.body.classList.contains('v3old')&&(S.tab==='home'||S.tab==='tools'))softRender();return r}}
