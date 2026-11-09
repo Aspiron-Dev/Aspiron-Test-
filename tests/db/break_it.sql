@@ -871,14 +871,88 @@ select pg_temp.chk('29f meta: Store view-only can look but not save',
   public.cbt_admin_series_meta(:'lvt','get','{}')->>'ok' = 'true'
   and public.cbt_admin_series_meta(:'lvt','save_syllabus','{"test_id":"aaaaaaaa-0000-0000-0000-000000000001","syllabus":"x"}')->>'error' = 'forbidden');
 
--- ===== 30. study tracker kept on the account (v65): only the owner, only clean values =====
+-- ===== 30. email / Google login (supabase_v65) =====
+insert into cbt_private.students(id,name,mobile,status,salt,code_hash) values
+  ('bbbbbbbb-0000-0000-0000-0000000000c1','Login One','9000000065','approved','s65',cbt_private.hash_code('s65','LOGN6565')),
+  ('bbbbbbbb-0000-0000-0000-0000000000c2','Login Two','9000000066','approved','s66',cbt_private.hash_code('s66','LOGN6666'));
+insert into auth.users(id,email,email_confirmed_at) values
+  ('a0000000-0000-0000-0000-000000000001','one@example.com',now()),
+  ('a0000000-0000-0000-0000-000000000002','two@example.com',now()),
+  ('a0000000-0000-0000-0000-000000000003','unconfirmed@example.com',null),
+  ('a0000000-0000-0000-0000-000000000004','new@example.com',now());
+select set_config('request.jwt.claims', '', false);
+select pg_temp.chk('30a signed out of Supabase: no token, no joining, no request',
+  public.student_signin('dev-login0001')->>'error' = 'auth'
+  and public.student_link('9000000065','LOGN6565','dev-login0001')->>'error' = 'auth'
+  and public.student_request('X Y','9000000099')->>'error' = 'auth');
+select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000003"}', false);
+select pg_temp.chk('30b an email that is not confirmed counts as signed out',
+  public.student_link('9000000065','LOGN6565','dev-login0001')->>'error' = 'auth'
+  and not exists (select 1 from cbt_private.students where auth_uid is not null));
+select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000001"}', false);
+select pg_temp.chk('30c a login not joined yet gets no token', public.student_signin('dev-login0001')->>'error' = 'not_linked');
+select pg_temp.chk('30d joining with a wrong code or a sign-in token fails',
+  public.student_link('9000000065','WRONG999','dev-login0001')->>'error' = 'invalid'
+  and public.student_link('9000000065',public.cbt_login('9000000066','LOGN6666','dev-login0009')->>'token','dev-login0001')->>'error' = 'invalid'
+  and not exists (select 1 from cbt_private.students where auth_uid is not null));
+select public.student_link('9000000065','LOGN6565','dev-login0001')->>'token' as lt1 \gset
+select pg_temp.chk('30e joining with the right code gives a token that works like a normal one',
+  left(:'lt1', 4) = 'st1.' and public.cbt_catalog('9000000065',:'lt1','dev-login0001')->>'ok' = 'true'
+  and public.cbt_catalog('9000000065',:'lt1','dev-other123')->>'error' = 'invalid');
+select pg_temp.chk('30f the joined login signs in again without a code',
+  left(public.student_signin('dev-login0001')->>'token', 4) = 'st1.'
+  and public.student_signin('dev-login0001')->>'mobile' = '9000000065');
+select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000002"}', false);
+select pg_temp.chk('30g another login cannot take a student who is already joined (even with the right code)',
+  public.student_link('9000000065','LOGN6565','dev-login0002')->>'error' = 'taken'
+  and (select auth_uid from cbt_private.students where mobile = '9000000065') = 'a0000000-0000-0000-0000-000000000001');
+select pg_temp.chk('30h the device limit still holds',
+  public.student_link('9000000066','LOGN6666','dev-login0002')->>'ok' = 'true'
+  and public.student_signin('dev-login0003')->>'error' = 'device_limit'
+  and not exists (select 1 from cbt_private.student_tokens k join cbt_private.students s on s.id = k.student_id
+                   where s.mobile = '9000000066' and k.device = 'dev-login0003'));
+update cbt_private.students set status = 'blocked' where mobile = '9000000066';
+select pg_temp.chk('30i a blocked student gets no token from the login', public.student_signin('dev-login0002')->>'error' = 'blocked');
+select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000004"}', false);
+select pg_temp.chk('30j a request for a number that has an account does not join it (and says nothing about it)',
+  public.student_request('Some One','9000000065')->>'status' = 'pending'
+  and (select auth_uid from cbt_private.students where mobile = '9000000065') = 'a0000000-0000-0000-0000-000000000001'
+  and not exists (select 1 from cbt_private.students where auth_uid = 'a0000000-0000-0000-0000-000000000004'));
+select set_config('request.headers', '{"x-real-ip":"198.51.100.165"}', false);
+select public.student_request('New Learner','9000000067')->>'ok' as rq65 \gset
+select pg_temp.chk('30k a new number is joined, waits for approval, then signs in with the login alone',
+  :'rq65' = 'true'
+  and public.student_signin('dev-login0004')->>'error' = 'pending'
+  and (select status from cbt_private.students where mobile = '9000000067') = 'pending');
+update cbt_private.students set status = 'approved' where mobile = '9000000067';
+select pg_temp.chk('30l after approval the login gives a working token',
+  public.cbt_catalog('9000000067', public.student_signin('dev-login0004')->>'token', 'dev-login0004')->>'ok' = 'true');
+select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000002"}', false);
+update cbt_private.students set auth_uid = null where mobile = '9000000066';
+do $$ begin for i in 1..10 loop perform public.student_link('9000000001','NOPE'||i,'dev-login0002'); end loop; end $$;
+select pg_temp.chk('30m guessing codes while joining stops after 10 an hour',
+  public.student_link('9000000001','AAAA1111','dev-login0002')->>'error' = 'busy');
+select pg_temp.chk('30n the join list and the login functions are closed to direct use',
+  not has_table_privilege('anon', 'cbt_private.auth_link_tries', 'SELECT')
+  and not has_function_privilege('anon', 'cbt_private.auth_issue(uuid, text)', 'EXECUTE')
+  and not has_function_privilege('anon', 'cbt_private.auth_user()', 'EXECUTE'));
+select pg_temp.chk('30o the login functions are open only to a Supabase login (not to anon or PUBLIC)',
+  not has_function_privilege('anon', 'public.student_signin(text)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.student_link(text, text, text)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.student_request(text, text)', 'EXECUTE')
+  and has_function_privilege('authenticated', 'public.student_signin(text)', 'EXECUTE')
+  and not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                   where n.nspname = 'public' and p.proname not like 'student\_%' and p.proname not like 'cbt\_%'
+                     and has_function_privilege('authenticated', p.oid, 'EXECUTE') and p.prosecdef));
+select set_config('request.jwt.claims', '', false);
+-- ===== 31. study tracker kept on the account (v66): only the owner, only clean values =====
 set role anon;
-select pg_temp.chk('30a tracker: nothing without a valid sign-in',
+select pg_temp.chk('31a tracker: nothing without a valid sign-in',
   coalesce((public.cbt_keep('9000000002','WRONG999','dev-bbbbbbbb','save','{"trk":{"weeks":[{"label":"W"}]}}')->>'ok')::boolean, false) is not true);
 select public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','save',
   '{"trk":{"cur":7,"nid":12,"evil":1,"goals":{"s3":25,"bad key":4,"s4":"x"},"weeks":[{"id":"w1","label":"Week <b>1</b>","subjects":[{"id":"s3","name":"Physics","emoji":"⚡","color":"red","tasks":[{"id":4,"text":"Kinematics <script>","done":true,"at":1767225600000},{"id":5,"text":"   "},{"id":"x y","text":"DPP"}]}]}]},
     "trkat":1767225600000,"trkd":{"2026-11-9":3,"bad":4,"2026-11-8":-2}}') as tsave \gset
-select pg_temp.chk('30b tracker: saved plan comes back, cleaned (markup, colour, empty tasks, bad ids, cur in range)',
+select pg_temp.chk('31b tracker: saved plan comes back, cleaned (markup, colour, empty tasks, bad ids, cur in range)',
   (:'tsave'::jsonb->>'ok')::boolean
   and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trk'->'weeks'->0->>'label' = 'Week b1/b'
   and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trk'->'weeks'->0->'subjects'->0->>'color' = '#6366f1'
@@ -890,14 +964,14 @@ select pg_temp.chk('30b tracker: saved plan comes back, cleaned (markup, colour,
   and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trk'->'goals' = '{"s3":25}'::jsonb
   and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trkd' = '{"2026-11-9":3}'::jsonb
   and (public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->>'trkat')::bigint = 1767225600000);
-select pg_temp.chk('30c tracker: the profile and countdown are untouched, another student sees nothing',
+select pg_temp.chk('31c tracker: the profile and countdown are untouched, another student sees nothing',
   public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'pf' ? 'about'
   and coalesce(public.cbt_keep('9000000002','BBBB2222','dev-bbbbbbbb','get')->'trk', 'null'::jsonb) = 'null'::jsonb);
-select pg_temp.chk('30d tracker: not a tracker or too big is refused, the saved one stays',
+select pg_temp.chk('31d tracker: not a tracker or too big is refused, the saved one stays',
   public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','save','{"trk":{"weeks":"x"}}')->>'error' = 'trk'
   and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','save', jsonb_build_object('trk', jsonb_build_object('weeks', jsonb_build_array(jsonb_build_object('label', repeat('x', 160000))))))->>'error' = 'too_big'
   and public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->'trk'->'weeks'->0->>'label' = 'Week b1/b');
-select pg_temp.chk('30e tracker: a time in the future is not kept; null clears the tracker',
+select pg_temp.chk('31e tracker: a time in the future is not kept; null clears the tracker',
   (public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','save','{"trk":{"weeks":[{"label":"W"}]},"trkat":99999999999999}')->>'ok')::boolean
   and (public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','get')->>'trkat')::bigint <= (extract(epoch from now()) * 1000)::bigint + 1000
   and (public.cbt_keep('9000000001','AAAA1111','dev-aaaaaaaa','save','{"trk":null,"trkd":null}')->>'ok')::boolean

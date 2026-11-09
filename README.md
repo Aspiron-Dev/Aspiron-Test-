@@ -7,7 +7,7 @@ Static website on GitHub Pages + Supabase (database functions). No build step: u
 ## Pages
 | Page | What it is | Scripts |
 |---|---|---|
-| `index.html` | Student app (test series store + My tests, results, mistakes, tracker, PYQ, reviews, Refer & earn) | `config.js`, `app1.js` … `app27.js`, `pyq-syllabus.js`, `v3.js` + `v3.css` (new design, beta, off by default) |
+| `index.html` | Student app (test series store + My tests, results, mistakes, tracker, PYQ, reviews, Refer & earn) | `config.js`, `app1.js` … `app28.js`, `pyq-syllabus.js`, `v3.js` + `v3.css` (new design, beta, off by default) |
 | `cp-dt764twzf54s5m.html` | Admin panel (needs the private access key + admin password) | `config.js`, `parser.js`, `qrcode.js`, `cx/core.js`, `cx/ui.js`, `cx/amsg.js`, `cx/lang.js`, `cx/m-*.js`, `cx/shell.js` |
 | `store.html` | Public store, in the admin console's design (menu on the left on computers, menu bar at the bottom on phones): name + mobile + course (NEET / JEE) once; pages Home (the student's course in rows by section — Full syllabus, Subject-wise …, arranged in Store setup), Search, Reviews, Help and Profile (details, course, theme, the last order); NEET / JEE switch at the top, Explore page (description, schedule, demo tests, reviews), Coming soon · Notify me, UPI payment, verify on Telegram / WhatsApp (message + payment screenshot), light / dark / auto theme | `store-theme.js`, `store.css`, `config.js`, `qrcode.js`, `store.js` `store.html?ref=CODE` is a promotion link: the visit and the orders made after it are counted in Admin → Store → Promotions. Links: `#/search`, `#/reviews`, `#/help`, `#/me` open a page, `#x=<id>` a series' Explore page |
 | `admin.html` | Decoy "404" page (the real admin page has a hidden name) | – |
@@ -52,6 +52,16 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
   download manager. XP, syllabus progress and overall leaderboards need new data and are not shown.
 - **To remove it:** delete `v3.js`, `v3.css` and the `<script src="v3.js?v=…">` line in `index.html`.
 
+## Student login: email + password or Google (`app28.js`, `supabase_v65_auth.sql`)
+- New-design look (`login.css`): graphite hero with the gold Aspiron mark (slow gold ring, drifting glow, rising sparks, shine on the name), the form on a sheet that rises; side by side on a computer. Loops stop in lite mode and with reduce motion. Every login screen (also access code and request) uses it.
+- The login screen offers **Continue with Google** and **email + password** (create account, forgot password). *Sign in with access code* stays as a second option.
+- Supabase Auth is used only to prove who the student is: the database (`student_signin`) then gives the usual sign-in token (`st1.…`), the app keeps that, and the Supabase session is ended. Every other function, the 2-device limit, block and sign-out work as before.
+- A login is joined to **one** student (`students.auth_uid`). An existing student joins it once with mobile number + access code (`student_link`, 10 wrong codes an hour per login). A new student sends a request with name + mobile (`student_request`); after approval the login alone signs in. A request never joins a number that already has an account, and the answer never says whether it has one.
+- Only a confirmed email counts (Google logins are confirmed). The three `student_*` functions are open only to the `authenticated` role; everything `cbt_*` stays closed to it (v35).
+- Supabase sends the student back to the site with the login in the address (`#access_token=…`); `app28.js` keeps it for that tab only and cleans the address before the app reads it.
+- Admin: unjoin a login (student lost that account): `update cbt_private.students set auth_uid = null where mobile = '…';`
+- **Setup:** PENDING.md → 4.3.
+
 ## Series page: validity, upgrade plans, syllabus, review request (`cx/m-seriespage.js`, `supabase_v64_series_page.sql`)
 - **My Test Series** (new design): one card per series with its photo, *Starts on … · Ends on …*, *Upgrade* / *Details*
   and **Open Test Series**. After the end date the series moves to *Expired*.
@@ -69,11 +79,11 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Setup:** run `supabase_v64_series_page.sql` once (after v63), then `supabase_v35_admin_team.sql` again. Until then the
   pages show no dates, plans or syllabus.
 
-## Study tracker on the account (`supabase_v65_tracker_keep.sql`)
+## Study tracker on the account (`supabase_v66_tracker_keep.sql`)
 - The study tracker (weeks, subjects, tasks, targets) and the *done today* counts are now kept on the student's account
   with the profile and countdown (`cbt_keep`, v56). A new phone or a cleared browser gets the plan back after sign-in.
   The newest copy wins; *done today* counts are merged. Every value is checked and cut to size on the server.
-- **Setup:** run `supabase_v65_tracker_keep.sql` once (after v56). Until then the tracker stays on the phone as before.
+- **Setup:** run `supabase_v66_tracker_keep.sql` once (after v56). Until then the tracker stays on the phone as before.
 
 ## Tests page poster and filter (`cx/m-look.js`, `supabase_v61_tests_page.sql`)
 - **Admin → Tests page** (Commerce): the poster at the top of the Tests tab of the new design (best 1080 × 1350 px, 4 : 5;

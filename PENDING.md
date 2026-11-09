@@ -91,8 +91,16 @@ Live database Claude ko nahi dikhta. Jo kaam pehle hi ho chuka ho, use seedha ti
 
   👤 Key ID aur Secret sirf Supabase secrets me daalna, repo me kabhi nahi.
   *Check:* test mode me ₹1 ka order → series apne aap unlock. Galat signature → refuse. Iske break-it tests bhi add honge.
-- [ ] **4.3 👥 Store login (wallet ki safety ke liye):** Email OTP, Supabase Auth se. Email bhejne ke liye Brevo ya Resend (free plan;
-  domain verify 2.3 ke DNS ke saath hoga). SMS OTP baad me (DLT registration + har SMS ka kharcha). *Check:* bina login wallet use nahi hota.
+- [ ] **4.3 👥 Student login (email + password, Google):** 🤖 code taiyaar hai (`app28.js`, `supabase_v65_auth.sql`). 👤 Aapke steps:
+  1. Supabase → SQL Editor → `supabase_v65_auth.sql` run karo.
+  2. Supabase → Authentication → URL Configuration: Site URL `https://aspironeducation.com`, Redirect URLs me `https://aspironeducation.com/**` add karo.
+  3. Authentication → Providers → Email: ON, *Confirm email* ON, password kam se kam 8 characters.
+  4. Google Cloud Console (free) → OAuth consent screen (sirf email + profile) → Credentials → OAuth Client ID (Web application),
+     Authorized redirect URI: `https://klvvhbqkhbdzysgpykpr.supabase.co/auth/v1/callback`. Client ID + Secret → Supabase → Providers → Google → ON.
+  5. Resend (free: 3,000 mail/mahina, 100/din) → domain verify (DNS records, 2.3 ke saath) → Supabase → Authentication → SMTP me Resend daalo.
+     Iske bina Supabase sirf ~2 email/ghanta bhejta hai: confirm / password reset mail atak jayenge.
+  6. Email Templates (Confirm signup, Reset password) me apna naam / text daalo.
+  *Check:* naye email se account → confirm mail → access code se join → sign out → sirf email/Google se wapas sign in.
 
 ## Phase 5: Safai aur speed
 - [ ] **5.1 Purana admin panel hatana:** 👤 confirm karo ki naya admin console poori tarah use ho raha hai, phir 🤖 purana panel hatayega

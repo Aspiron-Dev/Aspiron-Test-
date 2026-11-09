@@ -1,5 +1,5 @@
 -- =====================================================================
---  v65: the study tracker is kept on the account too
+--  v66: the study tracker is kept on the account too
 --
 --  • Until now the study tracker (weeks, subjects, tasks, targets) and the "done today" counts lived only inside one
 --    browser. Clearing site data, another browser or a new phone meant the whole plan was gone.
@@ -134,7 +134,7 @@ begin
     end if;
   end if;
 
-  -- study tracker (v65): the whole plan, rebuilt clean; null clears it ("Delete everything")
+  -- study tracker (v66): the whole plan, rebuilt clean; null clears it ("Delete everything")
   if d ? 'trk' then
     if jsonb_typeof(d->'trk') = 'null' then
       cur := cur - 'trk';

@@ -1,0 +1,176 @@
+/* login.css: the student login (app28.js) in the new design: graphite hero with the gold Aspiron mark, a sheet with the form.
+   Same tokens as v3.css (light / dark), Geist. Only transform / opacity / filter move; loops stop in lite mode and with reduce motion. */
+.au3{
+  --bg:#f5f5f3;--bg2:#ebebe8;--surface:#ffffff;--surface2:#f3f3f1;--line:#e4e4e0;--line2:#d6d6d1;
+  --tx:#17181b;--mut:#5e6066;--faint:#96989d;--ink:#1d1e22;--onInk:#ffffff;
+  --acc:#85672c;--acc1:#e6cf9a;--acc2:#b08945;--accSoft:#f4ecdc;--err:#b3433d;--ok:#2d7a58;
+  --h1:#2b2d32;--h2:#0e0f12;--hTx:#f6f3ec;--hMut:rgba(246,243,236,.62);
+  --sh:0 1px 2px rgba(20,20,24,.05),0 24px 60px -24px rgba(20,20,24,.28);
+  --f:"Geist",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --out:cubic-bezier(.22,.8,.24,1);--spring:cubic-bezier(.34,1.42,.64,1);--ease:cubic-bezier(.4,0,.2,1);
+  position:fixed;inset:0;z-index:45;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  background:var(--bg);color:var(--tx);font-family:var(--f);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;min-height:100%;
+}
+html[data-theme="dark"] .au3{
+  --bg:#121315;--bg2:#0c0d0e;--surface:#1b1c1f;--surface2:#24252a;--line:#2e2f34;--line2:#3a3b41;
+  --tx:#ededee;--mut:#a3a5aa;--faint:#73757a;--ink:#ededee;--onInk:#141518;
+  --acc:#d6b878;--acc1:#ecd6a4;--acc2:#b8924c;--accSoft:#2c271d;--err:#e07a72;--ok:#5cc394;
+  --h1:#26272c;--h2:#08090a;--sh:0 1px 2px rgba(0,0,0,.3),0 30px 70px -30px rgba(0,0,0,.7);
+}
+html[data-oled="1"] .au3{--bg:#000;--surface:#0c0c0d;--surface2:#161617;--line:#232325;--h2:#000}
+.au3 *{box-sizing:border-box}
+.au3 svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.au3 h1,.au3 h2,.au3 h3,.au3 p{margin:0;font-family:var(--f)}
+
+/* ---------- hero ---------- */
+.au3-hero{position:relative;isolation:isolate;overflow:hidden;color:var(--hTx);
+  background:radial-gradient(120% 90% at 50% 0%,var(--h1) 0%,var(--h2) 70%);
+  padding:calc(env(safe-area-inset-top,0px) + 34px) 20px 70px;display:flex;flex-direction:column;align-items:center;text-align:center;min-height:330px}
+.au3-orb{position:absolute;border-radius:50%;filter:blur(40px);opacity:.55;z-index:-1;will-change:transform}
+.au3-orb.o1{width:280px;height:280px;left:-90px;top:-60px;background:radial-gradient(circle,rgba(214,176,98,.55),transparent 65%);animation:au3Drift 14s var(--ease) infinite alternate}
+.au3-orb.o2{width:240px;height:240px;right:-80px;top:90px;background:radial-gradient(circle,rgba(120,138,170,.45),transparent 65%);animation:au3Drift 17s var(--ease) -6s infinite alternate-reverse}
+.au3-orb.o3{width:200px;height:200px;left:30%;bottom:-120px;background:radial-gradient(circle,rgba(230,207,154,.35),transparent 65%);animation:au3Drift 12s var(--ease) -3s infinite alternate}
+@keyframes au3Drift{to{transform:translate3d(40px,30px,0) scale(1.15)}}
+/* fine grid that fades out at the edges */
+.au3-grid{position:absolute;inset:0;z-index:-1;opacity:.35;
+  background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:28px 28px;
+  -webkit-mask:radial-gradient(70% 60% at 50% 40%,#000,transparent);mask:radial-gradient(70% 60% at 50% 40%,#000,transparent)}
+/* rising gold sparks */
+.au3-spk{position:absolute;bottom:-8px;width:3px;height:3px;border-radius:50%;background:var(--acc1);box-shadow:0 0 8px 2px rgba(230,207,154,.6);opacity:0;z-index:-1;animation:au3Spk 7s linear infinite}
+.au3-spk:nth-child(5){left:14%;animation-delay:.4s}.au3-spk:nth-child(6){left:32%;animation-delay:2.6s;animation-duration:9s}
+.au3-spk:nth-child(7){left:58%;animation-delay:1.2s}.au3-spk:nth-child(8){left:76%;animation-delay:4s;animation-duration:8s}.au3-spk:nth-child(9){left:90%;animation-delay:5.5s}
+@keyframes au3Spk{0%{opacity:0;transform:translateY(0)}12%{opacity:.9}100%{opacity:0;transform:translateY(-320px)}}
+
+.au3-mark{position:relative;width:118px;height:118px;display:grid;place-items:center;margin-bottom:18px;animation:au3Pop .9s var(--spring) .05s both}
+.au3-mark::before{content:"";position:absolute;inset:0;border-radius:50%;padding:1.5px;
+  background:conic-gradient(from 0deg,transparent 0 55%,rgba(230,207,154,.9) 75%,transparent 90%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:au3Spin 5s linear infinite}
+.au3-mark::after{content:"";position:absolute;inset:14px;border-radius:50%;background:radial-gradient(circle,rgba(214,180,110,.28),transparent 70%);animation:au3Breath 4s var(--ease) infinite}
+.au3-mark svg{position:relative;width:86px;height:86px;color:var(--hTx);filter:drop-shadow(0 8px 18px rgba(0,0,0,.45));z-index:1}
+@keyframes au3Spin{to{transform:rotate(360deg)}}
+@keyframes au3Breath{50%{transform:scale(1.18);opacity:.6}}
+@keyframes au3Pop{from{opacity:0;transform:translateY(16px) scale(.7)}}
+.au3-word{position:relative;overflow:hidden;width:min(236px,64vw);color:var(--hTx);animation:au3Rise .8s var(--out) .25s both}
+.au3-word{aspect-ratio:954.5/130.7}
+.au3-word svg{position:absolute!important;inset:0;display:block;width:100%!important;height:100%!important}
+.au3-word i{position:absolute;inset:-10% auto -10% 0;width:30%;transform:translateX(-140%) skewX(-18deg);
+  background:linear-gradient(90deg,transparent,rgba(230,207,154,.85),transparent);mix-blend-mode:overlay;animation:au3Shine 6s cubic-bezier(.5,0,.2,1) 1.2s infinite}
+@keyframes au3Shine{0%{transform:translateX(-140%) skewX(-18deg)}28%,100%{transform:translateX(420%) skewX(-18deg)}}
+.au3-edu{display:flex;align-items:center;gap:10px;margin-top:9px;font-size:10px;font-weight:500;letter-spacing:.55em;color:var(--hMut);animation:au3Rise .8s var(--out) .35s both}
+.au3-edu::before,.au3-edu::after{content:"";width:34px;height:1px;background:linear-gradient(90deg,transparent,var(--acc1))}
+.au3-edu::after{transform:scaleX(-1)}
+.au3-tag{margin-top:18px;font-size:14.5px;color:var(--hMut);max-width:300px;animation:au3Rise .8s var(--out) .45s both}
+.au3-tag b{color:var(--hTx);font-weight:600}
+.au3-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:16px}
+.au3-chips span{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:99px;font-size:12px;white-space:nowrap;font-weight:500;color:var(--hTx);
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);animation:au3Rise .7s var(--out) both}
+.au3-chips span:nth-child(1){animation-delay:.55s}.au3-chips span:nth-child(2){animation-delay:.63s}.au3-chips span:nth-child(3){animation-delay:.71s}
+.au3-chips svg.i{width:14px;height:14px;color:var(--acc1)}
+@keyframes au3Rise{from{opacity:0;transform:translateY(14px)}}
+
+/* ---------- sheet + card ---------- */
+.au3-sheet{position:relative;z-index:1;flex:1;margin-top:-40px;background:var(--bg);border-radius:30px 30px 0 0;
+  padding:10px 16px calc(28px + env(safe-area-inset-bottom,0px));animation:au3Up .75s var(--out) .15s both}
+@keyframes au3Up{from{transform:translateY(60px);opacity:0}}
+.au3-sheet::before{content:"";display:block;width:38px;height:4px;border-radius:9px;background:var(--line2);margin:0 auto 14px}
+.au3-card{max-width:420px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:24px;box-shadow:var(--sh);padding:26px 22px 22px;position:relative;overflow:hidden}
+.au3-card::before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,var(--acc2),var(--acc1),var(--acc2),transparent);opacity:.8}
+.au3-pane{animation:au3In .5s var(--out) both}
+.au3-pane>*{animation:au3Rise .55s var(--out) both}
+.au3-pane>*:nth-child(2){animation-delay:.04s}.au3-pane>*:nth-child(3){animation-delay:.08s}.au3-pane>*:nth-child(4){animation-delay:.12s}
+.au3-pane>*:nth-child(5){animation-delay:.16s}.au3-pane>*:nth-child(6){animation-delay:.2s}.au3-pane>*:nth-child(7){animation-delay:.24s}
+.au3-pane>*:nth-child(n+8){animation-delay:.28s}
+@keyframes au3In{from{opacity:0;filter:blur(6px)}}
+.au3-h{font-size:24px;font-weight:600;letter-spacing:-.02em;line-height:1.2}
+.au3-s{color:var(--mut);margin-top:6px;font-size:14.5px}
+.au3-back{display:inline-flex;align-items:center;gap:4px;margin:-6px 0 12px -6px;height:34px;padding:0 10px 0 6px;border-radius:12px;border:0;background:none;color:var(--mut);font:inherit;font-size:14px;font-weight:500;cursor:pointer}
+.au3-back:hover{color:var(--tx);background:var(--surface2)}
+
+/* fields: icon, floating label, gold focus */
+.au3-f{position:relative;margin-top:14px}
+.au3-f input{width:100%;height:56px;padding:20px 14px 6px 46px;border-radius:16px;border:1px solid var(--line);background:var(--surface2);color:var(--tx);
+  font:inherit;font-size:16px;outline:none;transition:border-color .2s var(--ease),box-shadow .25s var(--ease),background-color .2s var(--ease);-webkit-appearance:none;appearance:none}
+.au3-f input:focus{border-color:var(--acc2);background:var(--surface);box-shadow:0 0 0 4px color-mix(in srgb,var(--acc2) 18%,transparent)}
+.au3-f label{position:absolute;left:46px;top:18px;font-size:15px;color:var(--faint);pointer-events:none;transform-origin:0 0;transition:transform .2s var(--out),color .2s var(--ease)}
+.au3-f input:focus+label,.au3-f input:not(:placeholder-shown)+label{transform:translateY(-10px) scale(.76);color:var(--mut)}
+.au3-f input:focus+label{color:var(--acc)}
+.au3-f input::placeholder{color:transparent}
+.au3-f>svg.i{position:absolute;left:15px;top:19px;color:var(--faint);transition:color .2s var(--ease)}
+.au3-f:focus-within>svg.i{color:var(--acc)}
+.au3-f .au3-eye{position:absolute;right:6px;top:8px;height:40px;padding:0 12px;border:0;border-radius:12px;background:none;color:var(--acc);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.au3-f.pw input{padding-right:70px}
+.au3-f input:-webkit-autofill{-webkit-box-shadow:0 0 0 40px var(--surface2) inset;-webkit-text-fill-color:var(--tx)}
+
+/* buttons */
+.au3-btn{position:relative;overflow:hidden;width:100%;height:54px;display:flex;align-items:center;justify-content:center;gap:10px;border-radius:16px;border:0;cursor:pointer;
+  font:inherit;font-size:15.5px;font-weight:600;letter-spacing:-.005em;text-decoration:none;transition:transform .35s var(--spring),box-shadow .25s var(--ease),opacity .2s}
+.au3-btn:active{transform:scale(.97);transition-duration:.08s}
+.au3-btn:disabled{opacity:.7;cursor:default}
+.au3-btn.pri{margin-top:18px;background:var(--ink);color:var(--onInk);box-shadow:0 10px 24px -12px rgba(0,0,0,.55)}
+html[data-theme="dark"] .au3-btn.pri{background:linear-gradient(135deg,var(--acc1),var(--acc2));color:#1a1408;box-shadow:0 12px 30px -14px rgba(214,180,110,.6)}
+.au3-btn.pri::after{content:"";position:absolute;top:0;bottom:0;left:0;width:40%;transform:translateX(-160%) skewX(-20deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);transition:none}
+.au3-btn.pri:hover::after{transform:translateX(330%) skewX(-20deg);transition:transform .8s var(--out)}
+.au3-btn.pri svg.i{transition:transform .3s var(--spring)}
+.au3-btn.pri:hover svg.i{transform:translateX(3px)}
+.au3-btn.g{margin-top:22px;background:var(--surface);color:var(--tx);border:1px solid var(--line2);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.au3-btn.g:hover{border-color:var(--acc2);box-shadow:0 8px 22px -14px rgba(0,0,0,.35)}
+.au3-btn.sec{margin-top:12px;background:var(--surface2);color:var(--tx);border:1px solid var(--line)}
+.au3-btn.sec:hover{border-color:var(--line2)}
+.au3-btn.soft{margin-top:12px;background:var(--accSoft);color:var(--acc)}
+.au3-btn .dot{display:inline-flex;gap:4px}.au3-btn .dot i{width:6px;height:6px;border-radius:50%;background:currentColor;animation:au3Dot 1s var(--ease) infinite}
+.au3-btn .dot i:nth-child(2){animation-delay:.15s}.au3-btn .dot i:nth-child(3){animation-delay:.3s}
+@keyframes au3Dot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+.au3-link{border:0;background:none;padding:6px 2px;color:var(--acc);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.au3-link:hover{text-decoration:underline;text-underline-offset:3px}
+.au3-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px}
+.au3-row.c{justify-content:center;margin-top:16px;color:var(--mut);font-size:14px}
+.au3-or{display:flex;align-items:center;gap:12px;margin:20px 0 4px;color:var(--faint);font-size:12px;font-weight:500;letter-spacing:.06em;text-transform:uppercase}
+.au3-or::before,.au3-or::after{content:"";flex:1;height:1px;background:var(--line)}
+.au3-er{min-height:18px;margin-top:8px;color:var(--err);font-size:13.5px;font-weight:500}
+.au3-er:empty{min-height:0;margin-top:0}
+.au3-er:not(:empty){animation:au3Shake .4s var(--ease)}
+@keyframes au3Shake{25%{transform:translateX(-5px)}50%{transform:translateX(4px)}75%{transform:translateX(-2px)}}
+.au3-mail{display:flex;align-items:center;gap:10px;margin-top:16px;padding:12px 14px;border-radius:14px;background:var(--accSoft);color:var(--acc);font-weight:600;word-break:break-all}
+.au3-sec{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.au3-sec h3{font-size:16px;font-weight:600}
+.au3-sec p{color:var(--mut);font-size:13.5px;margin-top:3px}
+.au3-note{margin-bottom:16px;padding:11px 13px;border-radius:14px;background:var(--accSoft);color:var(--acc);font-size:13.5px;font-weight:600}
+.au3-legal{max-width:420px;margin:16px auto 0;text-align:center;color:var(--faint);font-size:12px}
+.au3-legal a{color:var(--mut);text-underline-offset:2px}
+/* big round icon for the "done" screens */
+.au3-ok{width:64px;height:64px;border-radius:22px;display:grid;place-items:center;margin-bottom:16px;color:#1a1408;
+  background:linear-gradient(135deg,var(--acc1),var(--acc2));box-shadow:0 14px 30px -14px rgba(176,137,69,.7);animation:au3Pop .7s var(--spring) both}
+.au3-ok svg.i{width:28px;height:28px;stroke-width:2}
+.au3-wait{display:grid;place-items:center;gap:14px;min-height:200px;color:var(--mut);font-weight:500}
+.au3-ring{width:44px;height:44px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--acc2);animation:au3Spin .8s linear infinite}
+/* screens drawn by older code inside the card (request sent, device list) */
+.au3 #rq .logo{width:56px;height:56px;border-radius:18px;display:grid;place-items:center;margin-bottom:14px;color:#1a1408;background:linear-gradient(135deg,var(--acc1),var(--acc2))}
+.au3 #rq .logo svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2}
+.au3 #rq h2{font-size:22px;font-weight:600;letter-spacing:-.02em}
+.au3 #rq .mut{color:var(--mut);margin:8px 0 6px;font-size:14px}
+.au3 #rq .btn,.au3 #devhelp{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:50px;margin-top:10px;border-radius:16px;border:0;font:inherit;font-weight:600;cursor:pointer;text-decoration:none;background:var(--ink);color:var(--onInk)}
+.au3 #rq .btn.soft,.au3 #devhelp{background:var(--accSoft);color:var(--acc)}
+.au3 #rq .btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7}
+
+/* ---------- computer: hero on the left, form on the right ---------- */
+@media (min-width:900px){
+  .au3{flex-direction:row}
+  .au3-hero{flex:1.1;min-height:100%;justify-content:center;padding:48px}
+  .au3-mark{width:150px;height:150px}.au3-mark svg{width:110px;height:110px}
+  .au3-word{width:250px}.au3-edu{margin-top:12px}.au3-tag{font-size:16.5px;max-width:380px;margin-top:22px}
+  .au3-sheet{flex:1;margin:0;border-radius:0;display:flex;flex-direction:column;justify-content:center;padding:40px;animation-name:au3Side}
+  .au3-sheet::before{display:none}
+  .au3-card{width:100%;padding:34px 32px 28px}
+}
+@keyframes au3Side{from{transform:translateX(40px);opacity:0}}
+@media (max-width:360px){.au3-hero{padding-top:28px;min-height:290px}.au3-mark{width:96px;height:96px}.au3-mark svg{width:70px;height:70px}.au3-card{padding:22px 16px 18px}}
+
+/* lite mode and reduce motion: no loops, short entrances */
+html[data-lite="1"] .au3-orb,html[data-lite="1"] .au3-spk,html[data-lite="1"] .au3-word i,html[data-lite="1"] .au3-mark::before,html[data-lite="1"] .au3-mark::after{animation:none}
+html[data-lite="1"] .au3-spk{display:none}
+html[data-lite="1"] .au3-orb{filter:blur(30px)}
+@media (prefers-reduced-motion:reduce){
+  .au3 *,.au3 *::before,.au3 *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .au3-spk{display:none}
+}

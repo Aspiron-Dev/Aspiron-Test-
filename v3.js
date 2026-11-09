@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=19;
+const V3VER=23;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -137,7 +137,7 @@ const THEMES={
   D:['Black & Emerald',{acc:'#6cc09c',a1:'#a8dcc4',a2:'#3f9373',onA:'#04140d',as:'#0f1d17',h1:'#11201a',h2:'#020403',glow:'rgba(95,190,150,.22)',pill:'rgba(108,192,156,.12)'},'Black with deep muted green'],
   E:['Black & Graphite',{s:'#121213',s2:'#1c1c1e',ln:'#2a2a2c',acc:'#a6a6aa',a1:'#d7d7da',a2:'#7c7c80',h1:'#222224',h2:'#0b0b0c',glow:'rgba(255,255,255,.07)'},'Black with graphite cards']}}
 };
-const CHL={light:['#3f72b8','#c4692e','#1f9a72'],dark:['#4f86cc','#c97042','#2a9a74']}; /* validated with the dataviz palette checker */
+const CHL={light:['#3f72b8','#c4692e'],dark:['#4f86cc','#c97042']}; /* validated with the dataviz palette checker */
 
 const MQ=matchMedia('(prefers-color-scheme: dark)');
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -209,7 +209,7 @@ const isNewHash=h=>!h||h==='#'||h==='#/'||/^#\/x\/(test|tools|lib|stats)$/.test(
 function syncDock(){dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab));dock.querySelectorAll('button').forEach(b=>{const on=b.dataset.tab===S.tab;b.classList.toggle('on',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')})}
 let timers=[];
 const every=(fn,ms)=>{const t=setInterval(fn,ms);timers.push(t);return t};
-function render(anim){timers.forEach(clearInterval);timers=[];try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please switch to the classic design from the menu and tell us.</p></div>`}
+function render(anim){timers.forEach(clearInterval);timers=[];main.dataset.tab=S.tab;try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please switch to the classic design from the menu and tell us.</p></div>`}
   main.classList.remove('in');if(anim&&!RM){void main.offsetWidth;main.classList.add('in')}try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);reveal(main)}
 /* content below the first screen fades up into place as it scrolls into view (once; nothing hides if the browser cannot) */
 let rvIO=null;
@@ -295,9 +295,19 @@ function upcoming(){const cs=curSeries(),all=upList(),L=all.slice(0,4),done=(C()
   return `<section class="sec"><div class="sh"><h2>Upcoming Events (${all.length})</h2></div>
   ${L.length?`<div class="card"><div class="ev">${L.map(evRow).join('')}</div></div>`:`<div class="evnone"><span class="ti">${ic('cal',20)}</span><span>${done?'Today’s live tests have ended':'No live or upcoming tests right now'}</span></div>`}
   ${cs?'<button class="obtn" data-a="week">View Weekly Schedule</button>':''}</section>`}
-const ZONE=[['series','layers','My Test Series'],['qb','qb','Question Bank'],['pyq','pyq','PYQ Analyzer'],['gen','spark','Test Generator'],['dl','file','Notes & PDFs'],['mk','pen','Mistakes'],['bm','bookmark','Saved'],['hist','trophy','Results']];
-function zone(){return `<section class="sec"><div class="sh"><h2>My study zone</h2></div><div class="qgrid">
-  ${ZONE.map(z=>`<button class="qi" data-a="zone" data-k="${z[0]}"><span class="ti g">${ic(z[1],24)}</span><span>${z[2]}</span></button>`).join('')}</div></section>`}
+/* study zone: one calm tone for every tile, two-tone line icons */
+Object.assign(P,{
+ zSer:'<rect class="d" x="4" y="6" width="13" height="15" rx="2.5"/><rect x="4" y="6" width="13" height="15" rx="2.5"/><path d="M8 2.8h9.5A2.5 2.5 0 0 1 20 5.3V17"/><path d="M7.8 11h5.4M7.8 15h3.6"/>',
+ zQb:'<rect class="d" x="3" y="3" width="18" height="18" rx="5"/><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 16.8h.01"/>',
+ zPyq:'<path class="d" d="M6.5 2.8H14l5 5v12.4H6.5a2 2 0 0 1-2-2V4.8a2 2 0 0 1 2-2z"/><path d="M19 11V7.8l-5-5H6.5a2 2 0 0 0-2 2v13.4a2 2 0 0 0 2 2H10"/><path d="M14 2.8v5h5"/><circle cx="15.5" cy="16" r="3"/><path d="m17.7 18.2 2.5 2.5"/>',
+ zGen:'<path d="m3.5 20.5 10-10"/><path d="m12 9 3 3"/><path class="d" d="m17.5 2.5 1.2 3 3 1.2-3 1.2-1.2 3-1.2-3-3-1.2 3-1.2z"/><path d="m17.5 2.5 1.2 3 3 1.2-3 1.2-1.2 3-1.2-3-3-1.2 3-1.2z"/><path d="M6.5 3.5v3M5 5h3"/>',
+ zNote:'<path class="d" d="M6 2.8h9l4 4v13.4H6a1.5 1.5 0 0 1-1.5-1.5V4.3A1.5 1.5 0 0 1 6 2.8z"/><path d="M15 2.8H6a1.5 1.5 0 0 0-1.5 1.5v14.4A1.5 1.5 0 0 0 6 20.2h11.5a1.5 1.5 0 0 0 1.5-1.5V6.8z"/><path d="M15 2.8v4h4"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4"/>',
+ zMk:'<circle class="d" cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="9"/><path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6"/>',
+ zBm:'<path class="d" d="M6.5 3h11a1 1 0 0 1 1 1v17l-6.5-4.2L5.5 21V4a1 1 0 0 1 1-1z"/><path d="M6.5 3h11a1 1 0 0 1 1 1v17l-6.5-4.2L5.5 21V4a1 1 0 0 1 1-1z"/>',
+ zRes:'<path class="d" d="M7 3.5h10V9a5 5 0 0 1-10 0z"/><path d="M7 3.5h10V9a5 5 0 0 1-10 0z"/><path d="M7 5.5H4.8a2 2 0 0 0 0 4H7.2M17 5.5h2.2a2 2 0 0 1 0 4h-2.4"/><path d="M12 14v3.5M8 21h8M9.5 21l.6-3.5h3.8l.6 3.5"/>'});
+const ZONE=[['series','zSer','My Test Series'],['qb','zQb','Question Bank'],['pyq','zPyq','PYQ Analyzer'],['gen','zGen','Test Generator'],['dl','zNote','Notes & PDFs'],['mk','zMk','Mistakes'],['bm','zBm','Saved'],['hist','zRes','Results']];
+function zone(){return `<section class="sec"><div class="sh"><h2>My study zone</h2></div><div class="card qgrid zgrid">
+  ${ZONE.map((z,i)=>`<button class="qi zi" data-a="zone" data-k="${z[0]}" style="--zd:${i*35}ms"><span class="zt">${ic(z[1],24)}</span><span class="zl">${z[2]}</span></button>`).join('')}</div></section>`}
 function promoRail(id){let L=[];try{L=(typeof PROMO!=='undefined'&&PROMO)||[]}catch(e){}if(!L.length)return '';
   return `<section class="sec"><div class="rail" id="${id}">${L.slice(0,6).map(x=>{const u=/^https?:\/\/|^#\//i.test(x.link||'')?x.link:'',img=x.img&&/^data:image\/|^https:\/\//.test(x.img)?x.img:'';
    const body=img?`<img src="${esc3(img)}" alt="${esc3(x.title||'Offer')}">`:`<span class="bn-tx"><small class="gold">${esc3(x.label||'Aspiron')}</small><b>${esc3(x.title||'')}</b>${x.text?`<em>${esc3(x.text)}</em>`:''}</span>`;
@@ -423,10 +433,10 @@ function tabs2(){const c=myCount(),n=(STORE||[]).filter(x=>x.buy_on!==false).len
 function posterImg(){const p=LK().poster||'';return /^data:image\/(jpeg|png|webp);base64,/.test(p)?p:''}
 function poster(){const L=LK(),img=posterImg(),u=/^(https:\/\/|#\/|store\.html#)[^\s"'<>\\]*$/.test(L.link||'')?L.link:'';
   const art=img?`<img src="${esc3(img)}" alt="">`:`<span class="pst-ph"><small>ASPIRON EDUCATION</small><b>Test series</b><em>NEET and JEE, exam-style tests with All India rank</em></span>`;
-  return `<div class="pst-stick" id="pstStick"><div class="pst-bd" id="pstBd"></div>
+  return `<div class="pst-stick" id="pstStick">
    <div class="pst-top"><div class="search"><label class="sbox">${ic('search',19)}<input id="tq" type="search" autocomplete="off" placeholder="Search test series, test name or exam" value="${esc3(TQ.q)}" aria-label="Search test series, test name or exam"><button class="clr" data-a="tqClear" aria-label="Clear search"${TQ.q?'':' hidden'}>${ic('x',17)}</button></label>
    <button class="fb${tfCount()?' on':''}" data-a="tFilter" aria-label="Filter${tfCount()?`, ${tfCount()} on`:''}">${ic('filter',20)}${tfCount()?`<b>${tfCount()}</b>`:''}</button></div></div>
-   <div class="pst-tabs" id="pstTabs">${tabs2()}</div></div>
+   <div class="pst-tabs" id="pstTabs"><div class="pst-bd" id="pstBd"></div>${tabs2()}</div></div>
    <section class="pst${img?'':' noimg'}" id="pst">${u?`<a class="pst-art" href="${esc3(u)}"${/^https:/.test(u)?' target="_blank" rel="noopener noreferrer"':''} aria-label="Offer">${art}</a>`:`<div class="pst-art">${art}</div>`}</section>`}
 
 /* the poster's own colours, read from the picture on the phone: the top edge tints the header, a deep shade colours the
@@ -452,7 +462,7 @@ function loadPC(){const img=posterImg(),key=img?img.length+img.slice(-40):'none'
 const parseCol=v=>{v=String(v||'').trim();let m=/^#?([0-9a-f]{6})$/i.exec(v);if(m)return [0,2,4].map(i=>parseInt(m[1].substr(i,2),16)).concat(1);
   m=/rgba?\(([^)]+)\)/.exec(v);if(!m)return [245,245,243,1];const n=m[1].split(',').map(x=>parseFloat(x));return [n[0],n[1],n[2],n.length>3?n[3]:1]};
 const mixC=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
-const TABH=116,TABS=48;
+const TABH=116;
 let pstRaf=0,lastQ=-1,lastMeta='';
 /* sizes are measured once (on draw, resize, picture load), never during the scroll, so every frame only moves things */
 const PM={ok:0};
@@ -462,22 +472,23 @@ function pstMeasure(){const h=$('#hdr'),ps=$('#pst');if(!h||!ps)return;PM.hh=h.o
 function setMeta(c){const m=document.querySelector('meta[name="theme-color"]');if(m&&c!==lastMeta){m.setAttribute('content',c);lastMeta=c}}
 function pstSync(re){if(!root)return;const h=$('#hdr');if(!h||!main)return;const st=$('#pstStick'),ps=$('#pst'),tint=$('#hdrTint'),old=document.body.classList.contains('v3old');
   const on=!!(S.tab==='test'&&!scrOpen()&&st&&ps&&!old);main.classList.toggle('pc',!!(on&&PCOL));
-  if(!on){if(tint)tint.style.opacity=0;h.classList.remove('onpst');PM.ok=0;lastQ=-1;if(!old&&host)setMeta(getComputedStyle(host).getPropertyValue('--bg').trim()||'#f5f5f3');return}
+  h.classList.toggle('tp',on);
+  if(!on){h.classList.remove('tpfull');if(tint)tint.style.opacity=0;h.classList.remove('onpst');PM.ok=0;lastQ=-1;if(!old&&host)setMeta(getComputedStyle(host).getPropertyValue('--bg').trim()||'#f5f5f3');return}
   if(re||!PM.ok)pstMeasure();
   const sy=Math.max(0,scrollY),p=Math.min(1,sy/PM.span),q=p*p*(3-2*p);
   if(q===1&&lastQ===1)return;lastQ=q;
-  st.style.setProperty('--p',q.toFixed(4));
-  const th=TABH-(TABH-TABS)*q,ty=Math.max(PM.y1,PM.y0-sy);$('#pstTabs').style.transform=`translate3d(0,${ty.toFixed(2)}px,0)`;
-  const bd=$('#pstBd');bd.style.transform=`translate3d(0,${(ty+th+14-PM.bdH).toFixed(2)}px,0)`;bd.style.opacity=Math.min(1,q*1.15).toFixed(3);
+  /* every frame only moves and fades things (no size change, so no layout while the finger moves): the buttons go
+     slim once, by a short CSS transition, when the poster is half gone; the backdrop rides inside the bar */
+  st.classList.toggle('slim',q>.5);
+  const ty=Math.max(PM.y1,PM.y0-sy);$('#pstTabs').style.transform=`translate3d(0,${ty.toFixed(1)}px,0)`;
+  $('#pstBd').style.opacity=Math.min(1,q*1.15).toFixed(3);
   const art=ps.firstElementChild;if(art){art.style.transform=`translate3d(0,${(Math.min(sy,PM.span+200)*.45).toFixed(2)}px,0)`;art.style.opacity=(1-.92*q).toFixed(3)}
-  if(tint)tint.style.opacity=PCOL?(1-q).toFixed(3):0;h.classList.toggle('onpst',!!PCOL&&q<.5);
-  if(PCOL){const c=mixC(PCOL.top,PM.bg,q).map(v=>Math.round(v/4)*4);setMeta(`rgb(${c.join(',')})`)}}
+  /* the header sits on the poster with no band of its own; its normal background fades in as the poster leaves */
+  if(tint)tint.style.opacity=q.toFixed(3);h.classList.toggle('onpst',!!PCOL&&q<.5);h.classList.toggle('tpfull',q>.98);
+  /* the phone's status bar colour changes in a few steps only: repainting it every frame makes Android stutter */
+  if(PCOL){const k=Math.round(q*4)/4,c=mixC(PCOL.top,PM.bg,k).map(Math.round);setMeta(`rgb(${c.join(',')})`)}}
 addEventListener('scroll',()=>{if(!root||!main||pstRaf)return;if(S.tab!=='test'&&!PM.ok)return;pstRaf=requestAnimationFrame(()=>{pstRaf=0;pstSync()})},{passive:true});
 addEventListener('resize',()=>{if(root&&S.tab==='test')pstSync(true)},{passive:true});
-/* a scroll that stops half way through the change settles to the nearer end, so the bar is never left half shrunk */
-let snapT=0;
-function pstSnap(){if(RM||!root||S.tab!=='test'||scrOpen()||!PM.ok||layer)return;const p=scrollY/PM.span;if(p>.03&&p<.97)scrollTo({top:p<.42?0:Math.ceil(PM.span),behavior:'smooth'})}
-if('onscrollend' in window)addEventListener('scrollend',pstSnap);else addEventListener('scroll',()=>{clearTimeout(snapT);snapT=setTimeout(pstSnap,200)},{passive:true});
 
 /* ---------- store view ---------- */
 function offer3(){const L=(STORE||[]).filter(x=>x.buy_on!==false&&x.price).sort((a,b)=>offPct(b)-offPct(a)).slice(0,3);if(L.length<2)return '';
@@ -505,7 +516,10 @@ function storeView(){
 VIEW.test=()=>poster()+`<div id="tBody" class="stack" style="gap:var(--gap)">${storeView()}</div>`;
 function drawT(){const b=$('#tBody');if(!b)return;b.innerHTML=storeView();const n=tfCount(),fb=$('[data-a="tFilter"]');if(fb){fb.className='fb'+(n?' on':'');fb.innerHTML=ic('filter',20)+(n?`<b>${n}</b>`:'')}const x=$('[data-a="tqClear"]');x&&(x.hidden=!TQ.q);const t=$('.tt2');t&&(t.outerHTML=tabs2());autoRail('#tbRail','#tbRailD');reveal(b);lastQ=-1;pstSync()}
 AFTER.test=()=>{loadMeta();const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#tbRail','#tbRailD');loadExtras();loadLook();loadPC();pstSync(true);const pi=$('#pst img');pi&&!pi.complete&&pi.addEventListener('load',()=>pstSync(true),{once:true});
-  try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length))promoLoad().then(()=>{if(S.tab==='test'&&!scrOpen())softRender()})}catch(e){}};
+  /* at most one try a minute: with no banners (or no network) the redraw below used to start the next load at once,
+     an endless loop of requests and redraws that made the Tests page stutter */
+  try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length)&&Date.now()-promoAt>6e4){promoAt=Date.now();promoLoad().then(()=>{if(S.tab==='test'&&!scrOpen()&&typeof PROMO!=='undefined'&&PROMO&&PROMO.length)softRender()})}}catch(e){}};
+let promoAt=0;
 A.toList=()=>{TQ.tile='store';$$('.tt2 button').forEach(b=>b.classList.toggle('on',b.dataset.a==='toList'));const a=$('#allSec');a&&a.scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})};
 A.tqClear=()=>{TQ.q='';$('#tq').value='';drawT();$('#tq').focus()};
 A.tClear=()=>{TQ.q='';TQ.f={e:[],c:[],s:[]};const q=$('#tq');if(q)q.value='';drawT()};
@@ -1716,7 +1730,8 @@ window.v3Disable=function(){lsSet('cbt_v3',false);closeLayer();unwind(()=>{docum
 if(v3On()&&typeof AUTH!=='undefined'&&AUTH&&!INTEST){boot();document.body.classList.add('v3on');if(!isNewHash(location.hash||'#/'))toOld();else route()}
 
 /* ================= REVIEW REQUEST after a test (both designs) =================
-   After every submitted test the student is asked to rate the test series: stars AND a short comment (at least 15
+   After every submitted test the student is asked to rate THAT TEST (v66: cbt_test_review_save, private to the admin;
+   before v66 is run, the test series is asked for instead): stars AND a short comment (at least 15
    letters) are needed to send. Closing once shows a gentle "just 20 seconds" note; closing again lets them go.
    Not asked again once they have written a review with a comment. Saved with cbt_review_save (v23), one review per
    series, which the student can change any time from the series page (Reviews). */
@@ -1754,10 +1769,14 @@ const RVI={star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.5 2.3
   heart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-9.2-9A5 5 0 0 1 12 5.6 5 5 0 0 1 21.2 11C19 15.6 12 20 12 20z"/></svg>'};
 const RVW=['','Poor','Could be better','Good','Very good','Excellent'];
 function rvClose(){if(!rvHost)return;const h=rvHost;rvHost=null;const w=h.shadowRoot.querySelector('.w');w.classList.remove('on');setTimeout(()=>h.remove(),RM?0:420)}
-async function rvAsk(sid,title,manual){
-  if(rvHost||!sid||typeof rpc!=='function')return;
+async function rvAsk(sid,title,manual,test){
+  if(rvHost||(!sid&&!test)||typeof rpc!=='function')return;
   if(!manual&&document.body.classList.contains('intest'))return;
-  let mine=null;try{const r=await rpc('cbt_review_mine',{p_series:sid});if(!r||!r.ok){if(manual&&typeof toast==='function')toast('Could not open reviews. Please try again.');return}mine=r.review}catch(e){return}
+  let mine=null;
+  /* one test (v66); if the server does not have it yet, the series as before */
+  if(test&&test.id){try{const r=await rpc('cbt_test_review_mine',{p_test:test.id});if(r&&r.ok)mine=r.review;else if(r&&r.error==='server'&&r.status===404){test=null}else return}catch(e){return}
+    if(!test&&!sid)return}
+  if(!test){try{const r=await rpc('cbt_review_mine',{p_series:sid});if(!r||!r.ok){if(manual&&typeof toast==='function')toast('Could not open reviews. Please try again.');return}mine=r.review}catch(e){return}}
   if(!manual&&mine&&String(mine.body||'').trim().length>=RVMIN)return;
   if(rvHost||(!manual&&document.body.classList.contains('intest')))return;
   const d=rvDark(),T=d?{s:'#1e1f22',s2:'#27282c',tx:'#ededee',mut:'#a3a5aa',line:'#34353a',line2:'#45464c',ink:'#ededee',on:'#161719',acc:'#d6b878',soft:'#2c271d'}
@@ -1768,7 +1787,7 @@ async function rvAsk(sid,title,manual){
    <div class="w" role="dialog" aria-modal="true" aria-labelledby="rvT"><div class="bg"></div><div class="c"><button class="x" aria-label="Close">${RVI.x}</button><div class="body"></div></div></div>`;
   const W=R.querySelector('.w'),B=R.querySelector('.body');
   const form=()=>{B.innerHTML=`<div class="ic">${RVI.star}</div><h2 id="rvT">${manual?'Your review':'How was your test?'}</h2>
-    <p class="s">Rate <b>${esc3(title||'this test series')}</b>. Your words help other students choose, and help us make every test better.</p>
+    <p class="s">${test?`Rate <b>${esc3(test.title||'this test')}</b>. Tell us about the questions, the level and the time. It goes straight to our team.`:`Rate <b>${esc3(title||'this test series')}</b>. Your words help other students choose, and help us make every test better.`}</p>
     <div class="st" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(n=>`<button role="radio" aria-checked="${rating===n}" aria-label="${n} star${n>1?'s':''}" data-n="${n}" class="${n<=rating?'on':''}">${RVI.star}</button>`).join('')}</div>
     <p class="lb">${rating?RVW[rating]:'Tap a star'}</p>
     <textarea maxlength="600" placeholder="What did you like? What can we do better? (at least ${RVMIN} letters)" aria-label="Your review">${esc3(mine&&mine.body||'')}</textarea>
@@ -1780,12 +1799,13 @@ async function rvAsk(sid,title,manual){
       b.classList.add('pop');setTimeout(()=>b.classList.remove('pop'),220);B.querySelector('.lb').textContent=RVW[rating];sync();const ta=B.querySelector('textarea');if(!ta.value.trim())ta.focus({preventScroll:true})}));
     B.querySelector('textarea').addEventListener('input',sync);B.querySelector('.go').addEventListener('click',send);sync()};
   const send=async()=>{const ta=B.querySelector('textarea'),go=B.querySelector('.go'),er=B.querySelector('.er'),body=ta.value.trim();if(!rating||body.length<RVMIN)return;
-    go.disabled=true;go.textContent='Sending…';er.textContent='';let r=null;try{r=await rpc('cbt_review_save',{p_series:sid,p_rating:rating,p_body:body,p_photo:''})}catch(e){}
-    if(!r||!r.ok){go.textContent='Submit review';sync();er.textContent=r&&r.error==='busy'?'Please wait a few seconds and try again.':r&&r.error==='not_unlocked'?'Reviews open once this series is unlocked for you.':'Could not send. Please check your internet and try again.';return}
-    try{SRV&&delete SRV[(itemOfSeries(sid)||{}).id];XD=null}catch(e){}
-    B.innerHTML=`<div class="ty"><div class="ic">${RVI.heart}</div><h2>Thank you!</h2><p class="s">${r.status==='pending'?'Your review will show after a quick check.':'Your review is live on the series page.'}</p></div>`;
+    go.disabled=true;go.textContent='Sending…';er.textContent='';let r=null;
+    try{r=test?await rpc('cbt_test_review_save',{p_test:test.id,p_rating:rating,p_body:body}):await rpc('cbt_review_save',{p_series:sid,p_rating:rating,p_body:body,p_photo:''})}catch(e){}
+    if(!r||!r.ok){go.textContent='Submit review';sync();er.textContent=r&&r.error==='busy'?'Please wait a few seconds and try again.':r&&r.error==='not_unlocked'?'Reviews open once this series is unlocked for you.':r&&r.error==='short'?`Please write at least ${RVMIN} letters.`:'Could not send. Please check your internet and try again.';return}
+    if(!test){try{SRV&&delete SRV[(itemOfSeries(sid)||{}).id];XD=null}catch(e){}}
+    B.innerHTML=`<div class="ty"><div class="ic">${RVI.heart}</div><h2>Thank you!</h2><p class="s">${test?'Your feedback has reached our team. It helps us make every test better.':r.status==='pending'?'Your review will show after a quick check.':'Your review is live on the series page.'}</p></div>`;
     setTimeout(rvClose,1800);if(scrOpen()&&top()&&top().key==='sp')setTimeout(()=>{loadExtras();redraw()},400)};
-  const nudge=()=>{nudged=true;B.innerHTML=`<div class="ty"><div class="ic">${RVI.heart}</div><h2 id="rvT">Just 20 seconds?</h2><p class="s">Two lines from you help hundreds of students pick the right test series, and tell us what to improve next.</p></div>
+  const nudge=()=>{nudged=true;B.innerHTML=`<div class="ty"><div class="ic">${RVI.heart}</div><h2 id="rvT">Just 20 seconds?</h2><p class="s">${test?'Two lines from you tell us what to improve in the next test.':'Two lines from you help hundreds of students pick the right test series, and tell us what to improve next.'}</p></div>
     <button class="go">Write my review</button><button class="ln">Not now</button>`;B.querySelector('.go').addEventListener('click',form);B.querySelector('.ln').addEventListener('click',rvClose)};
   R.querySelector('.x').addEventListener('click',()=>{const ta=B.querySelector('textarea');if(!manual&&!nudged&&!(ta&&ta.value.trim().length>=RVMIN))nudge();else rvClose()});
   R.querySelector('.bg').addEventListener('click',()=>{if(manual)rvClose()});
@@ -1793,8 +1813,8 @@ async function rvAsk(sid,title,manual){
 /* after a test is submitted (result shown, or "result after …"): ask once the screen has settled */
 (function(){if(typeof sendPending!=='function')return;let just=null;
   const _sp=sendPending;sendPending=function(it){try{const L=(typeof CAT!=='undefined'&&CAT)||null,t=L&&(L.tests||[]).find(x=>x.id===(it&&it.tid)),s=t&&(L.series||[]).find(x=>x.id===t.series_id);
-    just=s&&s.unlocked?{sid:s.id,title:s.title,at:Date.now()}:null}catch(e){just=null}return _sp.apply(this,arguments)};
-  const after=()=>{if(!just||Date.now()-just.at>120000)return;const j=just;just=null;setTimeout(()=>rvAsk(j.sid,j.title,false),1400)};
+    just=t?{sid:s&&s.unlocked?s.id:null,title:s&&s.title,test:{id:t.id,title:t.title},at:Date.now()}:null}catch(e){just=null}return _sp.apply(this,arguments)};
+  const after=()=>{if(!just||Date.now()-just.at>120000)return;const j=just;just=null;setTimeout(()=>rvAsk(j.sid,j.title,false,j.test),1400)};
   ['showHeld','showResult'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;window[n]=function(){const r=f.apply(this,arguments);try{after()}catch(e){}return r}})})();
 })();
 

@@ -1,5 +1,5 @@
 /* ===== app26: profile details + exam countdown are kept on the account =====
-   Server: supabase_v56_student_keep.sql (cbt_keep get | save); v65 adds the study tracker (supabase_v65_tracker_keep.sql). Before it is run the app works as before: the details
+   Server: supabase_v56_student_keep.sql (cbt_keep get | save); v66 adds the study tracker (supabase_v66_tracker_keep.sql). Before it is run the app works as before: the details
    stay on this phone only and nothing here makes a request that fails twice.
    Why: the profile (photo, alternate phone, school, city, class, exam, about) and the exam countdown lived only in
    one browser's storage. Clearing site data, a full phone, or opening the site in another browser / on another phone
@@ -10,7 +10,7 @@
    A countdown the student removes stays removed on their other phones. */
 const KEEP={on:undefined,mob:null,q:null,tm:0,skip:0,busy:0};
 const keepWhat=k=>AUTH?(k==='cbt_pf_'+AUTH.mobile?'pf':k==='cbt_cd_'+AUTH.mobile?'cd':k==='cbt_trk_'+AUTH.mobile?'trk':k==='cbt_trkd_'+AUTH.mobile?'trkd':''):'';
-/* v65: the study tracker goes with them; cbt_trkat_<mobile> is when it last changed on this phone (the newest copy wins) */
+/* v66: the study tracker goes with them; cbt_trkat_<mobile> is when it last changed on this phone (the newest copy wins) */
 const keepTrkAt=()=>AUTH?+LS.get('cbt_trkat_'+AUTH.mobile,0)||0:0;
 {const _s=LS.set,_d=LS.del;
   LS.set=function(k,v){const r=_s.call(this,k,v),w=keepWhat(k);if(w&&!KEEP.skip){if(w==='trk'){const at=Date.now();_s.call(this,'cbt_trkat_'+AUTH.mobile,at);if(JSON.stringify(v||{}).length<140000){keepQ('trk',v);keepQ('trkat',at)}}else keepQ(w,v)}return r};
@@ -65,7 +65,7 @@ async function keepPull(){
       if(r.cdgone){KEEP.skip=1;try{LS.del('cbt_cd_'+mob)}finally{KEEP.skip=0}back=true}
       else up.cd=lc;
     }
-    // study tracker (v65): the newer copy wins; a phone with no plan yet takes the account's. Day counts: the larger wins.
+    // study tracker (v66): the newer copy wins; a phone with no plan yet takes the account's. Day counts: the larger wins.
     if('trkat' in r){
       const lt=LS.get('cbt_trk_'+mob,null),lat=keepTrkAt(),sat=+r.trkat||0;
       const empty=!lt||!Array.isArray(lt.weeks)||!lt.weeks.some(w=>(w.subjects||[]).length);
