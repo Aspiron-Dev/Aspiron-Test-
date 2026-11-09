@@ -127,7 +127,7 @@ button{font:inherit;cursor:pointer}
 .rrow .grow b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* forms */
-input[type=text],input[type=tel],input[type=number],input[type=password],input[type=search],textarea,select{font:inherit;width:100%;padding:11px 13px;border:1px solid var(--bd);border-radius:12px;background:var(--surface);color:var(--tx);outline:none}
+input[type=text],input[type=tel],input[type=number],input[type=password],input[type=email],input[type=search],textarea,select{font:inherit;width:100%;padding:11px 13px;border:1px solid var(--bd);border-radius:12px;background:var(--surface);color:var(--tx);outline:none}
 input:focus,textarea:focus,select:focus{border-color:var(--pri);box-shadow:0 0 0 3px color-mix(in srgb,var(--pri) 22%,transparent)}
 textarea{min-height:90px;resize:vertical}
 label.l{display:block;font-size:12px;font-weight:600;color:var(--mut);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.04em}
@@ -421,7 +421,7 @@ body{background-color:var(--bg);background-image:radial-gradient(900px 380px at 
 .iconbtn:hover{box-shadow:var(--shadow),0 0 0 2px var(--priSoft)}
 .btn.ghost{border:0;background:var(--surface2);color:var(--tx)}
 .hdr{border-bottom:0;box-shadow:0 1px 0 color-mix(in srgb,var(--bd) 55%,transparent)}
-input[type=text],input[type=tel],input[type=number],input[type=password],input[type=search],textarea,select{border:0;background:var(--surface2)}
+input[type=text],input[type=tel],input[type=number],input[type=password],input[type=email],input[type=search],textarea,select{border:0;background:var(--surface2)}
 input:focus,textarea:focus,select:focus{background:var(--surface)}
 .hero .bigav{border:0;background:rgba(255,255,255,.22)}
 .hero .stat,.hero .streak{border:0;background:rgba(255,255,255,.16);backdrop-filter:blur(6px)}
@@ -1817,7 +1817,7 @@ body.tsq-on .xs .tsqx{display:grid}
 (function(){var h=document.documentElement,n=navigator,base=false;try{base=!!((n.deviceMemory&&n.deviceMemory<=2)||(n.hardwareConcurrency&&n.hardwareConcurrency<=4)||(n.connection&&n.connection.saveData))}catch(e){}
 if(base)h.dataset.lite='1';try{if(n.getBattery)n.getBattery().then(function(b){var f=function(){if(base||(!b.charging&&b.level<=.2))h.dataset.lite='1';else delete h.dataset.lite};f();b.addEventListener('levelchange',f);b.addEventListener('chargingchange',f)},function(){})}catch(e){}})()</script>
 <script>(function(){var h=document.documentElement;function g(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}try{var ds='classic';/* the new look (design-v2.css) is switched off: everyone gets the original design */h.dataset.ds=ds;var t=g('cbt_theme');if(!t)t=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';h.dataset.theme=t==='light'?'light':'dark';if(t==='oled')h.dataset.oled='1';h.dataset.accent=ds==='v2'?(g('cbt_accent_v2')||'gold'):(g('cbt_accent')||'cyber')}catch(e){h.dataset.ds='classic';h.dataset.theme='light';h.dataset.accent='cyber'}})()</script>
-<script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6', 'app7', 'app8', 'app9', 'app10', 'app11', 'app12', 'app13', 'app14', 'app15', 'app16', 'app17', 'app18', 'app19', 'app21', 'app22', 'app23', 'app24', 'app25', 'app26'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
+<script>window.addEventListener('error',function(e){(window.__errs=window.__errs||[]).push((e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+e.lineno)});window.addEventListener('load',function(){setTimeout(function(){var need=['app1', 'app2', 'app3', 'app4', 'app5', 'app6', 'app7', 'app8', 'app9', 'app10', 'app11', 'app12', 'app13', 'app14', 'app15', 'app16', 'app17', 'app18', 'app19', 'app21', 'app22', 'app23', 'app24', 'app25', 'app26', 'app28'],p=window.__p||{},bad=need.filter(function(n){return !p[n]});if(!bad.length)return;var b=document.createElement('div');b.style.cssText='position:fixed;left:12px;right:12px;top:12px;z-index:99;background:#c9780a;color:#fff;border-radius:14px;padding:12px 14px;font:600 14px sans-serif';b.textContent='Some files are missing or incomplete on GitHub: '+bad.map(function(n){return n+'.js'}).join(', ')+'. Upload them again (Add file > Upload files), then refresh.'+(window.__errs?' [Error: '+window.__errs[0]+']':'');document.body.appendChild(b)},1500)})</script>
 <script src="config.js?v=12"></script>
 <link rel="stylesheet" href="web.css?v=6">
 </head>
@@ -1896,7 +1896,7 @@ try{}catch(e){}})();</script>
 <div id="layer"></div>
 
 
-<script src="app1.js?v=37"onerror="(window.__miss=window.__miss||[]).push('app1.js')"></script>
+<script src="app1.js?v=38" onerror="(window.__miss=window.__miss||[]).push('app1.js')"></script>
 <script src="app2.js?v=23" onerror="(window.__miss=window.__miss||[]).push('app2.js')"></script>
 <script src="app3.js?v=27" onerror="(window.__miss=window.__miss||[]).push('app3.js')"></script>
 <script src="app4.js?v=21" onerror="(window.__miss=window.__miss||[]).push('app4.js')"></script>
@@ -1924,6 +1924,7 @@ try{}catch(e){}})();</script>
 <script src="app25.js?v=2" onerror="(window.__miss=window.__miss||[]).push('app25.js')"></script>
 <script src="app26.js?v=1" onerror="(window.__miss=window.__miss||[]).push('app26.js')"></script>
 <script src="app27.js?v=2" onerror="(window.__miss=window.__miss||[]).push('app27.js')"></script>
+<script src="app28.js?v=1" onerror="(window.__miss=window.__miss||[]).push('app28.js')"></script>
 <!-- new student design (beta): off by default, turned on from the menu; the classic design stays as it is -->
 <script src="v3.js?v=13"></script>
 

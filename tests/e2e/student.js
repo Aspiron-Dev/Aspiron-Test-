@@ -25,8 +25,14 @@ const server = http.createServer((req, res) => {
 });
 
 const calls = [];
+// the email / Google login screen (app28.js) comes first: open the access-code screen
+const codeScreen = async pg => { await pg.waitForSelector('#em'); await pg.evaluate(() => login('code')); await pg.waitForSelector('#ph'); };
+// a Supabase login (test only: an unsigned JWT; its "sub" goes to request.jwt.claims like PostgREST does)
+const fakeJwt = (sub, email) => ['e30', Buffer.from(JSON.stringify({ sub, email, role: 'authenticated' })).toString('base64url'), 'x'].join('.');
+const jwtClaims = h => { const m = /^Bearer\s+([^.]+)\.([^.]+)\.[^.]*$/.exec(h || ''); if (!m) return ''; try { return Buffer.from(m[2], 'base64url').toString(); } catch (e) { return ''; } };
 async function rpcRoute(route) {
   const req = route.request(), fn = req.url().split('/rpc/')[1].split('?')[0];
+  await q(`select set_config('request.jwt.claims', $1, false)`, [jwtClaims(req.headers()['authorization'])]);
   if (!/^[a-z0-9_]+$/.test(fn)) return route.fulfill({ status: 400, body: '{}' });
   let body = {}; try { body = JSON.parse(req.postData() || '{}'); } catch (e) {}
   const keys = Object.keys(body).filter(k => /^p_[a-z0-9_]+$/.test(k));
@@ -52,13 +58,13 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     p.on('pageerror', e => errs.push(e.message)); await p.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort()); await p.route(SUPA + '/rest/v1/rpc/**', rpcRoute); return { c, p, errs }; };
   // 1. student login keeps a token, not the code
   let { c, p, errs } = await mk();
-  await p.goto(BASE + 'index.html'); await p.waitForSelector('#ph');
+  await p.goto(BASE + 'index.html'); await codeScreen(p);
   await p.fill('#ph', '9000000002'); await p.fill('#cd', 'BBBB2222'); await p.click('#lbtn'); await p.waitForTimeout(2500);
   let au = await p.evaluate(() => JSON.parse(localStorage.getItem('cbt_auth')));
   ok(au && /^st1\./.test(au.code), 'login stores a token (not the code)');
   ok(!(await p.content()).includes('BBBB2222'), 'code not in the page');
   await p.reload(); await p.waitForTimeout(2500);
-  ok(await p.$('#ph') === null, 'still signed in after reload (token works)');
+  ok(await p.$('#ph') === null && await p.$('#em') === null, 'still signed in after reload (token works)');
   const tok = au.code;
   await p.evaluate(() => doSignOut()); await p.waitForTimeout(6500);
   const after = (await q(`select public.cbt_catalog('9000000002', $1, 'x-device-1') r`, [tok]))[0].r;
@@ -70,7 +76,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   await p.goto(BASE + 'index.html'); await p.waitForTimeout(3000);
   au = await p.evaluate(() => JSON.parse(localStorage.getItem('cbt_auth')));
   ok(au && /^st1\./.test(au.code), 'old saved code swapped for a token');
-  ok(await p.$('#ph') === null, 'stays signed in during the swap');
+  ok(await p.$('#ph') === null && await p.$('#em') === null, 'stays signed in during the swap');
   ok(!errs.length, 'no page errors (swap) ' + errs.join(' | ')); await c.close();
   // 3. frame blocking
   ({ c, p, errs } = await mk());
@@ -139,7 +145,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   ok(!errs.length, 'no page errors (edit keeps coupon) ' + errs.join(' | ')); await c.close();
   // 6. checklist C/D in the app: banner link, file view, access request message
   ({ c, p, errs } = await mk());
-  await p.goto(BASE + 'index.html'); await p.waitForSelector('#ph');
+  await p.goto(BASE + 'index.html'); await codeScreen(p);
   await p.fill('#ph', '9000000002'); await p.fill('#cd', 'BBBB2222'); await p.click('#lbtn'); await p.waitForTimeout(3000);
   const hrefs = await p.$$eval('a[href]', a => a.map(x => x.getAttribute('href')));
   ok(!hrefs.some(h => /^javascript:/i.test(h)), 'no javascript: link from a banner (' + hrefs.filter(h => /example|javascript/.test(h)).join(',') + ')');
@@ -150,7 +156,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   ok(/store\?r=paid00002$/.test(await p.textContent('.rfu span')), 'app refer page: the link opens the store with the student\'s code');
   ok(!errs.length, 'no page errors (checklist C/D) ' + errs.join(' | ')); await c.close();
   ({ c, p, errs } = await mk());
-  await p.goto(BASE + 'index.html'); await p.waitForSelector('#ph');
+  await p.goto(BASE + 'index.html'); await codeScreen(p);
   await p.evaluate(() => login('request')); await p.waitForTimeout(500);
   const inputs = await p.$$eval('#rq input', a => a.map(x => x.id));
   await p.fill('#' + inputs[0], 'Some One'); await p.fill('#' + inputs[1], '9000000001');
@@ -160,7 +166,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   await c.close();
   // 7. profile + exam countdown kept on the account (v56): a fresh browser gets them back, a removed countdown stays removed
   await q(`update cbt_private.students set keep='{}', devices='{}', fail_count=0, locked_until=0 where mobile='9000000002'`);
-  const signIn = async pg => { await pg.goto(BASE + 'index.html'); await pg.waitForSelector('#ph'); await pg.fill('#ph', '9000000002'); await pg.fill('#cd', 'BBBB2222'); await pg.click('#lbtn'); await pg.waitForTimeout(3000); };
+  const signIn = async pg => { await pg.goto(BASE + 'index.html'); await codeScreen(pg); await pg.fill('#ph', '9000000002'); await pg.fill('#cd', 'BBBB2222'); await pg.click('#lbtn'); await pg.waitForTimeout(3000); };
   let c2, p2, errs2;
   ({ c, p, errs } = await mk()); await signIn(p);
   await p.evaluate(() => { pfSave({ school: 'Aspiron Coaching', city: 'Kota', exam: 'NEET', photo: 'data:image/jpeg;base64,/9j/4AAQ' });
@@ -175,6 +181,54 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   await p.reload(); await p.waitForSelector('#app'); await p.waitForTimeout(3500);
   ok(!(await p.evaluate(() => cdGet())), 'countdown: removed on one phone, it is gone on the other too (and not sent back)');
   ok(!errs.length && !errs2.length, 'no page errors (profile + countdown) ' + errs.concat(errs2).join(' | ')); await c.close(); await c2.close();
+
+  // 8. email + password login (app28.js + supabase_v65): join with the access code once, then the login alone signs in
+  await q(`delete from auth.users where email in ('e2e@example.com')`);
+  await q(`insert into auth.users(id,email,email_confirmed_at) values ('e2e00000-0000-0000-0000-000000000001','e2e@example.com',now())`);
+  await q(`update cbt_private.students set auth_uid=null, devices='{}', fail_count=0, locked_until=0 where mobile='9000000001'`);
+  await q(`delete from cbt_private.auth_link_tries`);
+  const authRoute = async (route) => {
+    const u = route.request().url(), b = JSON.parse(route.request().postData() || '{}');
+    if (/token\?grant_type=password/.test(u)) {
+      if (b.email === 'e2e@example.com' && b.password === 'Right1234') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ access_token: fakeJwt('e2e00000-0000-0000-0000-000000000001', b.email), refresh_token: 'r', expires_in: 3600 }) });
+      return route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error_code: 'invalid_credentials', msg: 'Invalid login credentials' }) });
+    }
+    if (/logout/.test(u)) { calls.push('sb_logout'); return route.fulfill({ status: 204, body: '' }); }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+  };
+  ({ c, p, errs } = await mk()); await p.route(SUPA + '/auth/v1/**', authRoute);
+  await p.goto(BASE + 'index.html'); await p.waitForSelector('#em');
+  ok(!!(await p.$('.lgo')) && /Continue with Google/.test(await p.textContent('.lgo')), 'login screen: Google button shown');
+  await p.fill('#em', 'e2e@example.com'); await p.fill('#pw', 'Wrong1234'); await p.click('#abtn'); await p.waitForTimeout(800);
+  ok(/incorrect/.test(await p.textContent('#er')), 'email login: wrong password is refused');
+  await p.fill('#pw', 'Right1234'); await p.click('#abtn'); await p.waitForSelector('#cd', { timeout: 5000 }).catch(() => {});
+  ok(/e2e@example\.com/.test(await p.textContent('.lmail').catch(() => '')), 'email login: a new login is asked to join a student account');
+  await p.fill('#ph', '9000000001'); await p.fill('#cd', 'WRONG999'); await p.click('#abtn'); await p.waitForTimeout(1200);
+  ok(/incorrect/i.test(await p.textContent('#er')) && !(await p.evaluate(() => localStorage.getItem('cbt_auth'))), 'join: a wrong code is refused');
+  await p.fill('#cd', 'AAAA1111'); await p.click('#abtn'); await p.waitForTimeout(3000);
+  au = await p.evaluate(() => JSON.parse(localStorage.getItem('cbt_auth')));
+  ok(au && au.mobile === '9000000001' && /^st1\./.test(au.code), 'join: the right code signs in with a normal token');
+  ok(!(await p.evaluate(() => sessionStorage.getItem('cbt_sb'))) && calls.includes('sb_logout'), 'join: the Supabase session is ended, only the app token is kept');
+  ok((await q(`select auth_uid from cbt_private.students where mobile='9000000001'`))[0].auth_uid === 'e2e00000-0000-0000-0000-000000000001', 'join: the login is joined to the student');
+  ok(!errs.length, 'no page errors (email login) ' + errs.join(' | ')); await c.close();
+  ({ c, p, errs } = await mk()); await p.route(SUPA + '/auth/v1/**', authRoute);
+  await p.goto(BASE + 'index.html'); await p.waitForSelector('#em');
+  await p.fill('#em', 'e2e@example.com'); await p.fill('#pw', 'Right1234'); await p.click('#abtn'); await p.waitForTimeout(3000);
+  au = await p.evaluate(() => JSON.parse(localStorage.getItem('cbt_auth')));
+  ok(au && au.mobile === '9000000001' && await p.$('#cd') === null, 'email login: next time the login alone signs in (no code)');
+  ok(!errs.length, 'no page errors (email login again) ' + errs.join(' | ')); await c.close();
+  // 9. back from Google: the login in the address is taken and the address cleaned
+  ({ c, p, errs } = await mk()); await p.route(SUPA + '/auth/v1/**', authRoute);
+  await p.goto(BASE + 'index.html#access_token=' + fakeJwt('e2e00000-0000-0000-0000-000000000001', 'e2e@example.com') + '&refresh_token=r&expires_in=3600&token_type=bearer');
+  await p.waitForTimeout(3500);
+  au = await p.evaluate(() => JSON.parse(localStorage.getItem('cbt_auth')));
+  ok(au && au.mobile === '9000000001' && !/access_token/.test(p.url()), 'Google return: signed in, token gone from the address');
+  ok(!errs.length, 'no page errors (Google return) ' + errs.join(' | ')); await c.close();
+  ({ c, p, errs } = await mk());
+  await p.goto(BASE + 'index.html#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired');
+  await p.waitForSelector('#em'); await p.waitForTimeout(500);
+  ok(/expired/.test(await p.textContent('#er')) && !/error=/.test(p.url()), 'expired email link: clear message on the login screen');
+  ok(!errs.length, 'no page errors (expired link) ' + errs.join(' | ')); await c.close();
   await br.close(); server.close(); await db.end();
   console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });
