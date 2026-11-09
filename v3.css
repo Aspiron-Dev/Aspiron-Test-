@@ -1316,10 +1316,11 @@ a.rsc,a.rsc *{color:inherit;text-decoration:none}a.rsc small{color:var(--mut)}
 .zl{font-size:12px;font-weight:600;line-height:1.25;letter-spacing:-.01em;color:var(--tx);min-height:2.5em;display:flex;align-items:flex-start;justify-content:center;text-wrap:balance}
 @keyframes zIn{from{opacity:0;transform:translateY(10px) scale(.92)}}
 /* home sections come in one after another */
-.main>.sec,.main>section,.main>.card{animation:secIn .55s var(--out) both}
-.main>:nth-child(2){animation-delay:.05s}.main>:nth-child(3){animation-delay:.1s}.main>:nth-child(4){animation-delay:.15s}.main>:nth-child(n+5){animation-delay:.2s}
+/* Home only: the Tests page moves its poster and bar itself while scrolling, so nothing there may be animated */
+.main[data-tab="home"]>*{animation:secIn .55s var(--out) both}
+.main[data-tab="home"]>:nth-child(2){animation-delay:.05s}.main[data-tab="home"]>:nth-child(3){animation-delay:.1s}.main[data-tab="home"]>:nth-child(4){animation-delay:.15s}.main[data-tab="home"]>:nth-child(n+5){animation-delay:.2s}
 @keyframes secIn{from{opacity:0;transform:translateY(14px)}}
-@media (prefers-reduced-motion: reduce){.zi,.main>*{animation:none!important}}
+@media (prefers-reduced-motion: reduce){.zi,.main[data-tab="home"]>*{animation:none!important}}
 .nimg3{margin-top:14px}.nimg3 img{display:block;width:100%;height:auto;border-radius:16px;background:var(--surface2)}
 .lk3{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding-top:6px}
 .lk3i{width:64px;height:64px;border-radius:20px;display:grid;place-items:center;background:linear-gradient(155deg,#f4d77a,#c9952c);color:#3b2a06;box-shadow:0 14px 30px -16px rgba(201,149,44,.9);margin-bottom:6px}
@@ -1348,3 +1349,28 @@ a.rsc,a.rsc *{color:inherit;text-decoration:none}a.rsc small{color:var(--mut)}
 .ob-rows .row{grid-template-columns:42px 1fr auto}
 .ob-ft{display:flex;gap:10px}.ob-ft .btn{flex:1;height:54px;font-size:16px}.ob-ft .btn.ghost{flex:0 0 auto;padding:0 20px}
 .ob-ft .btn:disabled{opacity:.4}
+
+/* ===== Tests page: header floats on the poster (no separate band), soft edge under the sticky bar ===== */
+.hdr.tp,.hdr.tp.sc{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none}
+.hdr.tp .hdr-tint{background:var(--hdr);box-shadow:0 1px 0 var(--line)}
+.hdr.tp.tpfull .hdr-tint{-webkit-backdrop-filter:blur(18px) saturate(1.5);backdrop-filter:blur(18px) saturate(1.5)}
+.hdr.tp .hdr-in{position:relative}
+.hdr.onpst .ib{background:color-mix(in srgb,var(--pcLogo) 14%,transparent);border-color:color-mix(in srgb,var(--pcLogo) 24%,transparent);color:var(--pcLogo);box-shadow:none}
+.hdr .ib{transition:transform .35s var(--spring),background-color .3s ease,border-color .3s ease,color .3s ease}
+.pst-bd{box-shadow:none}
+.pst-bd::after{content:"";position:absolute;left:0;right:0;top:100%;height:22px;background:linear-gradient(180deg,var(--bg),color-mix(in srgb,var(--bg) 0%,transparent));pointer-events:none}
+.hdr.onpst .bmk-w{background:var(--pcLogo)}
+.hdr.onpst .bmk-e{color:var(--pcLogoE)}
+
+/* Tests scroll, butter-smooth: fixed sizes while scrolling, one short transition to the slim bar */
+.pst-tabs .tt2 button{height:116px;transition:height .34s var(--out),background-color .3s ease,color .3s ease,border-color .3s ease,transform .35s var(--spring)}
+.pst-tabs .tt2 .ti{height:40px;opacity:1;margin-bottom:6px;transition:height .34s var(--out),margin .34s var(--out),opacity .2s ease}
+.pst-tabs .tt2 small{max-height:18px;opacity:1;transition:max-height .34s var(--out),opacity .18s ease}
+.pst-stick.slim .pst-tabs .tt2 button{height:48px}
+.pst-stick.slim .pst-tabs .tt2 .ti{height:0;margin-bottom:0;opacity:0}
+.pst-stick.slim .pst-tabs .tt2 small{max-height:0;opacity:0}
+.pst-stick .pst-top{z-index:3}
+.pst-tabs{z-index:2;transform:translateZ(0);backface-visibility:hidden}
+.pst-tabs>.pst-bd{top:auto;bottom:-14px;z-index:-1;transform:none;pointer-events:none}
+.pst-art{backface-visibility:hidden;transform:translateZ(0)}
+@media (prefers-reduced-motion: reduce){.pst-tabs .tt2 button,.pst-tabs .tt2 .ti,.pst-tabs .tt2 small{transition:none}}

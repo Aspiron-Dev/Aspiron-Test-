@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=20;
+const V3VER=22;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -209,7 +209,7 @@ const isNewHash=h=>!h||h==='#'||h==='#/'||/^#\/x\/(test|tools|lib|stats)$/.test(
 function syncDock(){dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab));dock.querySelectorAll('button').forEach(b=>{const on=b.dataset.tab===S.tab;b.classList.toggle('on',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')})}
 let timers=[];
 const every=(fn,ms)=>{const t=setInterval(fn,ms);timers.push(t);return t};
-function render(anim){timers.forEach(clearInterval);timers=[];try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please switch to the classic design from the menu and tell us.</p></div>`}
+function render(anim){timers.forEach(clearInterval);timers=[];main.dataset.tab=S.tab;try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please switch to the classic design from the menu and tell us.</p></div>`}
   main.classList.remove('in');if(anim&&!RM){void main.offsetWidth;main.classList.add('in')}try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);reveal(main)}
 /* content below the first screen fades up into place as it scrolls into view (once; nothing hides if the browser cannot) */
 let rvIO=null;
@@ -433,10 +433,10 @@ function tabs2(){const c=myCount(),n=(STORE||[]).filter(x=>x.buy_on!==false).len
 function posterImg(){const p=LK().poster||'';return /^data:image\/(jpeg|png|webp);base64,/.test(p)?p:''}
 function poster(){const L=LK(),img=posterImg(),u=/^(https:\/\/|#\/|store\.html#)[^\s"'<>\\]*$/.test(L.link||'')?L.link:'';
   const art=img?`<img src="${esc3(img)}" alt="">`:`<span class="pst-ph"><small>ASPIRON EDUCATION</small><b>Test series</b><em>NEET and JEE, exam-style tests with All India rank</em></span>`;
-  return `<div class="pst-stick" id="pstStick"><div class="pst-bd" id="pstBd"></div>
+  return `<div class="pst-stick" id="pstStick">
    <div class="pst-top"><div class="search"><label class="sbox">${ic('search',19)}<input id="tq" type="search" autocomplete="off" placeholder="Search test series, test name or exam" value="${esc3(TQ.q)}" aria-label="Search test series, test name or exam"><button class="clr" data-a="tqClear" aria-label="Clear search"${TQ.q?'':' hidden'}>${ic('x',17)}</button></label>
    <button class="fb${tfCount()?' on':''}" data-a="tFilter" aria-label="Filter${tfCount()?`, ${tfCount()} on`:''}">${ic('filter',20)}${tfCount()?`<b>${tfCount()}</b>`:''}</button></div></div>
-   <div class="pst-tabs" id="pstTabs">${tabs2()}</div></div>
+   <div class="pst-tabs" id="pstTabs"><div class="pst-bd" id="pstBd"></div>${tabs2()}</div></div>
    <section class="pst${img?'':' noimg'}" id="pst">${u?`<a class="pst-art" href="${esc3(u)}"${/^https:/.test(u)?' target="_blank" rel="noopener noreferrer"':''} aria-label="Offer">${art}</a>`:`<div class="pst-art">${art}</div>`}</section>`}
 
 /* the poster's own colours, read from the picture on the phone: the top edge tints the header, a deep shade colours the
@@ -462,7 +462,7 @@ function loadPC(){const img=posterImg(),key=img?img.length+img.slice(-40):'none'
 const parseCol=v=>{v=String(v||'').trim();let m=/^#?([0-9a-f]{6})$/i.exec(v);if(m)return [0,2,4].map(i=>parseInt(m[1].substr(i,2),16)).concat(1);
   m=/rgba?\(([^)]+)\)/.exec(v);if(!m)return [245,245,243,1];const n=m[1].split(',').map(x=>parseFloat(x));return [n[0],n[1],n[2],n.length>3?n[3]:1]};
 const mixC=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
-const TABH=116,TABS=48;
+const TABH=116;
 let pstRaf=0,lastQ=-1,lastMeta='';
 /* sizes are measured once (on draw, resize, picture load), never during the scroll, so every frame only moves things */
 const PM={ok:0};
@@ -472,22 +472,23 @@ function pstMeasure(){const h=$('#hdr'),ps=$('#pst');if(!h||!ps)return;PM.hh=h.o
 function setMeta(c){const m=document.querySelector('meta[name="theme-color"]');if(m&&c!==lastMeta){m.setAttribute('content',c);lastMeta=c}}
 function pstSync(re){if(!root)return;const h=$('#hdr');if(!h||!main)return;const st=$('#pstStick'),ps=$('#pst'),tint=$('#hdrTint'),old=document.body.classList.contains('v3old');
   const on=!!(S.tab==='test'&&!scrOpen()&&st&&ps&&!old);main.classList.toggle('pc',!!(on&&PCOL));
-  if(!on){if(tint)tint.style.opacity=0;h.classList.remove('onpst');PM.ok=0;lastQ=-1;if(!old&&host)setMeta(getComputedStyle(host).getPropertyValue('--bg').trim()||'#f5f5f3');return}
+  h.classList.toggle('tp',on);
+  if(!on){h.classList.remove('tpfull');if(tint)tint.style.opacity=0;h.classList.remove('onpst');PM.ok=0;lastQ=-1;if(!old&&host)setMeta(getComputedStyle(host).getPropertyValue('--bg').trim()||'#f5f5f3');return}
   if(re||!PM.ok)pstMeasure();
   const sy=Math.max(0,scrollY),p=Math.min(1,sy/PM.span),q=p*p*(3-2*p);
   if(q===1&&lastQ===1)return;lastQ=q;
-  st.style.setProperty('--p',q.toFixed(4));
-  const th=TABH-(TABH-TABS)*q,ty=Math.max(PM.y1,PM.y0-sy);$('#pstTabs').style.transform=`translate3d(0,${ty.toFixed(2)}px,0)`;
-  const bd=$('#pstBd');bd.style.transform=`translate3d(0,${(ty+th+14-PM.bdH).toFixed(2)}px,0)`;bd.style.opacity=Math.min(1,q*1.15).toFixed(3);
+  /* every frame only moves and fades things (no size change, so no layout while the finger moves): the buttons go
+     slim once, by a short CSS transition, when the poster is half gone; the backdrop rides inside the bar */
+  st.classList.toggle('slim',q>.5);
+  const ty=Math.max(PM.y1,PM.y0-sy);$('#pstTabs').style.transform=`translate3d(0,${ty.toFixed(1)}px,0)`;
+  $('#pstBd').style.opacity=Math.min(1,q*1.15).toFixed(3);
   const art=ps.firstElementChild;if(art){art.style.transform=`translate3d(0,${(Math.min(sy,PM.span+200)*.45).toFixed(2)}px,0)`;art.style.opacity=(1-.92*q).toFixed(3)}
-  if(tint)tint.style.opacity=PCOL?(1-q).toFixed(3):0;h.classList.toggle('onpst',!!PCOL&&q<.5);
-  if(PCOL){const c=mixC(PCOL.top,PM.bg,q).map(v=>Math.round(v/4)*4);setMeta(`rgb(${c.join(',')})`)}}
+  /* the header sits on the poster with no band of its own; its normal background fades in as the poster leaves */
+  if(tint)tint.style.opacity=q.toFixed(3);h.classList.toggle('onpst',!!PCOL&&q<.5);h.classList.toggle('tpfull',q>.98);
+  /* the phone's status bar colour changes in a few steps only: repainting it every frame makes Android stutter */
+  if(PCOL){const k=Math.round(q*4)/4,c=mixC(PCOL.top,PM.bg,k).map(Math.round);setMeta(`rgb(${c.join(',')})`)}}
 addEventListener('scroll',()=>{if(!root||!main||pstRaf)return;if(S.tab!=='test'&&!PM.ok)return;pstRaf=requestAnimationFrame(()=>{pstRaf=0;pstSync()})},{passive:true});
 addEventListener('resize',()=>{if(root&&S.tab==='test')pstSync(true)},{passive:true});
-/* a scroll that stops half way through the change settles to the nearer end, so the bar is never left half shrunk */
-let snapT=0;
-function pstSnap(){if(RM||!root||S.tab!=='test'||scrOpen()||!PM.ok||layer)return;const p=scrollY/PM.span;if(p>.03&&p<.97)scrollTo({top:p<.42?0:Math.ceil(PM.span),behavior:'smooth'})}
-if('onscrollend' in window)addEventListener('scrollend',pstSnap);else addEventListener('scroll',()=>{clearTimeout(snapT);snapT=setTimeout(pstSnap,200)},{passive:true});
 
 /* ---------- store view ---------- */
 function offer3(){const L=(STORE||[]).filter(x=>x.buy_on!==false&&x.price).sort((a,b)=>offPct(b)-offPct(a)).slice(0,3);if(L.length<2)return '';
@@ -515,7 +516,10 @@ function storeView(){
 VIEW.test=()=>poster()+`<div id="tBody" class="stack" style="gap:var(--gap)">${storeView()}</div>`;
 function drawT(){const b=$('#tBody');if(!b)return;b.innerHTML=storeView();const n=tfCount(),fb=$('[data-a="tFilter"]');if(fb){fb.className='fb'+(n?' on':'');fb.innerHTML=ic('filter',20)+(n?`<b>${n}</b>`:'')}const x=$('[data-a="tqClear"]');x&&(x.hidden=!TQ.q);const t=$('.tt2');t&&(t.outerHTML=tabs2());autoRail('#tbRail','#tbRailD');reveal(b);lastQ=-1;pstSync()}
 AFTER.test=()=>{loadMeta();const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#tbRail','#tbRailD');loadExtras();loadLook();loadPC();pstSync(true);const pi=$('#pst img');pi&&!pi.complete&&pi.addEventListener('load',()=>pstSync(true),{once:true});
-  try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length))promoLoad().then(()=>{if(S.tab==='test'&&!scrOpen())softRender()})}catch(e){}};
+  /* at most one try a minute: with no banners (or no network) the redraw below used to start the next load at once,
+     an endless loop of requests and redraws that made the Tests page stutter */
+  try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length)&&Date.now()-promoAt>6e4){promoAt=Date.now();promoLoad().then(()=>{if(S.tab==='test'&&!scrOpen()&&typeof PROMO!=='undefined'&&PROMO&&PROMO.length)softRender()})}}catch(e){}};
+let promoAt=0;
 A.toList=()=>{TQ.tile='store';$$('.tt2 button').forEach(b=>b.classList.toggle('on',b.dataset.a==='toList'));const a=$('#allSec');a&&a.scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})};
 A.tqClear=()=>{TQ.q='';$('#tq').value='';drawT();$('#tq').focus()};
 A.tClear=()=>{TQ.q='';TQ.f={e:[],c:[],s:[]};const q=$('#tq');if(q)q.value='';drawT()};
