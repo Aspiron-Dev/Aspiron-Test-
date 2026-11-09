@@ -53,6 +53,7 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **To remove it:** delete `v3.js`, `v3.css` and the `<script src="v3.js?v=…">` line in `index.html`.
 
 ## Student login: email + password or Google (`app28.js`, `supabase_v65_auth.sql`)
+- New-design look (`login.css`): graphite hero with the gold Aspiron mark (slow gold ring, drifting glow, rising sparks, shine on the name), the form on a sheet that rises; side by side on a computer. Loops stop in lite mode and with reduce motion. Every login screen (also access code and request) uses it.
 - The login screen offers **Continue with Google** and **email + password** (create account, forgot password). *Sign in with access code* stays as a second option.
 - Supabase Auth is used only to prove who the student is: the database (`student_signin`) then gives the usual sign-in token (`st1.…`), the app keeps that, and the Supabase session is ended. Every other function, the 2-device limit, block and sign-out work as before.
 - A login is joined to **one** student (`students.auth_uid`). An existing student joins it once with mobile number + access code (`student_link`, 10 wrong codes an hour per login). A new student sends a request with name + mobile (`student_request`); after approval the login alone signs in. A request never joins a number that already has an account, and the answer never says whether it has one.

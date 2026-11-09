@@ -202,7 +202,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   await p.fill('#em', 'e2e@example.com'); await p.fill('#pw', 'Wrong1234'); await p.click('#abtn'); await p.waitForTimeout(800);
   ok(/incorrect/.test(await p.textContent('#er')), 'email login: wrong password is refused');
   await p.fill('#pw', 'Right1234'); await p.click('#abtn'); await p.waitForSelector('#cd', { timeout: 5000 }).catch(() => {});
-  ok(/e2e@example\.com/.test(await p.textContent('.lmail').catch(() => '')), 'email login: a new login is asked to join a student account');
+  ok(/e2e@example\.com/.test(await p.textContent('.au3-mail').catch(() => '')), 'email login: a new login is asked to join a student account');
   await p.fill('#ph', '9000000001'); await p.fill('#cd', 'WRONG999'); await p.click('#abtn'); await p.waitForTimeout(1200);
   ok(/incorrect/i.test(await p.textContent('#er')) && !(await p.evaluate(() => localStorage.getItem('cbt_auth'))), 'join: a wrong code is refused');
   await p.fill('#cd', 'AAAA1111'); await p.click('#abtn'); await p.waitForTimeout(3000);

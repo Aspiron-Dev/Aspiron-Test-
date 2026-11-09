@@ -67,33 +67,48 @@ function sbErr(r){
   return 'Something went wrong. Please try again.';
 }
 const gIcon='<svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
-const AUTHCSS=`<style id="authcss">.lgo{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--surface);color:var(--tx);border:1px solid var(--bd)}
-.lgo:hover{border-color:var(--pri)}.lpw{position:relative}.lpw input{padding-right:64px}.lpw button{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--pri);font-weight:600;font-size:13px;padding:8px;cursor:pointer}
-.llink{background:none;border:0;color:var(--pri);font-weight:600;font-size:14px;padding:6px 0;cursor:pointer}.lrow{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:4px}
-.lmail{background:var(--priSoft);color:var(--pri);border-radius:12px;padding:10px 12px;margin:12px 0 4px;font-weight:600;word-break:break-all}
-.lsec{border-top:1px solid var(--bd);margin-top:18px;padding-top:6px}</style>`;
-const pwBox=(id,ph,ac)=>`<div class="lpw"><input type="password" id="${id}" autocomplete="${ac}" maxlength="72" placeholder="${ph}"><button type="button" onclick="const i=$('#${id}');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'Show':'Hide'">Show</button></div>`;
-const authBusy=(b,t)=>{if(!b)return;b.dataset.t=b.dataset.t||b.innerHTML;b.disabled=!!t;b.innerHTML=t||b.dataset.t};
-const authEr=t=>{const e=$('#er');if(e)e.textContent=t||''};
+// the new design (login.css): graphite hero with the gold mark + a sheet with the form
+const fld=(id,type,lab,icon,ac,extra)=>`<div class="au3-f${type==='password'?' pw':''}">${ic(icon)}<input type="${type}" id="${id}" placeholder=" " autocomplete="${ac||'off'}" ${extra||''}><label for="${id}">${lab}</label>${type==='password'?`<button type="button" class="au3-eye" onclick="const i=$('#${id}');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'Show':'Hide'">Show</button>`:''}</div>`;
+const F={
+  em:(ac)=>fld('em','email','Email address','mail',ac||'email','inputmode="email" maxlength="254" autocapitalize="off" spellcheck="false"'),
+  pw:(lab,ac)=>fld('pw','password',lab,'lock',ac,'maxlength="72"'),
+  ph:(id)=>fld(id||'ph','tel','Mobile number','phone','tel','inputmode="numeric" maxlength="14"'),
+  cd:()=>fld('cd','text','Access code','key','off','autocapitalize="characters" spellcheck="false" maxlength="12"'),
+  nm:(id)=>fld(id||'rn','text','Full name','user','name','maxlength="60"')
+};
+const authBusy=(b,t)=>{if(!b)return;b.dataset.t=b.dataset.t||b.innerHTML;b.disabled=!!t;b.innerHTML=t?`<span class="dot"><i></i><i></i><i></i></span>${t}`:b.dataset.t};
+const authEr=t=>{const e=$('#er');if(!e)return;e.textContent='';if(t)requestAnimationFrame(()=>{e.textContent=t})};
 const okMail=e=>/^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/.test(e);
-
-// the old screens (access code, request) stay; login() and login('<screen>') show the new ones
+function au3Shell(){
+  const chip=(i,t)=>`<span>${ic(i)}${t}</span>`;
+  return `<div class="au3" role="main">
+   <section class="au3-hero" aria-hidden="true"><i class="au3-orb o1"></i><i class="au3-orb o2"></i><i class="au3-orb o3"></i><i class="au3-grid"></i>
+    <i class="au3-spk"></i><i class="au3-spk"></i><i class="au3-spk"></i><i class="au3-spk"></i><i class="au3-spk"></i>
+    <div class="au3-mark"><svg viewBox="285 335 510 465"><use href="#bSw"/><use href="#bA"/><use href="#bCap"/><use href="#bArc"/><use href="#bTas"/><use href="#bSt"/></svg></div>
+    <div class="au3-word"><svg viewBox="63 821 954.5 130.7"><use href="#bWord"/></svg><i></i></div>
+    <div class="au3-edu">EDUCATION</div>
+    <p class="au3-tag">Real exam practice for <b>NEET</b> &amp; <b>JEE</b>, with your rank after every test.</p>
+    <div class="au3-chips">${chip('play','Live tests')}${chip('trophy','All-India rank')}${chip('target','Deep analysis')}</div>
+   </section>
+   <section class="au3-sheet"><div class="au3-card" id="au3c"></div>
+    <p class="au3-legal">By continuing you agree to our <a href="terms.html">Terms</a> and <a href="privacy.html">Privacy Policy</a>.</p></section>
+  </div>`;
+}
+// login() and login('<screen>'): the new design for every screen, also the access code and the request
 {const _lg=login;login=function(mode){
-  if(mode==='request'||!cloud)return _lg(mode);
-  const err=LOGINERR;
-  const r=_lg();   // runs every other wrapper (deep-link note, website layout, new design)
-  const card=document.querySelector('#app .card.login');if(!card)return r;
-  if(!$('#authcss'))document.head.insertAdjacentHTML('beforeend',AUTHCSS);
-  if(mode==='code'){
-    card.insertAdjacentHTML('beforeend',`<button class="btn ghost block" style="margin-top:10px" onclick="login()">${ic('back')} Other ways to sign in</button>`);
-    if(err)authEr(err);
-    return r;
+  if(!cloud)return _lg(mode);
+  let err=LOGINERR;
+  if(!$('#app .au3')){
+    const r=_lg();   // runs every other wrapper once (deep-link note, website layout, new design off)
+    const nt=$('#afterNote');AU3NOTE=nt?nt.textContent:'';
+    if(!$('#v3font')){const f=document.createElement('link');f.id='v3font';f.rel='stylesheet';f.href='https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap';document.head.appendChild(f)}
+    $('#app').innerHTML=au3Shell();
   }
-  const note=card.querySelector('#afterNote');
-  authScreen(card,mode,err);
-  if(note)card.insertAdjacentElement('afterbegin',note);
-  return r;
+  LOGINERR='';
+  authScreen($('#au3c'),mode,err);
+  const sc=$('#app .au3');if(sc&&mode&&mode!=='go'&&innerWidth<900)sc.scrollTo({top:Math.max(0,$('.au3-sheet').offsetTop-20),behavior:'smooth'});
 }}
+let AU3NOTE='';
 function authScreen(card,mode,err){
   const sb=sbGet();
   if(!mode&&sb){
@@ -101,60 +116,51 @@ function authScreen(card,mode,err){
     else if(sb.at&&sb.type==='recovery')mode='newpw';
     else if(sb.at)mode='go';
   }
-  const top=(t,s)=>`<div class="logo">${ic('user',26)}</div><h1 style="font-size:26px">${t}</h1><p class="mut" style="margin:6px 0 0">${s}</p>`;
-  const erBox=`<div id="er" class="sm err" style="min-height:22px;margin-top:8px">${esc(err||'')}</div>`;
-  if(mode==='go'){card.innerHTML=`<div class="loading" style="min-height:160px"><div><div class="spin"></div>Signing you in…</div></div>`;authGo();return}
-  if(mode==='signup'){
-    card.innerHTML=`${top('Create account','Use your own email. You will get a link to confirm it.')}
-     <label class="l">Email</label><input type="email" id="em" autocomplete="email" inputmode="email" maxlength="254" placeholder="you@example.com">
-     <label class="l">Password</label>${pwBox('pw','At least 8 characters','new-password')}
-     ${erBox}<button class="btn block" id="abtn" onclick="authSignup()">Create account ${ic('right')}</button>
-     <div class="lrow" style="justify-content:center"><span class="sm mut">Have an account?</span><button class="llink" onclick="login()">Sign in</button></div>`;
-  }else if(mode==='forgot'){
-    card.innerHTML=`${top('Forgot password','Enter your email. We will send you a link to set a new password.')}
-     <label class="l">Email</label><input type="email" id="em" autocomplete="email" inputmode="email" maxlength="254" placeholder="you@example.com">
-     ${erBox}<button class="btn block" id="abtn" onclick="authForgot()">Send link</button>
-     <button class="btn ghost block" style="margin-top:10px" onclick="login()">${ic('back')} Back to sign in</button>`;
-  }else if(mode==='newpw'){
-    card.innerHTML=`${top('Set a new password','Choose a new password for your account.')}
-     <label class="l">New password</label>${pwBox('pw','At least 8 characters','new-password')}
-     ${erBox}<button class="btn block" id="abtn" onclick="authNewPw()">Save password</button>`;
-  }else if(mode==='link'){
-    card.innerHTML=`${top('One last step','Join this login to your student account.')}<div class="lmail">${esc(sbEmail()||'Signed in')}</div>
-     ${erBox}<h3 style="margin:8px 0 0">Already a student?</h3><p class="sm mut" style="margin:4px 0 0">Enter your mobile number and access code once. After this, the login is enough.</p>
-     <label class="l">Mobile number</label><input type="tel" id="ph" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="10-digit mobile number">
-     <label class="l">Access code</label><input type="text" id="cd" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="12" placeholder="e.g. A1B2-C3D4">
-     <button class="btn block" id="abtn" style="margin-top:12px" onclick="authLink()">Join my account ${ic('right')}</button>
-     <div class="lsec"><h3 style="margin:8px 0 0">New student?</h3><p class="sm mut" style="margin:4px 0 0">Send a request. Once the admin approves it, you can sign in with this login.</p>
-     <label class="l">Full name</label><input type="text" id="rn" autocomplete="name" maxlength="60" placeholder="e.g. Rahul Sharma">
-     <label class="l">Mobile number</label><input type="tel" id="rp" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="10-digit mobile number">
-     <button class="btn soft block" id="rbtn" style="margin-top:12px" onclick="authRequest()">Send request</button></div>
-     <button class="btn ghost block" style="margin-top:14px" onclick="authSwitch()">Use a different account</button>`;
-  }else if(mode==='wait'){
-    card.innerHTML=`<div class="logo" style="background:var(--ok)">${ic('check',26)}</div><h2>Request received ✓</h2>
-     <div class="lmail">${esc(sbEmail()||'')}</div>
-     <p class="mut">If this mobile number is new, the admin will review your request. After approval, sign in with this same login. If the number already has an account, sign in and join it with your access code.</p>
-     <button class="btn soft block" style="margin:8px 0" onclick="supportSheet('Hi, I have requested access with my email login.')">${ic('msg')} Message support</button>
-     <button class="btn block" onclick="login('go')">I am approved: sign in</button>
-     <button class="btn ghost block" style="margin-top:10px" onclick="authSwitch()">Use a different account</button>`;
-  }else if(mode==='mail'){
-    card.innerHTML=`<div class="logo" style="background:var(--ok)">${ic('mail',26)}</div><h2>Check your email</h2>
-     <p class="mut">${esc(AUTHMSG)}</p><p class="sm mut">No email? Look in Spam / Promotions, or wait a minute and send it again.</p>
-     ${erBox}${AUTHMAIL?`<button class="btn soft block" id="abtn" onclick="authResend()">Send the email again</button>`:''}
-     <button class="btn block" style="margin-top:10px" onclick="login()">Back to sign in</button>`;
-  }else{
-    card.innerHTML=`${top('Sign in','Sign in to your tests, results and study material.')}
-     <button class="btn block lgo" style="margin-top:18px" onclick="authGoogle()">${gIcon} Continue with Google</button>
-     <div class="divider">or with email</div>
-     <label class="l" style="margin-top:0">Email</label><input type="email" id="em" autocomplete="username" inputmode="email" maxlength="254" placeholder="you@example.com">
-     <label class="l">Password</label>${pwBox('pw','Your password','current-password')}
-     <div class="lrow"><span></span><button class="llink" onclick="login('forgot')">Forgot password?</button></div>
-     ${erBox}<button class="btn block" id="abtn" onclick="authPass()">Sign in ${ic('right')}</button>
-     <div class="lrow" style="justify-content:center"><span class="sm mut">New here?</span><button class="llink" onclick="login('signup')">Create account</button></div>
-     <div class="divider">Have an access code?</div>
-     <button class="btn ghost block" onclick="login('code')">${ic('key')} Sign in with access code</button>`;
-  }
-  card.querySelectorAll('input').forEach(i=>i.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const b=i.closest('.lsec')?$('#rbtn'):$('#abtn');b&&b.click()}));
+  const top=(t,sub,back)=>`${back?`<button class="au3-back" onclick="${back}">${ic('left')} Back</button>`:''}<h1 class="au3-h">${t}</h1><p class="au3-s">${sub}</p>`;
+  const erBox=`<div id="er" class="au3-er" role="alert">${esc(err||'')}</div>`;
+  const okIc=i=>`<div class="au3-ok">${ic(i)}</div>`;
+  let h='';
+  if(mode==='go')h=`<div class="au3-wait"><div class="au3-ring"></div>Signing you in…</div>`;
+  else if(mode==='signup')h=`${top('Create your account','Use your own email. We will send you a link to confirm it.',"login()")}
+     ${F.em()}${F.pw('Password (8+ characters)','new-password')}
+     ${erBox}<button class="au3-btn pri" id="abtn" onclick="authSignup()">Create account ${ic('right')}</button>
+     <div class="au3-row c">Already have an account?<button class="au3-link" onclick="login()">Sign in</button></div>`;
+  else if(mode==='forgot')h=`${top('Reset password','Enter your email. We will send you a link to set a new password.',"login()")}
+     ${F.em()}${erBox}<button class="au3-btn pri" id="abtn" onclick="authForgot()">Send reset link ${ic('right')}</button>`;
+  else if(mode==='newpw')h=`${top('Set a new password','Choose a strong password you have not used before.')}
+     ${F.pw('New password (8+ characters)','new-password')}${erBox}<button class="au3-btn pri" id="abtn" onclick="authNewPw()">Save and continue ${ic('right')}</button>`;
+  else if(mode==='link')h=`${top('One last step','Join this login to your student account.')}<div class="au3-mail">${ic('user')}<span>${esc(sbEmail()||'Signed in')}</span></div>
+     ${erBox}<div class="au3-sec" style="margin-top:6px;border:0;padding-top:0"><h3>Already a student?</h3><p>Enter your mobile number and access code once. After this, the login is enough.</p>
+     ${F.ph()}${F.cd()}<button class="au3-btn pri" id="abtn" onclick="authLink()">Join my account ${ic('right')}</button></div>
+     <div class="au3-sec lsec"><h3>New student?</h3><p>Send a request. Once the admin approves it, sign in with this same login.</p>
+     ${F.nm()}${F.ph('rp')}<button class="au3-btn soft" id="rbtn" onclick="authRequest()">Send request</button></div>
+     <button class="au3-btn sec" style="margin-top:20px" onclick="authSwitch()">Use a different account</button>`;
+  else if(mode==='wait')h=`${okIc('check')}<h1 class="au3-h">Request received</h1><div class="au3-mail">${ic('user')}<span>${esc(sbEmail()||'')}</span></div>
+     <p class="au3-s" style="margin-top:12px">If this mobile number is new, the admin will review your request. After approval, sign in with this same login. If the number already has an account, join it with your access code.</p>
+     <button class="au3-btn pri" onclick="login('go')">I am approved: sign in ${ic('right')}</button>
+     <button class="au3-btn soft" onclick="supportSheet('Hi, I have requested access with my email login.')">${ic('msg')} Message support</button>
+     <button class="au3-btn sec" onclick="authSwitch()">Use a different account</button>`;
+  else if(mode==='mail')h=`${okIc('mail')}<h1 class="au3-h">Check your email</h1><p class="au3-s">${esc(AUTHMSG)}</p>
+     <p class="au3-s" style="font-size:13px">No email? Look in Spam / Promotions, or wait a minute and send it again.</p>
+     ${erBox}${AUTHMAIL?`<button class="au3-btn soft" id="abtn" onclick="authResend()">Send the email again</button>`:''}
+     <button class="au3-btn pri" onclick="login()">Back to sign in ${ic('right')}</button>`;
+  else if(mode==='code')h=`${top('Sign in with access code','Enter your mobile number and the access code given to you.',"login()")}
+     ${F.ph()}${F.cd()}${erBox}<button class="au3-btn pri" id="lbtn" onclick="doLogin()">Sign in ${ic('right')}</button>
+     <div class="au3-row c">New student?<button class="au3-link" onclick="login('request')">Request access</button></div>`;
+  else if(mode==='request')h=`<div id="rq">${top('Request access','Send your details. Once the admin approves you, you will get a personal access code.',"login('code')")}
+     ${F.nm()}${F.ph('rp')}${erBox}<button class="au3-btn pri" id="rbtn" onclick="doRequest()">Send request ${ic('right')}</button></div>`;
+  else h=`${top('Welcome back','Sign in to your tests, results and study material.')}
+     <button class="au3-btn g lgo" onclick="authGoogle()">${gIcon} Continue with Google</button>
+     <div class="au3-or">or with email</div>
+     ${F.em('username')}${F.pw('Password','current-password')}
+     <div class="au3-row"><span></span><button class="au3-link" onclick="login('forgot')">Forgot password?</button></div>
+     ${erBox}<button class="au3-btn pri" id="abtn" style="margin-top:6px" onclick="authPass()">Sign in ${ic('right')}</button>
+     <div class="au3-row c">New here?<button class="au3-link" onclick="login('signup')">Create account</button></div>
+     <div class="au3-or">Have an access code?</div>
+     <button class="au3-btn sec" onclick="login('code')">${ic('key')} Sign in with access code</button>`;
+  card.innerHTML=`<div class="au3-pane">${AU3NOTE&&!mode?`<div class="au3-note" id="afterNote">${esc(AU3NOTE)}</div>`:''}${h}</div>`;
+  card.querySelectorAll('input').forEach(i=>i.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const b=i.closest('.lsec')?$('#rbtn'):$('#abtn')||$('#lbtn')||$('#rbtn');b&&b.click()}));
+  if(mode==='go')authGo();
 }
 let AUTHMSG='',AUTHMAIL='';
 function authGoogle(){location.href=API+'/auth/v1/authorize?provider=google&redirect_to='+encodeURIComponent(sbBack())}
@@ -165,7 +171,7 @@ async function authPass(){
   const b=$('#abtn');authBusy(b,'Checking…');authEr('');
   const r=await sbApi('token?grant_type=password',{email:e,password:p});
   if(!r.ok||!r.d.access_token){authBusy(b);authEr(sbErr(r));
-    if(r.code==='email_not_confirmed'&&!$('#rsnd')){AUTHMAIL=e;$('#er').insertAdjacentHTML('afterend',`<button id="rsnd" class="btn soft block" style="margin-bottom:10px" onclick="authResend(this)">Send the confirm email again</button>`)}
+    if(r.code==='email_not_confirmed'&&!$('#rsnd')){AUTHMAIL=e;$('#er').insertAdjacentHTML('afterend',`<button id="rsnd" class="au3-btn soft" onclick="authResend(this)">Send the confirm email again</button>`)}
     return}
   sbSet(sbKeep(r.d));authGo();
 }
@@ -212,9 +218,9 @@ async function authGo(){
 }
 function authFail(r){
   const e=r.error==='taken'?'This student account is already joined to another login. Sign in with that login, or ask support to change it.':errText(r);
-  if(!$('#er')||$('.card.login .loading')){LOGINERR=e;return login(sbHas()&&r.error!=='blocked'?'link':'')}
+  if(!$('#er')||$('.au3-wait')){LOGINERR=e;return login(sbHas()&&r.error!=='blocked'?'link':'')}
   authEr(e);
-  if(r.error==='device_limit'&&!$('#devhelp'))$('#er').insertAdjacentHTML('afterend',`<button id="devhelp" class="btn soft block" style="margin-bottom:10px" onclick="supportSheet('Hi, please reset the devices on my account (email login).')">📱 Ask for device reset</button>`);
+  if(r.error==='device_limit'&&!$('#devhelp'))$('#er').insertAdjacentHTML('afterend',`<button id="devhelp" class="au3-btn soft" onclick="supportSheet('Hi, please reset the devices on my account (email login).')">📱 Ask for device reset</button>`);
 }
 async function authLink(){
   const m=$('#ph').value.replace(/\D/g,'').slice(-10),c=$('#cd').value.replace(/[^0-9a-zA-Z]/g,'').toUpperCase();
@@ -246,3 +252,4 @@ async function authDone(r){
 }
 if(!IC.mail)IC.mail='<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>';
 ;(window.__p=window.__p||{})['app28']=1;
+if(!IC.phone)IC.phone='<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M11 18.5h2"/>';
