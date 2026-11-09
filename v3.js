@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=20;
+const V3VER=21;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -209,7 +209,7 @@ const isNewHash=h=>!h||h==='#'||h==='#/'||/^#\/x\/(test|tools|lib|stats)$/.test(
 function syncDock(){dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab));dock.querySelectorAll('button').forEach(b=>{const on=b.dataset.tab===S.tab;b.classList.toggle('on',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')})}
 let timers=[];
 const every=(fn,ms)=>{const t=setInterval(fn,ms);timers.push(t);return t};
-function render(anim){timers.forEach(clearInterval);timers=[];try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please switch to the classic design from the menu and tell us.</p></div>`}
+function render(anim){timers.forEach(clearInterval);timers=[];main.dataset.tab=S.tab;try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please switch to the classic design from the menu and tell us.</p></div>`}
   main.classList.remove('in');if(anim&&!RM){void main.offsetWidth;main.classList.add('in')}try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);reveal(main)}
 /* content below the first screen fades up into place as it scrolls into view (once; nothing hides if the browser cannot) */
 let rvIO=null;
@@ -472,6 +472,7 @@ function pstMeasure(){const h=$('#hdr'),ps=$('#pst');if(!h||!ps)return;PM.hh=h.o
 function setMeta(c){const m=document.querySelector('meta[name="theme-color"]');if(m&&c!==lastMeta){m.setAttribute('content',c);lastMeta=c}}
 function pstSync(re){if(!root)return;const h=$('#hdr');if(!h||!main)return;const st=$('#pstStick'),ps=$('#pst'),tint=$('#hdrTint'),old=document.body.classList.contains('v3old');
   const on=!!(S.tab==='test'&&!scrOpen()&&st&&ps&&!old);main.classList.toggle('pc',!!(on&&PCOL));
+  h.classList.toggle('tp',on);
   if(!on){if(tint)tint.style.opacity=0;h.classList.remove('onpst');PM.ok=0;lastQ=-1;if(!old&&host)setMeta(getComputedStyle(host).getPropertyValue('--bg').trim()||'#f5f5f3');return}
   if(re||!PM.ok)pstMeasure();
   const sy=Math.max(0,scrollY),p=Math.min(1,sy/PM.span),q=p*p*(3-2*p);
@@ -480,14 +481,11 @@ function pstSync(re){if(!root)return;const h=$('#hdr');if(!h||!main)return;const
   const th=TABH-(TABH-TABS)*q,ty=Math.max(PM.y1,PM.y0-sy);$('#pstTabs').style.transform=`translate3d(0,${ty.toFixed(2)}px,0)`;
   const bd=$('#pstBd');bd.style.transform=`translate3d(0,${(ty+th+14-PM.bdH).toFixed(2)}px,0)`;bd.style.opacity=Math.min(1,q*1.15).toFixed(3);
   const art=ps.firstElementChild;if(art){art.style.transform=`translate3d(0,${(Math.min(sy,PM.span+200)*.45).toFixed(2)}px,0)`;art.style.opacity=(1-.92*q).toFixed(3)}
-  if(tint)tint.style.opacity=PCOL?(1-q).toFixed(3):0;h.classList.toggle('onpst',!!PCOL&&q<.5);
+  /* the header sits on the poster with no band of its own; its normal background fades in as the poster leaves */
+  if(tint)tint.style.opacity=q.toFixed(3);h.classList.toggle('onpst',!!PCOL&&q<.5);
   if(PCOL){const c=mixC(PCOL.top,PM.bg,q).map(v=>Math.round(v/4)*4);setMeta(`rgb(${c.join(',')})`)}}
 addEventListener('scroll',()=>{if(!root||!main||pstRaf)return;if(S.tab!=='test'&&!PM.ok)return;pstRaf=requestAnimationFrame(()=>{pstRaf=0;pstSync()})},{passive:true});
 addEventListener('resize',()=>{if(root&&S.tab==='test')pstSync(true)},{passive:true});
-/* a scroll that stops half way through the change settles to the nearer end, so the bar is never left half shrunk */
-let snapT=0;
-function pstSnap(){if(RM||!root||S.tab!=='test'||scrOpen()||!PM.ok||layer)return;const p=scrollY/PM.span;if(p>.03&&p<.97)scrollTo({top:p<.42?0:Math.ceil(PM.span),behavior:'smooth'})}
-if('onscrollend' in window)addEventListener('scrollend',pstSnap);else addEventListener('scroll',()=>{clearTimeout(snapT);snapT=setTimeout(pstSnap,200)},{passive:true});
 
 /* ---------- store view ---------- */
 function offer3(){const L=(STORE||[]).filter(x=>x.buy_on!==false&&x.price).sort((a,b)=>offPct(b)-offPct(a)).slice(0,3);if(L.length<2)return '';
