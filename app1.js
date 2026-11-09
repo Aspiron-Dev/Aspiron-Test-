@@ -235,7 +235,7 @@ async function doRequest(){
     <button class="btn block" onclick="login()">Back to sign in</button>`;
 }
 function signOut(){
-  modal(`<h2>Sign out?</h2><p class="mut">You will need your access code to sign in again. Tests in progress stay saved on this device.</p>
+  modal(`<h2>Sign out?</h2><p class="mut">You can sign in again with your email, Google or access code. Tests in progress stay saved on this device.</p>
   <div class="row"><button class="btn ghost" style="flex:1" onclick="closeModal()">Cancel</button><button class="btn danger" style="flex:1" onclick="doSignOut()">Sign out</button></div>`);
 }
 function doSignOut(){

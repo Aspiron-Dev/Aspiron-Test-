@@ -11,3 +11,10 @@ create table if not exists net.test_log (id bigserial primary key, method text, 
 create table if not exists net._http_response (id bigint primary key, status_code int, content text, created timestamptz default now());
 create or replace function net.http_post(url text, body jsonb default '{}', params jsonb default '{}', headers jsonb default '{}', timeout_milliseconds int default 1000) returns bigint language sql as $$ insert into net.test_log (method, url, body) values ('POST', url, body) returning id $$;
 create or replace function net.http_get(url text, params jsonb default '{}', headers jsonb default '{}', timeout_milliseconds int default 1000) returns bigint language sql as $$ insert into net.test_log (method, url) values ('GET', url) returning id $$;
+-- Supabase Auth stand-in: auth.users and auth.uid() (reads the "sub" of the request's JWT, like Supabase)
+create schema if not exists auth;
+create table if not exists auth.users (id uuid primary key, email text, email_confirmed_at timestamptz,
+  banned_until timestamptz, deleted_at timestamptz);
+create or replace function auth.uid() returns uuid language sql stable as $$
+  select nullif(coalesce(current_setting('request.jwt.claim.sub', true),
+    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')), '')::uuid $$;
