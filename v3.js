@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=26;
+const V3VER=27;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -57,7 +57,7 @@ const P={star:'<path d="M11.5 2.3a.6.6 0 0 1 1 0l2.6 5.4 5.9.9a.6.6 0 0 1 .3 1l-
  tools:'<rect class="f" x="3.5" y="3.5" width="7" height="7" rx="2"/><rect class="f" x="13.5" y="3.5" width="7" height="7" rx="2"/><rect class="f" x="3.5" y="13.5" width="7" height="7" rx="2"/><path d="M17 13.8v6.4"/><path d="M13.8 17h6.4"/>',
  lib:'<rect class="f" x="3.5" y="4" width="4.6" height="16.5" rx="1.3"/><rect class="f" x="9.7" y="4" width="4.6" height="16.5" rx="1.3"/><rect class="f" x="16.2" y="4.6" width="4.6" height="16" rx="1.3" transform="rotate(-12 18.5 12.6)"/><path d="M5.8 8h0"/><path d="M12 8h0"/>',
  stats:'<rect class="f" x="3.5" y="12" width="4.6" height="8.5" rx="1.3"/><rect class="f" x="9.7" y="7" width="4.6" height="13.5" rx="1.3"/><rect class="f" x="15.9" y="3.5" width="4.6" height="17" rx="1.3"/>',
- menu:'<path d="M4 8.5h16"/><path d="M4 15.5h10"/>',
+ menu:'<path d="M4.5 6.5h15"/><path d="M8 12h8"/><path d="M4.5 17.5h15"/>',
  bell:'<path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/>',
  back:'<path d="m15 18-6-6 6-6"/>',right:'<path d="m9 18 6-6-6-6"/>',down:'<path d="m6 9 6 6 6-6"/>',x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
  check:'<path d="M20 6 9 17l-5-5"/>',checks:'<path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/>',
@@ -365,12 +365,19 @@ A.wkPick=el=>{const k=+el.dataset.k,y=Math.floor(k/12),m=k%12,first=new Date(y,m
 A.oldTracker=()=>openTracker();
 
 /* ---------- notifications (the classic notices) ---------- */
-function syncBell(){const b=$('#bell');if(!b)return;const u=unread();b.innerHTML=ic('bell',21)+`<span class="dot${u?'':' off'}"></span>`;b.setAttribute('aria-label',u?`Notifications, ${u} unread`:'Notifications')}
+function syncBell(){const b=$('#bell');if(!b)return;const u=unread();b.innerHTML=ic('bell',20)+`<span class="dot${u?'':' off'}">${u?(u>9?'9+':u):''}</span>`;b.setAttribute('aria-label',u?`Notifications, ${u} unread`:'Notifications')}
 const grpOf=t=>{const k=Math.round((day0(nowMs())-day0(t))/DAY);return k<=0?'Today':k===1?'Yesterday':'Earlier'};
-function notifView(){return {t:'Notifications',s:unread()?`${unread()} unread`:'All caught up',key:'notif',right:()=>`<button class="ib" data-a="readAll" aria-label="Mark all as read">${ic('checks',19)}</button>`,
-  html:()=>{const L=(NOTES||[]).slice().sort((a,b)=>(b.at||0)-(a.at||0)),G=[...new Set(L.map(n=>grpOf(n.at)))],s=seenAt();
-  return NOTES===null?`<div class="card rows"><div class="item sk" style="height:70px"></div><div class="item sk" style="height:70px;margin-top:8px"></div></div>`:L.length?G.map(g=>`<div class="stack" style="gap:10px"><p class="gh">${g}</p><div class="card rows">${L.filter(n=>grpOf(n.at)===g).map(n=>`<button class="nt${n.at>s?' un':''}" data-a="openNote" data-id="${esc3(n.id)}"><span class="ti">${ic(n.img?'file':n.link?'mega':'bell',19)}</span><span style="min-width:0"><span class="nh"><b>${esc3(n.title||'Announcement')}</b><time>${n.at?dayWord(n.at):''}</time></span><p>${esc3((n.text||'').slice(0,120))}</p></span></button>`).join('')}</div></div>`).join('')
-   :`<div class="card empty"><span class="ti">${ic('bell',22)}</span><b>No notifications yet</b><p>Notices from Aspiron show up here.</p></div>`}}}
+let NF='all';
+const ntKind=n=>n.img?['img','Picture','file']:n.link?['link',n.label||'Link','mega']:['msg','Notice','bell'];
+function notifView(){return {t:'Notifications',get s(){return unread()?`${unread()} unread`:'All caught up'},key:'notif',right:()=>`<button class="ib" data-a="readAll" aria-label="Mark all as read">${ic('checks',19)}</button>`,
+  html:()=>{if(NOTES===null)return '<div class="card sk" style="height:96px"></div><div class="card sk" style="height:96px"></div><div class="card sk" style="height:96px"></div>';
+  const s=seenAt(),All=(NOTES||[]).slice().sort((a,b)=>(b.at||0)-(a.at||0)),un=All.filter(n=>n.at>s).length,L=NF==='un'?All.filter(n=>n.at>s):All,G=[...new Set(L.map(n=>grpOf(n.at)))];
+  if(!All.length)return `<div class="nte"><span class="nte-i">${ic('bell',30)}</span><b>You’re all caught up</b><p>Test alerts, results and notices from Aspiron will show up here.</p></div>`;
+  return `<div class="ntt"><div class="seg"><button class="${NF==='all'?'on':''}" data-a="ntF" data-v="all">All<small>${All.length}</small></button><button class="${NF==='un'?'on':''}" data-a="ntF" data-v="un">Unread<small>${un}</small></button></div>${un?`<button class="lnk" data-a="readAll">${ic('checks',16)}Mark all read</button>`:''}</div>
+   ${L.length?G.map(g=>`<section class="nts"><p class="gh">${g}</p>${L.filter(n=>grpOf(n.at)===g).map((n,i)=>{const k=ntKind(n),u=n.at>s;
+     return `<button class="nt3 k-${k[0]}${u?' un':''}" data-a="openNote" data-id="${esc3(n.id)}" style="--d:${Math.min(i,8)*35}ms"><span class="nt3-i">${ic(k[2],19)}</span><span class="nt3-b"><span class="nt3-h"><b>${esc3(n.title||'Announcement')}</b>${u?'<i class="nt3-dot" aria-label="Unread"></i>':''}</span><p>${esc3((n.text||'').replace(/\s+/g,' ').slice(0,160))}</p><span class="nt3-m"><time>${n.at?dayWord(n.at):''}</time>${k[0]!=='msg'?`<em>${esc3(k[1])}</em>`:''}</span></span>${ic('right',16)}</button>`}).join('')}</section>`).join('')
+    :`<div class="nte sm"><span class="nte-i">${ic('checks',26)}</span><b>No unread notices</b><p>You have read everything.</p></div>`}`}}}
+A.ntF=el=>{NF=el.dataset.v;qbKeep()};
 let bellBusy=false;
 A.bell=()=>{if(bellBusy||(top()&&top().key==='notif'))return;bellBusy=true;closeLayer();const b=$('#bell');b.classList.remove('ringing');void b.offsetWidth;b.classList.add('ringing');setTimeout(()=>b.classList.remove('ringing'),700);
   setTimeout(()=>{push(notifView());bellBusy=false;loadNotes().then(()=>{if(top()&&top().key==='notif'){redraw();$('#scrS').textContent=unread()?`${unread()} unread`:'All caught up'}})},RM?0:180)};

@@ -1419,3 +1419,46 @@ a.rsc,a.rsc *{color:inherit;text-decoration:none}a.rsc small{color:var(--mut)}
 .dock button.hov{color:var(--tx)!important;font-weight:600!important}
 .dock button.hov svg.i{transform:translateY(-3px) scale(1.08)}
 @media (prefers-reduced-motion:reduce){.main.swl>*,.main.swr>*{animation:none}}
+/* ---------- header buttons: smaller boxes, three-line menu, bell with a count ---------- */
+.hdr-in{grid-template-columns:38px 1fr 38px}
+.hdr-in .ib{width:38px;height:38px;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);border-color:color-mix(in srgb,var(--line) 80%,transparent)}
+.hdr-in .ib svg{width:20px;height:20px;stroke-width:1.8}
+#mnu svg path{transition:transform .35s cubic-bezier(.2,.9,.25,1);transform-origin:center}
+#mnu:active svg path:nth-child(2){transform:scaleX(1.5)}
+#bell .dot{top:-5px;right:-5px;min-width:18px;height:18px;width:auto;padding:0 5px;border-radius:99px;display:grid;place-items:center;font-size:10.5px;font-weight:700;color:#fff;line-height:1;background:var(--err);box-shadow:0 0 0 2px var(--bg)}
+#bell .dot:empty{min-width:9px;width:9px;height:9px;padding:0;top:6px;right:7px}
+/* ---------- menu: NEW tag in the app's own colours; a calmer, buttery entrance ---------- */
+.mnew{font-size:9.5px;font-weight:700;letter-spacing:.08em;color:var(--acc);background:var(--accSoft);border:1px solid color-mix(in srgb,var(--acc) 22%,transparent);padding:2px 7px;border-radius:7px}
+.drawer{transition:transform .5s cubic-bezier(.22,1,.36,1),visibility 0s linear .5s}
+.drawer.open{transition:transform .5s cubic-bezier(.22,1,.36,1),visibility 0s}
+.drawer.open .mtop,.drawer.open .mgh,.drawer.open .mi,.drawer.open .mdiv{animation:mIn2 .55s cubic-bezier(.22,1,.36,1) both;animation-delay:calc(min(var(--i,0),24) * 16ms + 110ms)}
+@keyframes mIn2{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:none}}
+.scrim{transition:opacity .45s cubic-bezier(.22,1,.36,1),visibility 0s linear .45s}
+.scrim.open{transition:opacity .45s cubic-bezier(.22,1,.36,1),visibility 0s}
+/* ---------- notifications page ---------- */
+.ntt{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ntt .seg{flex:0 0 auto;min-width:210px}
+.ntt .lnk{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--acc)}
+.nts{display:flex;flex-direction:column;gap:10px}
+.nt3{position:relative;display:flex;align-items:flex-start;gap:13px;width:100%;padding:15px 14px 15px 15px;border-radius:20px;background:var(--surface);border:1px solid var(--line);text-align:left;box-shadow:0 10px 26px -22px rgba(0,0,0,.35);transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s;animation:rise .5s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--d,0ms)}
+.nt3:active{transform:scale(.985)}
+.nt3.un{border-color:color-mix(in srgb,var(--acc) 30%,var(--line));background:linear-gradient(135deg,color-mix(in srgb,var(--accSoft) 70%,var(--surface)),var(--surface) 60%)}
+.nt3-i{flex:none;width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:var(--surface2);color:var(--mut)}
+.nt3.k-link .nt3-i{background:var(--accSoft);color:var(--acc)}
+.nt3.k-img .nt3-i{background:color-mix(in srgb,#8a6fd1 14%,var(--surface));color:#7a5fc4}
+.nt3.un.k-msg .nt3-i{background:color-mix(in srgb,var(--ok) 13%,var(--surface));color:var(--ok)}
+.nt3-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.nt3-h{display:flex;align-items:center;gap:8px}
+.nt3-h b{flex:1;min-width:0;font-size:15px;font-weight:500;line-height:1.35;color:var(--tx)}
+.nt3.un .nt3-h b{font-weight:650}
+.nt3-dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--err);box-shadow:0 0 0 3px color-mix(in srgb,var(--err) 18%,transparent)}
+.nt3-b p{margin:0;font-size:13.5px;line-height:1.5;color:var(--mut);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nt3-m{display:flex;align-items:center;gap:8px;margin-top:2px}
+.nt3-m time{font-size:12px;color:var(--faint)}
+.nt3-m em{font-style:normal;font-size:11px;font-weight:600;color:var(--mut);background:var(--surface2);padding:2px 8px;border-radius:7px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nt3>svg{flex:none;align-self:center;color:var(--faint)}
+.nte{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:56px 24px}
+.nte.sm{padding:36px 24px}
+.nte-i{width:84px;height:84px;border-radius:28px;display:grid;place-items:center;color:var(--acc);background:radial-gradient(circle at 30% 25%,var(--surface),var(--accSoft));box-shadow:0 0 0 8px color-mix(in srgb,var(--accSoft) 45%,transparent);margin-bottom:10px;animation:rise .6s cubic-bezier(.22,1,.36,1) both}
+.nte b{font-size:18px;font-weight:600}.nte p{margin:0;font-size:14px;line-height:1.55;color:var(--mut);max-width:280px}
+@media (prefers-reduced-motion:reduce){.nt3,.nte-i{animation:none}}
