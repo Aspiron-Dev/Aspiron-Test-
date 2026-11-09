@@ -1505,22 +1505,23 @@ button,a,.chips button,.seg button{touch-action:manipulation}
    tablets keep the app exactly as it is. The page becomes a website: a top bar with the main links,
    a wide content area in columns, centred dialogs, hover states and a footer. No bottom bar, no swipe.
    ===================================================================================================== */
-.dnav,.dav,.dfoot{display:none}
+.dnav,.dav,.dfoot,.dth,.dmenu{display:none}
 @media (min-width:960px){
   :host{--dw:1200px;--gap:22px}
   /* ---- top bar ---- */
   .hdr{position:sticky;top:0;background:color-mix(in srgb,var(--bg) 82%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:0 1px 0 var(--line)}
   .hdr-in{max-width:var(--dw);display:flex!important;align-items:center;gap:28px;padding:14px 32px!important}
-  #mnu{display:none}
-  .hdr-in .brand{order:0;flex:none;justify-self:auto;margin:0}
-  .dnav{order:1;display:flex;align-items:center;gap:4px;flex:1;min-width:0}
+  #mnu{order:0;flex:none}
+  .hdr-in .brand{order:1;flex:none;justify-self:auto;margin:0 18px 0 -6px}
+  .dnav{order:2;display:flex;align-items:center;gap:4px;flex:1;min-width:0}
   .dnav button{position:relative;height:40px;padding:0 14px;border-radius:12px;font-size:14.5px;font-weight:500;color:var(--mut);white-space:nowrap;transition:color .2s,background .2s}
   .dnav button:hover{color:var(--tx);background:var(--surface2)}
   .dnav button.on{color:var(--tx);font-weight:600}
   .dnav button.on::after{content:"";position:absolute;left:14px;right:14px;bottom:3px;height:2px;border-radius:2px;background:var(--acc1);animation:dnU .35s cubic-bezier(.22,1,.36,1)}
   @keyframes dnU{from{transform:scaleX(0)}}
-  #bell{order:2}
-  .dav{order:3;display:grid;place-items:center;width:42px;height:42px;padding:0;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line),0 4px 14px -6px rgba(0,0,0,.25);overflow:hidden;transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}
+  #bell{order:3}
+  .dth{order:4;display:grid}
+  .dav{order:5;display:grid;place-items:center;width:42px;height:42px;padding:0;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line),0 4px 14px -6px rgba(0,0,0,.25);overflow:hidden;transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}
   .dav:hover{transform:translateY(-1px);box-shadow:0 0 0 2px var(--acc1),0 8px 20px -8px rgba(0,0,0,.3)}
   .dav .av{width:100%;height:100%;border-radius:50%;font-size:16px}
   /* the Tests poster header keeps its look on desktop too */
@@ -1548,11 +1549,19 @@ button,a,.chips button,.seg button{touch-action:manipulation}
   .main .pt h1,.main .pt h2{font-size:34px;letter-spacing:-.02em}
   /* the Tests tab poster: a wide banner under the top bar (not the tall phone poster) */
   .main[data-tab="test"]{padding-top:0!important}
+  .hdr.tp,.hdr.tp.onpst{background:color-mix(in srgb,var(--bg) 88%,transparent)!important;--logo:initial;--logoE:initial}
+  .hdr.tp .hdr-tint{display:none}
+  .hdr.tp .dnav button{color:var(--mut)!important}.hdr.tp .dnav button.on,.hdr.tp .dnav button:hover{color:var(--tx)!important;background:var(--surface2)}
+  .hdr.tp .ib{background:var(--surface)!important;color:var(--tx)!important;border-color:var(--line)!important}
+  .main[data-tab="test"] .pst{margin-top:24px!important}
+  .main[data-tab="test"] .pst-art{border-radius:30px;background:var(--pcTop,linear-gradient(160deg,var(--hero1),var(--hero2)))}
+  .main[data-tab="test"] .pst-art::after{display:none}
+  .main[data-tab="test"] .pst-top{padding-top:18px!important;padding-left:24px!important;padding-right:24px!important}
   .main[data-tab="test"] .pst{width:auto;margin-left:0;margin-right:0}
   .main[data-tab="test"] .pst-art{border-radius:0 0 30px 30px}
   .main[data-tab="test"] .pst.noimg .pst-art{aspect-ratio:auto;height:430px}
-  .main[data-tab="test"] .pst-art img{max-height:470px;height:470px;object-fit:cover;object-position:center}
-  .main[data-tab="test"] .pst-ph{padding:calc(var(--hh,62px) + 70px) 56px 150px}
+  .main[data-tab="test"] .pst-art img{max-height:460px;height:460px;object-fit:contain;object-position:center}
+  .main[data-tab="test"] .pst-ph{padding:96px 56px 150px}
   .main[data-tab="test"] .pst-ph b{font-size:46px}
   .main[data-tab="test"] .pst-ph em{max-width:460px;font-size:16px}
   .main[data-tab="test"] .pst-tabs .tt2{max-width:720px}
@@ -1565,7 +1574,8 @@ button,a,.chips button,.seg button{touch-action:manipulation}
   .df-c button,.df-c a{font-size:14.5px;color:var(--mut);text-decoration:none;transition:color .2s}
   .df-c button:hover,.df-c a:hover{color:var(--tx)}
   .df-bot{max-width:var(--dw);margin:0 auto;padding:18px 32px 28px;display:flex;justify-content:space-between;font-size:13px;color:var(--faint);border-top:1px solid var(--line)}
-  .df-bot a{color:var(--mut);text-decoration:none}
+  .df-bot a{color:var(--mut);text-decoration:none;transition:color .2s}.df-bot a:hover{color:var(--tx)}
+  .df-bot nav{display:flex;gap:22px}
   /* ---- pages (Settings, Results, a series…) open as wide website pages, under the site's top bar ---- */
   .scr{left:0;right:0;top:70px}
   .hdr{z-index:52}
@@ -1581,8 +1591,9 @@ button,a,.chips button,.seg button{touch-action:manipulation}
   .sheet.open{transform:translate3d(-50%,-50%,0);opacity:1;transition:transform .36s cubic-bezier(.22,1,.36,1),opacity .24s ease,visibility 0s}
   .sheet .grab{display:none}
   /* ---- the account menu slides in from the right, next to the avatar ---- */
-  .drawer{left:auto;right:0;width:340px;border-radius:26px 0 0 26px;transform:translate3d(105%,0,0)}
-  .drawer.open{transform:none}
+  .drawer{width:320px}
+  /* theme, settings and logout live in the top bar on a computer: not repeated in the menu */
+  .drawer [data-k="theme"],.drawer [data-k="settings"],.drawer [data-k="logout"]{display:none!important}
   /* ---- the first-time setup and the review prompt: centred too ---- */
   .ob3{align-items:center}.ob-in{border-radius:30px;max-width:560px}
   /* ---- hover, like a website ---- */
@@ -1600,6 +1611,21 @@ button,a,.chips button,.seg button{touch-action:manipulation}
 }
 @media (min-width:960px) and (max-width:1199px){.dnav [data-a="dk"]{display:none}.hdr-in{gap:18px}}
 .tc3-f{flex-wrap:wrap}.tc3-f button{min-width:30%;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+
+@media (min-width:960px){
+  .dth{width:42px;height:42px;place-items:center}
+  .dmenu{position:absolute;right:32px;top:calc(100% - 6px);z-index:80;width:260px;padding:8px;border-radius:18px;background:var(--surface);border:1px solid var(--line);box-shadow:0 30px 60px -24px rgba(0,0,0,.4);
+    display:flex!important;flex-direction:column;opacity:0;visibility:hidden;transform:translate3d(0,-6px,0) scale(.98);transform-origin:top right;transition:opacity .2s,transform .25s cubic-bezier(.22,1,.36,1),visibility 0s linear .25s}
+  .dmenu.open{opacity:1;visibility:visible;transform:none;transition:opacity .2s,transform .25s cubic-bezier(.22,1,.36,1),visibility 0s}
+  .hdr-in{position:relative}
+  .dm-h{display:flex;align-items:center;gap:12px;padding:10px 10px 12px;border-bottom:1px solid var(--line);margin-bottom:6px}
+  .dm-h .av{width:40px;height:40px;border-radius:50%}
+  .dm-h b{display:block;font-size:14.5px;font-weight:600}.dm-h small{font-size:12.5px;color:var(--mut)}
+  .dmenu button{display:flex;align-items:center;gap:12px;height:42px;padding:0 12px;border-radius:12px;font-size:14.5px;font-weight:500;color:var(--tx);text-align:left;transition:background .15s}
+  .dmenu button svg{color:var(--mut)}
+  .dmenu button:hover{background:var(--surface2)}
+  .dmenu .dm-out,.dmenu .dm-out svg{color:var(--err)}
+}
 
 /* ---- social media links (config.js socialLinksHTML): menu, desktop footer, Contact sheet ---- */
 .soc-row{display:inline-flex;flex-wrap:wrap;gap:10px;align-items:center}
