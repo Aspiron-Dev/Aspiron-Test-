@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=18;
+const V3VER=19;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -326,7 +326,13 @@ function autoRail(rs,ds){const c=$(rs);if(!c||!c.children.length)return;const do
 A.switchSeries=()=>openSheet(`<h2 id="sheetT">Switch test series</h2><p class="sub">Home, upcoming tests and the weekly schedule follow the series you pick.</p><div>${mine().map(s=>{const k=seriesStats(s);return `<button class="opt${s.id===(curSeries()||{}).id?' on':''}" data-a="pickSeries" data-id="${esc3(s.id)}"><div><b>${esc3(s.title)}</b><small>${s.is_free?'Free':'Premium'}, ${k.done} of ${k.n} tests attempted</small></div><span class="ck">${ic('check')}</span></button>`}).join('')}</div><button class="btn lg ghost" style="margin-top:12px" data-a="toStore">${ic('tests',16)}Get more test series</button>`);
 A.pickSeries=el=>{lsSet('cbt_v3_series',el.dataset.id);closeLayer();const b=$('#serBox');if(b){b.style.transition='opacity .2s';b.style.opacity=0}setTimeout(()=>{softRender();toast3('Switched to '+(curSeries()||{}).title)},200)};
 A.zone=el=>{const k=el.dataset.k;({study:()=>go('lib'),series:()=>A.mySeries(),dl:()=>openNotes(),hist:()=>A.hist(),mk:()=>openMistakes(),bm:()=>openSaved(),qb:()=>openQB(),pyq:()=>openPyq(),gen:()=>openGen()}[k]||(()=>{}))()};
-A.test=el=>{const t=tOf(el.dataset.id);if(!t)return;if(t.locked){oldModal(()=>openTest(t.id));return}oldRun(()=>openTest(t.id))};
+A.test=el=>{const t=tOf(el.dataset.id);if(!t)return;if(t.locked){lockedSheet(t);return}oldRun(()=>openTest(t.id))};
+/* a locked test: what it is part of, and the way to unlock it (the series page with its price and Buy) */
+function lockedSheet(t){const s=sOf(t.series_id)||{},x=itemOfSeries(t.series_id),n=testsOf(t.series_id).length;
+  openSheet(`<div class="lk3"><span class="lk3i">${ic('lock',26)}</span><h2 id="sheetT">This test is locked</h2>
+   <p class="sub">“${esc3(t.title)}” is part of <b>${esc3(s.title||'a premium series')}</b>${n?`, ${n} test${n>1?'s':''} with All-India rank`:''}.</p>
+   ${x?`<div class="lk3p">${priceH(x)}</div>`:''}<p class="hint">Every test, result and rank opens right after your payment is approved.</p></div>
+   <div class="sheet-ft">${x?`<button class="btn ghost" data-a="xp" data-id="${esc3(x.id)}">See the series</button><a class="btn gold" href="${buyHref(x)}">${x.price?'Unlock now':'Get it free'}</a>`:'<button class="btn" data-a="close">Close</button>'}</div>`)}
 
 /* ---------- weekly schedule of the series chosen on Home: tests by the day they open; any week of any month ---------- */
 const monOf=t=>{const d=new Date(t);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()};
@@ -373,8 +379,11 @@ A.readAll=()=>{if(!unread()){toast3('Nothing unread');return}markSeen(Math.max(.
 A.openNote=el=>{const n=(NOTES||[]).find(x=>String(x.id)===el.dataset.id);if(!n)return;markSeen(n.at||0);redraw();$('#scrS').textContent=unread()?`${unread()} unread`:'All caught up';
   const u=/^https?:\/\//i.test(n.link||'')?n.link:'';
   openSheet(`<h2 id="sheetT">${esc3(n.title||'Announcement')}</h2><p class="sub">${n.at?dS(n.at):''}</p><p style="font-size:15px;line-height:1.65;white-space:pre-wrap">${typeof linkify==='function'?linkify(n.text||''):esc3(n.text||'')}</p>
-   <div class="g2" style="margin-top:16px;grid-template-columns:1fr 1fr">${n.img?'<button class="btn ghost" data-a="oldNotices">See the picture</button>':'<span></span>'}${u?`<a class="btn gold" href="${esc3(u)}" target="_blank" rel="noopener noreferrer">${esc3(n.label||'Open link')}</a>`:''}</div>`)};
-A.oldNotices=()=>oldHash('#/n');
+   ${n.img?'<div class="nimg3" id="nImg"><div class="sk" style="height:180px;border-radius:16px"></div></div>':''}
+   ${u?`<a class="btn gold blk" style="margin-top:16px" href="${esc3(u)}" target="_blank" rel="noopener noreferrer">${esc3(n.label||'Open link')}</a>`:''}`);
+  if(n.img)noteImg(n.id).then(im=>{const b=sheet.querySelector('#nImg');if(!b)return;if(im){const i=document.createElement('img');i.src=im;i.alt='Picture with this notice';i.loading='lazy';b.innerHTML='';b.appendChild(i)}else b.innerHTML='<p class="hint">The picture could not be loaded.</p>'})};
+/* the notice picture, from the classic cache (ANNIMG) or cbt_notice_img */
+async function noteImg(id){try{if(typeof ANNIMG!=='undefined'&&ANNIMG[id])return ANNIMG[id]}catch(e){}let r=null;try{r=await rpc('cbt_notice_img',{p_id:id})}catch(e){}const im=r&&r.ok&&imgOk(r.image)?r.image:null;try{if(im&&typeof ANNIMG!=='undefined')ANNIMG[id]=im}catch(e){}return im}
 
 /* ================= TESTS: store + my test series, the store's own data (photos, descriptions, reviews) ================= */
 const TQ={q:'',f:{e:[],c:[],s:[]},mf:'paid',cat:'all',sf:'all',xt:'d',tile:'',tf:'all',ts:'all',plan:null};
@@ -568,7 +577,7 @@ A.xp=el=>{const x=(STORE||[]).find(i=>i.id===el.dataset.id);if(!x)return;loadExt
 A.openSD=el=>{const sid=el.dataset.id;if(!sOf(sid))return;loadExtras();loadMeta();if(STORE===null)loadStore();TQ.xt=el.dataset.t||'r';TQ.tf='all';TQ.ts='all';TQ.plan=null;closeLayer();push(ownedPage(sid))};
 A.xt=el=>{TQ.xt=el.dataset.v;redraw()};
 A.sf=el=>{TQ.sf=el.dataset.v;redraw()};
-A.oldSeries=el=>oldHash('#/s/'+el.dataset.id);
+A.oldSeries=el=>oldHash('#/s/'+el.dataset.id);   // the classic folder page (folders, notes and PDFs of a series)
 A.toStore=()=>{closeLayer();unwind(()=>{if(S.tab==='test'){scrollTo({top:0,behavior:RM?'auto':'smooth'});return}go('test')})};
 
 /* ================= MY TEST SERIES + the series page (Description | Resources | Tests | Reviews) =================
@@ -869,7 +878,7 @@ VIEW.stats=()=>{const R=allRes(),P=stats(R),o=stuProf(),fields=['name','email','
 A.per=el=>{AN.per=el.dataset.v;$$('[data-a="per"]').forEach(x=>{const on=x===el;x.classList.toggle('on',on);x.setAttribute('aria-selected',on)});const o=$('#ovBox');o.innerHTML=ovH();countUp(o);const c=$('#chArea');if(c)c.innerHTML=chartArea()};
 A.chSel=el=>{AN.chart=el.dataset.v;$('#chArea').innerHTML=chartArea()};
 A.chTbl=()=>{AN.table=!AN.table;$('#chArea').innerHTML=chartArea()};
-A.oldGo=el=>oldHash(el.dataset.h);
+A.oldGo=el=>{const f={'#/m':openMistakes,'#/b':openSaved,'#/t':openTracker,'#/notes':openNotes}[el.dataset.h];if(f)f();else oldHash(el.dataset.h)};
 A.focus=()=>push(focusView());
 function histView(){return {t:'Test history',s:`${allRes().length} tests`,html:()=>{const R=allRes().slice().reverse();return R.length?`<div class="card rows">${R.slice(0,60).map(r=>{const t=tOf(r.test_id),s=t&&sOf(t.series_id);return `<div class="item"><span class="ti g">${ic('trophy',18)}</span><div class="bd"><div class="tt"><b>${esc3(titleOf(r))}</b><span class="badge n">${pctOf(r)}%</span></div><small>${s?esc3(s.title)+', ':''}${dS(r.at)}</small><small>${r.score} / ${r.max} marks. ${r.correct} right, ${r.wrong} wrong. Accuracy ${accOf(r)}%${r.used?`, ${Math.round(r.used/60)} min`:''}</small><div class="acts"><button class="btn sm" data-a="review" data-r="${esc3(r.id)}">Result and solutions</button></div></div></div>`}).join('')}</div>${R.length>60?'<p class="hint">Showing your latest 60 tests.</p>':''}`:`<div class="card empty"><span class="ti">${ic('trophy',22)}</span><b>No tests yet</b><p>Your results show up here after your first test.</p></div>`}}}
 A.hist=()=>push(histView());
@@ -1094,6 +1103,23 @@ A.setTerms=()=>legalPage('Terms and conditions',()=>openTerms());
 A.setHelp=()=>{let b='';try{SUPMSG='';b=supBtns()}catch(e){}openSheet(`<span class="ti g" style="margin-bottom:12px">${ic('mail',22)}</span><h2 id="sheetT">Chat with support</h2><p class="sub">Our student support team replies on chat. Choose where you want to talk.</p><div class="sup3">${b}</div><p class="hint" style="text-align:center">Chat only. Calls are not available.</p>`)};
 A.setOut=()=>openSheet(`<span class="ti" style="margin-bottom:12px">${ic('out',22)}</span><h2 id="sheetT">Sign out?</h2><p class="sub">Your tests, results and notes stay on your account. Sign in again with your mobile number any time.</p><div class="sheet-ft"><button class="btn ghost" data-a="close">Cancel</button><button class="btn danger3" data-a="setOutGo">Sign out</button></div>`);
 A.setOutGo=()=>{closeLayer();unwind(()=>{try{doSignOut()}catch(e){location.reload()}})};
+/* "turn on notifications" help in the new look: the same steps as the classic npHelp (app9.js), shown in a v3 sheet
+   while the new design is on screen; the classic one is used everywhere else */
+if(typeof npHelp==='function'){const _nh=npHelp;npHelp=function(kind){
+  if(!booted||!document.body.classList.contains('v3on')||document.body.classList.contains('v3old')||INTEST)return _nh.apply(this,arguments);
+  const ua=navigator.userAgent,ios=/iphone|ipad|ipod/i.test(ua);if(kind==='app'&&ios&&!(typeof npInApp==='function'&&npInApp()))kind='ask';
+  const url=location.href.split('#')[0],chrome=/android/i.test(ua)?`intent://${url.replace(/^https?:\/\//,'')}#Intent;scheme=https;package=com.android.chrome;end`:url;
+  const steps=kind==='app'?(ios?['Tap <b>⋯</b> or the share button at the top','Choose <b>Open in Safari</b>','Add the site to your Home Screen, open it from there and turn notifications on']
+      :['Tap <b>⋮</b> at the top right','Choose <b>Open in Chrome</b> (or “Open in browser”)','Open Settings there and turn notifications on'])
+    :ios?['Add this site to your <b>Home Screen</b> (Share, then Add to Home Screen)','Open it from the Home Screen icon','Turn on Phone notifications again and tap <b>Allow</b>']
+    :['Tap the <b>⋮</b> menu at the top right, then <b>Settings</b>','Tap <b>Notifications</b> and make sure <b>Site notifications</b> is on','Tap <b>Site settings</b>, then <b>Notifications</b>, find this site under <b>Blocked</b>, tap it and choose <b>Allow</b>'];
+  openSheet(`<div class="lk3"><span class="lk3i np3">${ic('bell',26)}</span><h2 id="sheetT">Turn on notifications</h2>
+    <p class="sub">${kind==='app'?'You opened the site inside another app (like WhatsApp or Telegram). Notifications only work in your phone’s browser.':kind==='blocked'?'Notifications were blocked for this site earlier. Only you can unblock them, and it takes 10 seconds:':'Tap <b>Allow</b> when your phone asks. If no question appeared, do this once:'}</p></div>
+   <div class="card p rfo3 np3s" style="margin-top:12px">${steps.map((x,i)=>`<div><span>${i+1}</span><p>${x}</p></div>`).join('')}</div>
+   <div class="sheet-ft">${kind==='app'?`<a class="btn blk" href="${esc3(chrome)}">Open in Chrome</a>`:'<button class="btn blk" data-a="npAgain">I have allowed it, check again</button>'}</div>
+   <p class="hint" style="text-align:center;margin-top:10px">Notices always appear on the bell inside the app too.</p>`)}}
+A.npAgain=async()=>{let r='denied';try{const N=window.Notification;r=N?N.permission:'denied';if(r==='default')r=await N.requestPermission()}catch(e){}
+  if(r==='granted'){closeLayer();try{npEnable()}catch(e){}toast3('Notifications are on');setTimeout(()=>{if(top()&&top().key==='set')redraw()},300)}else toast3('Still blocked. Follow the steps above.')};
 
 /* ================= RESULT AND SOLUTIONS in the new design =================
    Opened from any "Result" button (cbt_review) and right after a test is submitted (the classic exam screen still
@@ -1598,6 +1624,39 @@ A.rfShare=async()=>{if(!RF3||!RF3.code)return;const t=rfText(RF3.code);if(naviga
 A.rfWa=()=>{if(!RF3||!RF3.code)return;const w=window.open('https://wa.me/?text='+encodeURIComponent(rfText(RF3.code)),'_blank','noopener,noreferrer');if(w)w.opener=null};
 V3H.push([/^#\/refer$/,()=>openRefer()]);
 
+/* ================= FIRST-TIME SETUP in the new design =================
+   Shown once per student on this phone (cbt_v3_onb_<mobile>) when the profile has no class or target exam yet:
+   welcome, class and target exam (saved in the classic profile cbt_pf_<mobile>, which is kept on the account by
+   cbt_keep), then notifications and install. Skip closes it for good; everything can be changed later in Profile. */
+const OB={st:0,d:null,el:null};
+const obKey=()=>'cbt_v3_onb_'+((AUTH&&AUTH.mobile)||'');
+function maybeOnb(){try{if(!AUTH||INTEST||OB.el||lsGet(obKey(),0)||layer||scrOpen()||document.body.classList.contains('v3old'))return;const p=stuProf();if(p.cls&&p.exam){lsSet(obKey(),1);return}openOnb()}catch(e){}}
+function obStep(){const d=OB.d,nm=String((AUTH&&AUTH.name)||'').trim().split(' ')[0]||'there';
+  if(OB.st===0)return `<div class="ob-art">${ic('spark',34)}</div><small class="ob-k">WELCOME</small><h1>Hi ${esc3(nm)}, let’s set up your study space</h1><p>Two quick choices so your tests, schedule and tips fit you. It takes 20 seconds.</p>`;
+  if(OB.st===1)return `<small class="ob-k">STEP 1 OF 2</small><h1>About you</h1><p>We use this to show the right series and tips.</p>
+    <div class="fl"><span>Your class</span><div class="chips wrap">${PF3.cls.map(c=>`<button class="${d.cls===c?'on':''}" aria-pressed="${d.cls===c}" data-ob="cls" data-v="${c}">${c}</button>`).join('')}</div></div>
+    <div class="fl"><span>Target exam</span><div class="chips wrap">${PF3.exam.map(c=>`<button class="${d.exam===c?'on':''}" aria-pressed="${d.exam===c}" data-ob="exam" data-v="${c}">${c}</button>`).join('')}</div></div>`;
+  const np=npOn3(),inst=standalone3();
+  return `<small class="ob-k">STEP 2 OF 2</small><h1>Never miss a test</h1><p>Get an alert when a test goes live and when your result is out.</p>
+    <div class="card rows ob-rows"><button class="row" data-ob="np"><span class="ti g">${ic('bell',20)}</span><span><b>Phone notifications</b><small>${np?'On. You are all set.':'Test alerts, results and notices'}</small></span><span class="sw${np?' on':''}" aria-hidden="true"></span></button>
+     ${inst?'':`<button class="row" data-ob="inst"><span class="ti g">${ic('dl',20)}</span><span><b>Install the app</b><small>Open it from your home screen</small></span>${ic('right',18)}</button>`}</div>`}
+function obDraw(dir){const el=OB.el;if(!el)return;const last=OB.st===2,ok=OB.st!==1||(OB.d.cls&&OB.d.exam);
+  el.innerHTML=`<div class="ob-in"><div class="ob-top"><div class="ob-dots">${[0,1,2].map(i=>`<i class="${i===OB.st?'on':i<OB.st?'done':''}"></i>`).join('')}</div><button class="ob-skip" data-ob="skip">${last?'Close':'Skip'}</button></div>
+   <div class="ob-b ${dir||''}">${obStep()}</div>
+   <div class="ob-ft">${OB.st?'<button class="btn ghost" data-ob="back">Back</button>':''}<button class="btn ${OB.st===0?'gold lg':''}" data-ob="next"${ok?'':' disabled'}>${OB.st===0?'Let’s start':last?'Finish':'Continue'}${ic('right',16)}</button></div></div>`}
+function openOnb(){const p=stuProf();OB.d={cls:p.cls||'',exam:p.exam||''};OB.st=0;
+  const el=document.createElement('div');el.className='ob3';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-label','Set up your study space');OB.el=el;root.querySelector('#app3').appendChild(el);obDraw('');
+  requestAnimationFrame(()=>el.classList.add('open'));
+  el.addEventListener('click',async e=>{const b=e.target.closest('[data-ob]');if(!b)return;const k=b.dataset.ob;
+    if(k==='cls'||k==='exam'){OB.d[k]=b.dataset.v;obDraw('');return}
+    if(k==='skip'){obClose(OB.st===2);return}
+    if(k==='back'){OB.st=Math.max(0,OB.st-1);obDraw(RM?'':'bwd');return}
+    if(k==='next'){if(OB.st===1){if(!OB.d.cls||!OB.d.exam)return;try{pfSave(Object.assign({},stuProf(),{cls:OB.d.cls,exam:OB.d.exam}));if(typeof pfHdr==='function')pfHdr()}catch(err){}}
+      if(OB.st===2){obClose(true);return}OB.st++;obDraw(RM?'':'fwd');return}
+    if(k==='np'){try{await npToggle()}catch(err){}setTimeout(()=>{if(OB.el&&OB.st===2)obDraw('')},400);return}
+    if(k==='inst'){try{A.setInstall()}catch(err){}}})}
+function obClose(done){lsSet(obKey(),1);const el=OB.el;OB.el=null;if(!el)return;el.classList.remove('open');setTimeout(()=>el.remove(),RM?0:420);if(done)toast3('All set. You can change these in your profile.');try{softRender()}catch(e){}}
+
 /* ================= MENU: the classic menu's items, plus the switch back ================= */
 A.menu=()=>{const u=unread(),mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' on':''}${cls||''}" data-a="m" data-k="${k}">${ic(i)}<span>${t}</span>${extra?`<em>${extra}</em>`:''}</button>`;
   drawer.innerHTML=`<div class="hero pcard"><div class="who">${avatar()}<div style="min-width:0"><b>${esc3(stuName())}</b><small class="mut">${esc3(stuMeta())}</small></div></div><button class="btn sm onhero ghost blk" data-a="m" data-k="profile">View profile</button></div>
@@ -1652,7 +1711,7 @@ route=async function(){
   if(!CAT||Date.now()-CATAT>30000){if(!CAT)main.innerHTML='<div class="card sk" style="height:220px;margin-top:8px"></div><div class="card sk" style="height:160px"></div><div class="card sk" style="height:200px"></div>';
     const ok=await loadCat(!!CAT);if(!ok){if(AUTH){toOld()}return}if(INTEST||!AUTH)return}
   if(NOTES===null)loadNotes().then(()=>{if(S.tab==='test')softRender()});
-  const tab=tabOf(h),changed=tab!==S.tab||!main.children.length||main.querySelector('.sk');S.tab=tab;syncDock();if(changed)scrollTo(0,0);render(changed);
+  const tab=tabOf(h),changed=tab!==S.tab||!main.children.length||main.querySelector('.sk');S.tab=tab;syncDock();if(changed)scrollTo(0,0);render(changed);if(tab==='home'&&!goThen)setTimeout(maybeOnb,1100);
   if(goThen){const f=goThen;goThen=null;setTimeout(f,0)}};
 if(typeof login==='function'){const _login=login;login=function(){document.body.classList.remove('v3on','v3old');return _login.apply(this,arguments)}}
 if(typeof cdRefresh==='function'){const _cdr=cdRefresh;cdRefresh=function(){const r=_cdr.apply(this,arguments);if(booted&&document.body.classList.contains('v3on')&&!document.body.classList.contains('v3old')&&(S.tab==='home'||S.tab==='tools'))softRender();return r}}
