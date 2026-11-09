@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=16;
+const V3VER=17;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',false)===true;
@@ -295,9 +295,19 @@ function upcoming(){const cs=curSeries(),all=upList(),L=all.slice(0,4),done=(C()
   return `<section class="sec"><div class="sh"><h2>Upcoming Events (${all.length})</h2></div>
   ${L.length?`<div class="card"><div class="ev">${L.map(evRow).join('')}</div></div>`:`<div class="evnone"><span class="ti">${ic('cal',20)}</span><span>${done?'Today’s live tests have ended':'No live or upcoming tests right now'}</span></div>`}
   ${cs?'<button class="obtn" data-a="week">View Weekly Schedule</button>':''}</section>`}
-const ZONE=[['series','layers','My Test Series'],['qb','qb','Question Bank'],['pyq','pyq','PYQ Analyzer'],['gen','spark','Test Generator'],['dl','file','Notes & PDFs'],['mk','pen','Mistakes'],['bm','bookmark','Saved'],['hist','trophy','Results']];
-function zone(){return `<section class="sec"><div class="sh"><h2>My study zone</h2></div><div class="qgrid">
-  ${ZONE.map(z=>`<button class="qi" data-a="zone" data-k="${z[0]}"><span class="ti g">${ic(z[1],24)}</span><span>${z[2]}</span></button>`).join('')}</div></section>`}
+/* study zone: own colour and two-tone icon per tile */
+Object.assign(P,{
+ zSer:'<rect class="d" x="4" y="6" width="13" height="15" rx="2.5"/><rect x="4" y="6" width="13" height="15" rx="2.5"/><path d="M8 2.8h9.5A2.5 2.5 0 0 1 20 5.3V17"/><path d="M7.8 11h5.4M7.8 15h3.6"/>',
+ zQb:'<rect class="d" x="3" y="3" width="18" height="18" rx="5"/><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 16.8h.01"/>',
+ zPyq:'<path class="d" d="M6.5 2.8H14l5 5v12.4H6.5a2 2 0 0 1-2-2V4.8a2 2 0 0 1 2-2z"/><path d="M19 11V7.8l-5-5H6.5a2 2 0 0 0-2 2v13.4a2 2 0 0 0 2 2H10"/><path d="M14 2.8v5h5"/><circle cx="15.5" cy="16" r="3"/><path d="m17.7 18.2 2.5 2.5"/>',
+ zGen:'<path d="m3.5 20.5 10-10"/><path d="m12 9 3 3"/><path class="d" d="m17.5 2.5 1.2 3 3 1.2-3 1.2-1.2 3-1.2-3-3-1.2 3-1.2z"/><path d="m17.5 2.5 1.2 3 3 1.2-3 1.2-1.2 3-1.2-3-3-1.2 3-1.2z"/><path d="M6.5 3.5v3M5 5h3"/>',
+ zNote:'<path class="d" d="M6 2.8h9l4 4v13.4H6a1.5 1.5 0 0 1-1.5-1.5V4.3A1.5 1.5 0 0 1 6 2.8z"/><path d="M15 2.8H6a1.5 1.5 0 0 0-1.5 1.5v14.4A1.5 1.5 0 0 0 6 20.2h11.5a1.5 1.5 0 0 0 1.5-1.5V6.8z"/><path d="M15 2.8v4h4"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4"/>',
+ zMk:'<circle class="d" cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="9"/><path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6"/>',
+ zBm:'<path class="d" d="M6.5 3h11a1 1 0 0 1 1 1v17l-6.5-4.2L5.5 21V4a1 1 0 0 1 1-1z"/><path d="M6.5 3h11a1 1 0 0 1 1 1v17l-6.5-4.2L5.5 21V4a1 1 0 0 1 1-1z"/>',
+ zRes:'<path class="d" d="M7 3.5h10V9a5 5 0 0 1-10 0z"/><path d="M7 3.5h10V9a5 5 0 0 1-10 0z"/><path d="M7 5.5H4.8a2 2 0 0 0 0 4H7.2M17 5.5h2.2a2 2 0 0 1 0 4h-2.4"/><path d="M12 14v3.5M8 21h8M9.5 21l.6-3.5h3.8l.6 3.5"/>'});
+const ZONE=[['series','zSer','My Test Series','#3b74e8'],['qb','zQb','Question Bank','#7c5ce6'],['pyq','zPyq','PYQ Analyzer','#0e9f8e'],['gen','zGen','Test Generator','#e08a0b'],['dl','zNote','Notes & PDFs','#0b8bd1'],['mk','zMk','Mistakes','#e0405e'],['bm','zBm','Saved','#d35f1a'],['hist','zRes','Results','#b9900f']];
+function zone(){return `<section class="sec"><div class="sh"><h2>My study zone</h2></div><div class="card qgrid zgrid">
+  ${ZONE.map((z,i)=>`<button class="qi zi" data-a="zone" data-k="${z[0]}" style="--z:${z[3]};--zd:${i*35}ms"><span class="zt">${ic(z[1],24)}</span><span class="zl">${z[2]}</span></button>`).join('')}</div></section>`}
 function promoRail(id){let L=[];try{L=(typeof PROMO!=='undefined'&&PROMO)||[]}catch(e){}if(!L.length)return '';
   return `<section class="sec"><div class="rail" id="${id}">${L.slice(0,6).map(x=>{const u=/^https?:\/\/|^#\//i.test(x.link||'')?x.link:'',img=x.img&&/^data:image\/|^https:\/\//.test(x.img)?x.img:'';
    const body=img?`<img src="${esc3(img)}" alt="${esc3(x.title||'Offer')}">`:`<span class="bn-tx"><small class="gold">${esc3(x.label||'Aspiron')}</small><b>${esc3(x.title||'')}</b>${x.text?`<em>${esc3(x.text)}</em>`:''}</span>`;
