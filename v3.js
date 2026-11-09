@@ -7,10 +7,10 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=22;
+const V3VER=30;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
-const v3On=()=>lsGet('cbt_v3',false)===true;
+const v3On=()=>lsGet('cbt_v3',true)!==false;
 
 /* ---------- classic-menu entries (always added, so the beta can be found) ---------- */
 function addEntry(){
@@ -57,7 +57,7 @@ const P={star:'<path d="M11.5 2.3a.6.6 0 0 1 1 0l2.6 5.4 5.9.9a.6.6 0 0 1 .3 1l-
  tools:'<rect class="f" x="3.5" y="3.5" width="7" height="7" rx="2"/><rect class="f" x="13.5" y="3.5" width="7" height="7" rx="2"/><rect class="f" x="3.5" y="13.5" width="7" height="7" rx="2"/><path d="M17 13.8v6.4"/><path d="M13.8 17h6.4"/>',
  lib:'<rect class="f" x="3.5" y="4" width="4.6" height="16.5" rx="1.3"/><rect class="f" x="9.7" y="4" width="4.6" height="16.5" rx="1.3"/><rect class="f" x="16.2" y="4.6" width="4.6" height="16" rx="1.3" transform="rotate(-12 18.5 12.6)"/><path d="M5.8 8h0"/><path d="M12 8h0"/>',
  stats:'<rect class="f" x="3.5" y="12" width="4.6" height="8.5" rx="1.3"/><rect class="f" x="9.7" y="7" width="4.6" height="13.5" rx="1.3"/><rect class="f" x="15.9" y="3.5" width="4.6" height="17" rx="1.3"/>',
- menu:'<path d="M4 8.5h16"/><path d="M4 15.5h10"/>',
+ menu:'<path d="M4.5 6.5h15"/><path d="M8 12h8"/><path d="M4.5 17.5h15"/>',
  bell:'<path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/>',
  back:'<path d="m15 18-6-6 6-6"/>',right:'<path d="m9 18 6-6-6-6"/>',down:'<path d="m6 9 6 6 6-6"/>',x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
  check:'<path d="M20 6 9 17l-5-5"/>',checks:'<path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/>',
@@ -170,7 +170,7 @@ const top=()=>STK[STK.length-1],scrOpen=()=>STK.length>0;
 function drawScr(dir){const v=top();if(!v)return;$('#scrT').textContent=v.t;$('#scrS').textContent=v.s||'';$('#scrR').innerHTML=v.right?v.right():'';
   $('#scrB').innerHTML=`<div class="scr-in${dir?' '+dir:''}">${v.html()}</div>`;v.after&&v.after()}
 function push(v){const was=STK.length>0;STK.push(v);try{history.pushState({v3s:STK.length},'',location.href)}catch(e){}
-  drawScr(was&&!RM?'fwd':'');try{pstSync()}catch(e){}$('#scrB').scrollTop=0;if(!scr.classList.contains('open')){scr.classList.add('open');scr.setAttribute('aria-hidden','false')}setTimeout(()=>$('#scrBack').focus({preventScroll:true}),60)}
+  drawScr(!RM?'fwd':'');try{pstSync()}catch(e){}$('#scrB').scrollTop=0;if(!scr.classList.contains('open')){scr.classList.add('open');scr.setAttribute('aria-hidden','false')}setTimeout(()=>$('#scrBack').focus({preventScroll:true}),60)}
 function pop(){const v=STK.pop();v&&v.leave&&v.leave();if(STK.length){drawScr(RM?'':'bwd')}else{scr.classList.remove('open');scr.setAttribute('aria-hidden','true');$('#scrB').innerHTML='';try{pstSync()}catch(e){}}}
 function back(){if(!STK.length)return;history.back()}
 /* close every page first, wait for the browser history to settle, then run cb (so a hash change is never undone) */
@@ -210,7 +210,7 @@ function syncDock(){dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab))
 let timers=[];
 const every=(fn,ms)=>{const t=setInterval(fn,ms);timers.push(t);return t};
 function render(anim){timers.forEach(clearInterval);timers=[];main.dataset.tab=S.tab;try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please switch to the classic design from the menu and tell us.</p></div>`}
-  main.classList.remove('in');if(anim&&!RM){void main.offsetWidth;main.classList.add('in')}try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);reveal(main)}
+  main.classList.remove('in','swl','swr');if(swGhost){const g=swGhost;swGhost=null;main.style.transition='';main.style.transform='';dock&&dock.classList.remove('swp');requestAnimationFrame(()=>g.remove())}else if(anim&&!RM){void main.offsetWidth;main.classList.add(SWD==='l'?'swl':SWD==='r'?'swr':'in')}SWD='';try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);reveal(main)}
 /* content below the first screen fades up into place as it scrolls into view (once; nothing hides if the browser cannot) */
 let rvIO=null;
 function reveal(r){if(RM||!r||!('IntersectionObserver' in window))return;
@@ -365,12 +365,19 @@ A.wkPick=el=>{const k=+el.dataset.k,y=Math.floor(k/12),m=k%12,first=new Date(y,m
 A.oldTracker=()=>openTracker();
 
 /* ---------- notifications (the classic notices) ---------- */
-function syncBell(){const b=$('#bell');if(!b)return;const u=unread();b.innerHTML=ic('bell',21)+`<span class="dot${u?'':' off'}"></span>`;b.setAttribute('aria-label',u?`Notifications, ${u} unread`:'Notifications')}
+function syncBell(){const b=$('#bell');if(!b)return;const u=unread();b.innerHTML=ic('bell',20)+`<span class="dot${u?'':' off'}">${u?(u>9?'9+':u):''}</span>`;b.setAttribute('aria-label',u?`Notifications, ${u} unread`:'Notifications')}
 const grpOf=t=>{const k=Math.round((day0(nowMs())-day0(t))/DAY);return k<=0?'Today':k===1?'Yesterday':'Earlier'};
-function notifView(){return {t:'Notifications',s:unread()?`${unread()} unread`:'All caught up',key:'notif',right:()=>`<button class="ib" data-a="readAll" aria-label="Mark all as read">${ic('checks',19)}</button>`,
-  html:()=>{const L=(NOTES||[]).slice().sort((a,b)=>(b.at||0)-(a.at||0)),G=[...new Set(L.map(n=>grpOf(n.at)))],s=seenAt();
-  return NOTES===null?`<div class="card rows"><div class="item sk" style="height:70px"></div><div class="item sk" style="height:70px;margin-top:8px"></div></div>`:L.length?G.map(g=>`<div class="stack" style="gap:10px"><p class="gh">${g}</p><div class="card rows">${L.filter(n=>grpOf(n.at)===g).map(n=>`<button class="nt${n.at>s?' un':''}" data-a="openNote" data-id="${esc3(n.id)}"><span class="ti">${ic(n.img?'file':n.link?'mega':'bell',19)}</span><span style="min-width:0"><span class="nh"><b>${esc3(n.title||'Announcement')}</b><time>${n.at?dayWord(n.at):''}</time></span><p>${esc3((n.text||'').slice(0,120))}</p></span></button>`).join('')}</div></div>`).join('')
-   :`<div class="card empty"><span class="ti">${ic('bell',22)}</span><b>No notifications yet</b><p>Notices from Aspiron show up here.</p></div>`}}}
+let NF='all';
+const ntKind=n=>n.img?['img','Picture','file']:n.link?['link',n.label||'Link','mega']:['msg','Notice','bell'];
+function notifView(){return {t:'Notifications',get s(){return unread()?`${unread()} unread`:'All caught up'},key:'notif',right:()=>`<button class="ib" data-a="readAll" aria-label="Mark all as read">${ic('checks',19)}</button>`,
+  html:()=>{if(NOTES===null)return '<div class="card sk" style="height:96px"></div><div class="card sk" style="height:96px"></div><div class="card sk" style="height:96px"></div>';
+  const s=seenAt(),All=(NOTES||[]).slice().sort((a,b)=>(b.at||0)-(a.at||0)),un=All.filter(n=>n.at>s).length,L=NF==='un'?All.filter(n=>n.at>s):All,G=[...new Set(L.map(n=>grpOf(n.at)))];
+  if(!All.length)return `<div class="nte"><span class="nte-i">${ic('bell',30)}</span><b>You’re all caught up</b><p>Test alerts, results and notices from Aspiron will show up here.</p></div>`;
+  return `<div class="ntt"><div class="seg"><button class="${NF==='all'?'on':''}" data-a="ntF" data-v="all">All<small>${All.length}</small></button><button class="${NF==='un'?'on':''}" data-a="ntF" data-v="un">Unread<small>${un}</small></button></div>${un?`<button class="lnk" data-a="readAll">${ic('checks',16)}Mark all read</button>`:''}</div>
+   ${L.length?G.map(g=>`<section class="nts"><p class="gh">${g}</p>${L.filter(n=>grpOf(n.at)===g).map((n,i)=>{const k=ntKind(n),u=n.at>s;
+     return `<button class="nt3 k-${k[0]}${u?' un':''}" data-a="openNote" data-id="${esc3(n.id)}" style="--d:${Math.min(i,8)*35}ms"><span class="nt3-i">${ic(k[2],19)}</span><span class="nt3-b"><span class="nt3-h"><b>${esc3(n.title||'Announcement')}</b>${u?'<i class="nt3-dot" aria-label="Unread"></i>':''}</span><p>${esc3((n.text||'').replace(/\s+/g,' ').slice(0,160))}</p><span class="nt3-m"><time>${n.at?dayWord(n.at):''}</time>${k[0]!=='msg'?`<em>${esc3(k[1])}</em>`:''}</span></span>${ic('right',16)}</button>`}).join('')}</section>`).join('')
+    :`<div class="nte sm"><span class="nte-i">${ic('checks',26)}</span><b>No unread notices</b><p>You have read everything.</p></div>`}`}}}
+A.ntF=el=>{NF=el.dataset.v;qbKeep()};
 let bellBusy=false;
 A.bell=()=>{if(bellBusy||(top()&&top().key==='notif'))return;bellBusy=true;closeLayer();const b=$('#bell');b.classList.remove('ringing');void b.offsetWidth;b.classList.add('ringing');setTimeout(()=>b.classList.remove('ringing'),700);
   setTimeout(()=>{push(notifView());bellBusy=false;loadNotes().then(()=>{if(top()&&top().key==='notif'){redraw();$('#scrS').textContent=unread()?`${unread()} unread`:'All caught up'}})},RM?0:180)};
@@ -467,7 +474,7 @@ let pstRaf=0,lastQ=-1,lastMeta='';
 /* sizes are measured once (on draw, resize, picture load), never during the scroll, so every frame only moves things */
 const PM={ok:0};
 function pstMeasure(){const h=$('#hdr'),ps=$('#pst');if(!h||!ps)return;PM.hh=h.offsetHeight;PM.y0=ps.offsetHeight-PM.hh-96;PM.y1=68;PM.span=Math.max(1,PM.y0-PM.y1);
-  PM.bdH=Math.max(220,PM.y0+TABH+14);PM.bg=parseCol(getComputedStyle(host).getPropertyValue('--bg')).slice(0,3);host.style.setProperty('--hh',PM.hh+'px');
+  PM.bdH=Math.max(220,PM.y0+TABH+14);PM.tabs=$('#pstTabs');PM.bd=$('#pstBd');PM.slim=PM.op=PM.tf=undefined;PM.bg=parseCol(getComputedStyle(host).getPropertyValue('--bg')).slice(0,3);host.style.setProperty('--hh',PM.hh+'px');
   const bd=$('#pstBd');if(bd)bd.style.height=PM.bdH+'px';PM.ok=1;lastQ=-1}
 function setMeta(c){const m=document.querySelector('meta[name="theme-color"]');if(m&&c!==lastMeta){m.setAttribute('content',c);lastMeta=c}}
 function pstSync(re){if(!root)return;const h=$('#hdr');if(!h||!main)return;const st=$('#pstStick'),ps=$('#pst'),tint=$('#hdrTint'),old=document.body.classList.contains('v3old');
@@ -479,12 +486,12 @@ function pstSync(re){if(!root)return;const h=$('#hdr');if(!h||!main)return;const
   if(q===1&&lastQ===1)return;lastQ=q;
   /* every frame only moves and fades things (no size change, so no layout while the finger moves): the buttons go
      slim once, by a short CSS transition, when the poster is half gone; the backdrop rides inside the bar */
-  st.classList.toggle('slim',q>.5);
-  const ty=Math.max(PM.y1,PM.y0-sy);$('#pstTabs').style.transform=`translate3d(0,${ty.toFixed(1)}px,0)`;
-  $('#pstBd').style.opacity=Math.min(1,q*1.15).toFixed(3);
+  const slim=q>.5;if(PM.slim!==slim){PM.slim=slim;st.classList.toggle('slim',slim)}
+  const ty=Math.max(PM.y1,PM.y0-sy);if(!PM.tabs||!PM.tabs.isConnected){PM.tabs=$('#pstTabs');PM.bd=$('#pstBd')}
+  PM.tabs.style.transform=`translate3d(0,${ty.toFixed(1)}px,0)`;if(PM.bd)PM.bd.style.opacity=Math.min(1,q*1.15).toFixed(3);
   const art=ps.firstElementChild;if(art){art.style.transform=`translate3d(0,${(Math.min(sy,PM.span+200)*.45).toFixed(2)}px,0)`;art.style.opacity=(1-.92*q).toFixed(3)}
   /* the header sits on the poster with no band of its own; its normal background fades in as the poster leaves */
-  if(tint)tint.style.opacity=q.toFixed(3);h.classList.toggle('onpst',!!PCOL&&q<.5);h.classList.toggle('tpfull',q>.98);
+  if(tint)tint.style.opacity=q.toFixed(3);const op=!!PCOL&&q<.5,tf=q>.98;if(PM.op!==op){PM.op=op;h.classList.toggle('onpst',op)}if(PM.tf!==tf){PM.tf=tf;h.classList.toggle('tpfull',tf)}
   /* the phone's status bar colour changes in a few steps only: repainting it every frame makes Android stutter */
   if(PCOL){const k=Math.round(q*4)/4,c=mixC(PCOL.top,PM.bg,k).map(Math.round);setMeta(`rgb(${c.join(',')})`)}}
 addEventListener('scroll',()=>{if(!root||!main||pstRaf)return;if(S.tab!=='test'&&!PM.ok)return;pstRaf=requestAnimationFrame(()=>{pstRaf=0;pstSync()})},{passive:true});
@@ -535,9 +542,21 @@ A.tFilter=()=>{loadLook();const G=[['e','Exam',LK().exams],['c','Class',LK().cla
 /* ---------- one test series page: photo, Description | Resources | Reviews, buy bar ---------- */
 const SF=[['all','All'],['open','Available'],['up','Upcoming'],['att','Attempted'],['done','Completed'],['closed','Closed'],['lock','Locked']];
 const grp=st=>({prog:'open',live:'open',new:'open',wait:'up',held:'att',done:'done',closed:'closed',lock:'lock'}[st]||'open');
+/* test alerts (classic app12.js, cbt_alert_set): a phone notification the moment an upcoming test goes live */
+const alOn3=id=>{try{return typeof alOn==='function'&&alOn(id)}catch(e){return false}};
+const alBtn3=id=>typeof alOn==='function'?`<button class="btn sm${alOn3(id)?'':' ghost'} albt" data-a="alT" data-id="${esc3(id)}" aria-pressed="${alOn3(id)}">${ic('bell',15)}${alOn3(id)?'Alert on':'Notify me'}</button>`:'';
+let alBusy3=0;
+A.alT=async el=>{const id=el.dataset.id,t=tOf(id);if(!t||alBusy3||typeof alOn!=='function')return;const on=alOn(id);
+  if(!on){if(!t.opens_at||t.opens_at<=srvNow()){toast3('This test is already live. Open it now.');return}
+    try{if(!npSup()||npInApp()){npHelp('app');return}let pm=window.Notification.permission;if(pm==='default'){try{pm=await window.Notification.requestPermission()}catch(e){pm=window.Notification.permission}}
+      if(pm!=='granted'){npHelp('blocked');return}if(!npOn())npEnable();else await pushSync(true)}catch(e){toast3('Could not turn on notifications');return}}
+  alBusy3=1;let r=null;try{r=await rpc('cbt_alert_set',{p_test:id,p_on:!on})}catch(e){}alBusy3=0;
+  if(!r||!r.ok){toast3(r&&r.error==='already_live'?'This test is already live. Open it now.':r&&r.status===404?'Test alerts are not set up yet.':'Could not save. Please try again.');return}
+  const m=alGet();if(on)delete m[id];else m[id]=t.opens_at;LS.set(alKey(),m);hap(8);toast3(on?'Alert off':`Done! We will notify you when “${t.title}” goes live`);
+  if(scrOpen())redraw();else softRender()};
 function tActs(t){const st=stOf(t),r=resOf(t.id)[0],id=esc3(t.id);let p;try{p=typeof pendOf==='function'&&pendOf(t.id)}catch(e){}
   if(st==='lock')return `<button class="btn sm gold" data-a="test" data-id="${id}">${ic('lock',14)}Unlock</button>`;
-  if(st==='wait')return `<button class="btn sm ghost" disabled>${ic('clock',15)}Opens ${fD(t.opens_at,{day:'numeric',month:'short'})}, ${fT(t.opens_at)}</button>`;
+  if(st==='wait')return `<button class="btn sm ghost" disabled>${ic('clock',15)}Opens ${fD(t.opens_at,{day:'numeric',month:'short'})}, ${fT(t.opens_at)}</button>${alBtn3(t.id)}`;
   if(st==='held')return `<button class="btn sm ghost" disabled>${ic('lock',14)}Result after ${p&&p.result_at?fD(p.result_at,{day:'numeric',month:'short'})+', '+fT(p.result_at):'the test closes'}</button>`;
   if(st==='closed')return r&&!p?`<button class="btn sm ghost" data-a="review" data-r="${esc3(r.id)}">View result</button>`:`<button class="btn sm ghost" disabled>${ic('lock',14)}Closed</button>`;
   const start=`<button class="btn sm${st==='done'?' ghost':' gold'}" data-a="test" data-id="${id}">${ic('play',14)}${st==='prog'?'Resume test':st==='done'?'Re-attempt':'Start test'}</button>`;
@@ -581,7 +600,7 @@ A.xp=el=>{const x=(STORE||[]).find(i=>i.id===el.dataset.id);if(!x)return;loadExt
 A.openSD=el=>{const sid=el.dataset.id;if(!sOf(sid))return;loadExtras();loadMeta();if(STORE===null)loadStore();TQ.xt=el.dataset.t||'r';TQ.tf='all';TQ.ts='all';TQ.plan=null;closeLayer();push(ownedPage(sid))};
 A.xt=el=>{TQ.xt=el.dataset.v;redraw()};
 A.sf=el=>{TQ.sf=el.dataset.v;redraw()};
-A.oldSeries=el=>oldHash('#/s/'+el.dataset.id);   // the classic folder page (folders, notes and PDFs of a series)
+A.oldSeries=el=>openSeriesAny(el.dataset.id,'r');   // the series' folders, tests, notes and PDFs in the new design
 A.toStore=()=>{closeLayer();unwind(()=>{if(S.tab==='test'){scrollTo({top:0,behavior:RM?'auto':'smooth'});return}go('test')})};
 
 /* ================= MY TEST SERIES + the series page (Description | Resources | Tests | Reviews) =================
@@ -636,7 +655,7 @@ const TSF=[['all','All'],['att','Attempted'],['non','Not attempted'],['res','Res
 function tState(t){const st=stOf(t);return st==='prog'?'res':st==='live'?'live':st==='wait'?'up':st==='lock'?'lock':st==='held'?'held':(st==='done'||t.attempts>0)?'att':st==='closed'?'miss':'new'}
 const TSL={live:['live','Live'],res:['live','Resume'],up:['','Upcoming'],new:['ok','Available'],held:['gold','Result soon'],att:['ok','Attempted'],miss:['err','Missed'],lock:['','Locked']};
 function tCard(t){const s=tState(t),r=resOf(t.id)[0],syl=((META||{}).syl||{})[t.id],marks=(t.questions||0)*(t.correct||4),when=t.opens_at;let p;try{p=typeof pendOf==='function'&&pendOf(t.id)}catch(e){}
-  const act=s==='lock'?['lock','Unlock','test']:s==='up'?['clock','Opens','']:s==='held'?['clock','Result','']:s==='miss'?(r&&!p?['chart','Result','review']:['lock','Closed','']):s==='res'?['play','Resume','test']:s==='att'?(r&&!p?['chart','Result','review']:['play','Again','test']):['play','Start','test'];
+  const act=s==='lock'?['lock','Unlock','test']:s==='up'?['bell',alOn3(t.id)?'Alert on':'Notify me','alT']:s==='held'?['clock','Result','']:s==='miss'?(r&&!p?['chart','Result','review']:['lock','Closed','']):s==='res'?['play','Resume','test']:s==='att'?(r&&!p?['chart','Result','review']:['play','Again','test']):['play','Start','test'];
   const L=TSL[s];
   return `<article class="card tc3${s==='miss'||s==='lock'?' dim':''}"><div class="tc3-b">
    <div class="tc3-top"><span class="st ${L[0]}">${L[1]}</span>${when?`<span class="mut">${s==='up'?'Opens':'Held on'} ${fD(when,{day:'numeric',month:'short'})}, ${fT(when)}</span>`:''}</div>
@@ -644,7 +663,7 @@ function tCard(t){const s=tState(t),r=resOf(t.id)[0],syl=((META||{}).syl||{})[t.
    <p class="tc3-m">${ic('list',15)}<span>${t.questions||0} Question${t.questions===1?'':'s'}</span><i></i><span>${fmtN(marks)} Marks</span><i></i><span>${t.duration||0} Mins</span></p>
    <p class="tc3-m">${ic('hist',15)}<span>Attempts: ${t.attempts||0}${r&&t.best!=null&&t.best_max?`, best ${t.best}/${t.best_max}`:''}</span></p>
    ${s==='held'&&p&&p.result_at?`<p class="tc3-m">${ic('clock',15)}<span>Result after ${fD(p.result_at,{day:'numeric',month:'short'})}, ${fT(p.result_at)}</span></p>`:''}</div>
-   <button class="tc3-go${act[2]?'':' off'}" ${act[2]==='test'?`data-a="test" data-id="${esc3(t.id)}"`:act[2]==='review'?`data-a="review" data-r="${esc3(r.id)}"`:'disabled'}><span>${ic(act[0],20)}</span><small>${act[1]}</small></button>
+   <button class="tc3-go${act[2]?'':' off'}${act[2]==='alT'&&alOn3(t.id)?' alon':''}" ${act[2]==='test'||act[2]==='alT'?`data-a="${act[2]}" data-id="${esc3(t.id)}"`:act[2]==='review'?`data-a="review" data-r="${esc3(r.id)}"`:'disabled'}><span>${ic(act[0],20)}</span><small>${act[1]}</small></button>
    ${syl||(r&&!p&&s==='att')?`<div class="tc3-f">${syl?`<button data-a="syl" data-id="${esc3(t.id)}">View syllabus</button>`:''}${r&&!p&&s==='att'?`<button data-a="review" data-r="${esc3(r.id)}">Result and solutions</button>`:''}</div>`:''}</article>`}
 const TORD=[['live','Live now'],['res','Continue'],['up','Upcoming'],['new','Available'],['held','Waiting for result'],['att','Attempted'],['miss','Missed'],['lock','Locked']];
 function spTests(sid){const all=testsOf(sid),F=(C().folders||[]).filter(f=>f.series_id===sid&&all.some(t=>t.folder_id===f.id)),loose=all.some(t=>!t.folder_id);
@@ -1553,6 +1572,8 @@ A.trMenu=()=>{const it=(a,i,t,s,c)=>`<button class="row${c?' '+c:''}" data-a="${
   openSheet(`<h2 id="sheetT">Tracker options</h2><div class="list trmn">${it('trRename','pen','Rename this week','Change the week name')}${trkLoad().cur>0?it('trCarry','swap','Carry over pending tasks','Copy unfinished tasks from '+esc3(trkLoad().weeks[trkLoad().cur-1].label)):''}${it('trAddWeek','cal','Add a new week','Copies your subjects with empty tasks')}${it('trSubj','book','Add a subject','In this week or every week')}${it('trTargets','target','Set targets','A task goal for each subject')}${it('trGrowth','chart','Growth','Progress across all weeks')}${it('trResetWeek','clock','Reset this week','Mark all tasks as pending')}${it('trResetAll','trash','Delete everything','All weeks, subjects and tasks','bad')}</div>`)};
 ['trSubj','trTargets','trGrowth','trRename'].forEach(k=>{const f=A[k];A[k]=el=>{if(layer){closeLayer();setTimeout(()=>f(el),250)}else f(el)}});
 V3H.push([/^#\/t$/,()=>openTracker()]);
+/* the account's copy arrived (another phone was newer): show it */
+addEventListener('cbt-keep',()=>{try{if(top()&&top().key==='trk'){TR3.sel=-1;trDraw()}}catch(e){}});
 
 /* ================= RANKS AND LEADERBOARDS in the new design =================
    Same server and cache as the classic Results page (app10.js): cbt_overall for the overall rank (average score
@@ -1627,6 +1648,14 @@ A.rfCopyLink=()=>{if(RF3&&RF3.code)rfCopy3(rfLink(RF3.code),'Link copied')};
 A.rfShare=async()=>{if(!RF3||!RF3.code)return;const t=rfText(RF3.code);if(navigator.share){try{await navigator.share({title:'Aspiron Education',text:t});return}catch(e){if(e&&e.name==='AbortError')return}}rfCopy3(t,'Message copied. Paste it in WhatsApp or Telegram.')};
 A.rfWa=()=>{if(!RF3||!RF3.code)return;const w=window.open('https://wa.me/?text='+encodeURIComponent(rfText(RF3.code)),'_blank','noopener,noreferrer');if(w)w.opener=null};
 V3H.push([/^#\/refer$/,()=>openRefer()]);
+/* every other classic address opens its page in the new design (links in notices, notifications, shared links) */
+function openSeriesAny(sid,tab){const s=sOf(sid);if(!s){go('test');return}loadExtras();loadMeta();if(STORE===null)loadStore();TQ.tf='all';TQ.ts='all';TQ.plan=null;closeLayer();
+  const x=itemOfSeries(sid);if(!s.is_free&&!s.unlocked&&x){TQ.xt='d';push(seriesPage({item:x,sid:null}));return}TQ.xt=tab||'t';push(ownedPage(sid))}
+V3H.push([/^#\/s\/([^/?#]+)$/,m=>openSeriesAny(decodeURIComponent(m[1]),'t')],
+  [/^#\/f\/([^/?#]+)$/,m=>{const f=((C().folders)||[]).find(x=>x.id===decodeURIComponent(m[1]));if(f)openSeriesAny(f.series_id,'t');else go('test')}],
+  [/^#\/m$/,()=>openMistakes()],[/^#\/b$/,()=>openSaved()],[/^#\/notes$/,()=>openNotes()],[/^#\/n$/,()=>A.bell()],
+  [/^#\/h\/.+$/,()=>A.hist()],[/^#\/(series|my)$/,()=>A.mySeries()],
+  [/^#\/lib$/,()=>go('lib')],[/^#\/me$/,()=>go('stats')]);
 
 /* ================= FIRST-TIME SETUP in the new design =================
    Shown once per student on this phone (cbt_v3_onb_<mobile>) when the profile has no class or target exam yet:
@@ -1659,17 +1688,39 @@ function openOnb(){const p=stuProf();OB.d={cls:p.cls||'',exam:p.exam||''};OB.st=
       if(OB.st===2){obClose(true);return}OB.st++;obDraw(RM?'':'fwd');return}
     if(k==='np'){try{await npToggle()}catch(err){}setTimeout(()=>{if(OB.el&&OB.st===2)obDraw('')},400);return}
     if(k==='inst'){try{A.setInstall()}catch(err){}}})}
-function obClose(done){lsSet(obKey(),1);const el=OB.el;OB.el=null;if(!el)return;el.classList.remove('open');setTimeout(()=>el.remove(),RM?0:420);if(done)toast3('All set. You can change these in your profile.');try{softRender()}catch(e){}}
+/* ================= "TWO QUICK THINGS" on every app open (new design) =================
+   Install the app and turn on phone notifications: only what is still missing is shown (the classic setupNeed:
+   installed = opened as the app, or Chrome says it is on the phone, or installed here before). Nothing when both are
+   done. Skip hides it for this open only; it comes back on the next open until both are done. */
+let SU3=false;
+async function maybeSetup(){try{if(SU3||!AUTH||INTEST||OB.el||layer||scrOpen()||document.body.classList.contains('v3old')||typeof setupNeed!=='function')return;
+  if(typeof npInApp==='function'&&npInApp())return;SU3=true;const need=await setupNeed();if(!need.length||layer||scrOpen()||INTEST)return;suDraw(need)}catch(e){}}
+function suDraw(need){const row=(k,i,t,d,b)=>`<div class="su-r"><span class="ti g">${ic(i,20)}</span><span class="su-t"><b>${t}</b><small>${d}</small></span><button class="btn sm" data-a="${k}">${b}</button></div>`;
+  let blocked=false;try{blocked=window.Notification&&window.Notification.permission==='denied'}catch(e){}
+  openSheet(`<h2 id="sheetT">Two quick things</h2><p class="sub">So you never miss a test or a result. Each takes one tap.</p>
+   <div class="su-l">${need.includes('install')?row('suInst','dl','Install the app','Open it from your home screen, like an app','Install'):''}${need.includes('notify')?row('suNp','bell','Turn on notifications','Test alerts and results, even when the app is closed',blocked?'How?':'Turn on'):''}</div>
+   <button class="btn ghost blk" data-a="close" style="margin-top:14px">Skip for now</button>`)}
+const suAgain=()=>setTimeout(async()=>{try{const n=await setupNeed();if(!n.length){closeLayer();toast3('All set!');return}if(layer===sheet&&sheet.querySelector('.su-l'))suDraw(n)}catch(e){}},700);
+A.suInst=()=>{closeLayer();setTimeout(()=>{A.setInstall()},200)};
+A.suNp=async()=>{let r='denied';try{const N=window.Notification;r=N?N.permission:'denied';if(r==='default')r=await N.requestPermission()}catch(e){}
+  if(r==='granted'){try{npEnable()}catch(e){}hap(8);suAgain()}else{closeLayer();setTimeout(()=>npHelp(r==='denied'?'blocked':'ask'),200)}};
+function obClose(done){lsSet(obKey(),1);const el=OB.el;OB.el=null;if(!el)return;setTimeout(maybeSetup,900);el.classList.remove('open');setTimeout(()=>el.remove(),RM?0:420);if(done)toast3('All set. You can change these in your profile.');try{softRender()}catch(e){}}
 
-/* ================= MENU: the classic menu's items, plus the switch back ================= */
-A.menu=()=>{const u=unread(),mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' on':''}${cls||''}" data-a="m" data-k="${k}">${ic(i)}<span>${t}</span>${extra?`<em>${extra}</em>`:''}</button>`;
-  drawer.innerHTML=`<div class="hero pcard"><div class="who">${avatar()}<div style="min-width:0"><b>${esc3(stuName())}</b><small class="mut">${esc3(stuMeta())}</small></div></div><button class="btn sm onhero ghost blk" data-a="m" data-k="profile">View profile</button></div>
-  <div class="mgp">${mi('sun','Theme settings','theme',0,THEMES[resolveMode(TH.mode)].name)}</div><div class="mdiv"></div>
-  <div class="mgp">${mi('home','Home','home',S.tab==='home')}${mi('tests','Test Series','series',S.tab==='test')}${mi('hist','Test History','history')}${mi('pen','Mistake Notebook','mistakes')}${mi('bookmark','Saved Questions','saved')}${mi('cal','Study Tracker','tracker')}${mi('bell','Notifications','notif',0,u?u+' new':'')}${mi('target','Exam Countdown','cd')}</div><div class="mdiv"></div>
-  <div class="mgp">${mi('gear','Settings','settings')}${mi('info','About Us','about')}${mi('file','Terms & Conditions','terms')}${mi('file','Privacy Policy','privacy')}${mi('file','Refund Policy','refund')}${mi('mail','Contact Us','contact')}</div><div class="mdiv"></div>
-  ${mi('swap','Switch to the classic design','classic',0,'','')}${mi('out','Logout','logout',0,'',' out')}`;openLayer(drawer)};
+/* ================= MENU: the classic menu's look (profile on top, grouped list, NEW tags, Logout last) =================
+   About two thirds of the screen wide, the page behind blurred, and the items come in one after another from the top. */
+A.menu=()=>{const u=unread();let n=0;const web=!standalone3();
+  const mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' on':''}${cls||''}" data-a="m" data-k="${k}" style="--i:${n++}">${ic(i)}<span>${t}</span>${extra||''}</button>`;
+  const nw='<em class="mnew">NEW</em>',gh=t=>`<p class="mgh" style="--i:${n++}">${t}</p>`;
+  drawer.innerHTML=`<div class="mtop" style="--i:${n++}"><button class="mx" data-a="close" aria-label="Close menu">${ic('x',18)}</button>${avatar('mav')}<b>${esc3(stuName())}</b><small>${esc3(stuMeta())}</small><button class="mvp" data-a="m" data-k="profile">View Profile <span aria-hidden="true">→</span></button></div>
+  <div class="mlist">${gh('Study')}${mi('home','Home','home',S.tab==='home')}${mi('tests','Test Series','series',S.tab==='test')}${mi('lib','Library','lib',S.tab==='lib')}${mi('pyq','PYQ Analysis','pyq',0,nw)}${mi('qb','Question Bank','qb',0,nw)}${mi('spark','Test Generator','gen',0,nw)}
+   ${gh('My progress')}${mi('trophy','Results & Ranks','ranks')}${mi('hist','Test History','history')}${mi('pen','Mistake Notebook','mistakes')}${mi('bookmark','Saved Questions','saved')}${mi('cal','Study Tracker','tracker')}
+   ${gh('Explore')}${mi('layers','Store','store')}${mi('gift','Refer & Earn','refer')}${mi('bell','Notifications','notif',0,u?`<em class="mcnt">${u}</em>`:'')}${mi('target','Exam Countdown','cd')}
+   ${gh('Help & settings')}${mi('sun','Theme Settings','theme',0,`<em class="mval">${THEMES[resolveMode(TH.mode)].name}</em>`)}${mi('gear','Settings','settings')}${mi('info','About Us','about')}${mi('mail','Contact Us','contact')}
+   ${web?gh('Policies')+mi('file','Terms & Conditions','terms')+mi('file','Privacy Policy','privacy')+mi('file','Refund Policy','refund'):''}
+   <div class="mdiv" style="--i:${n++}"></div>${mi('out','Logout','logout',0,'',' mout')}</div>`;
+  drawer.scrollTop=0;openLayer(drawer)};
 A.m=el=>{const k=el.dataset.k;closeLayer();
-  const M={profile:A.profile,theme:openTheme,home:()=>go('home'),series:()=>go('test'),history:A.hist,mistakes:()=>openMistakes(),saved:()=>openSaved(),tracker:()=>openTracker(),notif:A.bell,cd:A.cdEdit,
+  const M={profile:A.profile,theme:openTheme,home:()=>go('home'),series:()=>go('test'),lib:()=>go('lib'),pyq:()=>openPyq(),qb:()=>openQB(),gen:()=>openGen(),ranks:()=>openRanks(),refer:()=>openRefer(),store:()=>{location.href='store'},history:A.hist,mistakes:()=>openMistakes(),saved:()=>openSaved(),tracker:()=>openTracker(),notif:A.bell,cd:A.cdEdit,
    settings:A.settings,about:A.setAbout,terms:A.setTerms,privacy:()=>window.open('privacy','_blank','noopener'),refund:()=>window.open('refund','_blank','noopener'),contact:A.setHelp,
    classic:()=>window.v3Disable(),logout:A.setOut};
   setTimeout(()=>{(M[k]||(()=>{}))()},140)};
@@ -1691,6 +1742,62 @@ A.thp=el=>{THP.pal[resolveMode(THP.mode)]=el.dataset.v;applyTheme(THP);redraw()}
 A.thApply=()=>{TH=clone(THP);saveTheme();toast3('Theme applied: '+themeLabel())};
 A.thReset=()=>{THP=clone(DEF_TH);applyTheme(THP);redraw();toast3('Default theme shown. Tap Apply theme to keep it.')};
 
+
+/* ================= SWIPE BETWEEN TABS, and SLIDE ALONG THE DOCK =================
+   Like a phone's home screens: drag the screen left / right to go to the next / previous tab (the page follows the
+   finger; a short flick is enough). Tapping the dock works as before. On the dock, keep the finger down and slide it:
+   each tab it passes is shown, with a light buzz on every step. Inner rows that scroll sideways (chips, posters,
+   carousels) keep their own swipe; vertical scrolling is untouched. */
+const hap=ms=>{try{navigator.vibrate&&navigator.vibrate(ms||8)}catch(e){}};
+const tabIx=()=>Math.max(0,NAV.findIndex(n=>n[0]===S.tab));
+let SWD='',swGhost=null;
+function swTo(i,dir){if(i<0||i>=NAV.length||NAV[i][0]===S.tab)return false;SWD=dir||'';hap(8);go(NAV[i][0]);return true}
+function hScroller(el){for(let e=el;e&&e!==main;e=e.parentElement){if(e.closest&&e.closest('[data-noswipe],input,textarea,select,[contenteditable]'))return true;
+  if(e.scrollWidth>e.clientWidth+4){const o=getComputedStyle(e).overflowX;if(o==='auto'||o==='scroll')return true}}return false}
+function swipeInit(){if(swipeInit.done)return;swipeInit.done=true;
+  /* ---- the screen: the next / previous tab is drawn beside the page and comes in with the finger ---- */
+  let x0=0,y0=0,t0=0,dx=0,mode='',w=1,swF=0,gh=null,gd=0,gtop=0;
+  const GAP=14,ease='cubic-bezier(.22,1,.36,1)';
+  const ghostFor=d=>{const n=tabIx()+d;if(n<0||n>=NAV.length)return null;const g=document.createElement('div');g.className='main swg';g.setAttribute('aria-hidden','true');
+    const keep=S.tab;S.tab=NAV[n][0];try{g.innerHTML=VIEW[S.tab]()}catch(e){g.innerHTML=''}S.tab=keep;
+    const r=main.getBoundingClientRect(),hd=$('#hdr');gtop=hd?Math.max(0,hd.getBoundingClientRect().bottom):0;
+    g.style.cssText=`position:fixed;top:${gtop}px;left:${r.left}px;width:${r.width}px;height:${window.innerHeight-gtop}px;overflow:hidden;margin:0;z-index:4;pointer-events:none;will-change:transform`;
+    main.parentElement.appendChild(g);return g};
+  const dropGhost=()=>{if(gh){gh.remove();gh=null}gd=0};
+  const paint=()=>{main.style.transform=`translate3d(${dx}px,0,0)`;if(gh)gh.style.transform=`translate3d(${dx+gd*(w+GAP)}px,0,0)`;
+    dock.style.setProperty('--i',Math.max(0,Math.min(NAV.length-1,tabIx()-dx/w*(gh?1:.25))))};
+  const settle=(cb,ms)=>{main.style.transition=gh?`transform ${ms}ms ${ease}`:'';if(gh)gh.style.transition=`transform ${ms}ms ${ease}`;dock.classList.add('swp');setTimeout(cb,RM?0:ms)};
+  main.addEventListener('touchstart',e=>{mode='';dx=0;if(e.touches.length!==1||STK.length||layer||INTEST||hScroller(e.target)){mode='no';return}
+    const p=e.touches[0];x0=p.clientX;y0=p.clientY;t0=Date.now();w=main.clientWidth||window.innerWidth},{passive:true});
+  main.addEventListener('touchmove',e=>{if(mode==='no'||mode==='v'||e.touches.length!==1)return;const p=e.touches[0],mx=p.clientX-x0,my=p.clientY-y0;
+    if(!mode){if(Math.abs(mx)<10&&Math.abs(my)<10)return;mode=Math.abs(mx)>Math.abs(my)*1.15?'h':'v';if(mode==='v')return;dock.classList.add('swp')}
+    const d=mx<0?1:-1;if(d!==gd){dropGhost();if(!RM){gh=ghostFor(d);gd=gh?d:0}}
+    dx=gh||RM?mx:mx*.25;
+    if(!RM&&!swF){swF=requestAnimationFrame(()=>{swF=0;if(mode!=='h')return;main.style.transition='';paint()})}},{passive:true});
+  const back=()=>{dx=0;if(RM){dropGhost();main.style.transform='';dock.classList.remove('swp');syncDock();return}
+    main.style.transition=`transform .34s ${ease}`;if(gh)gh.style.transition=`transform .34s ${ease}`;main.style.transform='';if(gh)gh.style.transform=`translate3d(${gd*(w+GAP)}px,0,0)`;syncDock();
+    setTimeout(()=>{main.style.transition='';dropGhost();dock.classList.remove('swp')},360)};
+  const end=()=>{if(mode!=='h'){mode='';return}mode='';const v=Math.abs(dx)/Math.max(1,Date.now()-t0),i=tabIx(),go2=Math.abs(dx)>Math.min(90,w*.22)||(v>.45&&Math.abs(dx)>30);
+    const n=dx<0?i+1:i-1;
+    if(!(go2&&n>=0&&n<NAV.length&&(gh||RM))){back();return}
+    if(RM){dropGhost();SWD='';hap(8);go(NAV[n][0]);return}
+    const ms=Math.max(160,Math.min(300,Math.round((w-Math.abs(dx))/Math.max(.9,v)))),g=gh;
+    main.style.transition=`transform ${ms}ms ${ease}`;g.style.transition=`transform ${ms}ms ${ease}`;main.style.transform=`translate3d(${-gd*(w+GAP)}px,0,0)`;g.style.transform='translate3d(0,0,0)';
+    dock.style.setProperty('--i',n);hap(8);
+    setTimeout(()=>{SWD='';swGhost=g;gh=null;gd=0;go(NAV[n][0])},ms)};
+  main.addEventListener('touchend',end,{passive:true});main.addEventListener('touchcancel',()=>{if(mode==='h'){mode='';back()}},{passive:true});
+  /* ---- the dock: slide the finger along it ---- */
+  let dk=false,moved=false,cur=-1,tmr=0,sx=0;
+  const ixAt=x=>{const r=dock.getBoundingClientRect();return Math.max(0,Math.min(NAV.length-1,Math.floor((x-r.left)/(r.width/NAV.length))))};
+  dock.addEventListener('touchstart',e=>{if(e.touches.length!==1)return;dk=true;moved=false;sx=e.touches[0].clientX;cur=ixAt(sx)},{passive:true});
+  dock.addEventListener('touchmove',e=>{if(!dk)return;const x=e.touches[0].clientX;if(!moved&&Math.abs(x-sx)<8)return;moved=true;e.preventDefault();
+    const i=ixAt(x);if(i===cur)return;cur=i;hap(6);dock.classList.add('drag');dock.style.setProperty('--i',i);
+    dock.querySelectorAll('button').forEach((b,j)=>b.classList.toggle('hov',j===i));
+    clearTimeout(tmr);tmr=setTimeout(()=>{if(NAV[cur][0]!==S.tab){SWD='';go(NAV[cur][0])}},110)},{passive:false});
+  const dEnd=()=>{if(!dk)return;dk=false;dock.classList.remove('drag');dock.querySelectorAll('button.hov').forEach(b=>b.classList.remove('hov'));
+    if(moved){clearTimeout(tmr);if(NAV[cur]&&NAV[cur][0]!==S.tab){SWD='';go(NAV[cur][0])}else syncDock();
+      const stop=ev=>{ev.stopPropagation();ev.preventDefault()};dock.addEventListener('click',stop,{capture:true,once:true});setTimeout(()=>dock.removeEventListener('click',stop,{capture:true}),400)}};
+  dock.addEventListener('touchend',dEnd,{passive:true});dock.addEventListener('touchcancel',dEnd,{passive:true})}
 /* ================= WIRING INTO THE CLASSIC APP ================= */
 function boot(){if(booted)return;ensureHost();booted=true;
   main=$('#main');dock=$('#dock');scr=$('#scr');sheet=$('#sheet');drawer=$('#drawer');scrim=$('#scrim');
@@ -1700,7 +1807,7 @@ function boot(){if(booted)return;ensureHost();booted=true;
   $('#mnu').innerHTML=ic('menu',22);$('#scrBack').innerHTML=ic('back',20);syncBell();
   /* the header looks the same at every scroll position (no class toggled on scroll) */
   if(!RM){const w=$('#bmk');const sh=()=>{if(document.hidden||document.body.classList.contains('v3old')||!document.body.classList.contains('v3on'))return;w.classList.remove('go');void w.offsetWidth;w.classList.add('go')};setTimeout(sh,900);setInterval(sh,9000)}
-  applyTheme(TH);syncDock()}
+  applyTheme(TH);syncDock();try{swipeInit()}catch(e){}}
 const _route=route;
 route=async function(){
   if(!v3On()||typeof AUTH==='undefined'||!AUTH||INTEST){if(!AUTH)document.body.classList.remove('v3on','v3old');return _route.apply(this,arguments)}
@@ -1712,10 +1819,12 @@ route=async function(){
   if(m3){closeLayer();while(STK.length)pop();try{history.replaceState(null,'','#/')}catch(e){}h='#/';const f=goThen;goThen=()=>{f&&f();m3[1](m3[0])}}
   if(!isNewHash(h)){toOld();return _route.apply(this,arguments)}
   toNew();
+  /* the profile, countdown and study tracker kept on the account (cbt_keep): fetched once per page load, as the classic pages do */
+  try{if(typeof keepPull==='function')setTimeout(keepPull,0)}catch(e){}
   if(!CAT||Date.now()-CATAT>30000){if(!CAT)main.innerHTML='<div class="card sk" style="height:220px;margin-top:8px"></div><div class="card sk" style="height:160px"></div><div class="card sk" style="height:200px"></div>';
     const ok=await loadCat(!!CAT);if(!ok){if(AUTH){toOld()}return}if(INTEST||!AUTH)return}
   if(NOTES===null)loadNotes().then(()=>{if(S.tab==='test')softRender()});
-  const tab=tabOf(h),changed=tab!==S.tab||!main.children.length||main.querySelector('.sk');S.tab=tab;syncDock();if(changed)scrollTo(0,0);render(changed);if(tab==='home'&&!goThen)setTimeout(maybeOnb,1100);
+  const tab=tabOf(h),changed=tab!==S.tab||!main.children.length||main.querySelector('.sk');S.tab=tab;syncDock();if(changed)scrollTo(0,0);render(changed);if(tab==='home'&&!goThen)setTimeout(maybeOnb,1100);if(tab==='home'&&!goThen)setTimeout(maybeSetup,1700);
   if(goThen){const f=goThen;goThen=null;setTimeout(f,0)}};
 if(typeof login==='function'){const _login=login;login=function(){document.body.classList.remove('v3on','v3old');return _login.apply(this,arguments)}}
 if(typeof cdRefresh==='function'){const _cdr=cdRefresh;cdRefresh=function(){const r=_cdr.apply(this,arguments);if(booted&&document.body.classList.contains('v3on')&&!document.body.classList.contains('v3old')&&(S.tab==='home'||S.tab==='tools'))softRender();return r}}
@@ -1726,7 +1835,8 @@ window.v3Disable=function(){lsSet('cbt_v3',false);closeLayer();unwind(()=>{docum
 if(v3On()&&typeof AUTH!=='undefined'&&AUTH&&!INTEST){boot();document.body.classList.add('v3on');if(!isNewHash(location.hash||'#/'))toOld();else route()}
 
 /* ================= REVIEW REQUEST after a test (both designs) =================
-   After every submitted test the student is asked to rate the test series: stars AND a short comment (at least 15
+   After every submitted test the student is asked to rate THAT TEST (v66: cbt_test_review_save, private to the admin;
+   before v66 is run, the test series is asked for instead): stars AND a short comment (at least 15
    letters) are needed to send. Closing once shows a gentle "just 20 seconds" note; closing again lets them go.
    Not asked again once they have written a review with a comment. Saved with cbt_review_save (v23), one review per
    series, which the student can change any time from the series page (Reviews). */
@@ -1764,10 +1874,14 @@ const RVI={star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.5 2.3
   heart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-9.2-9A5 5 0 0 1 12 5.6 5 5 0 0 1 21.2 11C19 15.6 12 20 12 20z"/></svg>'};
 const RVW=['','Poor','Could be better','Good','Very good','Excellent'];
 function rvClose(){if(!rvHost)return;const h=rvHost;rvHost=null;const w=h.shadowRoot.querySelector('.w');w.classList.remove('on');setTimeout(()=>h.remove(),RM?0:420)}
-async function rvAsk(sid,title,manual){
-  if(rvHost||!sid||typeof rpc!=='function')return;
+async function rvAsk(sid,title,manual,test){
+  if(rvHost||(!sid&&!test)||typeof rpc!=='function')return;
   if(!manual&&document.body.classList.contains('intest'))return;
-  let mine=null;try{const r=await rpc('cbt_review_mine',{p_series:sid});if(!r||!r.ok){if(manual&&typeof toast==='function')toast('Could not open reviews. Please try again.');return}mine=r.review}catch(e){return}
+  let mine=null;
+  /* one test (v66); if the server does not have it yet, the series as before */
+  if(test&&test.id){try{const r=await rpc('cbt_test_review_mine',{p_test:test.id});if(r&&r.ok)mine=r.review;else if(r&&r.error==='server'&&r.status===404){test=null}else return}catch(e){return}
+    if(!test&&!sid)return}
+  if(!test){try{const r=await rpc('cbt_review_mine',{p_series:sid});if(!r||!r.ok){if(manual&&typeof toast==='function')toast('Could not open reviews. Please try again.');return}mine=r.review}catch(e){return}}
   if(!manual&&mine&&String(mine.body||'').trim().length>=RVMIN)return;
   if(rvHost||(!manual&&document.body.classList.contains('intest')))return;
   const d=rvDark(),T=d?{s:'#1e1f22',s2:'#27282c',tx:'#ededee',mut:'#a3a5aa',line:'#34353a',line2:'#45464c',ink:'#ededee',on:'#161719',acc:'#d6b878',soft:'#2c271d'}
@@ -1778,7 +1892,7 @@ async function rvAsk(sid,title,manual){
    <div class="w" role="dialog" aria-modal="true" aria-labelledby="rvT"><div class="bg"></div><div class="c"><button class="x" aria-label="Close">${RVI.x}</button><div class="body"></div></div></div>`;
   const W=R.querySelector('.w'),B=R.querySelector('.body');
   const form=()=>{B.innerHTML=`<div class="ic">${RVI.star}</div><h2 id="rvT">${manual?'Your review':'How was your test?'}</h2>
-    <p class="s">Rate <b>${esc3(title||'this test series')}</b>. Your words help other students choose, and help us make every test better.</p>
+    <p class="s">${test?`Rate <b>${esc3(test.title||'this test')}</b>. Tell us about the questions, the level and the time. It goes straight to our team.`:`Rate <b>${esc3(title||'this test series')}</b>. Your words help other students choose, and help us make every test better.`}</p>
     <div class="st" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(n=>`<button role="radio" aria-checked="${rating===n}" aria-label="${n} star${n>1?'s':''}" data-n="${n}" class="${n<=rating?'on':''}">${RVI.star}</button>`).join('')}</div>
     <p class="lb">${rating?RVW[rating]:'Tap a star'}</p>
     <textarea maxlength="600" placeholder="What did you like? What can we do better? (at least ${RVMIN} letters)" aria-label="Your review">${esc3(mine&&mine.body||'')}</textarea>
@@ -1790,12 +1904,13 @@ async function rvAsk(sid,title,manual){
       b.classList.add('pop');setTimeout(()=>b.classList.remove('pop'),220);B.querySelector('.lb').textContent=RVW[rating];sync();const ta=B.querySelector('textarea');if(!ta.value.trim())ta.focus({preventScroll:true})}));
     B.querySelector('textarea').addEventListener('input',sync);B.querySelector('.go').addEventListener('click',send);sync()};
   const send=async()=>{const ta=B.querySelector('textarea'),go=B.querySelector('.go'),er=B.querySelector('.er'),body=ta.value.trim();if(!rating||body.length<RVMIN)return;
-    go.disabled=true;go.textContent='Sending…';er.textContent='';let r=null;try{r=await rpc('cbt_review_save',{p_series:sid,p_rating:rating,p_body:body,p_photo:''})}catch(e){}
-    if(!r||!r.ok){go.textContent='Submit review';sync();er.textContent=r&&r.error==='busy'?'Please wait a few seconds and try again.':r&&r.error==='not_unlocked'?'Reviews open once this series is unlocked for you.':'Could not send. Please check your internet and try again.';return}
-    try{SRV&&delete SRV[(itemOfSeries(sid)||{}).id];XD=null}catch(e){}
-    B.innerHTML=`<div class="ty"><div class="ic">${RVI.heart}</div><h2>Thank you!</h2><p class="s">${r.status==='pending'?'Your review will show after a quick check.':'Your review is live on the series page.'}</p></div>`;
+    go.disabled=true;go.textContent='Sending…';er.textContent='';let r=null;
+    try{r=test?await rpc('cbt_test_review_save',{p_test:test.id,p_rating:rating,p_body:body}):await rpc('cbt_review_save',{p_series:sid,p_rating:rating,p_body:body,p_photo:''})}catch(e){}
+    if(!r||!r.ok){go.textContent='Submit review';sync();er.textContent=r&&r.error==='busy'?'Please wait a few seconds and try again.':r&&r.error==='not_unlocked'?'Reviews open once this series is unlocked for you.':r&&r.error==='short'?`Please write at least ${RVMIN} letters.`:'Could not send. Please check your internet and try again.';return}
+    if(!test){try{SRV&&delete SRV[(itemOfSeries(sid)||{}).id];XD=null}catch(e){}}
+    B.innerHTML=`<div class="ty"><div class="ic">${RVI.heart}</div><h2>Thank you!</h2><p class="s">${test?'Your feedback has reached our team. It helps us make every test better.':r.status==='pending'?'Your review will show after a quick check.':'Your review is live on the series page.'}</p></div>`;
     setTimeout(rvClose,1800);if(scrOpen()&&top()&&top().key==='sp')setTimeout(()=>{loadExtras();redraw()},400)};
-  const nudge=()=>{nudged=true;B.innerHTML=`<div class="ty"><div class="ic">${RVI.heart}</div><h2 id="rvT">Just 20 seconds?</h2><p class="s">Two lines from you help hundreds of students pick the right test series, and tell us what to improve next.</p></div>
+  const nudge=()=>{nudged=true;B.innerHTML=`<div class="ty"><div class="ic">${RVI.heart}</div><h2 id="rvT">Just 20 seconds?</h2><p class="s">${test?'Two lines from you tell us what to improve in the next test.':'Two lines from you help hundreds of students pick the right test series, and tell us what to improve next.'}</p></div>
     <button class="go">Write my review</button><button class="ln">Not now</button>`;B.querySelector('.go').addEventListener('click',form);B.querySelector('.ln').addEventListener('click',rvClose)};
   R.querySelector('.x').addEventListener('click',()=>{const ta=B.querySelector('textarea');if(!manual&&!nudged&&!(ta&&ta.value.trim().length>=RVMIN))nudge();else rvClose()});
   R.querySelector('.bg').addEventListener('click',()=>{if(manual)rvClose()});
@@ -1803,8 +1918,8 @@ async function rvAsk(sid,title,manual){
 /* after a test is submitted (result shown, or "result after …"): ask once the screen has settled */
 (function(){if(typeof sendPending!=='function')return;let just=null;
   const _sp=sendPending;sendPending=function(it){try{const L=(typeof CAT!=='undefined'&&CAT)||null,t=L&&(L.tests||[]).find(x=>x.id===(it&&it.tid)),s=t&&(L.series||[]).find(x=>x.id===t.series_id);
-    just=s&&s.unlocked?{sid:s.id,title:s.title,at:Date.now()}:null}catch(e){just=null}return _sp.apply(this,arguments)};
-  const after=()=>{if(!just||Date.now()-just.at>120000)return;const j=just;just=null;setTimeout(()=>rvAsk(j.sid,j.title,false),1400)};
+    just=t?{sid:s&&s.unlocked?s.id:null,title:s&&s.title,test:{id:t.id,title:t.title},at:Date.now()}:null}catch(e){just=null}return _sp.apply(this,arguments)};
+  const after=()=>{if(!just||Date.now()-just.at>120000)return;const j=just;just=null;setTimeout(()=>rvAsk(j.sid,j.title,false,j.test),1400)};
   ['showHeld','showResult'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;window[n]=function(){const r=f.apply(this,arguments);try{after()}catch(e){}return r}})})();
 })();
 

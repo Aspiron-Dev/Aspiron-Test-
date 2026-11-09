@@ -374,6 +374,7 @@ create or replace function cbt_private.admin_need(p_fn text, p_act text) returns
     when 'cbt_admin_social'         then case when p_act = 'get' then 'messaging:view' else 'messaging:manage' end   -- v57
     when 'cbt_admin_store_look'     then case when p_act = 'get' then 'store:view' else 'store:manage' end   -- v61
     when 'cbt_admin_series_meta'    then case when p_act = 'get' then 'store:view' else 'store:manage' end   -- v64
+    when 'cbt_admin_test_reviews'   then case when p_act = 'get' then 'reviews:view' else 'reviews:manage' end   -- v67
   end
 $$;
 revoke all on function cbt_private.admin_need(text, text) from public, anon, authenticated;

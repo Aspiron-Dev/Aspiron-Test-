@@ -1374,3 +1374,129 @@ a.rsc,a.rsc *{color:inherit;text-decoration:none}a.rsc small{color:var(--mut)}
 .pst-tabs>.pst-bd{top:auto;bottom:-14px;z-index:-1;transform:none;pointer-events:none}
 .pst-art{backface-visibility:hidden;transform:translateZ(0)}
 @media (prefers-reduced-motion: reduce){.pst-tabs .tt2 button,.pst-tabs .tt2 .ti,.pst-tabs .tt2 small{transition:none}}
+/* ---------- menu: the classic menu's layout, narrower, page behind blurred, items come in one by one ---------- */
+.drawer{width:min(300px,66vw);padding:0 0 calc(14px + env(safe-area-inset-bottom,0px));gap:0;border-radius:0 26px 26px 0;box-shadow:24px 0 60px -24px rgba(0,0,0,.45);transition:transform .42s cubic-bezier(.2,.9,.25,1),visibility 0s linear .42s}
+.drawer.open{transition:transform .42s cubic-bezier(.2,.9,.25,1),visibility 0s}
+.drawer.open>*{animation:none}
+.scrim{-webkit-backdrop-filter:blur(10px) saturate(.9);backdrop-filter:blur(10px) saturate(.9);background:rgba(10,10,14,.32)}
+.drawer .mtop,.drawer .mgh,.drawer .mi,.drawer .mdiv{opacity:0}
+.drawer.open .mtop,.drawer.open .mgh,.drawer.open .mi,.drawer.open .mdiv{animation:mIn .34s cubic-bezier(.2,.9,.25,1) both;animation-delay:calc(var(--i,0) * 22ms + 60ms)}
+@keyframes mIn{from{opacity:0;transform:translate3d(-14px,-6px,0)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.drawer .mtop,.drawer .mgh,.drawer .mi,.drawer .mdiv{opacity:1;animation:none!important}}
+.mtop{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:calc(26px + env(safe-area-inset-top,0px)) 16px 18px;background:linear-gradient(180deg,var(--accSoft),transparent);border-bottom:1px solid var(--line)}
+.mx{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:12px;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line);color:var(--mut)}
+.mtop .av.mav{width:76px;height:76px;font-size:28px;border-radius:50%;box-shadow:0 0 0 4px var(--surface),0 0 0 6px color-mix(in srgb,var(--acc) 35%,transparent);margin-bottom:8px}
+.mtop b{font-size:17px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mtop small{font-size:12.5px;color:var(--mut)}
+.mvp{margin-top:10px;height:34px;padding:0 16px;border-radius:99px;font-size:13px;font-weight:600;color:var(--acc);background:var(--surface);border:1px solid color-mix(in srgb,var(--acc) 35%,var(--line));transition:transform .2s}
+.mvp:active{transform:scale(.96)}
+.mlist{display:flex;flex-direction:column;padding:8px 8px 0}
+.mgh{margin:14px 12px 4px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.mgh:first-child{margin-top:6px}
+.drawer .mi{display:flex;align-items:center;gap:13px;width:100%;min-height:44px;padding:0 12px;border-radius:12px;font-size:14.5px;font-weight:500;color:var(--tx);text-align:left;transition:background .2s,transform .2s}
+.drawer .mi svg{flex:none;width:20px;height:20px;color:var(--mut)}
+.drawer .mi span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drawer .mi:active{transform:scale(.98);background:var(--surface2)}
+.drawer .mi.on{background:var(--accSoft);color:var(--acc)}.drawer .mi.on svg{color:var(--acc)}
+.drawer .mi.sm{font-size:13px;color:var(--mut);min-height:40px}
+.drawer .mi.mout{color:var(--err)}.drawer .mi.mout svg{color:var(--err)}
+.mnew{flex:none;font-style:normal;font-size:10px;font-weight:700;letter-spacing:.04em;color:#fff;background:#e0364a;padding:3px 7px;border-radius:99px}
+.mcnt{flex:none;font-style:normal;font-size:11px;font-weight:700;color:#fff;background:var(--acc);min-width:20px;height:20px;padding:0 6px;border-radius:99px;display:grid;place-items:center}
+.mval{flex:none;font-style:normal;font-size:12px;color:var(--faint)}
+.drawer .mdiv{height:1px;background:var(--line);margin:10px 12px}
+.drawer .mlist .mi{flex-direction:row!important;justify-content:flex-start!important;align-items:center!important;text-align:left!important;margin:0!important}
+/* ---------- swipe between tabs; slide along the dock ---------- */
+.main{touch-action:pan-y;will-change:auto}
+.main.swl>*{animation:swL .42s cubic-bezier(.2,.9,.25,1) backwards}
+.main.swr>*{animation:swR .42s cubic-bezier(.2,.9,.25,1) backwards}
+.main.swl>*:nth-child(2),.main.swr>*:nth-child(2){animation-delay:.03s}
+.main.swl>*:nth-child(n+3),.main.swr>*:nth-child(n+3){animation-delay:.06s}
+@keyframes swL{from{opacity:0;transform:translate3d(48px,0,0)}}
+@keyframes swR{from{opacity:0;transform:translate3d(-48px,0,0)}}
+.dock{touch-action:none}
+.dock.drag::before{transition:transform .22s cubic-bezier(.2,.9,.25,1)}
+.dock.drag button.on{color:var(--faint);font-weight:500}
+.dock button.hov{color:var(--tx)!important;font-weight:600!important}
+.dock button.hov svg.i{transform:translateY(-3px) scale(1.08)}
+@media (prefers-reduced-motion:reduce){.main.swl>*,.main.swr>*{animation:none}}
+/* ---------- header buttons: smaller boxes, three-line menu, bell with a count ---------- */
+.hdr-in{grid-template-columns:38px 1fr 38px}
+.hdr-in .ib{width:38px;height:38px;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);border-color:color-mix(in srgb,var(--line) 80%,transparent)}
+.hdr-in .ib svg{width:20px;height:20px;stroke-width:1.8}
+#mnu svg path{transition:transform .35s cubic-bezier(.2,.9,.25,1);transform-origin:center}
+#mnu:active svg path:nth-child(2){transform:scaleX(1.5)}
+#bell .dot{top:-5px;right:-5px;min-width:18px;height:18px;width:auto;padding:0 5px;border-radius:99px;display:grid;place-items:center;font-size:10.5px;font-weight:700;color:#fff;line-height:1;background:var(--err);box-shadow:0 0 0 2px var(--bg)}
+#bell .dot:empty{min-width:9px;width:9px;height:9px;padding:0;top:6px;right:7px}
+/* ---------- menu: NEW tag in the app's own colours; a calmer, buttery entrance ---------- */
+.mnew{font-size:9.5px;font-weight:700;letter-spacing:.08em;color:var(--acc);background:var(--accSoft);border:1px solid color-mix(in srgb,var(--acc) 22%,transparent);padding:2px 7px;border-radius:7px}
+.drawer{transition:transform .5s cubic-bezier(.22,1,.36,1),visibility 0s linear .5s}
+.drawer.open{transition:transform .5s cubic-bezier(.22,1,.36,1),visibility 0s}
+.drawer.open .mtop,.drawer.open .mgh,.drawer.open .mi,.drawer.open .mdiv{animation:mIn2 .55s cubic-bezier(.22,1,.36,1) both;animation-delay:calc(min(var(--i,0),24) * 16ms + 110ms)}
+@keyframes mIn2{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:none}}
+.scrim{transition:opacity .45s cubic-bezier(.22,1,.36,1),visibility 0s linear .45s}
+.scrim.open{transition:opacity .45s cubic-bezier(.22,1,.36,1),visibility 0s}
+/* ---------- notifications page ---------- */
+.ntt{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ntt .seg{flex:0 0 auto;min-width:210px}
+.ntt .lnk{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--acc)}
+.nts{display:flex;flex-direction:column;gap:10px}
+.nt3{position:relative;display:flex;align-items:flex-start;gap:13px;width:100%;padding:15px 14px 15px 15px;border-radius:20px;background:var(--surface);border:1px solid var(--line);text-align:left;box-shadow:0 10px 26px -22px rgba(0,0,0,.35);transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s;animation:rise .5s cubic-bezier(.22,1,.36,1) both;animation-delay:var(--d,0ms)}
+.nt3:active{transform:scale(.985)}
+.nt3.un{border-color:color-mix(in srgb,var(--acc) 30%,var(--line));background:linear-gradient(135deg,color-mix(in srgb,var(--accSoft) 70%,var(--surface)),var(--surface) 60%)}
+.nt3-i{flex:none;width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:var(--surface2);color:var(--mut)}
+.nt3.k-link .nt3-i{background:var(--accSoft);color:var(--acc)}
+.nt3.k-img .nt3-i{background:color-mix(in srgb,#8a6fd1 14%,var(--surface));color:#7a5fc4}
+.nt3.un.k-msg .nt3-i{background:color-mix(in srgb,var(--ok) 13%,var(--surface));color:var(--ok)}
+.nt3-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.nt3-h{display:flex;align-items:center;gap:8px}
+.nt3-h b{flex:1;min-width:0;font-size:15px;font-weight:500;line-height:1.35;color:var(--tx)}
+.nt3.un .nt3-h b{font-weight:650}
+.nt3-dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--err);box-shadow:0 0 0 3px color-mix(in srgb,var(--err) 18%,transparent)}
+.nt3-b p{margin:0;font-size:13.5px;line-height:1.5;color:var(--mut);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nt3-m{display:flex;align-items:center;gap:8px;margin-top:2px}
+.nt3-m time{font-size:12px;color:var(--faint)}
+.nt3-m em{font-style:normal;font-size:11px;font-weight:600;color:var(--mut);background:var(--surface2);padding:2px 8px;border-radius:7px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nt3>svg{flex:none;align-self:center;color:var(--faint)}
+.nte{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:56px 24px}
+.nte.sm{padding:36px 24px}
+.nte-i{width:84px;height:84px;border-radius:28px;display:grid;place-items:center;color:var(--acc);background:radial-gradient(circle at 30% 25%,var(--surface),var(--accSoft));box-shadow:0 0 0 8px color-mix(in srgb,var(--accSoft) 45%,transparent);margin-bottom:10px;animation:rise .6s cubic-bezier(.22,1,.36,1) both}
+.nte b{font-size:18px;font-weight:600}.nte p{margin:0;font-size:14px;line-height:1.55;color:var(--mut);max-width:280px}
+@media (prefers-reduced-motion:reduce){.nt3,.nte-i{animation:none}}
+/* ---------- butter pass: lighter menu opening / closing, lighter blur while scrolling ---------- */
+.drawer{will-change:transform;contain:layout paint;width:min(300px,66vw);box-shadow:12px 0 32px -18px rgba(0,0,0,.35);
+  transition:transform .38s cubic-bezier(.32,.72,0,1),visibility 0s linear .38s}
+.drawer.open{transition:transform .42s cubic-bezier(.32,.72,0,1),visibility 0s}
+/* rows are always visible; on opening they rise into place one by one (and simply stay put while it closes) */
+.drawer .mtop,.drawer .mgh,.drawer .mi,.drawer .mdiv{opacity:1;animation:none}
+.drawer.open .mtop,.drawer.open .mgh,.drawer.open .mi,.drawer.open .mdiv{animation:mIn3 .46s cubic-bezier(.22,1,.36,1) backwards;animation-delay:calc(min(var(--i,0),16) * 24ms + 90ms)}
+@keyframes mIn3{from{opacity:0;transform:translate3d(0,12px,0)}}
+/* the page behind: a light blur that is drawn once, and only the dark tint fades */
+.scrim{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;transition:visibility 0s linear .38s}
+.scrim::before{content:"";position:absolute;inset:0;background:rgba(10,10,14,.34);opacity:0;transition:opacity .38s cubic-bezier(.32,.72,0,1)}
+.scrim.open{-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);transition:visibility 0s}
+.scrim.open::before{opacity:1}
+/* header and dock: a smaller blur radius costs much less on every scrolled frame */
+.hdr,.hdr.sc{-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.dock{-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+@media (prefers-reduced-motion:reduce){.drawer.open .mtop,.drawer.open .mgh,.drawer.open .mi,.drawer.open .mdiv{animation:none}}
+.scrim,.scrim.open{opacity:1;-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)}
+/* ---------- pages open in place (no sliding in from the side): a quick, soft fade ---------- */
+.scr{transform:none;opacity:0;transition:opacity .2s ease-out,visibility 0s linear .2s}
+.scr.open{transform:none;opacity:1;transition:opacity .2s ease-out,visibility 0s}
+.scr-in.fwd,.scr-in.bwd{animation:scrFade .24s ease-out both}
+@keyframes scrFade{from{opacity:0;transform:translate3d(0,6px,0)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.scr,.scr.open{transition:none}.scr-in.fwd,.scr-in.bwd{animation:none}}
+/* ---------- swipe: the neighbour tab is drawn beside the page; the dock pill follows the finger ---------- */
+.swg{display:flex;flex-direction:column;gap:var(--gap);background:transparent;contain:layout paint}
+.swg>*{animation:none!important;opacity:1!important;transform:none!important}
+.dock.swp::before{transition:none}
+.main{will-change:auto}
+/* ---------- app-like on phones: no double-tap / pinch zoom, no grey tap flash, no zoom when a field is focused ---------- */
+:host{-webkit-tap-highlight-color:transparent}
+button,a,.chips button,.seg button{touch-action:manipulation}
+@media (max-width:820px){input,select,textarea,.inp{font-size:16px!important}}
+/* ---------- "two quick things": install + notifications ---------- */
+.su-l{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.su-r{display:flex;align-items:center;gap:12px;padding:14px;border-radius:18px;background:var(--surface);border:1px solid var(--line)}
+.su-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.su-t b{font-size:15px;font-weight:600}.su-t small{font-size:12.5px;color:var(--mut);line-height:1.4}
+.su-r .btn{flex:none}
