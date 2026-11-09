@@ -7,7 +7,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=30;
+const V3VER=31;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const v3On=()=>lsGet('cbt_v3',true)!==false;
@@ -206,7 +206,19 @@ const VIEW={},AFTER={};
 let main,dock;
 const tabOf=h=>{const m=/^#\/x\/(test|tools|lib|stats)$/.exec(h||'');return m?m[1]:'home'};
 const isNewHash=h=>!h||h==='#'||h==='#/'||/^#\/x\/(test|tools|lib|stats)$/.test(h);
-function syncDock(){dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab));dock.querySelectorAll('button').forEach(b=>{const on=b.dataset.tab===S.tab;b.classList.toggle('on',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')})}
+/* ---------- desktop website parts (shown from 1024 px wide; phones never see them) ---------- */
+const DNAV=[['home','Home'],['test','Test Series'],['tools','Tools'],['lib','Library'],['stats','Analytics']];
+function deskSync(){const n=$('#dnav');if(!n)return;
+  if(!n.firstChild){n.innerHTML=DNAV.map(([k,l])=>`<button data-a="tab" data-tab="${k}">${l}</button>`).join('')+`<button data-a="dk" data-k="pyq">PYQ</button><button data-a="dk" data-k="qb">Question Bank</button><button data-a="dk" data-k="ranks">Ranks</button>`;
+    const f=$('#dfoot');if(f)f.innerHTML=`<div class="df-in"><div class="df-b"><span class="bmk" aria-hidden="true"><i class="bmk-w"><i class="bmk-s"></i></i><span class="bmk-e"><span>EDUCATION</span></span></span><p>NEET and JEE test series with the real exam pattern, All-India rank and detailed analysis.</p></div>
+     <div class="df-c"><b>Study</b><button data-a="tab" data-tab="test">Test series</button><button data-a="dk" data-k="pyq">PYQ Analyzer</button><button data-a="dk" data-k="qb">Question bank</button><button data-a="dk" data-k="gen">Test generator</button></div>
+     <div class="df-c"><b>Your progress</b><button data-a="dk" data-k="ranks">Ranks</button><button data-a="dk" data-k="hist">Test history</button><button data-a="dk" data-k="mk">Mistake notebook</button><button data-a="dk" data-k="trk">Study tracker</button></div>
+     <div class="df-c"><b>Help</b><button data-a="setHelp">Contact us</button><button data-a="setAbout">About us</button><button data-a="setTerms">Terms</button><a href="privacy" target="_blank" rel="noopener">Privacy</a><a href="refund" target="_blank" rel="noopener">Refund</a></div></div>
+     <div class="df-bot"><span>© ${new Date().getFullYear()} Aspiron Education</span><a href="store">Store</a></div>`}
+  n.querySelectorAll('[data-tab]').forEach(b=>{const on=b.dataset.tab===S.tab;b.classList.toggle('on',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')});
+  const d=$('#dav');if(d){const h=avatar('dav-i');if(d.innerHTML!==h)d.innerHTML=h}}
+A.dk=el=>({pyq:()=>openPyq(),qb:()=>openQB(),gen:()=>openGen(),ranks:()=>openRanks(),hist:()=>A.hist(),mk:()=>openMistakes(),trk:()=>openTracker()}[el.dataset.k]||(()=>{}))();
+function syncDock(){try{deskSync()}catch(e){}dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab));dock.querySelectorAll('button').forEach(b=>{const on=b.dataset.tab===S.tab;b.classList.toggle('on',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')})}
 let timers=[];
 const every=(fn,ms)=>{const t=setInterval(fn,ms);timers.push(t);return t};
 function render(anim){timers.forEach(clearInterval);timers=[];main.dataset.tab=S.tab;try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please switch to the classic design from the menu and tell us.</p></div>`}
@@ -225,8 +237,11 @@ const N=(v,dec)=>`<span data-n="${v}">${dec?(+v).toFixed(dec):fmtN(+v)}</span>`;
 const SKEL=`<header class="hdr" id="hdr"><i class="hdr-tint" id="hdrTint" aria-hidden="true"></i><div class="hdr-in">
   <button class="ib" data-a="menu" aria-label="Menu" id="mnu"></button>
   <a class="brand" href="#/" data-a="tab" data-tab="home" aria-label="Aspiron Education, go to Home"><span class="bmk" aria-hidden="true"><i class="bmk-w" id="bmk"><i class="bmk-s"></i></i><span class="bmk-e"><span>EDUCATION</span></span></span></a>
-  <button class="ib" data-a="bell" aria-label="Notifications" id="bell"></button></div></header>
+  <nav class="dnav" id="dnav" aria-label="Main"></nav>
+  <button class="ib" data-a="bell" aria-label="Notifications" id="bell"></button>
+  <button class="dav" data-a="menu" aria-label="Your account and menu" id="dav"></button></div></header>
  <main class="main" id="main"></main>
+ <footer class="dfoot" id="dfoot"></footer>
  <nav class="dock" id="dock" aria-label="Main"></nav>
  <section class="scr" id="scr" aria-hidden="true"><div class="scr-h"><button class="ib" data-a="back" aria-label="Back" id="scrBack"></button><div><h2 id="scrT"></h2><p id="scrS"></p></div><span id="scrR"></span></div><div class="scr-b" id="scrB"></div></section>
  <div class="scrim" id="scrim" data-a="close"></div><div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetT"></div><aside class="drawer" id="drawer" aria-label="Menu"></aside>
