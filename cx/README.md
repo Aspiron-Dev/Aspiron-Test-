@@ -3,7 +3,6 @@
 The admin page `cp-dt764twzf54s5m.html` loads, in order: `config.js`, `parser.js`, `cx/core.js`, `cx/ui.js`,
 every `cx/m-*.js` module, then `cx/shell.js` (which boots the app on DOMContentLoaded).
 No build step, no framework. Each module is one classic script wrapped in an IIFE that calls `AX.mod({...})`.
-The old panel stays reachable as `cp-dt764twzf54s5m-old.html` (backup only).
 
 ## Rules for every module
 - **Never build HTML by string concatenation of data.** Use the tagged template `AX.h\`...\`` — every `${value}` is

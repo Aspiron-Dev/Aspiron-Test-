@@ -17,7 +17,7 @@ const server = http.createServer((req, res) => {
   const f = path.join(ROOT, p === '/' ? 'index.html' : p);
   if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('404'); }
   let body = fs.readFileSync(f);
-  if (p === '/cp-dt764twzf54s5m.html' || p === '/cp-dt764twzf54s5m-old.html') { // test only: drop the admin key gate
+  if (p === '/cp-dt764twzf54s5m.html') { // test only: drop the admin key gate
     const s = body.toString(), a = s.indexOf('<script>(function(){'), b = s.indexOf('</script>', a);
     body = Buffer.from(s.slice(0, a) + s.slice(b + 9));
   }

@@ -185,6 +185,12 @@ select pg_temp.chk('14a view-only member cannot delete a student',
   public.cbt_admin(:'vt','student_delete','{"id":"bbbbbbbb-0000-0000-0000-00000000000a"}')->>'error' = 'forbidden');
 select pg_temp.chk('14b view-only member cannot open payments', public.cbt_admin_payments(:'vt','get','{}')->>'error' = 'forbidden');
 select pg_temp.chk('14c member cannot see the team', public.cbt_admin_team(:'vt','get','{}')->>'error' = 'forbidden');
+select pg_temp.chk('14c2 member cannot read or set a test PDF link (owner only)',
+  public.cbt_admin_test_pdf(:'vt','get','{}')->>'error' = 'forbidden'
+  and public.cbt_admin_test_pdf(:'vt','set','{"id":"aaaaaaaa-0000-0000-0000-000000000001","url":"https://drive.google.com/file/d/x"}')->>'error' = 'forbidden');
+select public.cbt_admin_test_pdf(:'ow','remove','{"id":"aaaaaaaa-0000-0000-0000-000000000001"}') \gset pdf_
+select pg_temp.chk('14c3 an owner change to a test PDF link is written to the activity log',
+  exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_test_pdf' and act = 'remove' and who = 'Owner'));
 select pg_temp.chk('14d new admin passwords must be strong',
   public.cbt_admin_team(:'ow','user_save','{"name":"Weak","username":"weak1","password":"aspiron123","perms":{}}')->>'error' = 'password');
 select public.cbt_admin_2fa(:'ow','start','{"password":"OwnerPass2026x"}')->>'secret' as sec \gset

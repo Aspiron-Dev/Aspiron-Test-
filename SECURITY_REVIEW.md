@@ -34,7 +34,7 @@ R4–R13: see the status column (v48 and the steps named there).
 R4, R5, R6, R10, R13: `supabase_v48_review_low.sql` (tests `break_it.sql` 18a–18j). R8: Promotions → orders show
 "Promoter's own number". R9: the admin console runs with no inline script (`script-src` hashes); `unsafe-eval` stays
 because the OCR library (Tesseract, used when importing scanned PDFs) could not be tested without it; the old backup
-panel keeps its CSP. R7: `send-push` uses `SB_SECRET_KEY` when set, then the legacy keys can be turned off
+panel was removed on 2026-11-10 (with its looser CSP), and the console's CSP no longer lists unpkg / cdnjs. R7: `send-push` uses `SB_SECRET_KEY` when set, then the legacy keys can be turned off
 (SECURITY_RUNBOOK.md §7). R11: `supabase_backup_role.sql` + secret `SUPABASE_BACKUP_DB_URL` (BACKUP.md). R12: needs
 a custom domain (no change possible on GitHub Pages; frame-buster + CSP meta stay).
 | # | Sev | Finding | Where | What an attacker gets | Fix (after go-ahead) | Verify |
