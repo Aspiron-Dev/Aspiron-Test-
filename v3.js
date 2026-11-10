@@ -7,25 +7,29 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=35;
+const V3VER=36;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
-const v3On=()=>lsGet('cbt_v3',true)!==false;
+/* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
+   automated tests (tests/e2e), which still check the exam engine's own pages; no student can reach it. */
+const v3On=()=>!lsGet('cbt_v3_ci',false);
 
 /* ---------- classic-menu entries (always added, so the beta can be found) ---------- */
 function addEntry(){
   const l=document.querySelector('#layer .drl');
   if(l&&!l.querySelector('.v3try')){l.insertAdjacentHTML('afterbegin',`<button class="dri v3try" onclick="closeModal();v3Enable()" style="font-weight:600">${ic('spark',22)}<span>Try the new design <small style="opacity:.6;font-weight:500">(beta)</small></span></button><div class="sbd"></div>`)}
 }
-if(typeof openMenu==='function'){const _om=openMenu;openMenu=function(){const r=_om.apply(this,arguments);try{addEntry()}catch(e){}return r}}
-if(typeof openSettings==='function'){const _os=openSettings;openSettings=function(){const r=_os.apply(this,arguments);try{const b=document.querySelector('#layer .bsheet');if(b&&!b.querySelector('.v3set')&&typeof stRow==='function'){const first=b.querySelector('.shl');first&&first.insertAdjacentHTML('afterend',`<div class="v3set">${stRow('palette','New design (beta)',v3On()?'On, tap to go back to the classic design':'Try the new look of the app',v3On()?'closeModal();v3Disable()':'closeModal();v3Enable()')}</div>`)}}catch(e){}return r}}
+
 
 /* ---------- host + shadow root ---------- */
 let host=null,root=null,booted=false;
 const gStyle=document.createElement('style');gStyle.id='v3g';
-gStyle.textContent=`body.v3on:not(.v3old):not(.intest) .hdr,body.v3on:not(.v3old):not(.intest) #app,body.v3on:not(.v3old):not(.intest) #bnav,body.v3on:not(.v3old):not(.intest) .instbar{display:none!important}
+gStyle.textContent=`body.v3on:not(.v3old):not(.intest) .hdr,body.v3on:not(.v3old):not(.intest):not(.x3ins) #app,body.v3on:not(.v3old):not(.intest) #bnav,body.v3on:not(.v3old):not(.intest) .instbar{display:none!important}
 body.v3on:not(.v3old):not(.intest){padding:0!important;background:var(--v3bg,#f5f5f3)!important}
-body.intest #v3host,body:not(.v3on) #v3host{display:none!important}`;
+body.intest #v3host,body:not(.v3on) #v3host{display:none!important}
+:where(html.v3c) .btn{color:var(--onpri3,#fff)}
+body.v3on #layer .modal .box{border-radius:24px;background:var(--surface);color:var(--tx);font-family:Geist,system-ui,sans-serif}
+body.v3on #layer .modal .btn{border-radius:14px;min-height:46px;font-weight:600}`;
 function ensureHost(){
   if(host)return;
   document.head.appendChild(gStyle);
@@ -58,7 +62,7 @@ const P={star:'<path d="M11.5 2.3a.6.6 0 0 1 1 0l2.6 5.4 5.9.9a.6.6 0 0 1 .3 1l-
  lib:'<rect class="f" x="3.5" y="4" width="4.6" height="16.5" rx="1.3"/><rect class="f" x="9.7" y="4" width="4.6" height="16.5" rx="1.3"/><rect class="f" x="16.2" y="4.6" width="4.6" height="16" rx="1.3" transform="rotate(-12 18.5 12.6)"/><path d="M5.8 8h0"/><path d="M12 8h0"/>',
  stats:'<rect class="f" x="3.5" y="12" width="4.6" height="8.5" rx="1.3"/><rect class="f" x="9.7" y="7" width="4.6" height="13.5" rx="1.3"/><rect class="f" x="15.9" y="3.5" width="4.6" height="17" rx="1.3"/>',
  menu:'<path d="M4.5 6.5h15"/><path d="M8 12h8"/><path d="M4.5 17.5h15"/>',
- bell:'<path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/>',
+ wifiOff:'<path d="M12 20h.01"/><path d="M8.5 16.4a5 5 0 0 1 7 0"/><path d="M5 12.9a10 10 0 0 1 5.2-2.8"/><path d="M19 12.9a10 10 0 0 0-2.3-1.7"/><path d="M2 8.8a15 15 0 0 1 4.2-2.6"/><path d="M22 8.8A15 15 0 0 0 11 5"/><path d="m2 2 20 20"/>',bell:'<path d="M10.3 21a2 2 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/>',
  back:'<path d="m15 18-6-6 6-6"/>',right:'<path d="m9 18 6-6-6-6"/>',down:'<path d="m6 9 6 6 6-6"/>',x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
  check:'<path d="M20 6 9 17l-5-5"/>',checks:'<path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/>',
  swap:'<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>',
@@ -151,6 +155,9 @@ function applyTheme(t){if(!host)return;const mode=resolveMode(t.mode),pal=THEMES
   for(const k in TK)host.style.setProperty(TK[k],tk[k]);
   CHL[mode==='light'?'light':'dark'].forEach((c,i)=>host.style.setProperty('--c'+(i+1),c));
   host.dataset.mode=mode;document.body.style.setProperty('--v3bg',tk.bg);
+  /* the few classic pieces still in use (exam engine, its pop-ups) take the same colours: no old blue anywhere */
+  try{const H=document.documentElement,cv={'--bg':tk.bg,'--surface':tk.s,'--surface2':tk.s2,'--bd':tk.ln,'--hair':tk.ln,'--tx':tk.tx,'--mut':tk.mt,'--pri':tk.acc,'--pri2':tk.a2,'--priSoft':tk.as,'--grad':`linear-gradient(180deg,${tk.ink},${tk.ink})`,'--glow':'rgba(0,0,0,.16)','--onpri3':tk.on,'--nav':tk.nav};
+    for(const k in cv)H.style.setProperty(k,cv[k]);H.dataset.theme=mode==='light'?'light':'dark';if(mode==='black')H.dataset.oled='1';else delete H.dataset.oled;H.classList.add('v3c')}catch(e){}
   if(!document.body.classList.contains('v3old')){const m=document.querySelector('meta[name="theme-color"]');m&&m.setAttribute('content',tk.bg)}}
 const saveTheme=()=>lsSet('cbt_v3_theme',TH);
 MQ.addEventListener&&MQ.addEventListener('change',()=>{if((THP||TH).mode==='system')applyTheme(THP||TH)});
@@ -190,13 +197,17 @@ A.copy=el=>{const c=el.dataset.v;const done=()=>toast3('Copied: '+c);try{navigat
 /* ---------- the classic screens: open them, show a pill to come back ---------- */
 let lockHash=null;
 function toOld(){document.body.classList.add('v3old');host&&host.setAttribute('data-view','old')}
-function toNew(){document.body.classList.remove('v3old','x3ins');lockHash=null;host&&host.removeAttribute('data-view');const m=document.querySelector('meta[name="theme-color"]');m&&m.setAttribute('content',getComputedStyle(host).getPropertyValue('--bg').trim()||'#f5f5f3')}
+function toNew(){document.body.classList.remove('v3old','x3ins');if(!INTEST){const ins=document.querySelector('#app .ins');if(ins)ins.remove()}lockHash=null;host&&host.removeAttribute('data-view');const m=document.querySelector('meta[name="theme-color"]');m&&m.setAttribute('content',getComputedStyle(host).getPropertyValue('--bg').trim()||'#f5f5f3')}
 /* go to a classic page by its address (#/qb, #/m, #/s/<id> …) */
 function oldHash(h){closeLayer();unwind(()=>{toOld();if(location.hash===h)_route();else location.hash=h})}
 /* run a classic function that draws straight into the page (openReview …) */
 function oldRun(fn){closeLayer();unwind(()=>{toOld();lockHash=location.hash||'#/';try{fn()}catch(e){toNew();toast3('Could not open this. Please try again.')}})}
 /* a classic pop-up (modal) over the new design: nothing to switch */
 function oldModal(fn){closeLayer();try{fn()}catch(e){toast3('Could not open this. Please try again.')}}
+/* the catalog could not load (no internet): say so in the new look, with Try again */
+function netErr3(){if(!main)return;toNew();try{S.tab=tabOf(location.hash);main.dataset.tab=S.tab;syncDock()}catch(e){}main.innerHTML=`<div class="card empty net3"><span class="ti">${ic('wifiOff',26)}</span><b>You are offline</b><p>${navigator.onLine===false?'No internet connection. Check your data or Wi-Fi and try again.':'Could not reach Aspiron. Please try again in a moment.'}</p><button class="btn" data-a="retryNet">Try again</button></div>`}
+A.retryNet=()=>{main.innerHTML='<div class="card sk" style="height:220px;margin-top:8px"></div>';route()};
+addEventListener('online',()=>{if(main&&main.querySelector('.net3'))route()});
 A.backNew=()=>{const t=S.tab||'home',h=t==='home'?'#/':'#/x/'+t;toNew();if(location.hash!==h)location.hash=h;else render(true)};
 
 /* ---------- state, dock, render ---------- */
@@ -237,7 +248,7 @@ A.dk=el=>({pyq:()=>openPyq(),qb:()=>openQB(),gen:()=>openGen(),ranks:()=>openRan
 function syncDock(){try{deskSync()}catch(e){}dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab));dock.querySelectorAll('button').forEach(b=>{const on=b.dataset.tab===S.tab;b.classList.toggle('on',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')})}
 let timers=[];
 const every=(fn,ms)=>{const t=setInterval(fn,ms);timers.push(t);return t};
-function render(anim){timers.forEach(clearInterval);timers=[];main.dataset.tab=S.tab;try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please switch to the classic design from the menu and tell us.</p></div>`}
+function render(anim){timers.forEach(clearInterval);timers=[];main.dataset.tab=S.tab;try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please pull down to refresh, or tell us from Help.</p></div>`}
   main.classList.remove('in','swl','swr');if(swGhost){const g=swGhost;swGhost=null;main.style.transition='';main.style.transform='';dock&&dock.classList.remove('swp');requestAnimationFrame(()=>g.remove())}else if(anim&&!RM){void main.offsetWidth;main.classList.add(SWD==='l'?'swl':SWD==='r'?'swr':'in')}SWD='';try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);reveal(main)}
 /* content below the first screen fades up into place as it scrolls into view (once; nothing hides if the browser cannot) */
 let rvIO=null;
@@ -1150,14 +1161,13 @@ function setRow(i,t,d,a,right){return `<button class="row" data-a="${a}"><span c
 const tgl=on=>`<span class="tgl${on?' on':''}" aria-hidden="true"><i></i></span>`;
 function settingsView(){return {t:'Settings',s:'Your account and the app',key:'set',html:()=>{let c=null;try{c=cdGet()}catch(e){}
   return `<div class="stack" style="gap:10px"><p class="gh">Account</p><div class="card rows">${setRow('user','Profile','Name, photo, class and target exam','profile')}${setRow('target','Exam countdown',c?esc3(c.name)+', '+dS(c.date):'Set your exam date','cdEdit')}${setRow('sun','Theme and colours',esc3(themeLabel()),'setTheme')}</div></div>
-  <div class="stack" style="gap:10px"><p class="gh">App</p><div class="card rows">${setRow('bell','Phone notifications',npOn3()?'On, new notices appear on your phone':'Get new notices on your phone','setNp',tgl(npOn3()))}${setRow('mega','Opening sound',sndOn3()?'On, a soft sound with the opening animation':'Off, the app opens silently','setSnd',tgl(sndOn3()))}${standalone3()?'':setRow('dl','Install the app','Open it from your home screen, full screen','setInstall')}${setRow('swap','Classic design','Switch back to the older look','setClassic')}</div></div>
+  <div class="stack" style="gap:10px"><p class="gh">App</p><div class="card rows">${setRow('bell','Phone notifications',npOn3()?'On, new notices appear on your phone':'Get new notices on your phone','setNp',tgl(npOn3()))}${setRow('mega','Opening sound',sndOn3()?'On, a soft sound with the opening animation':'Off, the app opens silently','setSnd',tgl(sndOn3()))}${standalone3()?'':setRow('dl','Install the app','Open it from your home screen, full screen','setInstall')}</div></div>
   <div class="stack" style="gap:10px"><p class="gh">Help</p><div class="card rows">${setRow('mail','Chat with support','WhatsApp or Telegram','setHelp')}${setRow('info','About us','','setAbout')}${setRow('file','Terms and conditions','','setTerms')}${setRow('file','Privacy policy','','setPrivacy')}${setRow('file','Refund policy','','setRefund')}</div></div>
   <button class="btn lg ghost danger3" data-a="setOut">${ic('out',17)}Sign out</button>`}}}
 A.settings=()=>{closeLayer();push(settingsView())};
 A.setTheme=()=>openTheme();
 A.setSnd=()=>{const on=!sndOn3();try{LS.set('cbt_snd',on)}catch(e){}toast3(on?'Opening sound on':'Opening sound off');redraw()};
 A.setNp=async()=>{try{await npToggle()}catch(e){toast3('Could not change notifications')}setTimeout(()=>{if(top()&&top().key==='set')redraw()},300)};
-A.setClassic=()=>window.v3Disable();
 A.setPrivacy=()=>window.open('privacy','_blank','noopener');A.setRefund=()=>window.open('refund','_blank','noopener');
 A.setInstall=()=>{if(standalone3()){toast3('The app is already installed');return}
   try{if(typeof DIP!=='undefined'&&DIP){const p=DIP;DIP=null;p.prompt();return}}catch(e){}
@@ -1768,7 +1778,7 @@ A.menu=()=>{const u=unread();let n=0;const web=!standalone3();
 A.m=el=>{const k=el.dataset.k;closeLayer();
   const M={profile:A.profile,theme:openTheme,home:()=>go('home'),series:()=>go('test'),lib:()=>go('lib'),pyq:()=>openPyq(),qb:()=>openQB(),gen:()=>openGen(),ranks:()=>openRanks(),refer:()=>openRefer(),store:()=>{location.href='store'},history:A.hist,mistakes:()=>openMistakes(),saved:()=>openSaved(),tracker:()=>openTracker(),notif:A.bell,cd:A.cdEdit,
    settings:A.settings,about:A.setAbout,terms:A.setTerms,privacy:()=>window.open('privacy','_blank','noopener'),refund:()=>window.open('refund','_blank','noopener'),contact:A.setHelp,
-   classic:()=>window.v3Disable(),logout:A.setOut};
+   logout:A.setOut};
   setTimeout(()=>{(M[k]||(()=>{}))()},140)};
 
 /* ---------- theme page: preview live, apply to keep, reset to default ---------- */
@@ -1781,7 +1791,7 @@ function themeHtml(){const mode=resolveMode(THP.mode),P=THEMES[mode].pals,cur=TH
   <div class="bf" style="border:0;padding-top:4px"><h3>${THEMES[mode].name} palettes</h3><div class="pals">${Object.entries(P).map(([k,v])=>{const t=tokens(mode,k);
    return `<button class="pal${cur===k?' on':''}" data-a="thp" data-v="${k}" aria-pressed="${cur===k}"><span class="swt"><i style="background:${t.bg}"></i><i style="background:${t.s2}"></i><i style="background:linear-gradient(155deg,${t.h1},${t.h2})"></i><i style="background:linear-gradient(135deg,${t.a1},${t.a2})"></i></span><span><b>${v[0]}</b><small>${v[2]}</small></span><span class="ck">${ic('check')}</span></button>`}).join('')}</div></div>
   <div class="g2"><button class="btn ghost" data-a="thReset">Reset to default</button><button class="btn gold" data-a="thApply">Apply theme</button></div>
-  <p class="hint">The new design has its own colours. The exam screen and the classic design keep the theme you chose there.</p>`}
+  <p class="hint">These colours are used everywhere in the app, the exam screen too.</p>`}
 function openTheme(){THP=clone(TH);push({t:'Theme & colours',s:'Light, Dark or Black, with a palette',html:themeHtml,leave:()=>{THP=null;applyTheme(TH)}})}
 A.thm=el=>{THP.mode=el.dataset.v;applyTheme(THP);redraw()};
 A.thp=el=>{THP.pal[resolveMode(THP.mode)]=el.dataset.v;applyTheme(THP);redraw()};
@@ -1863,22 +1873,22 @@ route=async function(){
   /* classic addresses of pages that now live in the new design (question bank, test generator) */
   const m3=V3H.map(([re,f])=>[h.match(re),f]).find(x=>x[0]);
   if(m3){closeLayer();while(STK.length)pop();try{history.replaceState(null,'','#/')}catch(e){}h='#/';const f=goThen;goThen=()=>{f&&f();m3[1](m3[0])}}
-  if(!isNewHash(h)){toOld();return _route.apply(this,arguments)}
+  if(!isNewHash(h)){try{history.replaceState(null,'','#/')}catch(e){}h='#/'}
   toNew();
   /* the profile, countdown and study tracker kept on the account (cbt_keep): fetched once per page load, as the classic pages do */
   try{if(typeof keepPull==='function')setTimeout(keepPull,0)}catch(e){}
   if(!CAT||Date.now()-CATAT>30000){if(!CAT)main.innerHTML='<div class="card sk" style="height:220px;margin-top:8px"></div><div class="card sk" style="height:160px"></div><div class="card sk" style="height:200px"></div>';
-    const ok=await loadCat(!!CAT);if(!ok){if(AUTH){toOld()}return}if(INTEST||!AUTH)return}
+    const ok=await loadCat(!!CAT);if(!ok){if(AUTH)netErr3();return}if(INTEST||!AUTH)return}
   if(NOTES===null)loadNotes().then(()=>{if(S.tab==='test')softRender()});
   const tab=tabOf(h),changed=tab!==S.tab||!main.children.length||main.querySelector('.sk');S.tab=tab;syncDock();if(changed)scrollTo(0,0);render(changed);if(tab==='home'&&!goThen)setTimeout(maybeOnb,1100);if(tab==='home'&&!goThen)setTimeout(maybeSetup,1700);
   if(goThen){const f=goThen;goThen=null;setTimeout(f,0)}};
 if(typeof login==='function'){const _login=login;login=function(){document.body.classList.remove('v3on','v3old');return _login.apply(this,arguments)}}
 if(typeof cdRefresh==='function'){const _cdr=cdRefresh;cdRefresh=function(){const r=_cdr.apply(this,arguments);if(booted&&document.body.classList.contains('v3on')&&!document.body.classList.contains('v3old')&&(S.tab==='home'||S.tab==='tools'))softRender();return r}}
 window.v3BackNew=()=>{document.body.classList.remove('x3ins');A.backNew()};
-window.v3Enable=function(){lsSet('cbt_v3',true);if(typeof AUTH==='undefined'||!AUTH)return;boot();document.body.classList.add('v3on');toNew();S.tab='';if(!isNewHash(location.hash||'#/'))location.hash='#/';else route();setTimeout(()=>toast3('Welcome to the new design. Switch back any time from the menu.'),600)};
-window.v3Disable=function(){lsSet('cbt_v3',false);closeLayer();unwind(()=>{document.body.classList.remove('v3on','v3old');lockHash=null;try{typeof syncTheme==='function'&&syncTheme()}catch(e){}if(location.hash==='#/'||location.hash===''){_route()}else location.hash='#/';try{typeof toast==='function'&&toast('Classic design is back. Try the new one again from the menu.')}catch(e){}})};
+window.v3Enable=function(){lsSet('cbt_v3',true);return;if(typeof AUTH==='undefined'||!AUTH)return;boot();document.body.classList.add('v3on');toNew();S.tab='';if(!isNewHash(location.hash||'#/'))location.hash='#/';else route();setTimeout(()=>toast3('Welcome to the new design. Switch back any time from the menu.'),600)};
+window.v3Disable=function(){lsSet('cbt_v3',true)};
 /* already signed in and the new design chosen: take over the first screen */
-if(v3On()&&typeof AUTH!=='undefined'&&AUTH&&!INTEST){boot();document.body.classList.add('v3on');if(!isNewHash(location.hash||'#/'))toOld();else route()}
+if(v3On()&&typeof AUTH!=='undefined'&&AUTH&&!INTEST){boot();document.body.classList.add('v3on');route()}
 
 /* ================= REVIEW REQUEST after a test (both designs) =================
    After every submitted test the student is asked to rate THAT TEST (v66: cbt_test_review_save, private to the admin;
