@@ -103,7 +103,7 @@ Live database Claude ko nahi dikhta. Jo kaam pehle hi ho chuka ho, use seedha ti
   *Check:* naye email se account → confirm mail → access code se join → sign out → sirf email/Google se wapas sign in.
 
 ## Phase 5: Safai aur speed
-- [ ] **5.1 Purana admin panel hatana:** 👤 confirm karo ki naya admin console poori tarah use ho raha hai, phir 🤖 purana panel hatayega
+- [x] **5.1 Purana admin panel hatana (ho gaya, 10 Nov):** 👤 confirm karo ki naya admin console poori tarah use ho raha hai, phir 🤖 purana panel hatayega
   (`cp-dt764twzf54s5m-old.html` aur `admin1.js`–`admin19.js`). Isse security finding R9 bhi kam hoti hai.
 - [ ] **5.2 🤖 Band kiya hua "New look" design** (`design-v2.css`) hatana ya rakhna (👤 aapka faisla). README ka purana section bhi theek hoga.
 - [ ] **5.3 🤖 Speed:** fonts 5 se 2, posters aur banners WebP me. pagespeed.web.dev ki report pehle aur baad me.

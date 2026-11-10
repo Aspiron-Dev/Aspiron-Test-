@@ -21,7 +21,6 @@ Legend: **[T]** = a test was run on a local copy of the database (production bas
 | `index.html` (student app) | Approved students | Mobile + code → token in `localStorage.cbt_auth`; every RPC re-checks it on the server | `#/` home, `#/series`, `#/s/<series>`, `#/f/<folder>`, `#/t/<test>` (test), `#/r` results, `#/m` mistakes, `#/b` bookmarks, `#/n` notices, `#/pyq/…`, `#/h/…`, `#/help` |
 | `store.html` | Anyone | None (public catalogue, orders) | `?ref=<promo>`, `#x=<item>` |
 | `cp-dt764twzf54s5m.html` (admin console, `cx/`) | Owner, team | Page gate: `#k=<access key>` (SHA-256 in page, obscurity only) → sign-in (password + 2FA) → session `as1.…`; permissions checked in the DB per call | `#/home`, `#/students` (all, requests), `#/payments`, `#/tests` (library, all), `#/results` (all, insights), `#/live`, `#/reports`, `#/integrity`, `#/pyq`, `#/orders`, `#/store` (items, layout, explore, soon, settings), `#/promos`, `#/messages` (notices, banners, push), `#/reviews`, `#/team` (members, sessions, activity, security), `#/settings` |
-| `cp-dt764twzf54s5m-old.html` (old admin panel, backup) | Owner | Same page gate; signs in through `cbt_admin_login` (password + code) | Tabs inside the page |
 | `admin.html` | Anyone | Decoy "404" | – |
 | `sw.js` | – | Caches same-origin files only; Supabase answers are never cached | – |
 

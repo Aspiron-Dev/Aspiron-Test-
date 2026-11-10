@@ -1,4 +1,4 @@
-// Admin console: two-step sign-in set-up, sign-in with the code, backup panel, team page (1280 px and 390 px).
+// Admin console: two-step sign-in set-up, sign-in with the code, recovery code, team page (1280 px and 390 px).
 // The REAL pages in Chromium; every Supabase call is answered by the real SQL functions in the throw-away test
 // database built by tests/db/build.sh. Prints PASS/FAIL per check and exits 1 on any failure.
 const { chromium } = require('playwright');
@@ -17,7 +17,7 @@ const server = http.createServer((req, res) => {
   const f = path.join(ROOT, p === '/' ? 'index.html' : p);
   if (!f.startsWith(ROOT) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('404'); }
   let body = fs.readFileSync(f);
-  if (p === '/cp-dt764twzf54s5m.html' || p === '/cp-dt764twzf54s5m-old.html') { // test only: drop the admin key gate
+  if (p === '/cp-dt764twzf54s5m.html') { // test only: drop the admin key gate
     const s = body.toString(), a = s.indexOf('<script>(function(){'), b = s.indexOf('</script>', a);
     body = Buffer.from(s.slice(0, a) + s.slice(b + 9));
   }
@@ -89,12 +89,11 @@ async function rpcRoute(route) {
     // raw password no longer works anywhere
     const raw = (await q(`select public.cbt_admin('OwnerPass2026x','ping','{}') r`))[0].r;
     ok(raw.error === 'need_2fa', tag + ' password alone refused by the database');
-    // backup panel with a recovery code
-    await page.goto(BASE + 'cp-dt764twzf54s5m-old.html', { waitUntil: 'domcontentloaded' }); await page.waitForSelector('#pw');
-    await page.fill('#pw', 'OwnerPass2026x'); await page.click('.login .btn'); await page.waitForTimeout(700);
-    ok(await page.isVisible('#otp'), tag + ' backup panel asks for the code');
-    await page.fill('#otp', codes[0]); await page.click('.login .btn'); await page.waitForTimeout(1200);
-    ok(await page.$('#tb_students') !== null, tag + ' backup panel opens with a recovery code');
+    // a recovery code signs in once, in place of the authenticator code
+    const rc = (await q(`select public.cbt_admin_login('', 'OwnerPass2026x', 'e2e', $1, 'e2eKey2026') r`, [codes[0]]))[0].r;
+    ok(rc.ok === true && /^as1\./.test(rc.token || ''), tag + ' sign-in with a recovery code works');
+    const rc2 = (await q(`select public.cbt_admin_login('', 'OwnerPass2026x', 'e2e', $1, 'e2eKey2026') r`, [codes[0]]))[0].r;
+    ok(rc2.ok !== true, tag + ' the same recovery code is refused the second time');
     await page.goto(BASE + 'cp-dt764twzf54s5m.html#/team/members'); await page.waitForTimeout(1500);
     ok(/2-step on/.test(await page.textContent('#ax-page')), tag + ' team page shows owner 2-step on');
     ok(/Team sign-in/.test(await page.textContent('#ax-page')) && await page.$('[name=tlog]') !== null, tag + ' team page has the team sign-in switch');
