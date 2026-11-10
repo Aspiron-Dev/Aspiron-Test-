@@ -245,6 +245,13 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     const st = await p2.evaluate(() => [document.body.classList.contains('v3on'), document.body.classList.contains('v3old'), !!document.getElementById('v3host')]);
     ok(st[0] && !st[1] && st[2], 'new design is the default after sign-in (' + st.join(',') + ')');
     const vp = await p2.getAttribute('meta[name=viewport]', 'content'); ok(/user-scalable=no/.test(vp) && /maximum-scale=1/.test(vp), 'no pinch / double-tap zoom: ' + vp);
+    // Home says hello, and quick search (Ctrl K) opens a tool by name
+    const sr = () => p2.evaluate(() => { const r = document.getElementById('v3host').shadowRoot; const x = r.querySelector('[data-ob="skip"]'); if (x) x.click(); return [(r.querySelector('.hi3 h1') || {}).textContent || '', !!r.querySelector('.ck.open'), (r.querySelector('#scr.open #scrT') || {}).textContent || '']; });
+    let h3 = await sr(); ok(/^Good (morning|afternoon|evening|night)/.test(h3[0]), 'Home greets the student: ' + h3[0]);
+    await p2.waitForTimeout(2600); await p2.evaluate(() => { const r = document.getElementById('v3host').shadowRoot; const x = r.querySelector('#sheet.open [data-a="close"]'); if (x) x.click(); }); await p2.waitForTimeout(500);
+    await p2.keyboard.press('Control+k'); await p2.waitForTimeout(500); h3 = await sr(); ok(h3[1], 'Ctrl K opens quick search');
+    await p2.keyboard.type('marks calc'); await p2.waitForTimeout(300); await p2.keyboard.press('Enter'); await p2.waitForTimeout(900);
+    h3 = await sr(); ok(!h3[1] && /Marks calculator/.test(h3[2]), 'quick search opens the page that was typed: ' + h3[2]);
     ok(!e2.length, 'no page errors (new design default) ' + e2.join(' | ')); await c2.close(); }
   // the old design never comes back: not for a student who once chose it, not when the network fails, not on an unknown address
   await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
