@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=37;
+const V3VER=38;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -375,12 +375,7 @@ function storeCard(x,cls){const off=x.mrp&&x.mrp>x.price?Math.round((1-x.price/x
   return `<article class="card ${cls||'tc'}"><span class="tag">${[courseOf(x),esc3(x.section||'')].filter(Boolean).join(', ')||'Test series'}</span><h3>${esc3(x.title)}</h3>${x.subtitle?`<p class="mut" style="font-size:13px">${esc3(x.subtitle)}</p>`:''}
    <div class="ft"><span class="price">${x.price?`<b>₹${fmtN(x.price)}</b>${off?`<s>₹${fmtN(x.mrp)}</s><span class="badge off">${off}% off</span>`:''}`:'<span class="free">Free</span>'}</span><a class="btn sm ${soon?'':'gold'}" href="${storeUrl(x)}">${soon?ic('bell',15)+'Notify me':x.prebook&&x.buy_on===false?'Pre-book':'Buy now'}</a></div></article>`}
 function trending(){if(!STORE){loadStore();return `<section class="sec"><div class="sh"><h2>Trending test series</h2></div><div class="card sk" style="height:190px"></div></section>`}loadExtras();return trendRail(true)}
-/* a short hello on top of Home: the time of day, the date, and the one thing that matters now (a live test, the next test, a streak) */
-function hello3(){try{const nm=String((AUTH&&AUTH.name)||'').trim().split(/\s+/)[0]||'',h=new Date().getHours(),g=h<5?'Good night':h<12?'Good morning':h<17?'Good afternoon':'Good evening';
-  const U=upList(),live=U.filter(x=>['live','prog'].includes(x.st)),nx=U.find(x=>x.st==='wait'),st=stats(allRes()).streak||0;
-  const line=live.length?`<i class="dotl" aria-hidden="true"></i>${live.length===1?esc3(live[0].t.title)+' is live now':live.length+' tests are live now'}`:nx?`Next test ${dayWord(nx.t.opens_at).toLowerCase()}, ${fT(nx.t.opens_at)}`:st>1?`${st}-day streak. Keep it going.`:'Ready when you are.';
-  return `<div class="hi3"><div><small>${fD(nowMs(),{weekday:'long',day:'numeric',month:'long'})}</small><h1>${g}${nm?', '+esc3(nm):''}</h1><p>${line}</p></div>${st>1?`<span class="hi3-s" title="Study streak">${ic('spark',15)}<b>${st}</b>days</span>`:''}</div>`}catch(e){return ''}}
-VIEW.home=()=>hello3()+seriesHero()+cdCard3()+upcoming()+zone()+trending();
+VIEW.home=()=>seriesHero()+cdCard3()+upcoming()+zone()+trending();
 AFTER.home=()=>{tick(true);every(()=>tick(false),1000);autoRail('#trRail','#trDots')};
 function autoRail(rs,ds){const c=$(rs);if(!c||!c.children.length)return;const dots=[...root.querySelectorAll(ds+' i')];let i=0,touched=false;const st=()=>c.children[0].getBoundingClientRect().width+12;
   c.addEventListener('scroll',()=>{const k=Math.round(c.scrollLeft/st());if(k!==i){i=k;dots.forEach((d,j)=>d.classList.toggle('on',j===k))}},{passive:true});

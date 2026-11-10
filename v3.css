@@ -1643,24 +1643,14 @@ button,a,.chips button,.seg button{touch-action:manipulation}
 /* ================= v37 polish: colour, depth, motion, quick search =================
    One layer over everything above. Transform and opacity only in every animation, all of it off under
    prefers-reduced-motion. Phones keep their layout; hover effects exist only where a mouse does. */
-.app{--h1:#4d7fd6;--h2:#2e9d78;--h3:#c98632;--h4:#8a6cd6;--h5:#d2607c;--h6:#2c98a8;
-  --sh2:0 1px 1px rgba(16,18,24,.04),0 6px 14px -8px rgba(16,18,24,.12),0 22px 44px -26px rgba(16,18,24,.22)}
-:host([data-mode="dark"]) .app,:host([data-mode="black"]) .app{--h1:#7ea6ea;--h2:#62c7a2;--h3:#e0aa62;--h4:#ab94ea;--h5:#e88aa1;--h6:#62c0cd;
+.app{--sh2:0 1px 1px rgba(16,18,24,.04),0 6px 14px -8px rgba(16,18,24,.12),0 22px 44px -26px rgba(16,18,24,.22)}
+:host([data-mode="dark"]) .app,:host([data-mode="black"]) .app{
   --sh2:0 1px 0 rgba(255,255,255,.04) inset,0 10px 26px -14px rgba(0,0,0,.6),0 28px 50px -30px rgba(0,0,0,.7)}
 ::selection{background:color-mix(in srgb,var(--acc) 30%,transparent)}
 h1,h2,h3,.sh h2{text-wrap:balance}
 p,small{text-wrap:pretty}
 :focus-visible{outline:2px solid color-mix(in srgb,var(--acc) 70%,var(--tx));outline-offset:2px;border-radius:10px}
 button:focus:not(:focus-visible){outline:none}
-
-/* --- coloured icon tiles: six quiet hues instead of one grey (the black-and-white themes stay black and white) --- */
-.zgrid .zi:nth-child(6n+1),.tg .tl:nth-child(6n+1){--hue:var(--h1)}.zgrid .zi:nth-child(6n+2),.tg .tl:nth-child(6n+2){--hue:var(--h2)}
-.zgrid .zi:nth-child(6n+3),.tg .tl:nth-child(6n+3){--hue:var(--h3)}.zgrid .zi:nth-child(6n+4),.tg .tl:nth-child(6n+4){--hue:var(--h4)}
-.zgrid .zi:nth-child(6n+5),.tg .tl:nth-child(6n+5){--hue:var(--h5)}.zgrid .zi:nth-child(6n),.tg .tl:nth-child(6n){--hue:var(--h6)}
-.sec:nth-of-type(odd) .tg .tl{--hs:2}
-.zgrid .zt,.tg .tl .ti{background:linear-gradient(150deg,color-mix(in srgb,var(--hue) 22%,var(--surface)) 0%,color-mix(in srgb,var(--hue) 9%,var(--surface)) 100%);color:color-mix(in srgb,var(--hue) 82%,var(--tx));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--hue) 20%,transparent),0 6px 14px -10px var(--hue)}
-.zi:active .zt{background:color-mix(in srgb,var(--hue) 26%,var(--surface));color:color-mix(in srgb,var(--hue) 82%,var(--tx))}
-:host([data-mode="light"][data-pal="B"]) .zt,:host([data-mode="dark"][data-pal="B"]) .zt,:host([data-mode="light"][data-pal="B"]) .tl .ti,:host([data-mode="dark"][data-pal="B"]) .tl .ti{background:var(--surface2);color:var(--tx);box-shadow:inset 0 0 0 1px var(--line)}
 
 /* --- depth: softer, layered shadows; cards answer a press and (on computers) a hover --- */
 .card{box-shadow:var(--sh2)}
@@ -1674,7 +1664,6 @@ button:focus:not(:focus-visible){outline:none}
   .tl:hover::before{opacity:1}
   .tl:hover .ti,.zi:hover .zt{transform:translate3d(0,-2px,0) scale(1.06)}
   .tl .ti{transition:transform .45s var(--spring)}
-  .zi:hover{background:color-mix(in srgb,var(--hue,var(--acc)) 7%,transparent)}
   .btn:hover{filter:brightness(1.06)}
   .btn.gold:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 12px 26px -10px var(--acc2)}
   .ib:hover{transform:translate3d(0,-1px,0);border-color:color-mix(in srgb,var(--acc) 40%,var(--line))}
@@ -1703,17 +1692,6 @@ button:focus:not(:focus-visible){outline:none}
 .sk::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 20%,color-mix(in srgb,var(--tx) 7%,transparent) 50%,transparent 80%);transform:translate3d(-100%,0,0);animation:shim 1.25s ease-in-out infinite}
 @keyframes shim{to{transform:translate3d(100%,0,0)}}
 
-/* --- Home: the hello on top --- */
-.hi3{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:6px 2px 2px}
-.hi3 small{display:block;font-size:11.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
-.hi3 h1{font-size:26px;font-weight:650;letter-spacing:-.035em;line-height:1.15;margin-top:4px}
-.hi3 p{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:14px;color:var(--mut)}
-.dotl{flex:none;width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent);animation:dotl 1.8s ease-out infinite}
-@keyframes dotl{to{box-shadow:0 0 0 9px transparent}}
-.hi3-s{flex:none;display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 12px;border-radius:99px;font-size:12.5px;color:var(--mut);background:var(--accSoft);border:1px solid color-mix(in srgb,var(--acc) 24%,transparent)}
-.hi3-s b{color:var(--acc);font-weight:650;font-size:14px}.hi3-s svg{color:var(--acc)}
-.main[data-tab="home"]>.hi3+.band{margin-top:0;border-radius:24px;margin-inline:0;overflow:hidden}
-
 /* --- quick search (Ctrl K) --- */
 .dsr{display:none}
 .ck{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-start;justify-content:center;padding:max(12vh,calc(env(safe-area-inset-top,0px) + 56px)) 14px 14px;background:color-mix(in srgb,var(--scrim) 80%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);opacity:0;transition:opacity .2s var(--ease)}
@@ -1732,7 +1710,5 @@ button:focus:not(:focus-visible){outline:none}
 .ck-l button.on{background:var(--accSoft)}.ck-l button.on .ti{background:var(--surface);color:var(--acc)}
 .ck-0{padding:28px 16px;text-align:center;color:var(--mut);font-size:14px}
 .ck-h{display:none;padding:10px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--faint);gap:6px;align-items:center}
-@media (min-width:960px){.dsr{display:grid;order:3}.ck-h{display:flex}.hi3{padding:4px 16px 0}.hi3 h1{font-size:32px}
-  .main[data-tab="home"]>.hi3+.band{margin-inline:0}}
-@media (prefers-reduced-motion:reduce){.hero::before,.btn.gold::after,.dotl,.sk::after,.main.in .tg>*,.main.in .list>*,.main.in .rows>*{animation:none!important}.ck,.ck-box{transition:none}}
-:host([data-mode="dark"]) .zgrid .zt,:host([data-mode="dark"]) .tg .tl .ti,:host([data-mode="black"]) .zgrid .zt,:host([data-mode="black"]) .tg .tl .ti{background:linear-gradient(150deg,color-mix(in srgb,var(--hue) 30%,var(--surface)) 0%,color-mix(in srgb,var(--hue) 13%,var(--surface)) 100%);color:color-mix(in srgb,var(--hue) 88%,#fff);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--hue) 30%,transparent),0 8px 18px -12px var(--hue)}
+@media (min-width:960px){.dsr{display:grid;order:3}.ck-h{display:flex}}
+@media (prefers-reduced-motion:reduce){.hero::before,.btn.gold::after,.sk::after,.main.in .tg>*,.main.in .list>*,.main.in .rows>*{animation:none!important}.ck,.ck-box{transition:none}}
