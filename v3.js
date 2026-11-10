@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=39;
+const V3VER=40;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -121,19 +121,25 @@ const THEMES={
   B:['Pure Black & White',{bg:'#ffffff',bg2:'#f4f4f4',s2:'#f2f2f2',ln:'#e6e6e6',tx:'#000000',mt:'#4f4f4f',ft:'#8c8c8c',ink:'#000000',acc:'#000000',a1:'#3a3a3a',a2:'#000000',onA:'#ffffff',as:'#f0f0f0',h1:'#1c1c1c',h2:'#000000',glow:'rgba(255,255,255,.12)',logo:'#000000',logoE:'#4f4f4f',pill:'rgba(0,0,0,.07)'},'Only black and white, no colour'],
   C:['Silver Mist',{bg:'#f3f4f6',bg2:'#e7e9ed',s:'#fcfcfd',s2:'#eceef1',ln:'#dfe2e6',tx:'#1f2228',mt:'#5d636d',ink:'#343941',acc:'#4f5866',a1:'#dde1e7',a2:'#97a0ad',onA:'#1f2228',as:'#e9ecf0',h1:'#3b4048',h2:'#1d2025',glow:'rgba(200,210,225,.35)',logo:'#343941',pill:'rgba(52,57,65,.08)'},'Cool silver, very calm'],
   D:['Blue Gray',{bg:'#f2f4f7',bg2:'#e6eaf0',s2:'#ebeff4',ln:'#dce2ea',tx:'#1a2230',mt:'#556072',ink:'#24324a',acc:'#3b5779',a1:'#bccde3',a2:'#6d8bb2',onA:'#121b29',as:'#e5ecf5',h1:'#2a3a55',h2:'#131b29',glow:'rgba(140,175,220,.35)',logo:'#24324a',pill:'rgba(36,50,74,.08)'},'Gray with a quiet slate blue'],
-  E:['Soft Sage Gray',{bg:'#f3f5f2',bg2:'#e7ebe5',s2:'#ecf0ea',ln:'#dde3da',tx:'#1c231d',mt:'#59645b',ink:'#283429',acc:'#4a6650',a1:'#c6d8c5',a2:'#7f9a80',onA:'#152016',as:'#e5ede5',h1:'#2c3a2f',h2:'#141b15',glow:'rgba(170,205,165,.3)',logo:'#283429',pill:'rgba(40,52,41,.08)'},'Gray with soft green, easy on the eyes']}},
+  E:['Soft Sage Gray',{bg:'#f3f5f2',bg2:'#e7ebe5',s2:'#ecf0ea',ln:'#dde3da',tx:'#1c231d',mt:'#59645b',ink:'#283429',acc:'#4a6650',a1:'#c6d8c5',a2:'#7f9a80',onA:'#152016',as:'#e5ede5',h1:'#2c3a2f',h2:'#141b15',glow:'rgba(170,205,165,.3)',logo:'#283429',pill:'rgba(40,52,41,.08)'},'Gray with soft green, easy on the eyes'],
+  F:['Ivory & Navy',{bg:'#f6f4ee',bg2:'#ebe7dc',s:'#fffdf8',s2:'#f0ece2',ln:'#e3ded1',tx:'#161b2a',mt:'#565d70',ink:'#1b2540',acc:'#2c4170',a1:'#c9d3ea',a2:'#7388b8',onA:'#101829',as:'#e8ebf3',h1:'#24304f',h2:'#111827',glow:'rgba(150,170,220,.32)',logo:'#1b2540',pill:'rgba(27,37,64,.08)',hdr:'rgba(246,244,238,.84)'},'Warm ivory paper with deep navy'],
+  G:['Warm Sand',{bg:'#f7f3ec',bg2:'#ece5d8',s:'#fffdf9',s2:'#f1eadd',ln:'#e5dccb',tx:'#221b14',mt:'#655a4c',ink:'#33281d',acc:'#8a4f2a',a1:'#ecc9a8',a2:'#bd7a4a',onA:'#22140a',as:'#f5e8da',h1:'#3a2d21',h2:'#19130d',glow:'rgba(225,160,110,.32)',logo:'#33281d',pill:'rgba(51,40,29,.08)',hdr:'rgba(247,243,236,.84)'},'Soft sand with warm copper']}},
  dark:{name:'Dark',pals:{
   A:['Graphite Gray',{},'Graphite with muted gold'],
   B:['Black & White Dark',{bg:'#121212',bg2:'#0b0b0b',s:'#1a1a1a',s2:'#242424',ln:'#2e2e2e',tx:'#f5f5f5',mt:'#a8a8a8',ink:'#f5f5f5',on:'#121212',acc:'#f5f5f5',a1:'#ffffff',a2:'#bdbdbd',onA:'#111111',as:'#262626',h1:'#2a2a2a',h2:'#141414',glow:'rgba(255,255,255,.08)'},'Dark gray and white, no colour'],
   C:['Midnight Gray',{bg:'#13151b',bg2:'#0c0d11',s:'#1a1d25',s2:'#232732',ln:'#2c313e',tx:'#e8eaf0',mt:'#9ca2b0',ink:'#e8eaf0',on:'#13151b',acc:'#aab5d2',a1:'#d3dbef',a2:'#7e8bb0',onA:'#10131b',as:'#222738',h1:'#2a2f3e',h2:'#14171f',glow:'rgba(150,170,220,.2)',nav:'rgba(26,29,37,.86)',hdr:'rgba(19,21,27,.82)'},'Deep gray with night blue'],
   D:['Blue Gray Dark',{bg:'#151a21',bg2:'#0e1217',s:'#1c222b',s2:'#252d38',ln:'#2f3844',tx:'#e6ebf1',mt:'#9ca8b7',ink:'#e6ebf1',on:'#151a21',acc:'#93afd2',a1:'#c2d5ec',a2:'#6789b3',onA:'#0f141b',as:'#1f2a38',h1:'#2b3646',h2:'#151a22',glow:'rgba(120,160,215,.22)',nav:'rgba(28,34,43,.86)',hdr:'rgba(21,26,33,.82)'},'Slate gray with soft blue'],
-  E:['Silver Dark',{bg:'#19191b',bg2:'#111113',s:'#222326',s2:'#2c2d31',ln:'#37383c',tx:'#f0f0f2',mt:'#b0b2b8',ink:'#e2e4e8',on:'#19191b',acc:'#c9cdd4',a1:'#eef0f3',a2:'#9ba1aa',onA:'#151618',as:'#2c2d31',h1:'#333438',h2:'#1b1c1e',glow:'rgba(220,225,235,.14)'},'Lighter graphite with silver']}},
+  E:['Silver Dark',{bg:'#19191b',bg2:'#111113',s:'#222326',s2:'#2c2d31',ln:'#37383c',tx:'#f0f0f2',mt:'#b0b2b8',ink:'#e2e4e8',on:'#19191b',acc:'#c9cdd4',a1:'#eef0f3',a2:'#9ba1aa',onA:'#151618',as:'#2c2d31',h1:'#333438',h2:'#1b1c1e',glow:'rgba(220,225,235,.14)'},'Lighter graphite with silver'],
+  F:['Espresso & Copper',{bg:'#1a1614',bg2:'#110e0d',s:'#231e1b',s2:'#2d2723',ln:'#3a322d',tx:'#f1ebe6',mt:'#b0a59c',ink:'#f1ebe6',on:'#1a1614',acc:'#dc9f75',a1:'#f0c4a2',a2:'#bd7748',onA:'#1c1008',as:'#33261d',h1:'#332a24',h2:'#1b1613',glow:'rgba(220,150,100,.22)',nav:'rgba(35,30,27,.86)',hdr:'rgba(26,22,20,.82)'},'Warm dark brown with copper'],
+  G:['Deep Teal',{bg:'#121a1b',bg2:'#0b1112',s:'#192324',s2:'#222e30',ln:'#2c3a3c',tx:'#e6eeee',mt:'#9bacad',ink:'#e6eeee',on:'#121a1b',acc:'#7fc6c2',a1:'#b4e0dc',a2:'#4f9a96',onA:'#081514',as:'#1c2f30',h1:'#26383a',h2:'#131c1d',glow:'rgba(110,190,185,.2)',nav:'rgba(25,35,36,.86)',hdr:'rgba(18,26,27,.82)'},'Dark slate with calm teal']}},
  black:{name:'Black',pals:{
   A:['Pure AMOLED',{},'True black, saves battery on OLED'],
   B:['Black & Gold',{acc:'#d8b46e',a1:'#f0d9a4',a2:'#b88d43',onA:'#140f05',as:'#1f1a0f',ink:'#f1e3c2',h1:'#1d180c',h2:'#050403',glow:'rgba(216,180,110,.28)',logo:'#f3e6c8',pill:'rgba(216,180,110,.14)'},'Black with Aspiron gold'],
   C:['Black & Silver',{acc:'#c9cdd3',a1:'#f4f5f7',a2:'#9da3ab',h1:'#1a1b1d',h2:'#040404',glow:'rgba(220,225,232,.14)'},'Black with cool silver'],
   D:['Black & Emerald',{acc:'#6cc09c',a1:'#a8dcc4',a2:'#3f9373',onA:'#04140d',as:'#0f1d17',h1:'#11201a',h2:'#020403',glow:'rgba(95,190,150,.22)',pill:'rgba(108,192,156,.12)'},'Black with deep muted green'],
-  E:['Black & Graphite',{s:'#121213',s2:'#1c1c1e',ln:'#2a2a2c',acc:'#a6a6aa',a1:'#d7d7da',a2:'#7c7c80',h1:'#222224',h2:'#0b0b0c',glow:'rgba(255,255,255,.07)'},'Black with graphite cards']}}
+  E:['Black & Graphite',{s:'#121213',s2:'#1c1c1e',ln:'#2a2a2c',acc:'#a6a6aa',a1:'#d7d7da',a2:'#7c7c80',h1:'#222224',h2:'#0b0b0c',glow:'rgba(255,255,255,.07)'},'Black with graphite cards'],
+  F:['Black & Rose Gold',{acc:'#e0a899',a1:'#f3cfc4',a2:'#b9796a',onA:'#180a07',as:'#1f1512',ink:'#f5e3dd',h1:'#1f1512',h2:'#050303',glow:'rgba(224,168,153,.24)',logo:'#f5e3dd',pill:'rgba(224,168,153,.13)'},'Black with soft rose gold'],
+  G:['Black & Sapphire',{acc:'#8fb2ea',a1:'#c3d6f5',a2:'#5b82c4',onA:'#060d18',as:'#101826',h1:'#111a2a',h2:'#030508',glow:'rgba(120,160,230,.22)',pill:'rgba(143,178,234,.12)'},'Black with deep sapphire blue']}}
 };
 const CHL={light:['#3f72b8','#c4692e'],dark:['#4f86cc','#c97042']}; /* validated with the dataviz palette checker */
 
