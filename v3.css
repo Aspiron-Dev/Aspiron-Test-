@@ -1639,3 +1639,76 @@ button,a,.chips button,.seg button{touch-action:manipulation}
 .hsoc-t{margin:18px 0 8px;text-align:center;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
 .hsoc{display:flex;justify-content:center}
 @media (prefers-reduced-motion:reduce){.drawer.open .msoc{animation:none}}
+
+/* ================= v37 polish: colour, depth, motion, quick search =================
+   One layer over everything above. Transform and opacity only in every animation, all of it off under
+   prefers-reduced-motion. Phones keep their layout; hover effects exist only where a mouse does. */
+.app{--sh2:0 1px 1px rgba(16,18,24,.04),0 6px 14px -8px rgba(16,18,24,.12),0 22px 44px -26px rgba(16,18,24,.22)}
+:host([data-mode="dark"]) .app,:host([data-mode="black"]) .app{
+  --sh2:0 1px 0 rgba(255,255,255,.04) inset,0 10px 26px -14px rgba(0,0,0,.6),0 28px 50px -30px rgba(0,0,0,.7)}
+::selection{background:color-mix(in srgb,var(--acc) 30%,transparent)}
+h1,h2,h3,.sh h2{text-wrap:balance}
+p,small{text-wrap:pretty}
+:focus-visible{outline:2px solid color-mix(in srgb,var(--acc) 70%,var(--tx));outline-offset:2px;border-radius:10px}
+button:focus:not(:focus-visible){outline:none}
+
+/* --- depth: softer, layered shadows; cards answer a press and (on computers) a hover --- */
+.card{box-shadow:var(--sh2)}
+.tl,.evr,.card[data-a],.tap{transition:transform .4s var(--spring),box-shadow .3s var(--ease),border-color .25s var(--ease)}
+.tl:active,.card[data-a]:active,.tap:active{transform:scale(.975);transition-duration:.09s}
+.tl{position:relative;overflow:hidden;isolation:isolate}
+.tl::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:0;transition:opacity .35s var(--ease);background:radial-gradient(220px circle at var(--mx,50%) var(--my,0%),color-mix(in srgb,var(--hue,var(--acc)) 14%,transparent),transparent 70%)}
+.tl .v b{font-variant-numeric:tabular-nums}
+@media (hover:hover) and (pointer:fine){
+  .tl:hover,.card[data-a]:hover{transform:translate3d(0,-3px,0);border-color:color-mix(in srgb,var(--hue,var(--acc)) 34%,var(--line));box-shadow:0 2px 2px rgba(0,0,0,.04),0 18px 34px -18px color-mix(in srgb,var(--hue,var(--acc)) 38%,rgba(0,0,0,.35))}
+  .tl:hover::before{opacity:1}
+  .tl:hover .ti,.zi:hover .zt{transform:translate3d(0,-2px,0) scale(1.06)}
+  .tl .ti{transition:transform .45s var(--spring)}
+  .btn:hover{filter:brightness(1.06)}
+  .btn.gold:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 12px 26px -10px var(--acc2)}
+  .ib:hover{transform:translate3d(0,-1px,0);border-color:color-mix(in srgb,var(--acc) 40%,var(--line))}
+  .chips button:hover{border-color:color-mix(in srgb,var(--acc) 45%,var(--line))}
+  .rows .row:hover{background:color-mix(in srgb,var(--tx) 4%,transparent)}
+  *{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--tx) 22%,transparent) transparent}
+}
+
+/* --- the dark hero cards: a slow, soft light drifts behind the text --- */
+.hero{isolation:isolate}
+.hero::before{content:"";position:absolute;z-index:-1;inset:-45% -25%;pointer-events:none;opacity:.9;
+  background:radial-gradient(38% 46% at 78% 28%,color-mix(in srgb,var(--acc1) 26%,transparent),transparent 70%),radial-gradient(34% 42% at 16% 82%,color-mix(in srgb,var(--acc2) 20%,transparent),transparent 72%);
+  animation:aur 16s ease-in-out infinite alternate;will-change:transform}
+@keyframes aur{from{transform:translate3d(-4%,-3%,0) rotate(0deg)}to{transform:translate3d(5%,4%,0) rotate(8deg)}}
+.btn{position:relative;overflow:hidden}
+.btn.gold::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:38%;pointer-events:none;background:linear-gradient(100deg,transparent,rgba(255,255,255,.42),transparent);transform:skewX(-18deg);animation:sheen 5.5s ease-in-out infinite}
+@keyframes sheen{0%,72%{transform:translate3d(0,0,0) skewX(-18deg)}100%{transform:translate3d(520%,0,0) skewX(-18deg)}}
+
+/* --- lists arrive one after another, softly --- */
+.main.in .tg>*,.main.in .list>*,.main.in .rows>*{animation:pop3 .5s var(--out) backwards}
+.main.in .tg>*:nth-child(2),.main.in .list>*:nth-child(2),.main.in .rows>*:nth-child(2){animation-delay:.05s}
+.main.in .tg>*:nth-child(3),.main.in .list>*:nth-child(3),.main.in .rows>*:nth-child(3){animation-delay:.1s}
+.main.in .tg>*:nth-child(4),.main.in .list>*:nth-child(4),.main.in .rows>*:nth-child(4){animation-delay:.15s}
+.main.in .tg>*:nth-child(n+5),.main.in .list>*:nth-child(n+5),.main.in .rows>*:nth-child(n+5){animation-delay:.2s}
+@keyframes pop3{from{opacity:.001;transform:translate3d(0,14px,0) scale(.985)}}
+.sk::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 20%,color-mix(in srgb,var(--tx) 7%,transparent) 50%,transparent 80%);transform:translate3d(-100%,0,0);animation:shim 1.25s ease-in-out infinite}
+@keyframes shim{to{transform:translate3d(100%,0,0)}}
+
+/* --- quick search (Ctrl K) --- */
+.dsr{display:none}
+.ck{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-start;justify-content:center;padding:max(12vh,calc(env(safe-area-inset-top,0px) + 56px)) 14px 14px;background:color-mix(in srgb,var(--scrim) 80%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);opacity:0;transition:opacity .2s var(--ease)}
+.ck.open{opacity:1}
+.ck-box{width:min(600px,100%);max-height:min(560px,76vh);display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:0 40px 90px -30px rgba(0,0,0,.6);overflow:hidden;transform:translate3d(0,-10px,0) scale(.975);transition:transform .32s var(--spring)}
+.ck.open .ck-box{transform:none}
+.ck-in{display:flex;align-items:center;gap:12px;padding:0 16px;height:58px;border-bottom:1px solid var(--line);color:var(--mut)}
+.ck-in input{flex:1;min-width:0;height:100%;border:0;outline:0;background:none;color:var(--tx);font:inherit;font-size:16px}
+.ck-in input::-webkit-search-cancel-button{display:none}
+.ck kbd{font:600 11px/1 var(--f);padding:5px 7px;border-radius:7px;background:var(--surface2);color:var(--mut);border:1px solid var(--line)}
+.ck-l{overflow:auto;padding:8px;display:flex;flex-direction:column;gap:2px}
+.ck-l button{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:13px;text-align:left;width:100%;transition:background-color .15s}
+.ck-l button .ti{width:36px;height:36px;border-radius:11px}
+.ck-l button b{flex:1;min-width:0;font-weight:550;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ck-l button small{flex:none;max-width:40%;font-size:12px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ck-l button.on{background:var(--accSoft)}.ck-l button.on .ti{background:var(--surface);color:var(--acc)}
+.ck-0{padding:28px 16px;text-align:center;color:var(--mut);font-size:14px}
+.ck-h{display:none;padding:10px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--faint);gap:6px;align-items:center}
+@media (min-width:960px){.dsr{display:grid;order:3}.ck-h{display:flex}}
+@media (prefers-reduced-motion:reduce){.hero::before,.btn.gold::after,.sk::after,.main.in .tg>*,.main.in .list>*,.main.in .rows>*{animation:none!important}.ck,.ck-box{transition:none}}

@@ -1,25 +1,16 @@
-/* v3.js: the new student design (beta), side by side with the classic design.
-   Off by default. A student turns it on from the menu ("Try the new design") and back off from the new menu
-   ("Switch to the classic design"); the choice is saved on the phone (localStorage cbt_v3).
-   It only draws screens: every action uses the classic app's own functions and data (cbt_catalog, openTest,
-   openReview, the store page, the exam screen). Nothing new is stored on the server and no data is changed.
-   It lives inside a Shadow DOM so its styles (v3.css) and the classic styles can never affect each other. */
+/* v3.js: the student app's design. It is the only design: there is no switch back to the older look.
+   It draws every screen; sign-in, the catalog, the exam engine (timer, saving answers, submit) and the server
+   calls are the engine files app1.js … app28.js, which it calls (cbt_catalog, openTest, openReview, the store page).
+   It lives inside a Shadow DOM so its styles (v3.css) and the engine's own styles never affect each other. */
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=36;
+const V3VER=38;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
    automated tests (tests/e2e), which still check the exam engine's own pages; no student can reach it. */
 const v3On=()=>!lsGet('cbt_v3_ci',false);
-
-/* ---------- classic-menu entries (always added, so the beta can be found) ---------- */
-function addEntry(){
-  const l=document.querySelector('#layer .drl');
-  if(l&&!l.querySelector('.v3try')){l.insertAdjacentHTML('afterbegin',`<button class="dri v3try" onclick="closeModal();v3Enable()" style="font-weight:600">${ic('spark',22)}<span>Try the new design <small style="opacity:.6;font-weight:500">(beta)</small></span></button><div class="sbd"></div>`)}
-}
-
 
 /* ---------- host + shadow root ---------- */
 let host=null,root=null,booted=false;
@@ -29,7 +20,8 @@ body.v3on:not(.v3old):not(.intest){padding:0!important;background:var(--v3bg,#f5
 body.intest #v3host,body:not(.v3on) #v3host{display:none!important}
 :where(html.v3c) .btn{color:var(--onpri3,#fff)}
 body.v3on #layer .modal .box{border-radius:24px;background:var(--surface);color:var(--tx);font-family:Geist,system-ui,sans-serif}
-body.v3on #layer .modal .btn{border-radius:14px;min-height:46px;font-weight:600}`;
+body.v3on #layer .modal .btn{border-radius:14px;min-height:46px;font-weight:600}
+body.v3on #layer .modal h2,body.v3on #layer .modal h3{font-family:Geist,system-ui,sans-serif;letter-spacing:-.02em;font-weight:650}`;
 function ensureHost(){
   if(host)return;
   document.head.appendChild(gStyle);
@@ -154,7 +146,7 @@ const tokens=(mode,pal)=>Object.assign({},TBASE[mode],(THEMES[mode].pals[pal]||T
 function applyTheme(t){if(!host)return;const mode=resolveMode(t.mode),pal=THEMES[mode].pals[t.pal[mode]]?t.pal[mode]:'A',tk=tokens(mode,pal);
   for(const k in TK)host.style.setProperty(TK[k],tk[k]);
   CHL[mode==='light'?'light':'dark'].forEach((c,i)=>host.style.setProperty('--c'+(i+1),c));
-  host.dataset.mode=mode;document.body.style.setProperty('--v3bg',tk.bg);
+  host.dataset.mode=mode;host.dataset.pal=pal;document.body.style.setProperty('--v3bg',tk.bg);
   /* the few classic pieces still in use (exam engine, its pop-ups) take the same colours: no old blue anywhere */
   try{const H=document.documentElement,cv={'--bg':tk.bg,'--surface':tk.s,'--surface2':tk.s2,'--bd':tk.ln,'--hair':tk.ln,'--tx':tk.tx,'--mut':tk.mt,'--pri':tk.acc,'--pri2':tk.a2,'--priSoft':tk.as,'--grad':`linear-gradient(180deg,${tk.ink},${tk.ink})`,'--glow':'rgba(0,0,0,.16)','--onpri3':tk.on,'--nav':tk.nav};
     for(const k in cv)H.style.setProperty(k,cv[k]);H.dataset.theme=mode==='light'?'light':'dark';if(mode==='black')H.dataset.oled='1';else delete H.dataset.oled;H.classList.add('v3c')}catch(e){}
@@ -245,6 +237,27 @@ A.dmGo=el=>{dmClose();({profile:A.profile,settings:A.settings,out:A.setOut}[el.d
 A.theme3=()=>{dmClose();openTheme()};
 addEventListener('keydown',e=>{if(e.key==='Escape')dmClose()});
 A.dk=el=>({pyq:()=>openPyq(),qb:()=>openQB(),gen:()=>openGen(),ranks:()=>openRanks(),hist:()=>A.hist(),mk:()=>openMistakes(),trk:()=>openTracker()}[el.dataset.k]||(()=>{}))();
+/* ================= QUICK SEARCH (Ctrl/⌘ K or "/"): jump to any page, tool, test series or test ================= */
+const CK={el:null,i:0,L:[]};
+function ckAll(){const L=[];NAV.forEach(n=>L.push([n[1],'Page',n[2],()=>go(n[0])]));
+  [['PYQ Analyzer','pyq',()=>openPyq()],['Question bank','qb',()=>openQB()],['Test generator','spark',()=>openGen()],['Ranks and leaderboards','trophy',()=>openRanks()],['Test history','hist',()=>A.hist()],['Mistake notebook','pen',()=>openMistakes()],['Saved questions','bookmark',()=>openSaved()],['Study tracker','cal',()=>openTracker()],['Notes and PDFs','file',()=>openNotes()],['Notifications','mega',()=>A.bell()],['Refer and earn','gift',()=>openRefer()],['My profile','user',()=>A.profile()],['My test series','layers',()=>A.mySeries()],['Settings','gear',()=>A.settings()],['Theme and colours','sun',()=>openTheme()],['Help and contact','mail',()=>A.setHelp()]].forEach(x=>L.push([x[0],'Page',x[1],x[2]]));
+  Object.keys(TOOLS).forEach(k=>TOOLS[k].forEach(t=>L.push([t[2],'Tool',t[1],()=>A.tool({dataset:{k:t[0]}})])));
+  try{(C().series||[]).forEach(x=>L.push([x.title,'Test series','layers',()=>openSeriesAny(x.id,'t')]));(C().tests||[]).forEach(t=>L.push([t.title,(sOf(t.series_id)||{}).title||'Test','tests',()=>A.test({dataset:{id:t.id}})]))}catch(e){}
+  return L}
+function ckDraw(){const q=CK.el.querySelector('input').value.trim().toLowerCase().split(/\s+/).filter(Boolean),all=ckAll();
+  CK.L=(q.length?all.filter(x=>q.every(w=>(x[0]+' '+x[1]).toLowerCase().includes(w))):all.slice(0,9)).slice(0,9);CK.i=Math.min(CK.i,Math.max(0,CK.L.length-1));
+  CK.el.querySelector('.ck-l').innerHTML=CK.L.length?CK.L.map((x,i)=>`<button role="option" aria-selected="${i===CK.i}" class="${i===CK.i?'on':''}" data-i="${i}"><span class="ti">${ic(x[2],18)}</span><b>${esc3(x[0])}</b><small>${esc3(x[1])}</small></button>`).join(''):'<p class="ck-0">Nothing matches. Try a test name, a tool or a page.</p>'}
+function ckClose(){const el=CK.el;if(!el)return;CK.el=null;el.classList.remove('open');setTimeout(()=>el.remove(),RM?0:220)}
+function ckRun(i){const x=CK.L[i];if(!x)return;ckClose();try{x[3]()}catch(e){toast3('Could not open this. Please try again.')}}
+A.ck=()=>{if(CK.el||!booted||INTEST)return;closeLayer();const el=document.createElement('div');el.className='ck';
+  el.innerHTML=`<div class="ck-box" role="dialog" aria-modal="true" aria-label="Search"><label class="ck-in">${ic('search',19)}<input type="search" placeholder="Search pages, tools, series and tests" autocomplete="off" spellcheck="false" aria-label="Search"><kbd>Esc</kbd></label><div class="ck-l" role="listbox"></div><p class="ck-h"><kbd>↑</kbd><kbd>↓</kbd> to move, <kbd>Enter</kbd> to open</p></div>`;
+  CK.el=el;CK.i=0;$('#app3').appendChild(el);ckDraw();requestAnimationFrame(()=>el.classList.add('open'));const inp=el.querySelector('input');setTimeout(()=>inp.focus(),30);
+  inp.addEventListener('input',()=>{CK.i=0;ckDraw()});
+  el.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();ckClose()}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const n=CK.L.length;if(n){CK.i=(CK.i+(e.key==='ArrowDown'?1:n-1))%n;ckDraw();const o=el.querySelector('.on');o&&o.scrollIntoView({block:'nearest'})}}else if(e.key==='Enter'){e.preventDefault();ckRun(CK.i)}});
+  el.addEventListener('click',e=>{const b=e.target.closest('[data-i]');if(b)ckRun(+b.dataset.i);else if(!e.target.closest('.ck-box'))ckClose()})};
+addEventListener('keydown',e=>{if(!booted||INTEST||!document.body.classList.contains('v3on')||document.body.classList.contains('x3ins'))return;
+  const typing=()=>{const a=(root&&root.activeElement)||document.activeElement;return !!a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)||!!(a&&a.isContentEditable)};
+  if((e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==='k'){e.preventDefault();CK.el?ckClose():A.ck()}else if(e.key==='/'&&!e.ctrlKey&&!e.metaKey&&!typing()&&!document.querySelector('#layer .modal')){e.preventDefault();A.ck()}});
 function syncDock(){try{deskSync()}catch(e){}dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab));dock.querySelectorAll('button').forEach(b=>{const on=b.dataset.tab===S.tab;b.classList.toggle('on',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')})}
 let timers=[];
 const every=(fn,ms)=>{const t=setInterval(fn,ms);timers.push(t);return t};
@@ -265,6 +278,7 @@ const SKEL=`<header class="hdr" id="hdr"><i class="hdr-tint" id="hdrTint" aria-h
   <button class="ib" data-a="menu" aria-label="Menu" id="mnu"></button>
   <a class="brand" href="#/" data-a="tab" data-tab="home" aria-label="Aspiron Education, go to Home"><span class="bmk" aria-hidden="true"><i class="bmk-w" id="bmk"><i class="bmk-s"></i></i><span class="bmk-e"><span>EDUCATION</span></span></span></a>
   <nav class="dnav" id="dnav" aria-label="Main"></nav>
+  <button class="ib dsr" data-a="ck" aria-label="Search (Ctrl K)" id="dsr"></button>
   <button class="ib" data-a="bell" aria-label="Notifications" id="bell"></button>
   <button class="ib dth" data-a="theme3" aria-label="Theme and colours" id="dth"></button>
   <button class="dav" data-a="davM" aria-label="Your profile" aria-haspopup="menu" id="dav"></button>
@@ -1860,9 +1874,11 @@ function boot(){if(booted)return;ensureHost();booted=true;
   root.addEventListener('click',onClick);
   root.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('.fc')){e.preventDefault()}});
   dock.innerHTML=NAV.map(n=>`<button data-a="tab" data-tab="${n[0]}" aria-label="${n[1]}">${ic(n[2])}<span>${n[1]}</span></button>`).join('');
-  $('#mnu').innerHTML=ic('menu',22);$('#scrBack').innerHTML=ic('back',20);syncBell();
+  $('#mnu').innerHTML=ic('menu',22);$('#dsr').innerHTML=ic('search',20);$('#scrBack').innerHTML=ic('back',20);syncBell();
   /* the header looks the same at every scroll position (no class toggled on scroll) */
   if(!RM){const w=$('#bmk');const sh=()=>{if(document.hidden||document.body.classList.contains('v3old')||!document.body.classList.contains('v3on'))return;w.classList.remove('go');void w.offsetWidth;w.classList.add('go')};setTimeout(sh,900);setInterval(sh,9000)}
+  /* computers: a soft light follows the pointer over the dark hero cards and tool cards (one write per frame) */
+  if(!RM&&matchMedia('(hover:hover) and (pointer:fine)').matches){let sp=null,raf=0;root.addEventListener('pointermove',e=>{sp=e;if(raf)return;raf=requestAnimationFrame(()=>{raf=0;const c=sp.target.closest&&sp.target.closest('.hero,.tl,.scard,.pc');if(!c)return;const r=c.getBoundingClientRect();c.style.setProperty('--mx',(sp.clientX-r.left)+'px');c.style.setProperty('--my',(sp.clientY-r.top)+'px')})},{passive:true})}
   applyTheme(TH);syncDock();try{swipeInit()}catch(e){}}
 const _route=route;
 route=async function(){
