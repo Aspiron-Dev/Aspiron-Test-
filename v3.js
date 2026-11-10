@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=40;
+const V3VER=41;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -552,7 +552,7 @@ function pstSync(re){if(!root)return;const h=$('#hdr');if(!h||!main)return;const
   if(q===1&&lastQ===1)return;lastQ=q;
   /* every frame only moves and fades things (no size change, so no layout while the finger moves): the buttons go
      slim once, by a short CSS transition, when the poster is half gone; the backdrop rides inside the bar */
-  const slim=q>.5;if(PM.slim!==slim){PM.slim=slim;st.classList.toggle('slim',slim)}
+  const sp=Math.round(p*50)/50;if(PM.slim!==sp){PM.slim=sp;st.style.setProperty('--p',sp)}
   const ty=Math.max(PM.y1,PM.y0-sy);if(!PM.tabs||!PM.tabs.isConnected){PM.tabs=$('#pstTabs');PM.bd=$('#pstBd')}
   PM.tabs.style.transform=`translate3d(0,${ty.toFixed(1)}px,0)`;if(PM.bd)PM.bd.style.opacity=Math.min(1,q*1.15).toFixed(3);
   const art=ps.firstElementChild;if(art){art.style.transform=`translate3d(0,${(Math.min(sy,PM.span+200)*.45).toFixed(2)}px,0)`;art.style.opacity=(1-.92*q).toFixed(3)}
@@ -1786,9 +1786,9 @@ function obClose(done){lsSet(obKey(),1);const el=OB.el;OB.el=null;if(!el)return;
 /* ================= MENU: the classic menu's look (profile on top, grouped list, NEW tags, Logout last) =================
    About two thirds of the screen wide, the page behind blurred, and the items come in one after another from the top. */
 A.menu=()=>{const u=unread();let n=0;const web=!standalone3();
-  const mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' on':''}${cls||''}" data-a="m" data-k="${k}" style="--i:${n++}">${ic(i)}<span>${t}</span>${extra||''}</button>`;
-  const nw='<em class="mnew">NEW</em>',gh=t=>`<p class="mgh" style="--i:${n++}">${t}</p>`;
-  drawer.innerHTML=`<div class="mtop" style="--i:${n++}"><button class="mx" data-a="close" aria-label="Close menu">${ic('x',18)}</button>${avatar('mav')}<b>${esc3(stuName())}</b><small>${esc3(stuMeta())}</small><button class="mvp" data-a="m" data-k="profile">View Profile <span aria-hidden="true">→</span></button></div>
+  const mi=(i,t,k,on,extra,cls)=>`<button class="mi${on?' on':''}${cls||''}${n<14?' ma':''}" data-a="m" data-k="${k}" style="--i:${n++}">${ic(i)}<span>${t}</span>${extra||''}</button>`;
+  const nw='<em class="mnew">NEW</em>',gh=t=>`<p class="mgh${n<14?' ma':''}" style="--i:${n++}">${t}</p>`;
+  drawer.innerHTML=`<div class="mtop ma" style="--i:${n++}"><button class="mx" data-a="close" aria-label="Close menu">${ic('x',18)}</button>${avatar('mav')}<b>${esc3(stuName())}</b><small>${esc3(stuMeta())}</small><button class="mvp" data-a="m" data-k="profile">View Profile <span aria-hidden="true">→</span></button></div>
   <div class="mlist">${gh('Study')}${mi('home','Home','home',S.tab==='home')}${mi('tests','Test Series','series',S.tab==='test')}${mi('lib','Library','lib',S.tab==='lib')}${mi('pyq','PYQ Analysis','pyq',0,nw)}${mi('qb','Question Bank','qb',0,nw)}${mi('spark','Test Generator','gen',0,nw)}
    ${gh('My progress')}${mi('trophy','Results & Ranks','ranks')}${mi('hist','Test History','history')}${mi('pen','Mistake Notebook','mistakes')}${mi('bookmark','Saved Questions','saved')}${mi('cal','Study Tracker','tracker')}
    ${gh('Explore')}${mi('layers','Store','store')}${mi('gift','Refer & Earn','refer')}${mi('bell','Notifications','notif',0,u?`<em class="mcnt">${u}</em>`:'')}${mi('target','Exam Countdown','cd')}
@@ -1796,7 +1796,8 @@ A.menu=()=>{const u=unread();let n=0;const web=!standalone3();
    ${web?gh('Policies')+mi('file','Terms & Conditions','terms')+mi('file','Privacy Policy','privacy')+mi('file','Refund Policy','refund'):''}
    ${socH()?gh('Follow us')+`<div class="msoc" style="--i:${n++}">${socH()}</div>`:''}
    <div class="mdiv" style="--i:${n++}"></div>${mi('out','Logout','logout',0,'',' mout')}</div>`;
-  drawer.scrollTop=0;openLayer(drawer)};
+  /* the list is built and laid out first; the slide starts on the next frame, so its first frame is never the heavy one */
+  drawer.scrollTop=0;void drawer.offsetHeight;if(RM)openLayer(drawer);else requestAnimationFrame(()=>requestAnimationFrame(()=>openLayer(drawer)))};
 A.m=el=>{const k=el.dataset.k;closeLayer();
   const M={profile:A.profile,theme:openTheme,home:()=>go('home'),series:()=>go('test'),lib:()=>go('lib'),pyq:()=>openPyq(),qb:()=>openQB(),gen:()=>openGen(),ranks:()=>openRanks(),refer:()=>openRefer(),store:()=>{location.href='store'},history:A.hist,mistakes:()=>openMistakes(),saved:()=>openSaved(),tracker:()=>openTracker(),notif:A.bell,cd:A.cdEdit,
    settings:A.settings,about:A.setAbout,terms:A.setTerms,privacy:()=>window.open('privacy','_blank','noopener'),refund:()=>window.open('refund','_blank','noopener'),contact:A.setHelp,

@@ -1712,3 +1712,21 @@ button:focus:not(:focus-visible){outline:none}
 .ck-h{display:none;padding:10px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--faint);gap:6px;align-items:center}
 @media (min-width:960px){.dsr{display:grid;order:3}.ck-h{display:flex}}
 @media (prefers-reduced-motion:reduce){.hero::before,.btn.gold::after,.sk::after,.main.in .tg>*,.main.in .list>*,.main.in .rows>*{animation:none!important}.ck,.ck-box{transition:none}}
+
+/* ================= v41: a lighter menu, and Tests buttons that shrink with the scroll =================
+   Menu: the slide is the only thing moving at first. The blur behind fades in after the slide has landed, and only
+   the rows on screen (.ma) rise in; the rest are simply there. */
+.drawer{will-change:transform;contain:layout paint style;backface-visibility:hidden}
+.drawer.open{transition:transform .38s cubic-bezier(.32,.72,0,1),visibility 0s}
+.drawer.open .mtop,.drawer.open .mgh,.drawer.open .mi,.drawer.open .mdiv,.drawer.open .msoc{animation:none}
+.drawer.open .ma{animation:mIn4 .36s cubic-bezier(.22,1,.36,1) backwards;animation-delay:calc(var(--i,0) * 14ms + 70ms)}
+@keyframes mIn4{from{opacity:0;transform:translate3d(-10px,0,0)}}
+.scrim.open{-webkit-backdrop-filter:none;backdrop-filter:none}
+.scrim::after{content:"";position:absolute;inset:0;-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);opacity:0;transition:opacity .18s ease}
+.scrim.open::after{opacity:1;transition:opacity .3s ease .34s}
+.scrim::before{transition:opacity .3s ease}
+@media (prefers-reduced-motion:reduce){.drawer.open .ma{animation:none}.scrim.open::after{transition:none}}
+/* Tests: --p (0 → 1) is the scroll position, set by pstSync in 50 small steps */
+.pst-stick .pst-tabs .tt2 button{height:calc(116px - 68px * var(--p,0));transition:background-color .3s ease,color .3s ease,border-color .3s ease,transform .35s var(--spring)}
+.pst-stick .pst-tabs .tt2 .ti{height:calc(40px * (1 - var(--p,0)));margin-bottom:calc(6px * (1 - var(--p,0)));opacity:calc(1 - 1.5 * var(--p,0));transform:scale(calc(1 - .35 * var(--p,0)));transition:none}
+.pst-stick .pst-tabs .tt2 small{max-height:calc(18px * (1 - var(--p,0)));opacity:calc(1 - 2 * var(--p,0));transition:none}
