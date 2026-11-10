@@ -55,7 +55,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   await new Promise(r => server.listen(PORT, '127.0.0.1', r));
   const br = await chromium.launch();
   // these checks cover the classic pages: the new design is the default now, so they choose the classic design first
-  const mk = async (vw) => { const c = await br.newContext({ viewport: vw || { width: 390, height: 844 } }); await c.addInitScript(() => { try { if (localStorage.getItem('cbt_v3') === null) localStorage.setItem('cbt_v3', 'false'); } catch (e) {} }); const p = await c.newPage(); const errs = [];
+  const mk = async (vw) => { const c = await br.newContext({ viewport: vw || { width: 390, height: 844 } }); await c.addInitScript(() => { try { if (localStorage.getItem('cbt_v3') === null) localStorage.setItem('cbt_v3_ci', 'true'); } catch (e) {} }); const p = await c.newPage(); const errs = [];
     p.on('pageerror', e => errs.push(e.message)); await p.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort()); await p.route(SUPA + '/rest/v1/rpc/**', rpcRoute); return { c, p, errs }; };
   // 1. student login keeps a token, not the code
   let { c, p, errs } = await mk();
@@ -246,6 +246,26 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     ok(st[0] && !st[1] && st[2], 'new design is the default after sign-in (' + st.join(',') + ')');
     const vp = await p2.getAttribute('meta[name=viewport]', 'content'); ok(/user-scalable=no/.test(vp) && /maximum-scale=1/.test(vp), 'no pinch / double-tap zoom: ' + vp);
     ok(!e2.length, 'no page errors (new design default) ' + e2.join(' | ')); await c2.close(); }
+  // the old design never comes back: not for a student who once chose it, not when the network fails, not on an unknown address
+  await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
+  { const c2 = await br.newContext({ viewport: { width: 390, height: 844 } }); await c2.addInitScript(() => { try { localStorage.setItem('cbt_v3', 'false'); } catch (e) {} });
+    const p2 = await c2.newPage(); const e2 = []; p2.on('pageerror', e => e2.push(e.message)); let offline = false;
+    await p2.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort());
+    await p2.route(SUPA + '/rest/v1/rpc/**', r => offline && /cbt_catalog/.test(r.request().url()) ? r.abort() : rpcRoute(r));
+    await p2.goto(BASE + 'index.html'); await codeScreen(p2); await p2.fill('#ph', '9000000002'); await p2.fill('#cd', 'BBBB2222'); await p2.click('#lbtn'); await p2.waitForTimeout(3500);
+    const cls = () => p2.evaluate(() => [document.body.classList.contains('v3on'), document.body.classList.contains('v3old')]);
+    let st = await cls(); ok(st[0] && !st[1], 'old choice cbt_v3=false is ignored: new design (' + st.join(',') + ')');
+    await p2.evaluate(() => { location.hash = '#/zz-unknown'; }); await p2.waitForTimeout(1200);
+    st = await cls(); ok(st[0] && !st[1] && /#\/$/.test(p2.url()), 'unknown address opens Home in the new design (' + st.join(',') + ' ' + p2.url().split('#')[1] + ')');
+    offline = true; await p2.evaluate(() => { CAT = null; CATAT = 0; location.hash = '#/x/lib'; });
+    await p2.waitForFunction(() => !!document.getElementById('v3host').shadowRoot.querySelector('.net3') || document.body.classList.contains('v3old'), null, { timeout: 30000 }).catch(() => {});
+    st = await cls(); const net = await p2.evaluate(() => !!document.getElementById('v3host').shadowRoot.querySelector('.net3'));
+    ok(st[0] && !st[1] && net, 'catalog fails to load: the new design says offline, no classic page (' + st.join(',') + ',' + net + ')');
+    offline = false; await p2.evaluate(() => document.getElementById('v3host').shadowRoot.querySelector('[data-a="retryNet"]').click()); await p2.waitForTimeout(2500);
+    ok(!(await p2.evaluate(() => !!document.getElementById('v3host').shadowRoot.querySelector('.net3'))), 'Try again loads the page once online');
+    const gr = await p2.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--grad'));
+    ok(!/#1c5fe0|#3b9bff|#0891b2|#4f46e5|#0ea5c6|#6366f1/i.test(gr), 'no classic blue left for the exam pop-ups: --grad ' + gr.trim());
+    ok(!e2.length, 'no page errors (old design never back) ' + e2.join(' | ')); await c2.close(); }
   await br.close(); server.close(); await db.end();
   console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });
