@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=45;
+const V3VER=46;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -951,10 +951,12 @@ const CHARTS={
    Everything is the student's own data: test results (cbt_catalog), subject split and time per question
    (cbt_insights), overall rank (cbt_overall), question-bank practice by chapter (cbt_qb_meta) and the mistake
    notebook counts (cbt_mistakes). Bars only: no line charts, no rings. Nothing is stored. */
-const AX={t:0,ins:null,ov:null,qb:null,mk:null,busy:false};
+const AX={t:0,ins:null,ov:null,qb:null,mk:null,tc:null,busy:false};
+/* subject and chapter names from the syllabus (app25.js); an unknown id is shown as it is */
+const anSN=s=>{try{return qbSub(s)}catch(e){return s||'Other'}},anCN=(s,c)=>{try{return qbChap(s,c)}catch(e){return c||'Other'}};
 async function anLoad(force){if(AX.busy||(!force&&AX.t&&Date.now()-AX.t<90000))return;AX.busy=true;
-  try{const [a,b,c,d]=await Promise.all([rpc('cbt_insights',{}),rpc('cbt_overall',{}),rpc('cbt_qb_meta',{}),rpc('cbt_mistakes',{p_offset:0,p_limit:1,p_kind:'all',p_sec:''})]);
-    if(a&&a.ok)AX.ins=a;if(b&&b.ok)AX.ov=b;if(c&&c.ok)AX.qb=c;if(d&&d.ok)AX.mk=d.counts||null;AX.t=Date.now()}catch(e){AX.t=Date.now()}
+  try{const [a,b,c,d,e]=await Promise.all([rpc('cbt_insights',{}),rpc('cbt_overall',{}),rpc('cbt_qb_meta',{}),rpc('cbt_mistakes',{p_offset:0,p_limit:1,p_kind:'all',p_sec:''}),rpc('cbt_test_chapters',{})]);
+    if(a&&a.ok)AX.ins=a;if(b&&b.ok)AX.ov=b;if(c&&c.ok)AX.qb=c;if(d&&d.ok)AX.mk=d.counts||null;if(e&&e.ok)AX.tc=e;AX.t=Date.now()}catch(e){AX.t=Date.now()}
   AX.busy=false;if(S.tab==='stats'&&!scrOpen()){const x=$('#anLive');if(x){x.innerHTML=anLive();countUp(x)}}}
 AFTER.stats=()=>{anLoad()};
 const anTone=a=>a>=75?'ok':a>=50?'mid':'low';
@@ -997,12 +999,18 @@ function anLive(){if(!AX.t)return anSk(3);const o=[];
     o.push(anSec('Subjects','From your tests',`<div class="card p stack" style="gap:16px">${Sx.map(s=>`<div class="sb"><div class="rowb"><b>${esc3(s.sec)}</b><span class="atg ${anTone(s.acc)}">${s.acc>=75?'Strong':s.acc>=50?'Improving':'Needs work'}</span></div>
       <div class="sbl">${anBar(s.acc/100,anTone(s.acc))}<b>${s.acc}%</b></div><small class="mut">${fmtN(s.correct)} right, ${fmtN(s.wrong)} wrong, ${fmtN(s.skipped||0)} skipped${s.avg_time?`, ${Math.round(s.avg_time)} s per question`:''}</small></div>`).join('')}
      ${wk&&bs&&wk.sec!==bs.sec?`<p class="note">${ic('target',15)}<span>Give more time to <b>${esc3(wk.sec)}</b> (${wk.acc}% accuracy). <b>${esc3(bs.sec)}</b> is your strongest (${bs.acc}%).</span></p>`:''}</div>`))}
+  /* chapters in tests (v69: each test question's chapter comes from its Question Bank copy) */
+  const TC=anTC(),tw=TC.filter(m=>m.n>=3).sort((a,b)=>a.acc-b.acc||b.n-a.n),cov=AX.tc&&AX.tc.all?Math.round(AX.tc.tagged*100/AX.tc.all):0;
+  if(TC.length)o.push(anSec('Chapters in your tests',`${TC.length} chapters`,`<div class="card p stack" style="gap:14px"><div class="rowb"><b>${tw.length&&tw[0].acc<75?'Work on these first':'Your chapters'}</b><small class="mut">Lowest accuracy first</small></div>
+     ${(tw.length?tw:TC).slice(0,5).map(anChRow).join('')}
+     ${cov&&cov<100?`<p class="note">${ic('info',15)}<span>Based on ${cov}% of the questions in your tests: the rest are not sorted by chapter yet.</span></p>`:''}
+     <button class="btn ghost blk" data-a="anCh">All chapters</button></div>`));
   /* practice (question bank), chapter by chapter */
-  const M=((AX.qb&&AX.qb.mine)||[]).map(m=>({s:m[0]||'Other',c:m[1]||'Other',n:+m[2]||0,r:+m[3]||0})).filter(m=>m.n>0),pn=M.reduce((a,m)=>a+m.n,0),pr=M.reduce((a,m)=>a+m.r,0);
+  const M=anPrac(),pn=M.reduce((a,m)=>a+m.n,0),pr=M.reduce((a,m)=>a+m.r,0);
   if(pn){const bySub={};M.forEach(m=>{const x=bySub[m.s]=bySub[m.s]||{n:0,r:0};x.n+=m.n;x.r+=m.r});const weak=M.filter(m=>m.n>=5).map(m=>Object.assign({acc:Math.round(m.r*100/m.n)},m)).sort((a,b)=>a.acc-b.acc).slice(0,5).filter(m=>m.acc<75);
     o.push(anSec('Practice','Question bank',`<div class="kpg">${anKpi('Questions practised',N(pn))}${anKpi('Right',N(Math.round(pr*100/pn)),'%',`${fmtN(pr)} right, ${fmtN(pn-pr)} wrong`)}</div>
-     <div class="card p stack" style="gap:14px"><b>By subject</b>${Object.entries(bySub).map(([k,x])=>{const a=Math.round(x.r*100/x.n);return `<div class="sb"><div class="rowb"><span>${esc3(k)}</span><small class="mut">${fmtN(x.n)} questions</small></div><div class="sbl">${anBar(a/100,anTone(a))}<b>${a}%</b></div></div>`}).join('')}</div>
-     ${weak.length?`<div class="card p stack" style="gap:14px"><div class="rowb"><b>Chapters to work on</b><small class="mut">Lowest accuracy first</small></div>${weak.map(m=>`<div class="sb"><div class="rowb"><span>${esc3(m.c)}<small class="mut" style="display:block">${esc3(m.s)}</small></span><small class="mut">${m.r} of ${m.n} right</small></div><div class="sbl">${anBar(m.acc/100,anTone(m.acc))}<b>${m.acc}%</b></div></div>`).join('')}
+     <div class="card p stack" style="gap:14px"><b>By subject</b>${Object.entries(bySub).map(([k,x])=>{const a=Math.round(x.r*100/x.n);return `<div class="sb"><div class="rowb"><span>${esc3(anSN(k))}</span><small class="mut">${fmtN(x.n)} questions</small></div><div class="sbl">${anBar(a/100,anTone(a))}<b>${a}%</b></div></div>`}).join('')}</div>
+     ${weak.length?`<div class="card p stack" style="gap:14px"><div class="rowb"><b>Chapters to work on</b><small class="mut">Lowest accuracy first</small></div>${weak.map(m=>`<div class="sb"><div class="rowb"><span>${esc3(anCN(m.s,m.c))}<small class="mut" style="display:block">${esc3(anSN(m.s))}</small></span><small class="mut">${m.r} of ${m.n} right</small></div><div class="sbl">${anBar(m.acc/100,anTone(m.acc))}<b>${m.acc}%</b></div></div>`).join('')}
       <div class="g2"><button class="btn ghost" data-a="anCh">All chapters</button><button class="btn" data-a="anQb">${ic('qb',16)}Practise now</button></div></div>`
       :`<div class="g2"><button class="btn ghost" data-a="anCh">All chapters</button><button class="btn" data-a="anQb">${ic('qb',16)}Practise now</button></div>`}`))}
   else o.push(anSec('Practice','Question bank',`<div class="card empty"><span class="ti">${ic('qb',22)}</span><b>No practice yet</b><p>Practise from the question bank and your accuracy in every chapter appears here.</p><button class="btn sm" data-a="anQb">Start practising</button></div>`));
@@ -1012,6 +1020,9 @@ function anLive(){if(!AX.t)return anSk(3);const o=[];
      ${(k.secs||[]).length>1?`<div class="stack" style="gap:10px">${k.secs.map(x=>`<div class="sbl"><span class="sbn">${esc3(x.sec)}</span>${anBar((+x.n||0)/mx,'low')}<b>${fmtN(+x.n||0)}</b></div>`).join('')}</div>`:''}
      <button class="btn ghost blk" data-a="oldGo" data-h="#/m">${ic('pen',16)}Open the mistake notebook</button></div>`))}
   return o.join('')}
+function anPrac(){return ((AX.qb&&AX.qb.mine)||[]).map(m=>({s:m[0]||'',c:m[1]||'',n:+m[2]||0,r:+m[3]||0})).filter(m=>m.n>0)}
+function anTC(){return ((AX.tc&&AX.tc.chapters)||[]).map(x=>{const at=(+x.correct||0)+(+x.wrong||0);return {s:x.s,c:x.c,n:+x.total||0,r:+x.correct||0,w:+x.wrong||0,sk:+x.skipped||0,t:+x.avg_time||0,acc:at?Math.round((+x.correct||0)*100/at):0}}).filter(m=>m.n>0)}
+const anChRow=m=>`<div class="sb"><div class="rowb"><span>${esc3(anCN(m.s,m.c))}<small class="mut" style="display:block">${esc3(anSN(m.s))}: ${m.r} right, ${m.w} wrong${m.sk?`, ${m.sk} skipped`:''}${m.t?`, ${m.t} s each`:''}</small></span><small class="mut" style="flex:none">${m.n} Qs</small></div><div class="sbl">${anBar(m.acc/100,anTone(m.acc))}<b>${m.acc}%</b></div></div>`;
 /* days: this week, 12 weeks, streaks */
 function anDays(R){const days=[...new Set(R.map(r=>day0(r.at)))].sort((a,b)=>a-b);let best=0,run=0,prev=0;days.forEach(d=>{run=prev&&d-prev<=DAY*1.5?run+1:1;best=Math.max(best,run);prev=d});
   const t0=nowMs(),a30=days.filter(d=>t0-d<30*DAY).length,P=stats(R),perDay={};R.forEach(r=>{const k=day0(r.at);perDay[k]=(perDay[k]||0)+1});
@@ -1034,9 +1045,10 @@ VIEW.stats=()=>{const R=allRes(),D=anDays(R);
 A.per=el=>{AN.per=el.dataset.v;$$('[data-a="per"]').forEach(x=>{const on=x===el;x.classList.toggle('on',on);x.setAttribute('aria-selected',on)});const o=$('#anPer');if(o){o.innerHTML=anPer();countUp(o)}};
 A.anQb=()=>openQB();
 /* every chapter practised, grouped by subject */
-A.anCh=()=>{const M=((AX.qb&&AX.qb.mine)||[]).map(m=>({s:m[0]||'Other',c:m[1]||'Other',n:+m[2]||0,r:+m[3]||0})).filter(m=>m.n>0),G={};M.forEach(m=>{(G[m.s]=G[m.s]||[]).push(Object.assign({acc:Math.round(m.r*100/m.n)},m))});
-  push({t:'Chapters',s:'Your accuracy in the question bank',html:()=>Object.keys(G).length?Object.entries(G).map(([s,L])=>`<section class="sec an"><div class="sh"><h2>${esc3(s)}</h2><span class="aside">${L.length} chapters</span></div><div class="card p stack" style="gap:14px">${L.sort((a,b)=>a.acc-b.acc).map(m=>`<div class="sb"><div class="rowb"><span>${esc3(m.c)}</span><small class="mut">${m.r} of ${m.n} right</small></div><div class="sbl">${anBar(m.acc/100,anTone(m.acc))}<b>${m.acc}%</b></div></div>`).join('')}</div></section>`).join('')
-   :`<div class="card empty"><span class="ti">${ic('qb',22)}</span><b>No practice yet</b><p>Practise from the question bank to see every chapter here.</p><button class="btn sm" data-a="anQb">Start practising</button></div>`})};
+A.anCh=()=>{const grp=L=>{const G={};L.forEach(m=>{(G[m.s]=G[m.s]||[]).push(m)});return G},TG=grp(anTC()),PG=grp(anPrac().map(m=>Object.assign({acc:Math.round(m.r*100/m.n),w:m.n-m.r,sk:0,t:0},m)));
+  const part=(G,h)=>Object.entries(G).map(([s,L])=>`<section class="sec an"><div class="sh"><h2>${esc3(anSN(s))}</h2><span class="aside">${h}, ${L.length} chapters</span></div><div class="card p stack" style="gap:14px">${L.sort((a,b)=>a.acc-b.acc).map(anChRow).join('')}</div></section>`).join('');
+  push({t:'Chapters',s:'Your accuracy, chapter by chapter',html:()=>(Object.keys(TG).length||Object.keys(PG).length)?part(TG,'Tests')+part(PG,'Practice')
+   :`<div class="card empty"><span class="ti">${ic('qb',22)}</span><b>No chapters yet</b><p>Take tests and practise from the question bank to see every chapter here.</p><button class="btn sm" data-a="anQb">Start practising</button></div>`})};
 A.oldGo=el=>{const f={'#/m':openMistakes,'#/b':openSaved,'#/t':openTracker,'#/notes':openNotes}[el.dataset.h];if(f)f();else oldHash(el.dataset.h)};
 A.focus=()=>push(focusView());
 function histView(){return {t:'Test history',s:`${allRes().length} tests`,html:()=>{const R=allRes().slice().reverse();return R.length?`<div class="card rows">${R.slice(0,60).map(r=>{const t=tOf(r.test_id),s=t&&sOf(t.series_id);return `<div class="item"><span class="ti g">${ic('trophy',18)}</span><div class="bd"><div class="tt"><b>${esc3(titleOf(r))}</b><span class="badge n">${pctOf(r)}%</span></div><small>${s?esc3(s.title)+', ':''}${dS(r.at)}</small><small>${r.score} / ${r.max} marks. ${r.correct} right, ${r.wrong} wrong. Accuracy ${accOf(r)}%${r.used?`, ${Math.round(r.used/60)} min`:''}</small><div class="acts"><button class="btn sm" data-a="review" data-r="${esc3(r.id)}">Result and solutions</button></div></div></div>`}).join('')}</div>${R.length>60?'<p class="hint">Showing your latest 60 tests.</p>':''}`:`<div class="card empty"><span class="ti">${ic('trophy',22)}</span><b>No tests yet</b><p>Your results show up here after your first test.</p></div>`}}}

@@ -1044,6 +1044,36 @@ select pg_temp.chk('33e suspicious: "Looks fine" removes it from the list',
   and not exists (select 1 from jsonb_array_elements(public.cbt_admin_suspects(:'ow5','get')->'items') i where i->>'test_id' = 'aaaaaaaa-0000-0000-0000-000000000068'));
 reset role;
 
+-- ===== 34. v69: chapter-wise test analysis, from the Question Bank link of each test question =====
+insert into cbt_private.qbank (subject, chapter, topic, q, options, answer, src)
+values ('bio', 'cell', '', 'OQ', '["a","b","c","d"]', 3, 'test:aaaaaaaa-0000-0000-0000-000000000004:0')
+on conflict (src) do update set subject = excluded.subject, chapter = excluded.chapter;
+insert into cbt_private.results (student_id, test_id, test_title, score, max_score, correct, wrong, skipped, used_seconds, answers, times)
+select id, 'aaaaaaaa-0000-0000-0000-000000000004', 'Open mock', 4, 4, 1, 0, 0, 40, '{"0":3}', '{"0":40}' from cbt_private.students where mobile = '9000000002';
+-- a live test whose result time is still ahead: its chapter must not show yet
+update cbt_private.tests set result_at = cbt_private.now_ms() + 3600000 where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+insert into cbt_private.qbank (subject, chapter, topic, q, options, answer, src)
+values ('bio', 'hidden', '', 'Q1', '["a","b","c","d"]', 2, 'test:aaaaaaaa-0000-0000-0000-000000000001:0')
+on conflict (src) do update set chapter = excluded.chapter;
+insert into cbt_private.results (student_id, test_id, test_title, score, max_score, correct, wrong, skipped, used_seconds, answers)
+select id, 'aaaaaaaa-0000-0000-0000-000000000001', 'Paid Live', 4, 4, 1, 0, 0, 30, '{"0":2}' from cbt_private.students where mobile = '9000000002';
+select pg_temp.chk('34z (setup) the live test result is hidden for now', not cbt_private.res_visible('aaaaaaaa-0000-0000-0000-000000000001'));
+set role anon;
+select public.cbt_test_chapters('9000000002','BBBB2222','dev-bbbbbbbb') as tc2 \gset
+select public.cbt_test_chapters('9000000001','AAAA1111','dev-aaaaaaaa') as tc1 \gset
+select pg_temp.chk('34a chapters: each student sees their own latest attempt, by the chapter of the bank copy',
+  (:'tc2'::jsonb->>'ok')::boolean
+  and exists (select 1 from jsonb_array_elements(:'tc2'::jsonb->'chapters') c where c->>'s' = 'bio' and c->>'c' = 'cell'
+              and (c->>'correct')::int = 1 and (c->>'wrong')::int = 0 and (c->>'avg_time')::int = 40)
+  and exists (select 1 from jsonb_array_elements(:'tc1'::jsonb->'chapters') c where c->>'c' = 'cell' and (c->>'skipped')::int = 1 and (c->>'correct')::int = 0)
+  and (:'tc2'::jsonb->>'tagged')::int >= 1 and (:'tc2'::jsonb->>'all')::int >= (:'tc2'::jsonb->>'tagged')::int);
+select pg_temp.chk('34b chapters: a wrong code gets nothing',
+  coalesce((public.cbt_test_chapters('9000000002','WRONG999','dev-bbbbbbbb')->>'ok')::boolean, false) is false
+  and public.cbt_test_chapters('9000000002','WRONG999','dev-bbbbbbbb')->'chapters' is null);
+select pg_temp.chk('34c chapters: a test whose result is not out yet is not counted',
+  not exists (select 1 from jsonb_array_elements(:'tc2'::jsonb->'chapters') c where c->>'c' = 'hidden'));
+reset role;
+
 -- ===== report =====
 \t off
 \a

@@ -77,7 +77,7 @@ let CAT=null, T=null, P=null, timer=null, INTEST=false, palOpen=false, warned=fa
 // When many students use the site at the same moment the server can answer "busy" (429 / 502 / 503 / 504) or drop a
 // connection. Requests that are safe to send twice are then tried again after a short random wait, so the phones
 // do not all come back at the same second.
-const RPC_RETRY=new Set(['cbt_catalog','cbt_start','cbt_save','cbt_leaderboard','cbt_overall','cbt_insights','cbt_review','cbt_mistakes',
+const RPC_RETRY=new Set(['cbt_catalog','cbt_start','cbt_save','cbt_leaderboard','cbt_overall','cbt_insights','cbt_test_chapters','cbt_review','cbt_mistakes',
   'cbt_bookmarks','cbt_notice','cbt_banners','cbt_suspension','cbt_my_flags','cbt_pyq_summary','cbt_pyq_chapter','cbt_alert_list','cbt_cover','cbt_file_part']);
 async function rpc(fn,args,noAuth){
   const body=JSON.stringify(noAuth?args:Object.assign({p_mobile:AUTH.mobile,p_code:AUTH.code,p_device:DEV},args||{}));
