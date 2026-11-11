@@ -79,6 +79,17 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Setup:** run `supabase_v64_series_page.sql` once (after v63), then `supabase_v35_admin_team.sql` again. Until then the
   pages show no dates, plans or syllabus.
 
+## Chapter-wise test analysis (`supabase_v69_test_chapters.sql`)
+
+- **Setup:** run `supabase_v69_test_chapters.sql` once (after v68). No need to run v35 again. Until then the Analytics
+  page simply leaves out *Chapters in your tests*.
+- **How the chapter is found:** a test question has no chapter of its own. Add the test's questions to the bank
+  (Admin → Question bank → *From a test*): each is saved with its subject and chapter and linked to its test question.
+  Analytics then counts the student's right / wrong / skipped answers and time per chapter (latest attempt, only after
+  the result time). Tests not added to the bank are left out, and the page says how much of the student's tests the
+  chapter list covers.
+- Read only: no table is created or changed. A student sees only their own numbers.
+
 ## Re-attempt, cheating alerts, answer-key PDF (`supabase_v68_reattempt_cheat_pdf.sql`)
 
 - **Setup:** run `supabase_v68_reattempt_cheat_pdf.sql` once (after v67), then `supabase_v35_admin_team.sql` again.
