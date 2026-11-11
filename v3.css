@@ -1748,3 +1748,21 @@ button:focus:not(:focus-visible){outline:none}
 .drawer.open{transition:transform .34s cubic-bezier(.2,.8,.2,1),visibility 0s}
 .drawer.open .ma,.drawer.open .mtop,.drawer.open .mgh,.drawer.open .mi,.drawer.open .mdiv,.drawer.open .msoc{animation:none}
 .app.lay .hero::before,.app.lay .btn.gold::after,.app.lay .main *{animation-play-state:paused!important}
+
+/* ================= v43: a light Theme page (and every full-screen page) =================
+   Under a full-screen page nothing is drawn: the page, the dock and (on phones) the header are hidden once the page
+   has slid in, so a colour change repaints one page, not three layers with blur behind them. */
+.app.under .main,.app.under .dock,.app.under .dfoot{visibility:hidden}
+@media (max-width:959px){.app.under .hdr{visibility:hidden}}
+/* the slow glow behind the dark cards and the sheen on gold buttons stay still on phones (they cost the GPU every
+   frame there); computers with a mouse keep them */
+.hero::before{animation:none;will-change:auto}
+.btn.gold::after{display:none}
+@media (hover:hover) and (pointer:fine){.hero::before{animation:aur 16s ease-in-out infinite alternate}.btn.gold::after{display:block}}
+.app.under .hero::before,.app.lay .hero::before{animation-play-state:paused}
+/* Theme page: instant answer to a tap; nothing on it animates by itself */
+.pal,.seg button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.pal{transition:border-color .16s ease,background-color .16s ease,transform .18s ease}
+.pal:active{transform:scale(.985)}
+.tprev .hero::before,.tprev .btn.gold::after{animation:none!important;display:none}
+.tprev .bar i{transition:none}
