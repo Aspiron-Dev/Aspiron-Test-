@@ -246,13 +246,31 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     ok(st[0] && !st[1] && st[2], 'new design is the default after sign-in (' + st.join(',') + ')');
     const vp = await p2.getAttribute('meta[name=viewport]', 'content'); ok(/user-scalable=no/.test(vp) && /maximum-scale=1/.test(vp), 'no pinch / double-tap zoom: ' + vp);
     // quick search (Ctrl K) opens a tool by name
-    const sr = () => p2.evaluate(() => { const r = document.getElementById('v3host').shadowRoot; const x = r.querySelector('[data-ob="skip"]'); if (x) x.click(); return [(r.querySelector('.hi3 h1') || {}).textContent || '', !!r.querySelector('.ck.open'), (r.querySelector('#scr.open #scrT') || {}).textContent || '']; });
+    const sr = () => p2.evaluate(() => { const r = document.getElementById('v3host').shadowRoot; const x = r.querySelector('[data-ob="skip"]'); if (x) x.click(); return [(r.querySelector('.hi3 h1') || {}).textContent || '', !!r.querySelector('.qs.open'), (r.querySelector('#scr.open #scrT') || {}).textContent || '']; });
     let h3 = await sr(); ok(!h3[0], 'Home has no greeting block on top');
     await p2.waitForTimeout(2600); await p2.evaluate(() => { const r = document.getElementById('v3host').shadowRoot; const x = r.querySelector('#sheet.open [data-a="close"]'); if (x) x.click(); }); await p2.waitForTimeout(500);
     await p2.keyboard.press('Control+k'); await p2.waitForTimeout(500); h3 = await sr(); ok(h3[1], 'Ctrl K opens quick search');
     await p2.keyboard.type('marks calc'); await p2.waitForTimeout(300); await p2.keyboard.press('Enter'); await p2.waitForTimeout(900);
     h3 = await sr(); ok(!h3[1] && /Marks calculator/.test(h3[2]), 'quick search opens the page that was typed: ' + h3[2]);
     ok(!e2.length, 'no page errors (new design default) ' + e2.join(' | ')); await c2.close(); }
+  // Theme page with real finger taps (a touch phone): every tap must land on its button and be saved
+  await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
+  { const c3 = await br.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }); const p3 = await c3.newPage(); const e3 = []; p3.on('pageerror', e => e3.push(e.message));
+    await p3.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort()); await p3.route(SUPA + '/rest/v1/rpc/**', rpcRoute);
+    await p3.goto(BASE + 'index.html'); await codeScreen(p3); await p3.fill('#ph', '9000000002'); await p3.fill('#cd', 'BBBB2222'); await p3.click('#lbtn'); await p3.waitForTimeout(3500);
+    await p3.evaluate(() => { const r = document.getElementById('v3host').shadowRoot; const x = r.querySelector('[data-ob="skip"]'); if (x) x.click(); }); await p3.waitForTimeout(2600);
+    await p3.evaluate(() => { const r = document.getElementById('v3host').shadowRoot; const x = r.querySelector('#sheet.open [data-a="close"]'); if (x) x.click(); }); await p3.waitForTimeout(500);
+    const v3 = sel => p3.locator('#v3host').locator(sel), tap = async sel => { try { await v3(sel).tap({ timeout: 4000 }); return true; } catch (e) { return false; } };
+    const ths = () => p3.evaluate(() => { const h = document.getElementById('v3host'), s = JSON.parse(localStorage.getItem('cbt_v3_theme') || '{}'); return [s.mode, (s.pal || {}).light, h.dataset.mode + '/' + h.dataset.pal, [...h.shadowRoot.querySelectorAll('.pal.on')].map(b => b.dataset.v).join(',')]; });
+    ok(await tap('#mnu'), 'menu opens by a tap'); await p3.waitForTimeout(700); ok(await tap('[data-k="theme"]'), 'Theme Settings opens by a tap'); await p3.waitForTimeout(1000);
+    const cover = await p3.evaluate(() => { const r = document.getElementById('v3host').shadowRoot; return [...r.querySelectorAll('.ck')].filter(e => { const b = e.getBoundingClientRect(); return b.width > 60 || b.height > 60; }).length; });
+    ok(cover === 0, 'no tick mark covers the page (' + cover + ' large ones)');
+    ok(await tap('[data-a="thm"][data-v="dark"]'), 'Dark can be tapped'); await p3.waitForTimeout(600); let ts = await ths(); ok(ts[0] === 'dark' && /^dark\//.test(ts[2]), 'Dark is shown and saved: ' + ts.join(' '));
+    ok(await tap('[data-a="thm"][data-v="light"]'), 'Light can be tapped'); await p3.waitForTimeout(600); ts = await ths(); ok(ts[0] === 'light' && /^light\//.test(ts[2]), 'Light is shown and saved: ' + ts.join(' '));
+    ok(await tap('[data-a="thp"][data-v="C"]'), 'a theme card can be tapped'); await p3.waitForTimeout(600); ts = await ths(); ok(ts[1] === 'C' && ts[2] === 'light/C' && ts[3] === 'C', 'the tapped theme (and no other) is shown, ticked and saved: ' + ts.join(' '));
+    ok(await tap('[data-a="thp"][data-v="I"]'), 'a new theme card can be tapped'); await p3.waitForTimeout(600); ts = await ths(); ok(ts[1] === 'I' && ts[2] === 'light/I' && ts[3] === 'I', 'new theme shown, ticked and saved: ' + ts.join(' '));
+    ok(await tap('[data-a="thReset"]'), 'Reset can be tapped'); await p3.waitForTimeout(600); ts = await ths(); ok(ts[0] === 'system' && ts[1] === 'A', 'Reset returns to the default: ' + ts.join(' '));
+    ok(!e3.length, 'no page errors (theme page by touch) ' + e3.join(' | ')); await c3.close(); }
   // the old design never comes back: not for a student who once chose it, not when the network fails, not on an unknown address
   await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
   { const c2 = await br.newContext({ viewport: { width: 390, height: 844 } }); await c2.addInitScript(() => { try { localStorage.setItem('cbt_v3', 'false'); } catch (e) {} });

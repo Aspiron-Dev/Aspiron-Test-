@@ -1694,24 +1694,24 @@ button:focus:not(:focus-visible){outline:none}
 
 /* --- quick search (Ctrl K) --- */
 .dsr{display:none}
-.ck{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-start;justify-content:center;padding:max(12vh,calc(env(safe-area-inset-top,0px) + 56px)) 14px 14px;background:color-mix(in srgb,var(--scrim) 80%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);opacity:0;transition:opacity .2s var(--ease)}
-.ck.open{opacity:1}
-.ck-box{width:min(600px,100%);max-height:min(560px,76vh);display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:0 40px 90px -30px rgba(0,0,0,.6);overflow:hidden;transform:translate3d(0,-10px,0) scale(.975);transition:transform .32s var(--spring)}
-.ck.open .ck-box{transform:none}
-.ck-in{display:flex;align-items:center;gap:12px;padding:0 16px;height:58px;border-bottom:1px solid var(--line);color:var(--mut)}
-.ck-in input{flex:1;min-width:0;height:100%;border:0;outline:0;background:none;color:var(--tx);font:inherit;font-size:16px}
-.ck-in input::-webkit-search-cancel-button{display:none}
-.ck kbd{font:600 11px/1 var(--f);padding:5px 7px;border-radius:7px;background:var(--surface2);color:var(--mut);border:1px solid var(--line)}
-.ck-l{overflow:auto;padding:8px;display:flex;flex-direction:column;gap:2px}
-.ck-l button{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:13px;text-align:left;width:100%;transition:background-color .15s}
-.ck-l button .ti{width:36px;height:36px;border-radius:11px}
-.ck-l button b{flex:1;min-width:0;font-weight:550;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ck-l button small{flex:none;max-width:40%;font-size:12px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ck-l button.on{background:var(--accSoft)}.ck-l button.on .ti{background:var(--surface);color:var(--acc)}
-.ck-0{padding:28px 16px;text-align:center;color:var(--mut);font-size:14px}
-.ck-h{display:none;padding:10px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--faint);gap:6px;align-items:center}
-@media (min-width:960px){.dsr{display:grid;order:3}.ck-h{display:flex}}
-@media (prefers-reduced-motion:reduce){.hero::before,.btn.gold::after,.sk::after,.main.in .tg>*,.main.in .list>*,.main.in .rows>*{animation:none!important}.ck,.ck-box{transition:none}}
+.qs{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-start;justify-content:center;padding:max(12vh,calc(env(safe-area-inset-top,0px) + 56px)) 14px 14px;background:color-mix(in srgb,var(--scrim) 80%,transparent);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);opacity:0;transition:opacity .2s var(--ease)}
+.qs.open{opacity:1}
+.qs-box{width:min(600px,100%);max-height:min(560px,76vh);display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:0 40px 90px -30px rgba(0,0,0,.6);overflow:hidden;transform:translate3d(0,-10px,0) scale(.975);transition:transform .32s var(--spring)}
+.qs.open .qs-box{transform:none}
+.qs-in{display:flex;align-items:center;gap:12px;padding:0 16px;height:58px;border-bottom:1px solid var(--line);color:var(--mut)}
+.qs-in input{flex:1;min-width:0;height:100%;border:0;outline:0;background:none;color:var(--tx);font:inherit;font-size:16px}
+.qs-in input::-webkit-search-cancel-button{display:none}
+.qs kbd{font:600 11px/1 var(--f);padding:5px 7px;border-radius:7px;background:var(--surface2);color:var(--mut);border:1px solid var(--line)}
+.qs-l{overflow:auto;padding:8px;display:flex;flex-direction:column;gap:2px}
+.qs-l button{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:13px;text-align:left;width:100%;transition:background-color .15s}
+.qs-l button .ti{width:36px;height:36px;border-radius:11px}
+.qs-l button b{flex:1;min-width:0;font-weight:550;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qs-l button small{flex:none;max-width:40%;font-size:12px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qs-l button.on{background:var(--accSoft)}.qs-l button.on .ti{background:var(--surface);color:var(--acc)}
+.qs-0{padding:28px 16px;text-align:center;color:var(--mut);font-size:14px}
+.qs-h{display:none;padding:10px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--faint);gap:6px;align-items:center}
+@media (min-width:960px){.dsr{display:grid;order:3}.qs-h{display:flex}}
+@media (prefers-reduced-motion:reduce){.hero::before,.btn.gold::after,.sk::after,.main.in .tg>*,.main.in .list>*,.main.in .rows>*{animation:none!important}.qs,.qs-box{transition:none}}
 
 /* ================= v41: a lighter menu, and Tests buttons that shrink with the scroll =================
    Menu: the slide is the only thing moving at first. The blur behind fades in after the slide has landed, and only
@@ -1766,3 +1766,29 @@ button:focus:not(:focus-visible){outline:none}
 .pal:active{transform:scale(.985)}
 .tprev .hero::before,.tprev .btn.gold::after{animation:none!important;display:none}
 .tprev .bar i{transition:none}
+
+/* ================= v44: Theme page, written again =================
+   The quick-search overlay used the class .ck, which is also the tick mark's class: every tick became an unseen
+   full-screen layer that swallowed taps (Theme page, Switch series). Quick search is .qs now.
+   The page: mode on top, then one small preview card per theme. */
+.th-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.th-top b{font-size:16px;font-weight:600}
+.th-seg{margin-top:2px}.th-seg button{height:42px;font-size:14px}
+.pals{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pal{position:relative;display:flex;flex-direction:column;align-items:stretch;gap:10px;padding:10px 10px 12px;border-radius:18px;border:1.5px solid var(--line);background:var(--surface);text-align:left;min-width:0;touch-action:manipulation}
+.pal.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 5%,var(--surface));box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 16%,transparent)}
+.pv{position:relative;display:block;height:86px;border-radius:12px;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(128,128,128,.22)}
+.pv i{position:absolute;display:block}
+.pv-h{left:8px;right:8px;top:8px;height:26px;border-radius:8px}
+.pv-c{left:8px;right:36px;bottom:8px;height:36px;border-radius:8px;border:1px solid;display:flex!important;flex-direction:column;justify-content:center;gap:5px;padding:0 8px}
+.pv-c b{display:block;height:4px;border-radius:2px;width:72%;opacity:.85}.pv-c b+b{width:46%;opacity:.5}
+.pv-a{right:8px;bottom:8px;width:20px;height:36px;border-radius:8px}
+.pn{display:block;min-width:0;padding:0 2px}
+.pal .pn b{display:block;font-size:14px;font-weight:600;line-height:1.25}
+.pal .pn small{display:block;font-size:12px;line-height:1.35;color:var(--mut);margin-top:2px}
+.pal .ck{position:absolute;top:16px;right:16px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--acc);color:var(--onAcc);pointer-events:none;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.pal.on .ck{color:var(--onAcc)}
+.pal:not(.on) .ck{opacity:0;transform:scale(.5)}
+@media (min-width:700px){.pals{grid-template-columns:repeat(3,1fr)}}
+@media (min-width:960px){.pals{grid-template-columns:repeat(4,1fr)}}
+.pal .ck,.pal.on .ck{background:var(--ink);color:var(--onInk)}

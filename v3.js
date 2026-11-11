@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=43;
+const V3VER=44;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -121,7 +121,9 @@ const THEMES={
   D:['Blue Gray',{bg:'#f2f4f7',bg2:'#e6eaf0',s2:'#ebeff4',ln:'#dce2ea',tx:'#1a2230',mt:'#556072',ink:'#24324a',acc:'#3b5779',a1:'#bccde3',a2:'#6d8bb2',onA:'#121b29',as:'#e5ecf5',h1:'#2a3a55',h2:'#131b29',glow:'rgba(140,175,220,.35)',logo:'#24324a',pill:'rgba(36,50,74,.08)'},'Gray with a quiet slate blue'],
   E:['Soft Sage Gray',{bg:'#f3f5f2',bg2:'#e7ebe5',s2:'#ecf0ea',ln:'#dde3da',tx:'#1c231d',mt:'#59645b',ink:'#283429',acc:'#4a6650',a1:'#c6d8c5',a2:'#7f9a80',onA:'#152016',as:'#e5ede5',h1:'#2c3a2f',h2:'#141b15',glow:'rgba(170,205,165,.3)',logo:'#283429',pill:'rgba(40,52,41,.08)'},'Gray with soft green, easy on the eyes'],
   F:['Ivory & Navy',{bg:'#f6f4ee',bg2:'#ebe7dc',s:'#fffdf8',s2:'#f0ece2',ln:'#e3ded1',tx:'#161b2a',mt:'#565d70',ink:'#1b2540',acc:'#2c4170',a1:'#c9d3ea',a2:'#7388b8',onA:'#101829',as:'#e8ebf3',h1:'#24304f',h2:'#111827',glow:'rgba(150,170,220,.32)',logo:'#1b2540',pill:'rgba(27,37,64,.08)',hdr:'rgba(246,244,238,.84)'},'Warm ivory paper with deep navy'],
-  G:['Warm Sand',{bg:'#f7f3ec',bg2:'#ece5d8',s:'#fffdf9',s2:'#f1eadd',ln:'#e5dccb',tx:'#221b14',mt:'#655a4c',ink:'#33281d',acc:'#8a4f2a',a1:'#ecc9a8',a2:'#bd7a4a',onA:'#22140a',as:'#f5e8da',h1:'#3a2d21',h2:'#19130d',glow:'rgba(225,160,110,.32)',logo:'#33281d',pill:'rgba(51,40,29,.08)',hdr:'rgba(247,243,236,.84)'},'Soft sand with warm copper']}},
+  G:['Warm Sand',{bg:'#f7f3ec',bg2:'#ece5d8',s:'#fffdf9',s2:'#f1eadd',ln:'#e5dccb',tx:'#221b14',mt:'#655a4c',ink:'#33281d',acc:'#8a4f2a',a1:'#ecc9a8',a2:'#bd7a4a',onA:'#22140a',as:'#f5e8da',h1:'#3a2d21',h2:'#19130d',glow:'rgba(225,160,110,.32)',logo:'#33281d',pill:'rgba(51,40,29,.08)',hdr:'rgba(247,243,236,.84)'},'Soft sand with warm copper'],
+  H:['Pearl & Emerald',{bg:'#f5f6f3',bg2:'#e9ece6',s:'#ffffff',s2:'#eef1ec',ln:'#dfe4dc',tx:'#17201b',mt:'#56635b',ink:'#17352a',acc:'#1f6b4c',a1:'#bfe0cf',a2:'#4f9a78',onA:'#0c1f16',as:'#e3f1ea',h1:'#1f3d31',h2:'#0f1d17',glow:'rgba(120,200,160,.3)',logo:'#17352a',pill:'rgba(23,53,42,.08)',hdr:'rgba(245,246,243,.84)'},'Pearl white with deep emerald'],
+  I:['Lavender Mist',{bg:'#f5f4f8',bg2:'#e9e7f0',s:'#ffffff',s2:'#efedf5',ln:'#e0dde9',tx:'#1c1a26',mt:'#5c5870',ink:'#2c2845',acc:'#5a4a9a',a1:'#d6cff0',a2:'#8f80c8',onA:'#161226',as:'#ebe7f6',h1:'#322d52',h2:'#16142a',glow:'rgba(160,145,225,.3)',logo:'#2c2845',pill:'rgba(44,40,69,.08)',hdr:'rgba(245,244,248,.84)'},'Soft gray with calm violet']}},
  dark:{name:'Dark',pals:{
   A:['Graphite Gray',{},'Graphite with muted gold'],
   B:['Black & White Dark',{bg:'#121212',bg2:'#0b0b0b',s:'#1a1a1a',s2:'#242424',ln:'#2e2e2e',tx:'#f5f5f5',mt:'#a8a8a8',ink:'#f5f5f5',on:'#121212',acc:'#f5f5f5',a1:'#ffffff',a2:'#bdbdbd',onA:'#111111',as:'#262626',h1:'#2a2a2a',h2:'#141414',glow:'rgba(255,255,255,.08)'},'Dark gray and white, no colour'],
@@ -129,7 +131,9 @@ const THEMES={
   D:['Blue Gray Dark',{bg:'#151a21',bg2:'#0e1217',s:'#1c222b',s2:'#252d38',ln:'#2f3844',tx:'#e6ebf1',mt:'#9ca8b7',ink:'#e6ebf1',on:'#151a21',acc:'#93afd2',a1:'#c2d5ec',a2:'#6789b3',onA:'#0f141b',as:'#1f2a38',h1:'#2b3646',h2:'#151a22',glow:'rgba(120,160,215,.22)',nav:'rgba(28,34,43,.86)',hdr:'rgba(21,26,33,.82)'},'Slate gray with soft blue'],
   E:['Silver Dark',{bg:'#19191b',bg2:'#111113',s:'#222326',s2:'#2c2d31',ln:'#37383c',tx:'#f0f0f2',mt:'#b0b2b8',ink:'#e2e4e8',on:'#19191b',acc:'#c9cdd4',a1:'#eef0f3',a2:'#9ba1aa',onA:'#151618',as:'#2c2d31',h1:'#333438',h2:'#1b1c1e',glow:'rgba(220,225,235,.14)'},'Lighter graphite with silver'],
   F:['Espresso & Copper',{bg:'#1a1614',bg2:'#110e0d',s:'#231e1b',s2:'#2d2723',ln:'#3a322d',tx:'#f1ebe6',mt:'#b0a59c',ink:'#f1ebe6',on:'#1a1614',acc:'#dc9f75',a1:'#f0c4a2',a2:'#bd7748',onA:'#1c1008',as:'#33261d',h1:'#332a24',h2:'#1b1613',glow:'rgba(220,150,100,.22)',nav:'rgba(35,30,27,.86)',hdr:'rgba(26,22,20,.82)'},'Warm dark brown with copper'],
-  G:['Deep Teal',{bg:'#121a1b',bg2:'#0b1112',s:'#192324',s2:'#222e30',ln:'#2c3a3c',tx:'#e6eeee',mt:'#9bacad',ink:'#e6eeee',on:'#121a1b',acc:'#7fc6c2',a1:'#b4e0dc',a2:'#4f9a96',onA:'#081514',as:'#1c2f30',h1:'#26383a',h2:'#131c1d',glow:'rgba(110,190,185,.2)',nav:'rgba(25,35,36,.86)',hdr:'rgba(18,26,27,.82)'},'Dark slate with calm teal']}},
+  G:['Deep Teal',{bg:'#121a1b',bg2:'#0b1112',s:'#192324',s2:'#222e30',ln:'#2c3a3c',tx:'#e6eeee',mt:'#9bacad',ink:'#e6eeee',on:'#121a1b',acc:'#7fc6c2',a1:'#b4e0dc',a2:'#4f9a96',onA:'#081514',as:'#1c2f30',h1:'#26383a',h2:'#131c1d',glow:'rgba(110,190,185,.2)',nav:'rgba(25,35,36,.86)',hdr:'rgba(18,26,27,.82)'},'Dark slate with calm teal'],
+  H:['Midnight Gold',{bg:'#10141c',bg2:'#0a0d13',s:'#171c27',s2:'#202735',ln:'#2a3242',tx:'#eceef3',mt:'#a0a8b8',ink:'#eceef3',on:'#10141c',acc:'#dcb96a',a1:'#f0d9a0',a2:'#b98f3f',onA:'#1a1305',as:'#2a2618',h1:'#232c40',h2:'#11151e',glow:'rgba(220,185,105,.2)',nav:'rgba(23,28,39,.86)',hdr:'rgba(16,20,28,.82)'},'Deep navy with gold'],
+  I:['Charcoal & Wine',{bg:'#181516',bg2:'#100e0f',s:'#211d1f',s2:'#2b2628',ln:'#383133',tx:'#f1eaec',mt:'#b1a4a8',ink:'#f1eaec',on:'#181516',acc:'#d98a9c',a1:'#f0bcc8',a2:'#b05a70',onA:'#1c0a10',as:'#33202a',h1:'#3a2530',h2:'#1a1316',glow:'rgba(215,130,155,.2)',nav:'rgba(33,29,31,.86)',hdr:'rgba(24,21,22,.82)'},'Charcoal with deep wine red']}},
  black:{name:'Black',pals:{
   A:['Pure AMOLED',{},'True black, saves battery on OLED'],
   B:['Black & Gold',{acc:'#d8b46e',a1:'#f0d9a4',a2:'#b88d43',onA:'#140f05',as:'#1f1a0f',ink:'#f1e3c2',h1:'#1d180c',h2:'#050403',glow:'rgba(216,180,110,.28)',logo:'#f3e6c8',pill:'rgba(216,180,110,.14)'},'Black with Aspiron gold'],
@@ -137,7 +141,9 @@ const THEMES={
   D:['Black & Emerald',{acc:'#6cc09c',a1:'#a8dcc4',a2:'#3f9373',onA:'#04140d',as:'#0f1d17',h1:'#11201a',h2:'#020403',glow:'rgba(95,190,150,.22)',pill:'rgba(108,192,156,.12)'},'Black with deep muted green'],
   E:['Black & Graphite',{s:'#121213',s2:'#1c1c1e',ln:'#2a2a2c',acc:'#a6a6aa',a1:'#d7d7da',a2:'#7c7c80',h1:'#222224',h2:'#0b0b0c',glow:'rgba(255,255,255,.07)'},'Black with graphite cards'],
   F:['Black & Rose Gold',{acc:'#e0a899',a1:'#f3cfc4',a2:'#b9796a',onA:'#180a07',as:'#1f1512',ink:'#f5e3dd',h1:'#1f1512',h2:'#050303',glow:'rgba(224,168,153,.24)',logo:'#f5e3dd',pill:'rgba(224,168,153,.13)'},'Black with soft rose gold'],
-  G:['Black & Sapphire',{acc:'#8fb2ea',a1:'#c3d6f5',a2:'#5b82c4',onA:'#060d18',as:'#101826',h1:'#111a2a',h2:'#030508',glow:'rgba(120,160,230,.22)',pill:'rgba(143,178,234,.12)'},'Black with deep sapphire blue']}}
+  G:['Black & Sapphire',{acc:'#8fb2ea',a1:'#c3d6f5',a2:'#5b82c4',onA:'#060d18',as:'#101826',h1:'#111a2a',h2:'#030508',glow:'rgba(120,160,230,.22)',pill:'rgba(143,178,234,.12)'},'Black with deep sapphire blue'],
+  H:['Black & Platinum',{acc:'#dfe3e8',a1:'#ffffff',a2:'#aeb5be',onA:'#07090b',as:'#15171a',h1:'#1c1e21',h2:'#040405',glow:'rgba(225,230,238,.16)',pill:'rgba(223,227,232,.12)'},'Black with cool platinum'],
+  I:['Black & Amber',{acc:'#f0a850',a1:'#f8cf96',a2:'#c97f25',onA:'#1a0e02',as:'#1f1608',ink:'#f6e6cf',h1:'#20170a',h2:'#050402',glow:'rgba(240,168,80,.24)',logo:'#f6e6cf',pill:'rgba(240,168,80,.13)'},'Black with warm amber']}}
 };
 const CHL={light:['#3f72b8','#c4692e'],dark:['#4f86cc','#c97042']}; /* validated with the dataviz palette checker */
 
@@ -256,15 +262,15 @@ function ckAll(){const L=[];NAV.forEach(n=>L.push([n[1],'Page',n[2],()=>go(n[0])
   return L}
 function ckDraw(){const q=CK.el.querySelector('input').value.trim().toLowerCase().split(/\s+/).filter(Boolean),all=ckAll();
   CK.L=(q.length?all.filter(x=>q.every(w=>(x[0]+' '+x[1]).toLowerCase().includes(w))):all.slice(0,9)).slice(0,9);CK.i=Math.min(CK.i,Math.max(0,CK.L.length-1));
-  CK.el.querySelector('.ck-l').innerHTML=CK.L.length?CK.L.map((x,i)=>`<button role="option" aria-selected="${i===CK.i}" class="${i===CK.i?'on':''}" data-i="${i}"><span class="ti">${ic(x[2],18)}</span><b>${esc3(x[0])}</b><small>${esc3(x[1])}</small></button>`).join(''):'<p class="ck-0">Nothing matches. Try a test name, a tool or a page.</p>'}
+  CK.el.querySelector('.qs-l').innerHTML=CK.L.length?CK.L.map((x,i)=>`<button role="option" aria-selected="${i===CK.i}" class="${i===CK.i?'on':''}" data-i="${i}"><span class="ti">${ic(x[2],18)}</span><b>${esc3(x[0])}</b><small>${esc3(x[1])}</small></button>`).join(''):'<p class="qs-0">Nothing matches. Try a test name, a tool or a page.</p>'}
 function ckClose(){const el=CK.el;if(!el)return;CK.el=null;el.classList.remove('open');setTimeout(()=>el.remove(),RM?0:220)}
 function ckRun(i){const x=CK.L[i];if(!x)return;ckClose();try{x[3]()}catch(e){toast3('Could not open this. Please try again.')}}
-A.ck=()=>{if(CK.el||!booted||INTEST)return;closeLayer();const el=document.createElement('div');el.className='ck';
-  el.innerHTML=`<div class="ck-box" role="dialog" aria-modal="true" aria-label="Search"><label class="ck-in">${ic('search',19)}<input type="search" placeholder="Search pages, tools, series and tests" autocomplete="off" spellcheck="false" aria-label="Search"><kbd>Esc</kbd></label><div class="ck-l" role="listbox"></div><p class="ck-h"><kbd>↑</kbd><kbd>↓</kbd> to move, <kbd>Enter</kbd> to open</p></div>`;
+A.ck=()=>{if(CK.el||!booted||INTEST)return;closeLayer();const el=document.createElement('div');el.className='qs';
+  el.innerHTML=`<div class="qs-box" role="dialog" aria-modal="true" aria-label="Search"><label class="qs-in">${ic('search',19)}<input type="search" placeholder="Search pages, tools, series and tests" autocomplete="off" spellcheck="false" aria-label="Search"><kbd>Esc</kbd></label><div class="qs-l" role="listbox"></div><p class="qs-h"><kbd>↑</kbd><kbd>↓</kbd> to move, <kbd>Enter</kbd> to open</p></div>`;
   CK.el=el;CK.i=0;$('#app3').appendChild(el);ckDraw();requestAnimationFrame(()=>el.classList.add('open'));const inp=el.querySelector('input');setTimeout(()=>inp.focus(),30);
   inp.addEventListener('input',()=>{CK.i=0;ckDraw()});
   el.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();ckClose()}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const n=CK.L.length;if(n){CK.i=(CK.i+(e.key==='ArrowDown'?1:n-1))%n;ckDraw();const o=el.querySelector('.on');o&&o.scrollIntoView({block:'nearest'})}}else if(e.key==='Enter'){e.preventDefault();ckRun(CK.i)}});
-  el.addEventListener('click',e=>{const b=e.target.closest('[data-i]');if(b)ckRun(+b.dataset.i);else if(!e.target.closest('.ck-box'))ckClose()})};
+  el.addEventListener('click',e=>{const b=e.target.closest('[data-i]');if(b)ckRun(+b.dataset.i);else if(!e.target.closest('.qs-box'))ckClose()})};
 addEventListener('keydown',e=>{if(!booted||INTEST||!document.body.classList.contains('v3on')||document.body.classList.contains('x3ins'))return;
   const typing=()=>{const a=(root&&root.activeElement)||document.activeElement;return !!a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)||!!(a&&a.isContentEditable)};
   if((e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==='k'){e.preventDefault();CK.el?ckClose():A.ck()}else if(e.key==='/'&&!e.ctrlKey&&!e.metaKey&&!typing()&&!document.querySelector('#layer .modal')){e.preventDefault();A.ck()}});
@@ -1807,15 +1813,14 @@ A.m=el=>{const k=el.dataset.k;closeLayer();
   setTimeout(()=>{(M[k]||(()=>{}))()},140)};
 
 /* ---------- theme page: preview live, apply to keep, reset to default ---------- */
-function themeHtml(){const mode=resolveMode(THP.mode),P=THEMES[mode].pals,cur=THP.pal[mode]||'A';
-  return `<div class="card tprev"><div style="display:flex;justify-content:space-between;align-items:center"><span><b style="font-size:15px">Preview</b><small class="th-sv">Saved automatically</small></span><button class="btn sm ghost" data-a="thReset">${ic('hist',15)}Reset</button></div>
-   <div class="hero tp-hero"><div><small>Exam countdown</small><br><b>175 days</b></div>${ic('target',26)}</div>
-   <div style="display:flex;justify-content:space-between;font-size:13px"><span class="mut"><b style="color:var(--tx)">48</b> of 120 tests done</span><span class="tag">Premium series</span></div><span class="bar"><i style="--p:.4"></i></span>
-   <div style="display:flex;gap:8px;align-items:center"><span class="btn sm">Primary</span><span class="btn sm gold">Accent</span><span class="btn sm ghost">Secondary</span></div></div>
-  <div class="bf" style="border:0;padding-bottom:0"><h3>Mode</h3><div class="seg">${[['system','System'],['light','Light'],['dark','Dark'],['black','Black']].map(m=>`<button class="${THP.mode===m[0]?'on':''}" data-a="thm" data-v="${m[0]}" aria-pressed="${THP.mode===m[0]}">${m[1]}</button>`).join('')}</div>${THP.mode==='system'?`<p class="hint">Follows your phone. It is ${mode} right now.</p>`:''}</div>
-  <div class="bf" style="border:0;padding-top:4px"><h3>${THEMES[mode].name} palettes</h3><div class="pals">${Object.entries(P).map(([k,v])=>{const t=tokens(mode,k);
-   return `<button class="pal${cur===k?' on':''}" data-a="thp" data-v="${k}" aria-pressed="${cur===k}"><span class="swt"><i style="background:${t.bg}"></i><i style="background:${t.s2}"></i><i style="background:linear-gradient(155deg,${t.h1},${t.h2})"></i><i style="background:linear-gradient(135deg,${t.a1},${t.a2})"></i></span><span><b>${v[0]}</b><small>${v[2]}</small></span><span class="ck">${ic('check')}</span></button>`}).join('')}</div></div>
-  <p class="hint">Tap a theme to use it. It is saved at once and used everywhere in the app, the exam screen too.</p>`}
+function themeHtml(){const mode=resolveMode(THP.mode),P=THEMES[mode].pals,cur=P[THP.pal[mode]]?THP.pal[mode]:'A';
+  return `<div class="th-top"><span><b>Appearance</b><small class="th-sv">Saved automatically</small></span><button class="btn sm ghost" data-a="thReset">${ic('hist',15)}Reset</button></div>
+  <div class="seg th-seg" role="group" aria-label="Mode">${[['system','System'],['light','Light'],['dark','Dark'],['black','Black']].map(m=>`<button class="${THP.mode===m[0]?'on':''}" data-a="thm" data-v="${m[0]}" aria-pressed="${THP.mode===m[0]}">${m[1]}</button>`).join('')}</div>
+  ${THP.mode==='system'?`<p class="hint" style="margin-top:-6px">Follows your phone. It is ${mode} right now.</p>`:''}
+  <div class="sh" style="margin-top:4px"><h2>${THEMES[mode].name} themes</h2><span class="aside">${Object.keys(P).length} to choose</span></div>
+  <div class="pals">${Object.entries(P).map(([k,v])=>{const t=tokens(mode,k);
+   return `<button class="pal${cur===k?' on':''}" data-a="thp" data-v="${k}" aria-pressed="${cur===k}"><span class="pv" style="background:${t.bg}"><i class="pv-h" style="background:linear-gradient(155deg,${t.h1},${t.h2})"></i><i class="pv-c" style="background:${t.s};border-color:${t.ln}"><b style="background:${t.tx}"></b><b style="background:${t.mt}"></b></i><i class="pv-a" style="background:linear-gradient(135deg,${t.a1},${t.a2})"></i></span><span class="pn"><b>${v[0]}</b><small>${v[2]}</small></span><span class="ck">${ic('check',14)}</span></button>`}).join('')}</div>
+  <p class="hint">Tap a theme to use it. It is used everywhere in the app, the exam screen too.</p>`}
 function openTheme(){THP=clone(TH);push({t:'Theme & colours',s:'Tap a theme to use it',html:themeHtml,leave:()=>{if(thRaf){window.cancelAnimationFrame(thRaf);thRaf=0;if(THP){TH=clone(THP);saveTheme()}}THP=null;clearTimeout(docT);applyTheme(TH)}})}
 /* Theme page: a tap is the choice. It is applied and saved at once (no Apply button); Reset sits in the page header.
    Light <-> Dark is a big jump, so a soft veil in the new background colour covers the swap for a moment (opacity
