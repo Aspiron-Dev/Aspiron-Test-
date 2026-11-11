@@ -1,0 +1,6 @@
+# Found a security problem on aspironeducation.com? Please tell us privately first. Thank you.
+Contact: https://aspironeducation.com/contact
+Contact: https://t.me/Students_support_teams
+Expires: 2027-11-01T00:00:00.000Z
+Preferred-Languages: en, hi
+Canonical: https://aspironeducation.com/.well-known/security.txt

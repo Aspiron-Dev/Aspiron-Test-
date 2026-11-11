@@ -8,6 +8,7 @@ Everything here runs against a **throw-away** PostgreSQL, never the real Supabas
   hidden answers, rate limits, XSS payloads, direct table access, store/promo abuse, tokens, admin permissions, 2FA,
   database hardening). Every check must PASS. **Never weaken or delete a check to make it pass.**
 - `db/open_findings.sql`: open findings from `SECURITY_REVIEW.md`, written as the safe behaviour (they show OPEN until fixed).
+- `e2e/xss_admin_store.js`: a script payload in (almost) every text column of the test database; the owner opens every admin page and tab, and the store page is opened; the payload must never run. By hand, like `v3_xss.js`.
 - `e2e/v3_xss.js`: the new student design (v3.js) with a script payload in every name, title, notice, banner, question and file; it must never run (phone and computer size). Run it by hand like the others (not in CI, to keep Actions minutes low).
 - `e2e/student.js`, `e2e/admin.js`: the real pages in Chromium, every Supabase call answered by the test database.
 
