@@ -1,0 +1,2 @@
+# GitHub Pages: also publish the .well-known folder (security.txt). Nothing else is changed.
+include: [".well-known"]

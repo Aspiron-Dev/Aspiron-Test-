@@ -101,6 +101,7 @@ Live database Claude ko nahi dikhta. Jo kaam pehle hi ho chuka ho, use seedha ti
      Iske bina Supabase sirf ~2 email/ghanta bhejta hai: confirm / password reset mail atak jayenge.
   6. Email Templates (Confirm signup, Reset password) me apna naam / text daalo.
   *Check:* naye email se account → confirm mail → access code se join → sign out → sirf email/Google se wapas sign in.
+  ⚠️ *Security (ON karne se pehle):* email/Google login se aayi **nayi request** me mobile number verify nahi hota (koi bhi kisi ka number likh sakta hai). Approve karne se pehle us number par WhatsApp/call karke confirm karo, ya 🤖 se kaho: "approve ke baad bhi access code se join zaroori karo".
 
 ## Phase 5: Safai aur speed
 - [x] **5.1 Purana admin panel hatana (ho gaya, 10 Nov):** 👤 confirm karo ki naya admin console poori tarah use ho raha hai, phir 🤖 purana panel hatayega

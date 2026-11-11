@@ -80,3 +80,16 @@ R1–R13 done or ready. Left with you: R7 (switch keys), R11 (backup login), R12
 - [ ] R7: SECURITY_RUNBOOK.md §7 (new secret key → test notification → legacy keys off).
 - [ ] R11: `supabase_backup_role.sql` (BACKUP.md "Read-only login").
 - [ ] A GitHub e-mail "Security alerts … failed" = open Admin → Team & access → Security alerts.
+
+## Checklist audit, 11 Nov 2026 (120-point list, new design included)
+- **Automatic attacks, all pass:** 212 database checks (`break_it.sql`); browser: student, admin, new design XSS (`v3_xss.js`),
+  admin + store XSS with the payload in 112 text columns and every admin page/tab opened (`xss_admin_store.js`).
+- **Reviewed by reading:** every function callable without sign-in; the new login (`v65`), re-attempt / PDF (`v68`), test
+  reviews (`v67`), tracker (`v66`), coupons (`v60`); admin permission entries and wrappers; service worker (never caches
+  database calls); secrets (gitleaks: none); npm audit: 0; workflows (read-only token, timeouts).
+- **Added:** `/.well-known/security.txt`.
+- **Known limits (not fixable in code here):** security headers and DDoS/WAF need Cloudflare in front of the domain;
+  the student app's CSP still allows inline script (the classic screens use inline handlers); email/Google login is
+  locked and has one note in `PENDING.md` 4.3 before it is turned on; the admin page keeps `unsafe-eval` for OCR.
+- **Owner's steps:** 2-step sign-in on every account, GitHub push protection, read-only backup login (R11), Cloudflare,
+  a yearly outside penetration test.
