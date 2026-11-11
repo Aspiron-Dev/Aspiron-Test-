@@ -253,6 +253,18 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     await p2.keyboard.type('marks calc'); await p2.waitForTimeout(300); await p2.keyboard.press('Enter'); await p2.waitForTimeout(900);
     h3 = await sr(); ok(!h3[1] && /Marks calculator/.test(h3[2]), 'quick search opens the page that was typed: ' + h3[2]);
     ok(!e2.length, 'no page errors (new design default) ' + e2.join(' | ')); await c2.close(); }
+  // Analytics: the new page draws with no data, has no badges and no ring charts, and never scrolls sideways
+  await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
+  { const c4 = await br.newContext({ viewport: { width: 390, height: 844 } }); const p4 = await c4.newPage(); const e4 = []; p4.on('pageerror', e => e4.push(e.message));
+    await p4.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort()); await p4.route(SUPA + '/rest/v1/rpc/**', rpcRoute);
+    await p4.goto(BASE + 'index.html'); await codeScreen(p4); await p4.fill('#ph', '9000000002'); await p4.fill('#cd', 'BBBB2222'); await p4.click('#lbtn'); await p4.waitForTimeout(3500);
+    await p4.evaluate(() => { location.hash = '#/x/stats'; }); await p4.waitForTimeout(2500);
+    const an = await p4.evaluate(() => { const r = document.getElementById('v3host').shadowRoot, m = r.querySelector('#main'); return { id: !!m.querySelector('.anid'), secs: m.querySelectorAll('.sec.an').length, live: !m.querySelector('#anLive .sk'), badges: m.querySelectorAll('.bdgs,.bdx,.lvl').length, rings: m.querySelectorAll('svg circle.pg').length, wide: document.documentElement.scrollWidth, text: m.textContent }; });
+    ok(an.id && an.secs >= 6, 'Analytics: the new page is drawn (' + an.secs + ' sections)');
+    ok(an.live, 'Analytics: rank, subjects, practice and mistakes are loaded from the server');
+    ok(an.badges === 0 && an.rings === 0 && !/Badges|tests done/.test(an.text), 'Analytics: no badges and no ring charts');
+    ok(an.wide <= 390, 'Analytics: no sideways scroll on a phone (' + an.wide + ' px)');
+    ok(!e4.length, 'no page errors (analytics) ' + e4.join(' | ')); await c4.close(); }
   // Theme page with real finger taps (a touch phone): every tap must land on its button and be saved
   await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
   { const c3 = await br.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }); const p3 = await c3.newPage(); const e3 = []; p3.on('pageerror', e => e3.push(e.message));

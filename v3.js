@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=44;
+const V3VER=45;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -940,47 +940,103 @@ function heat(R){const days=84,end=day0(nowMs()),start=end-(days-1)*DAY,pad=(new
   for(let i=0;i<pad;i++)cells.push('<i style="visibility:hidden"></i>');
   for(let i=0;i<days;i++){const d=start+i*DAY,n=cnt[d]||0,l=n===0?'':n===1?'l2':n===2?'l3':'l4';cells.push(`<i class="${l}${d===end?' td':''}" title="${fD(d,{day:'numeric',month:'short'})}: ${n} test${n===1?'':'s'}"></i>`)}
   return `<div class="heat" role="img" aria-label="Tests taken per day over the last 12 weeks">${cells.join('')}</div><div class="hl2" style="justify-content:flex-end">Less <i style="background:var(--surface2)"></i><i style="background:color-mix(in srgb,var(--acc2) 55%,var(--surface2))"></i><i style="background:color-mix(in srgb,var(--acc2) 80%,var(--surface2))"></i><i style="background:var(--acc2)"></i> More</div>`}
-const resPts=(R,f,u)=>R.slice(-10).map((r,i,a)=>({l:fD(r.at,{day:'numeric',month:'short'}).replace(' ',' '),v:f(r),hi:i===a.length-1,tip:`${esc3(titleOf(r))}: <b>${f(r)}${u}</b>${u==='%'&&f===pctOf?` (${r.score} / ${r.max})`:''}`}));
+const resPts=(R,f,u)=>R.slice(-10).map((r,i,a)=>({l:new Date(r.at).getDate()+'/'+(new Date(r.at).getMonth()+1),v:f(r),hi:i===a.length-1,tip:`${esc3(titleOf(r))}: <b>${f(r)}${u}</b>${u==='%'&&f===pctOf?` (${r.score} / ${r.max})`:''}`}));
 const CHARTS={
  marks:['Test marks',()=>{const R=resIn();return {html:vbars(resPts(R,pctOf,'%'),{max:100,unit:'%',label:'Marks per test, latest 10',empty:'No tests in this period. Take a test to see it here.'}),rows:R.map(r=>[titleOf(r),`${r.score} / ${r.max} (${pctOf(r)}%)`])}}],
  acc:['Accuracy',()=>{const R=resIn();return {html:vbars(resPts(R,accOf,'%'),{max:100,unit:'%',label:'Accuracy per test, latest 10',empty:'No tests in this period.'}),rows:R.map(r=>[titleOf(r),accOf(r)+'%'])}}],
  week:['This week',()=>{const W=stats(allRes()).week||[];return {html:vbars(W.map((w,i)=>({l:w.l,v:w.n,hi:i===W.length-1,tip:`${w.l}: <b>${w.n}</b> test${w.n===1?'':'s'}`})),{label:'Tests per day this week',tip0:'Tests you took each day this week.'}),rows:W.map(w=>[w.l,w.n])}}],
  activity:['Activity',()=>{const R=allRes(),days=new Set(R.filter(r=>nowMs()-r.at<84*DAY).map(r=>day0(r.at))).size;return {html:heat(R),rows:[['Active days, last 12 weeks',`${days} of 84`],['Current streak',stats(R).streak+' days']]}}]};
-function chartArea(){const c=CHARTS[AN.chart],r=c[1]();return `<div class="csel" role="tablist">${Object.entries(CHARTS).map(([k,v])=>`<button role="tab" aria-selected="${k===AN.chart}" class="${k===AN.chart?'on':''}" data-a="chSel" data-v="${k}">${v[0]}</button>`).join('')}</div>
-  <div class="ctl"><span>${['week','activity'].includes(AN.chart)?'All time':PERS.find(p=>p[0]===AN.per)[1]}</span><button class="lnk" data-a="chTbl">${AN.table?'Show chart':'Show as table'}</button></div>
-  ${AN.table?(r.rows.length?`<table class="tbl"><thead><tr><th>Item</th><th>Value</th></tr></thead><tbody>${r.rows.map(x=>`<tr><td>${esc3(String(x[0]))}</td><td>${x[1]}</td></tr>`).join('')}</tbody></table>`:'<div class="cempty">No data in this period.</div>'):r.html}`}
-function ovH(){const R=resIn(),P=stats(R),hrs=P.secs/3600,un=R.reduce((a,r)=>{const t=tOf(r.test_id);return a+(t&&t.questions?Math.max(0,t.questions-r.correct-r.wrong):0)},0);
-  return `<div class="mg"><div class="card mt w2"><div><small>Questions answered</small><b>${N(P.tot)}</b><em>${fmtN(P.cor)} right, ${fmtN(P.tot-P.cor)} wrong, ${fmtN(un)} skipped</em></div><span class="ti g">${ic('qb',21)}</span></div>
-   <div class="card mt"><small>Tests taken</small><b>${N(P.n)}</b><em>&nbsp;</em></div><div class="card mt"><small>Accuracy</small><b>${N(P.acc)}<span>%</span></b><em>&nbsp;</em></div>
-   <div class="card mt"><small>Average score</small><b>${N(P.avg)}<span>%</span></b><em>&nbsp;</em></div><div class="card mt"><small>Best score</small><b>${N(P.best)}<span>%</span></b><em>&nbsp;</em></div>
-   <div class="card mt"><small>Time in tests</small><b>${N(hrs.toFixed(1),1)}<span>h</span></b><em>&nbsp;</em></div><div class="card mt"><small>Study streak</small><b>${N(stats(allRes()).streak)}<span>days</span></b><em>&nbsp;</em></div></div>`}
-const BDI=['spark','layers','trophy','target','clock','bookmark'];
-VIEW.stats=()=>{const R=allRes(),P=stats(R),o=stuProf(),fields=['name','email','phone','school','city','photo','exam','cls'],comp=Math.round(fields.filter(k=>o[k]).length*100/fields.length),C2=2*Math.PI*33,last=R[R.length-1],pcts=R.map(pctOf);
+/* ================= ANALYTICS, written again (v45) =================
+   One page that answers: how am I doing, where do I lose marks, what should I do next.
+   Everything is the student's own data: test results (cbt_catalog), subject split and time per question
+   (cbt_insights), overall rank (cbt_overall), question-bank practice by chapter (cbt_qb_meta) and the mistake
+   notebook counts (cbt_mistakes). Bars only: no line charts, no rings. Nothing is stored. */
+const AX={t:0,ins:null,ov:null,qb:null,mk:null,busy:false};
+async function anLoad(force){if(AX.busy||(!force&&AX.t&&Date.now()-AX.t<90000))return;AX.busy=true;
+  try{const [a,b,c,d]=await Promise.all([rpc('cbt_insights',{}),rpc('cbt_overall',{}),rpc('cbt_qb_meta',{}),rpc('cbt_mistakes',{p_offset:0,p_limit:1,p_kind:'all',p_sec:''})]);
+    if(a&&a.ok)AX.ins=a;if(b&&b.ok)AX.ov=b;if(c&&c.ok)AX.qb=c;if(d&&d.ok)AX.mk=d.counts||null;AX.t=Date.now()}catch(e){AX.t=Date.now()}
+  AX.busy=false;if(S.tab==='stats'&&!scrOpen()){const x=$('#anLive');if(x){x.innerHTML=anLive();countUp(x)}}}
+AFTER.stats=()=>{anLoad()};
+const anTone=a=>a>=75?'ok':a>=50?'mid':'low';
+const anBar=(p,tone)=>`<span class="ahb"><i class="${tone||''}" style="--p:${Math.max(0,Math.min(1,p)).toFixed(3)}"></i></span>`;
+const anTime=s=>{s=Math.round(s||0);return s>=3600?(s/3600).toFixed(1)+' h':s>=60?Math.round(s/60)+' min':s+' s'};
+const anSk=n=>Array.from({length:n},()=>'<div class="card sk" style="height:132px"></div>').join('');
+const anSec=(t,aside,body)=>`<section class="sec an"><div class="sh"><h2>${t}</h2>${aside?`<span class="aside">${aside}</span>`:''}</div>${body}</section>`;
+const anKpi=(l,v,u,sub)=>`<div class="card kp"><small>${l}</small><b>${v}${u?`<span class="u">${u}</span>`:''}</b>${sub?`<em>${sub}</em>`:''}</div>`;
+/* the part that follows the period chips: key numbers and how the answers split */
+function anPer(){const R=resIn(),P=stats(R),sk=R.reduce((a,r)=>a+(+r.skipped||0),0),wr=P.tot-P.cor,all=P.tot+sk,secs=R.reduce((a,r)=>a+(+r.used||0),0);
+  let tr='';if(R.length>=4){const h=Math.floor(R.length/2),av=L=>L.reduce((a,r)=>a+pctOf(r),0)/L.length,d=Math.round(av(R.slice(h))-av(R.slice(0,h)));tr=d?`<i class="atr ${d>0?'up':'dn'}">${d>0?'+':'−'}${Math.abs(d)}%</i> than your earlier tests`:'Same as your earlier tests'}
+  if(!R.length)return `<div class="card empty"><span class="ti">${ic('chart',22)}</span><b>No tests in this period</b><p>Choose a longer period, or take a test to see your numbers here.</p></div>`;
+  return `<div class="kpg">${anKpi('Tests taken',N(P.n))}${anKpi('Average score',N(P.avg),'%',tr)}${anKpi('Accuracy',N(P.acc),'%',`${fmtN(P.cor)} right of ${fmtN(P.tot)} answered`)}${anKpi('Best score',N(P.best),'%')}${anKpi('Questions seen',N(all))}${anKpi('Time in tests',anTime(secs),'',all?`${Math.round(secs/all)} s per question`:'')}</div>
+  <div class="card p stack" style="gap:12px"><div class="rowb"><b>How your answers split</b><small class="mut">${fmtN(all)} questions</small></div>
+   <span class="astk" role="img" aria-label="${P.cor} right, ${wr} wrong, ${sk} skipped">${all?`<i class="ok" style="flex:${P.cor}"></i><i class="low" style="flex:${wr}"></i><i class="na" style="flex:${sk}"></i>`:''}</span>
+   <div class="lg3"><span><i class="ok"></i>Right <b>${fmtN(P.cor)}</b></span><span><i class="low"></i>Wrong <b>${fmtN(wr)}</b></span><span><i class="na"></i>Skipped <b>${fmtN(sk)}</b></span></div></div>`}
+/* tests: given, missed, still open; the latest scores; tests taken more than once */
+function anTests(R){const T=(C().tests||[]).filter(t=>!t.locked&&!t.practice),t0=nowMs(),done=new Set(R.map(r=>r.test_id)),nD=T.filter(t=>done.has(t.id)||t.attempts>0).length,
+    miss=T.filter(t=>!done.has(t.id)&&!t.attempts&&t.closes_at&&t.closes_at<t0),nM=miss.length,nO=Math.max(0,T.length-nD-nM),by={};
+  R.forEach(r=>{(by[r.test_id]=by[r.test_id]||[]).push(r)});const re=Object.values(by).filter(L=>L.length>1).map(L=>({t:titleOf(L[0]),a:pctOf(L[0]),b:pctOf(L[L.length-1]),n:L.length})).slice(-5).reverse();
+  return anSec('Tests',`${T.length} in your series`,`<div class="card p stack" style="gap:14px">
+   <div class="c3n"><div><b>${N(nD)}</b><small>Attempted</small></div><div><b class="${nM?'warn':''}">${N(nM)}</b><small>Missed</small></div><div><b>${N(nO)}</b><small>Not attempted yet</small></div></div>
+   ${T.length?`<span class="astk" role="img" aria-label="${nD} attempted, ${nM} missed, ${nO} not attempted yet"><i class="acc" style="flex:${nD}"></i><i class="low" style="flex:${nM}"></i><i class="na" style="flex:${nO}"></i></span>`:''}
+   ${nM?`<p class="note">${ic('info',15)}<span>You missed ${nM===1?'<b>'+esc3(miss[0].title)+'</b>':`${nM} tests`}. A missed live test has no rank; you can still take it for practice when it opens again.</span></p>`:''}</div>
+  ${R.length?`<div class="card p stack" style="gap:14px"><div class="rowb"><b>Score in your latest tests</b><small class="mut">${Math.min(10,R.length)} of ${R.length}</small></div>${vbars(resPts(R,pctOf,'%'),{max:100,unit:'%',label:'Marks across your latest 10 tests',tip0:'Tap a bar to see the test.'})}
+   ${re.length?`<div class="sub2"><b>Tests you took again</b>${re.map(x=>{const d=x.b-x.a;return `<div class="rt"><span>${esc3(x.t)}<small>${x.n} attempts</small></span><span class="rtv">${x.a}% <i aria-hidden="true">→</i> <b>${x.b}%</b><i class="atr ${d>0?'up':d<0?'dn':''}">${d>0?'+':d<0?'−':''}${Math.abs(d)}</i></span></div>`}).join('')}</div>`:''}</div>
+   <button class="morebtn card" data-a="hist"><span>${ic('trophy',19)}Test history, results and solutions</span>${ic('right',18)}</button>`
+   :`<div class="card empty"><span class="ti">${ic('trophy',22)}</span><b>Take your first test</b><p>Your scores, accuracy and rank appear here after it.</p><button class="btn sm gold" data-a="mySeries">Open my test series</button></div>`}`)}
+/* the parts that need their own server calls */
+function anLive(){if(!AX.t)return anSk(3);const o=[];
+  /* rank */
+  const v=AX.ov;if(v&&v.my_rank){const topP=v.top&&v.top[0]?+v.top[0].pct:0,pc=v.total?Math.max(1,Math.round(v.my_rank*100/v.total)):0;
+    o.push(anSec('Rank','All India, all tests',`<div class="card p stack" style="gap:14px"><div class="ark"><div><small>Your rank</small><b>#${N(v.my_rank)}</b><em>of ${fmtN(v.total)} students</em></div><span class="tagp">Top ${pc}%</span></div>
+     <div class="cmp"><span>You</span>${anBar((+v.my_pct||0)/100,'acc')}<b>${+v.my_pct||0}%</b><span>Topper</span>${anBar(topP/100,'na2')}<b>${topP}%</b></div>
+     <button class="btn ghost blk" data-a="ranks">${ic('medal',16)}Open leaderboards</button></div>`))}
+  else o.push(anSec('Rank','',`<div class="card rows"><button class="row" data-a="ranks"><span class="ti g">${ic('medal',20)}</span><span><b>Ranks and leaderboards</b><small>Your rank shows after a ranked test</small></span>${ic('right',18)}</button></div>`));
+  /* subjects (from the tests) */
+  const S0=((AX.ins&&AX.ins.subjects)||[]).filter(s=>(s.correct+s.wrong+(s.skipped||0))>0),Sx=S0.length===1&&S0[0].sec==='General'?[]:S0.map(s=>Object.assign({acc:s.correct+s.wrong?Math.round(s.correct*100/(s.correct+s.wrong)):0},s));
+  if(Sx.length){const wk=Sx.filter(s=>s.correct+s.wrong>=3).sort((a,b)=>a.acc-b.acc)[0],bs=Sx.filter(s=>s.correct+s.wrong>=3).sort((a,b)=>b.acc-a.acc)[0];
+    o.push(anSec('Subjects','From your tests',`<div class="card p stack" style="gap:16px">${Sx.map(s=>`<div class="sb"><div class="rowb"><b>${esc3(s.sec)}</b><span class="atg ${anTone(s.acc)}">${s.acc>=75?'Strong':s.acc>=50?'Improving':'Needs work'}</span></div>
+      <div class="sbl">${anBar(s.acc/100,anTone(s.acc))}<b>${s.acc}%</b></div><small class="mut">${fmtN(s.correct)} right, ${fmtN(s.wrong)} wrong, ${fmtN(s.skipped||0)} skipped${s.avg_time?`, ${Math.round(s.avg_time)} s per question`:''}</small></div>`).join('')}
+     ${wk&&bs&&wk.sec!==bs.sec?`<p class="note">${ic('target',15)}<span>Give more time to <b>${esc3(wk.sec)}</b> (${wk.acc}% accuracy). <b>${esc3(bs.sec)}</b> is your strongest (${bs.acc}%).</span></p>`:''}</div>`))}
+  /* practice (question bank), chapter by chapter */
+  const M=((AX.qb&&AX.qb.mine)||[]).map(m=>({s:m[0]||'Other',c:m[1]||'Other',n:+m[2]||0,r:+m[3]||0})).filter(m=>m.n>0),pn=M.reduce((a,m)=>a+m.n,0),pr=M.reduce((a,m)=>a+m.r,0);
+  if(pn){const bySub={};M.forEach(m=>{const x=bySub[m.s]=bySub[m.s]||{n:0,r:0};x.n+=m.n;x.r+=m.r});const weak=M.filter(m=>m.n>=5).map(m=>Object.assign({acc:Math.round(m.r*100/m.n)},m)).sort((a,b)=>a.acc-b.acc).slice(0,5).filter(m=>m.acc<75);
+    o.push(anSec('Practice','Question bank',`<div class="kpg">${anKpi('Questions practised',N(pn))}${anKpi('Right',N(Math.round(pr*100/pn)),'%',`${fmtN(pr)} right, ${fmtN(pn-pr)} wrong`)}</div>
+     <div class="card p stack" style="gap:14px"><b>By subject</b>${Object.entries(bySub).map(([k,x])=>{const a=Math.round(x.r*100/x.n);return `<div class="sb"><div class="rowb"><span>${esc3(k)}</span><small class="mut">${fmtN(x.n)} questions</small></div><div class="sbl">${anBar(a/100,anTone(a))}<b>${a}%</b></div></div>`}).join('')}</div>
+     ${weak.length?`<div class="card p stack" style="gap:14px"><div class="rowb"><b>Chapters to work on</b><small class="mut">Lowest accuracy first</small></div>${weak.map(m=>`<div class="sb"><div class="rowb"><span>${esc3(m.c)}<small class="mut" style="display:block">${esc3(m.s)}</small></span><small class="mut">${m.r} of ${m.n} right</small></div><div class="sbl">${anBar(m.acc/100,anTone(m.acc))}<b>${m.acc}%</b></div></div>`).join('')}
+      <div class="g2"><button class="btn ghost" data-a="anCh">All chapters</button><button class="btn" data-a="anQb">${ic('qb',16)}Practise now</button></div></div>`
+      :`<div class="g2"><button class="btn ghost" data-a="anCh">All chapters</button><button class="btn" data-a="anQb">${ic('qb',16)}Practise now</button></div>`}`))}
+  else o.push(anSec('Practice','Question bank',`<div class="card empty"><span class="ti">${ic('qb',22)}</span><b>No practice yet</b><p>Practise from the question bank and your accuracy in every chapter appears here.</p><button class="btn sm" data-a="anQb">Start practising</button></div>`));
+  /* mistakes */
+  const k=AX.mk;if(k&&(k.wrong||k.skipped||k.mastered)){const mx=Math.max(1,...(k.secs||[]).map(x=>+x.n||0));
+    o.push(anSec('Mistakes','From your tests',`<div class="card p stack" style="gap:14px"><div class="c3n"><div><b class="${k.wrong?'warn':''}">${N(k.wrong||0)}</b><small>Wrong</small></div><div><b>${N(k.skipped||0)}</b><small>Skipped</small></div><div><b class="good">${N(k.mastered||0)}</b><small>Mastered</small></div></div>
+     ${(k.secs||[]).length>1?`<div class="stack" style="gap:10px">${k.secs.map(x=>`<div class="sbl"><span class="sbn">${esc3(x.sec)}</span>${anBar((+x.n||0)/mx,'low')}<b>${fmtN(+x.n||0)}</b></div>`).join('')}</div>`:''}
+     <button class="btn ghost blk" data-a="oldGo" data-h="#/m">${ic('pen',16)}Open the mistake notebook</button></div>`))}
+  return o.join('')}
+/* days: this week, 12 weeks, streaks */
+function anDays(R){const days=[...new Set(R.map(r=>day0(r.at)))].sort((a,b)=>a-b);let best=0,run=0,prev=0;days.forEach(d=>{run=prev&&d-prev<=DAY*1.5?run+1:1;best=Math.max(best,run);prev=d});
+  const t0=nowMs(),a30=days.filter(d=>t0-d<30*DAY).length,P=stats(R),perDay={};R.forEach(r=>{const k=day0(r.at);perDay[k]=(perDay[k]||0)+1});
+  return {best,a30,streak:P.streak,most:Math.max(0,...Object.values(perDay)),P}}
+function anRecords(R){if(!R.length)return '';const bs=R.reduce((a,r)=>pctOf(r)>pctOf(a)?r:a),ba=R.filter(r=>r.correct+r.wrong>=5).reduce((a,r)=>!a||accOf(r)>accOf(a)?r:a,null),D=anDays(R),dt=r=>fD(r.at,{day:'numeric',month:'short',year:'numeric'});
+  const row=(i,l,v,s)=>`<div class="rec"><span class="ti">${ic(i,19)}</span><span><small>${l}</small><b>${v}</b>${s?`<em>${s}</em>`:''}</span></div>`;
+  return anSec('Personal bests','',`<div class="card recs">${row('trophy','Highest score',pctOf(bs)+'%',`${esc3(titleOf(bs))}, ${dt(bs)}`)}${ba?row('target','Best accuracy',accOf(ba)+'%',`${esc3(titleOf(ba))}, ${dt(ba)}`):''}${row('spark','Longest streak',D.best+(D.best===1?' day':' days'),'Days in a row with a test')}${row('cal','Most tests in a day',String(D.most),'')}</div>`)}
+VIEW.stats=()=>{const R=allRes(),D=anDays(R);
   return `<div class="pt"><div><h1>Analytics</h1><p>Your preparation, from your own results</p></div></div>
-  <section class="sec"><div class="hero prof"><div class="prof-top"><div class="pav"><svg viewBox="0 0 72 72" aria-hidden="true"><circle class="tr" cx="36" cy="36" r="33"/><circle class="pg" cx="36" cy="36" r="33" stroke-dasharray="${C2.toFixed(1)}" stroke-dashoffset="${(C2*(1-comp/100)).toFixed(1)}"/></svg>${avatar('pin')}</div>
-   <div style="min-width:0"><b>${esc3(stuName())}</b><small>${esc3(stuMeta())}</small></div><button class="ib" style="background:rgba(255,255,255,.1);border-color:var(--heroLine);color:var(--heroTx);box-shadow:none" data-a="profile" aria-label="Edit profile">${ic('pen',17)}</button></div>
-   <div class="c3"><div><b>${esc3(P.lvl)}</b><small>Level</small></div><div><b>${P.n}</b><small>Tests taken</small></div><div><b>${P.streak} ${P.streak===1?'day':'days'}</b><small>Streak</small></div></div>
-   <div class="ft"><small>Profile <span class="gold">${comp}% complete</span>${comp<100?'. Add the missing details.':''}</small><button class="btn sm onhero" data-a="profile">Edit profile</button></div></div></section>
-  <section class="sec"><div class="sh"><h2>Overall performance</h2></div><div class="chips" role="tablist" aria-label="Time period">${PERS.map(p=>`<button role="tab" aria-selected="${p[0]===AN.per}" class="${p[0]===AN.per?'on':''}" data-a="per" data-v="${p[0]}">${p[1]}</button>`).join('')}</div><div id="ovBox">${ovH()}</div></section>
-  <section class="sec"><div class="sh"><h2>Test performance</h2><span class="aside">${R.length} tests</span></div><div class="card">${R.length?`<div class="p stack" style="gap:16px">
-   <div class="kv"><div><small>Average</small><b>${P.avg}%</b></div><div><small>Highest</small><b>${Math.max(...pcts)}%</b></div><div><small>Lowest</small><b>${Math.min(...pcts)}%</b></div><div><small>Accuracy</small><b>${P.acc}%</b></div><div><small>Time</small><b>${(P.secs/3600).toFixed(1)} h</b></div><div><small>Last test</small><b>${pctOf(last)}%</b></div></div>
-   ${vbars(resPts(R,pctOf,'%'),{max:100,unit:'%',label:'Marks across your latest 10 tests',tip0:'Your latest 10 tests. Tap a bar for details.'})}</div>
-   <button class="morebtn" data-a="hist"><span>${ic('trophy',19)}Test history, results and solutions</span>${ic('right',18)}</button>`
-   :`<div class="empty"><span class="ti">${ic('trophy',22)}</span><b>Take your first test</b><p>Your scores, accuracy and progress will appear here.</p><button class="btn sm gold" data-a="mySeries">Open my test series</button></div>`}</div></section>
-  <section class="sec"><div class="sh"><h2>Study activity</h2><span class="aside">${P.streak}-day streak</span></div><div class="card p stack" style="gap:16px">${CHARTS.week[1]().html}<div style="border-top:1px solid var(--line);padding-top:14px" class="stack"><b style="font-size:14px">Last 12 weeks</b>${heat(R)}</div>
-   <button class="btn ghost blk" data-a="oldTracker">${ic('list',16)}Open your study tracker</button></div></section>
-  ${R.length?`<section class="sec"><div class="sh"><h2>Performance charts</h2></div><div class="card p stack" id="chArea">${chartArea()}</div></section>`:''}
-  <section class="sec"><div class="sh"><h2>Badges</h2><span class="aside">${(P.badges||[]).filter(b=>b.on).length} of ${(P.badges||[]).length}</span></div><div class="card p stack" style="gap:18px">
-   <div class="lvl"><span class="bdg">${esc3((P.lvl||'B')[0])}</span><div><b>${esc3(P.lvl)}</b><small class="mut">${P.n} tests taken. ${P.n<3?`${3-P.n} more to become a Learner`:P.n<10?`${10-P.n} more to become an Achiever`:P.n<25?`${25-P.n} more to become a Champion`:'Top level reached'}</small><span class="bar"><i style="--p:${Math.min(1,P.n/25).toFixed(3)}"></i></span></div></div>
-   <div class="bdgs">${(P.badges||[]).map((b,i)=>`<div class="bdx${b.on?'':' off'}"><span>${ic(b.on?BDI[i%BDI.length]:'lock',20)}</span>${esc3(b.t)}</div>`).join('')}</div></div></section>
-  <section class="sec"><div class="sh"><h2>Leaderboard and rewards</h2></div><div class="card rows">
-   <button class="row" data-a="ranks"><span class="ti g">${ic('medal',20)}</span><span><b>Ranks and leaderboards</b><small>Your rank in every test you took</small></span>${ic('right',18)}</button>
-   <button class="row" data-a="refer"><span class="ti g">${ic('gift',20)}</span><span><b>Refer and earn</b><small>Your code, friends who joined and wallet money</small></span>${ic('right',18)}</button></div></section>
-  <section class="sec"><div class="sh"><h2>Profile and history</h2></div><div class="card rows">
-   ${[['user','My profile','Name, photo, class and target exam','profile',''],['trophy','Test history',`${R.length} tests`,'hist',''],['pen','Mistake notebook','Questions you got wrong','oldGo','#/m'],['bookmark','Saved questions',`${bmCount()} saved`,'oldGo','#/b'],['cal','Study tracker history','Your weekly plans','oldGo','#/t'],['timer','Focus timer','Timed study sessions','focus','']].map(r=>`<button class="row" data-a="${r[3]}"${r[4]?` data-h="${r[4]}"`:''}><span class="ti">${ic(r[0],20)}</span><span><b>${r[1]}</b><small>${r[2]}</small></span>${ic('right',18)}</button>`).join('')}</div></section>`};
-A.per=el=>{AN.per=el.dataset.v;$$('[data-a="per"]').forEach(x=>{const on=x===el;x.classList.toggle('on',on);x.setAttribute('aria-selected',on)});const o=$('#ovBox');o.innerHTML=ovH();countUp(o);const c=$('#chArea');if(c)c.innerHTML=chartArea()};
-A.chSel=el=>{AN.chart=el.dataset.v;$('#chArea').innerHTML=chartArea()};
-A.chTbl=()=>{AN.table=!AN.table;$('#chArea').innerHTML=chartArea()};
+  <section class="sec an"><div class="card anid"><span class="anav">${avatar('anavi')}</span><div class="anidt"><b>${esc3(stuName())}</b><small>${esc3(stuMeta())}</small></div><button class="btn sm ghost" data-a="profile">${ic('pen',14)}Edit</button>
+   <div class="anidk"><div><b>${N(R.length)}</b><small>Tests</small></div><div><b>${N(D.streak)}</b><small>Day streak</small></div><div><b>${N(D.a30)}</b><small>Active days (30)</small></div></div></div></section>
+  <section class="sec an"><div class="sh"><h2>Overview</h2></div><div class="chips" role="tablist" aria-label="Time period">${PERS.map(p=>`<button role="tab" aria-selected="${p[0]===AN.per}" class="${p[0]===AN.per?'on':''}" data-a="per" data-v="${p[0]}">${p[1]}</button>`).join('')}</div><div id="anPer" class="stack" style="gap:12px">${anPer()}</div></section>
+  ${anTests(R)}
+  <div id="anLive" class="anlive">${anLive()}</div>
+  ${anSec('Activity',`${D.streak}-day streak`,`<div class="card p stack" style="gap:16px">${CHARTS.week[1]().html}<div class="sub2"><b>Last 12 weeks</b>${heat(R)}</div>
+   <div class="c3n"><div><b>${N(D.a30)}</b><small>Active days in 30</small></div><div><b>${N(D.streak)}</b><small>Current streak</small></div><div><b>${N(D.best)}</b><small>Longest streak</small></div></div>
+   <button class="btn ghost blk" data-a="oldTracker">${ic('list',16)}Open your study tracker</button></div>`)}
+  ${anRecords(R)}
+  ${anSec('More','',`<div class="card rows">${[['trophy','Test history',`${R.length} tests`,'hist',''],['bookmark','Saved questions',`${bmCount()} saved`,'oldGo','#/b'],['cal','Study tracker','Your weekly plans','oldGo','#/t'],['timer','Focus timer','Timed study sessions','focus',''],['gift','Refer and earn','Your code and wallet money','refer','']].map(r=>`<button class="row" data-a="${r[3]}"${r[4]?` data-h="${r[4]}"`:''}><span class="ti">${ic(r[0],20)}</span><span><b>${r[1]}</b><small>${r[2]}</small></span>${ic('right',18)}</button>`).join('')}</div>`)}`};
+A.per=el=>{AN.per=el.dataset.v;$$('[data-a="per"]').forEach(x=>{const on=x===el;x.classList.toggle('on',on);x.setAttribute('aria-selected',on)});const o=$('#anPer');if(o){o.innerHTML=anPer();countUp(o)}};
+A.anQb=()=>openQB();
+/* every chapter practised, grouped by subject */
+A.anCh=()=>{const M=((AX.qb&&AX.qb.mine)||[]).map(m=>({s:m[0]||'Other',c:m[1]||'Other',n:+m[2]||0,r:+m[3]||0})).filter(m=>m.n>0),G={};M.forEach(m=>{(G[m.s]=G[m.s]||[]).push(Object.assign({acc:Math.round(m.r*100/m.n)},m))});
+  push({t:'Chapters',s:'Your accuracy in the question bank',html:()=>Object.keys(G).length?Object.entries(G).map(([s,L])=>`<section class="sec an"><div class="sh"><h2>${esc3(s)}</h2><span class="aside">${L.length} chapters</span></div><div class="card p stack" style="gap:14px">${L.sort((a,b)=>a.acc-b.acc).map(m=>`<div class="sb"><div class="rowb"><span>${esc3(m.c)}</span><small class="mut">${m.r} of ${m.n} right</small></div><div class="sbl">${anBar(m.acc/100,anTone(m.acc))}<b>${m.acc}%</b></div></div>`).join('')}</div></section>`).join('')
+   :`<div class="card empty"><span class="ti">${ic('qb',22)}</span><b>No practice yet</b><p>Practise from the question bank to see every chapter here.</p><button class="btn sm" data-a="anQb">Start practising</button></div>`})};
 A.oldGo=el=>{const f={'#/m':openMistakes,'#/b':openSaved,'#/t':openTracker,'#/notes':openNotes}[el.dataset.h];if(f)f();else oldHash(el.dataset.h)};
 A.focus=()=>push(focusView());
 function histView(){return {t:'Test history',s:`${allRes().length} tests`,html:()=>{const R=allRes().slice().reverse();return R.length?`<div class="card rows">${R.slice(0,60).map(r=>{const t=tOf(r.test_id),s=t&&sOf(t.series_id);return `<div class="item"><span class="ti g">${ic('trophy',18)}</span><div class="bd"><div class="tt"><b>${esc3(titleOf(r))}</b><span class="badge n">${pctOf(r)}%</span></div><small>${s?esc3(s.title)+', ':''}${dS(r.at)}</small><small>${r.score} / ${r.max} marks. ${r.correct} right, ${r.wrong} wrong. Accuracy ${accOf(r)}%${r.used?`, ${Math.round(r.used/60)} min`:''}</small><div class="acts"><button class="btn sm" data-a="review" data-r="${esc3(r.id)}">Result and solutions</button></div></div></div>`}).join('')}</div>${R.length>60?'<p class="hint">Showing your latest 60 tests.</p>':''}`:`<div class="card empty"><span class="ti">${ic('trophy',22)}</span><b>No tests yet</b><p>Your results show up here after your first test.</p></div>`}}}
