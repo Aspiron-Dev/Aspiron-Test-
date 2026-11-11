@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=42;
+const V3VER=43;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -149,14 +149,18 @@ let TH=clone(DEF_TH),THP=null;
 {const v=lsGet('cbt_v3_theme',null);if(v&&(v.mode==='system'||THEMES[v.mode]))TH={mode:v.mode,pal:Object.assign({},DEF_TH.pal,v.pal)}}
 const resolveMode=m=>m==='system'?(MQ.matches?'dark':'light'):m;
 const tokens=(mode,pal)=>Object.assign({},TBASE[mode],(THEMES[mode].pals[pal]||THEMES[mode].pals.A)[1]);
-function applyTheme(t){if(!host)return;const mode=resolveMode(t.mode),pal=THEMES[mode].pals[t.pal[mode]]?t.pal[mode]:'A',tk=tokens(mode,pal);
+function applyTheme(t,quick){if(!host)return;const mode=resolveMode(t.mode),pal=THEMES[mode].pals[t.pal[mode]]?t.pal[mode]:'A',tk=tokens(mode,pal);
   for(const k in TK)host.style.setProperty(TK[k],tk[k]);
   CHL[mode==='light'?'light':'dark'].forEach((c,i)=>host.style.setProperty('--c'+(i+1),c));
   host.dataset.mode=mode;host.dataset.pal=pal;document.body.style.setProperty('--v3bg',tk.bg);
   /* the few classic pieces still in use (exam engine, its pop-ups) take the same colours: no old blue anywhere */
-  try{const H=document.documentElement,cv={'--bg':tk.bg,'--surface':tk.s,'--surface2':tk.s2,'--bd':tk.ln,'--hair':tk.ln,'--tx':tk.tx,'--mut':tk.mt,'--pri':tk.acc,'--pri2':tk.a2,'--priSoft':tk.as,'--grad':`linear-gradient(180deg,${tk.ink},${tk.ink})`,'--glow':'rgba(0,0,0,.16)','--onpri3':tk.on,'--nav':tk.nav};
-    for(const k in cv)H.style.setProperty(k,cv[k]);H.dataset.theme=mode==='light'?'light':'dark';if(mode==='black')H.dataset.oled='1';else delete H.dataset.oled;H.classList.add('v3c')}catch(e){}
+  if(quick){clearTimeout(docT);docT=setTimeout(()=>applyDoc(t),900)}else applyDoc(t)
   if(!document.body.classList.contains('v3old')){const m=document.querySelector('meta[name="theme-color"]');m&&m.setAttribute('content',tk.bg)}}
+/* the engine's own pages (exam, its pop-ups) read these on <html>; changing them restyles the whole document */
+let docT=0;
+function applyDoc(t){const mode=resolveMode(t.mode),pal=THEMES[mode].pals[t.pal[mode]]?t.pal[mode]:'A',tk=tokens(mode,pal);
+  try{const H=document.documentElement,cv={'--bg':tk.bg,'--surface':tk.s,'--surface2':tk.s2,'--bd':tk.ln,'--hair':tk.ln,'--tx':tk.tx,'--mut':tk.mt,'--pri':tk.acc,'--pri2':tk.a2,'--priSoft':tk.as,'--grad':`linear-gradient(180deg,${tk.ink},${tk.ink})`,'--glow':'rgba(0,0,0,.16)','--onpri3':tk.on,'--nav':tk.nav};
+    for(const k in cv)H.style.setProperty(k,cv[k]);H.dataset.theme=mode==='light'?'light':'dark';if(mode==='black')H.dataset.oled='1';else delete H.dataset.oled;H.classList.add('v3c')}catch(e){}}
 const saveTheme=()=>lsSet('cbt_v3_theme',TH);
 MQ.addEventListener&&MQ.addEventListener('change',()=>{if((THP||TH).mode==='system')applyTheme(THP||TH)});
 const themeLabel=()=>{const m=resolveMode(TH.mode);return `${TH.mode==='system'?'System, ':''}${THEMES[m].name}, ${THEMES[m].pals[TH.pal[m]||'A'][0]}`};
@@ -170,13 +174,13 @@ function closeLayer(){if(!layer)return;$('#app3').classList.remove('lay');layer.
 function openSheet(h){sheet.onclick=null;sheet.innerHTML='<div class="grab"></div>'+h;sheet.scrollTop=0;openLayer(sheet)}
 
 /* ---------- full-screen pages; the phone's back button closes them ---------- */
-let STK=[],scr;
+let STK=[],scr,undT=0;
 const top=()=>STK[STK.length-1],scrOpen=()=>STK.length>0;
 function drawScr(dir){const v=top();if(!v)return;$('#scrT').textContent=v.t;$('#scrS').textContent=v.s||'';$('#scrR').innerHTML=v.right?v.right():'';
   $('#scrB').innerHTML=`<div class="scr-in${dir?' '+dir:''}">${v.html()}</div>`;v.after&&v.after()}
 function push(v){const was=STK.length>0;STK.push(v);try{history.pushState({v3s:STK.length},'',location.href)}catch(e){}
-  drawScr(!RM?'fwd':'');try{pstSync()}catch(e){}$('#scrB').scrollTop=0;if(!scr.classList.contains('open')){scr.classList.add('open');scr.setAttribute('aria-hidden','false')}setTimeout(()=>$('#scrBack').focus({preventScroll:true}),60)}
-function pop(){const v=STK.pop();v&&v.leave&&v.leave();if(STK.length){drawScr(RM?'':'bwd')}else{scr.classList.remove('open');scr.setAttribute('aria-hidden','true');$('#scrB').innerHTML='';try{pstSync()}catch(e){}}}
+  drawScr(!RM?'fwd':'');try{pstSync()}catch(e){}$('#scrB').scrollTop=0;if(!scr.classList.contains('open')){scr.classList.add('open');scr.setAttribute('aria-hidden','false');clearTimeout(undT);undT=setTimeout(()=>{if(STK.length)$('#app3').classList.add('under')},260)}setTimeout(()=>$('#scrBack').focus({preventScroll:true}),60)}
+function pop(){const v=STK.pop();v&&v.leave&&v.leave();if(STK.length){drawScr(RM?'':'bwd')}else{clearTimeout(undT);$('#app3').classList.remove('under');scr.classList.remove('open');scr.setAttribute('aria-hidden','true');$('#scrB').innerHTML='';try{pstSync()}catch(e){}}}
 function back(){if(!STK.length)return;history.back()}
 /* close every page first, wait for the browser history to settle, then run cb (so a hash change is never undone) */
 let afterUnwind=null;
@@ -1812,20 +1816,20 @@ function themeHtml(){const mode=resolveMode(THP.mode),P=THEMES[mode].pals,cur=TH
   <div class="bf" style="border:0;padding-top:4px"><h3>${THEMES[mode].name} palettes</h3><div class="pals">${Object.entries(P).map(([k,v])=>{const t=tokens(mode,k);
    return `<button class="pal${cur===k?' on':''}" data-a="thp" data-v="${k}" aria-pressed="${cur===k}"><span class="swt"><i style="background:${t.bg}"></i><i style="background:${t.s2}"></i><i style="background:linear-gradient(155deg,${t.h1},${t.h2})"></i><i style="background:linear-gradient(135deg,${t.a1},${t.a2})"></i></span><span><b>${v[0]}</b><small>${v[2]}</small></span><span class="ck">${ic('check')}</span></button>`}).join('')}</div></div>
   <p class="hint">Tap a theme to use it. It is saved at once and used everywhere in the app, the exam screen too.</p>`}
-function openTheme(){THP=clone(TH);push({t:'Theme & colours',s:'Tap a theme to use it',html:themeHtml,leave:()=>{THP=null;applyTheme(TH)}})}
+function openTheme(){THP=clone(TH);push({t:'Theme & colours',s:'Tap a theme to use it',html:themeHtml,leave:()=>{if(thRaf){window.cancelAnimationFrame(thRaf);thRaf=0;if(THP){TH=clone(THP);saveTheme()}}THP=null;clearTimeout(docT);applyTheme(TH)}})}
 /* Theme page: a tap is the choice. It is applied and saved at once (no Apply button); Reset sits in the page header.
    Light <-> Dark is a big jump, so a soft veil in the new background colour covers the swap for a moment (opacity
    only). A palette change inside the same mode is small and simply changes, with no redraw of the page. */
 function thKeep(){TH=clone(THP);saveTheme()}
-function themeSwap(fn){const a=$('#app3');if(RM||!a){fn();return}
-  const before=resolveMode((THP||TH).mode),v=document.createElement('i');v.className='thveil';a.appendChild(v);
-  fn();const after=resolveMode((THP||TH).mode);if(before===after){v.remove();return}
-  v.style.background=getComputedStyle(host).getPropertyValue('--bg').trim()||'#000';
-  requestAnimationFrame(()=>{v.classList.add('go');setTimeout(()=>v.remove(),460)})}
-A.thm=el=>{if(THP.mode===el.dataset.v)return;themeSwap(()=>{THP.mode=el.dataset.v;applyTheme(THP);thKeep();redraw()})};
-A.thp=el=>{const m=resolveMode(THP.mode);if(THP.pal[m]===el.dataset.v)return;THP.pal[m]=el.dataset.v;applyTheme(THP);thKeep();
-  $$('.pal').forEach(b=>{const on=b===el;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)});try{navigator.vibrate&&navigator.vibrate(8)}catch(e){}};
-A.thReset=()=>{themeSwap(()=>{THP=clone(DEF_TH);applyTheme(THP);thKeep();redraw()});toast3('Default theme is back.')};
+let thRaf=0;
+/* the tap is answered at once (tick, pressed state, a short buzz); the colours follow on the next frame. Many quick
+   taps are merged into one colour change, so the page never queues up work and never stops answering */
+function thSoon(redrawPage){if(thRaf)window.cancelAnimationFrame(thRaf);thRaf=requestAnimationFrame(()=>{thRaf=0;if(!THP)return;applyTheme(THP,true);thKeep();if(redrawPage)redraw()})}
+function thBuzz(){try{navigator.vibrate&&navigator.vibrate(8)}catch(e){}}
+A.thm=el=>{if(!THP||THP.mode===el.dataset.v)return;THP.mode=el.dataset.v;$$('[data-a="thm"]').forEach(b=>{const on=b===el;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)});thBuzz();thSoon(true)};
+A.thp=el=>{if(!THP)return;const m=resolveMode(THP.mode);if(THP.pal[m]===el.dataset.v)return;THP.pal[m]=el.dataset.v;
+  $$('.pal').forEach(b=>{const on=b===el;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)});thBuzz();thSoon(false)};
+A.thReset=()=>{if(!THP)return;THP=clone(DEF_TH);thSoon(true);toast3('Default theme is back.')};
 
 
 /* ================= SWIPE BETWEEN TABS, and SLIDE ALONG THE DOCK =================
