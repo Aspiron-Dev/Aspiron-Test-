@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=41;
+const V3VER=42;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -18,8 +18,6 @@ const gStyle=document.createElement('style');gStyle.id='v3g';
 gStyle.textContent=`body.v3on:not(.v3old):not(.intest) .hdr,body.v3on:not(.v3old):not(.intest):not(.x3ins) #app,body.v3on:not(.v3old):not(.intest) #bnav,body.v3on:not(.v3old):not(.intest) .instbar{display:none!important}
 body.v3on:not(.v3old):not(.intest){padding:0!important;background:var(--v3bg,#f5f5f3)!important}
 body.intest #v3host,body:not(.v3on) #v3host{display:none!important}
-html.v3th::view-transition-old(root),html.v3th::view-transition-new(root){animation:none;mix-blend-mode:normal}
-html.v3th::view-transition-old(root){z-index:0}html.v3th::view-transition-new(root){z-index:1}
 :where(html.v3c) .btn{color:var(--onpri3,#fff)}
 body.v3on #layer .modal .box{border-radius:24px;background:var(--surface);color:var(--tx);font-family:Geist,system-ui,sans-serif}
 body.v3on #layer .modal .btn{border-radius:14px;min-height:46px;font-weight:600}
@@ -167,8 +165,8 @@ const themeLabel=()=>{const m=resolveMode(TH.mode);return `${TH.mode==='system'?
 let tT=null,tMsg='';
 function toast3(m){const t=$('#toast');if(m===tMsg&&t.classList.contains('on')){clearTimeout(tT)}else{t.textContent=m;tMsg=m;t.classList.remove('on');void t.offsetWidth;t.classList.add('on')}tT=setTimeout(()=>{t.classList.remove('on');tMsg=''},2300)}
 let layer=null,lastF=null,sheet,drawer,scrim;
-function openLayer(el){if(layer&&layer!==el)layer.classList.remove('open');lastF=root.activeElement;layer=el;scrim.classList.add('open');el.classList.add('open');setTimeout(()=>{const f=el.querySelector('button,input');f&&f.focus({preventScroll:true})},80)}
-function closeLayer(){if(!layer)return;layer.classList.remove('open');scrim.classList.remove('open');layer=null;sheet.onclick=null;lastF&&lastF.focus&&lastF.focus({preventScroll:true})}
+function openLayer(el){if(layer&&layer!==el)layer.classList.remove('open');$('#app3').classList.add('lay');lastF=root.activeElement;layer=el;scrim.classList.add('open');el.classList.add('open');setTimeout(()=>{const f=el.querySelector('button,input');f&&f.focus({preventScroll:true})},80)}
+function closeLayer(){if(!layer)return;$('#app3').classList.remove('lay');layer.classList.remove('open');scrim.classList.remove('open');layer=null;sheet.onclick=null;lastF&&lastF.focus&&lastF.focus({preventScroll:true})}
 function openSheet(h){sheet.onclick=null;sheet.innerHTML='<div class="grab"></div>'+h;sheet.scrollTop=0;openLayer(sheet)}
 
 /* ---------- full-screen pages; the phone's back button closes them ---------- */
@@ -1806,27 +1804,28 @@ A.m=el=>{const k=el.dataset.k;closeLayer();
 
 /* ---------- theme page: preview live, apply to keep, reset to default ---------- */
 function themeHtml(){const mode=resolveMode(THP.mode),P=THEMES[mode].pals,cur=THP.pal[mode]||'A';
-  return `<div class="card tprev"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:15px">Preview</b><span class="st ok">Live</span></div>
+  return `<div class="card tprev"><div style="display:flex;justify-content:space-between;align-items:center"><span><b style="font-size:15px">Preview</b><small class="th-sv">Saved automatically</small></span><button class="btn sm ghost" data-a="thReset">${ic('hist',15)}Reset</button></div>
    <div class="hero tp-hero"><div><small>Exam countdown</small><br><b>175 days</b></div>${ic('target',26)}</div>
    <div style="display:flex;justify-content:space-between;font-size:13px"><span class="mut"><b style="color:var(--tx)">48</b> of 120 tests done</span><span class="tag">Premium series</span></div><span class="bar"><i style="--p:.4"></i></span>
    <div style="display:flex;gap:8px;align-items:center"><span class="btn sm">Primary</span><span class="btn sm gold">Accent</span><span class="btn sm ghost">Secondary</span></div></div>
   <div class="bf" style="border:0;padding-bottom:0"><h3>Mode</h3><div class="seg">${[['system','System'],['light','Light'],['dark','Dark'],['black','Black']].map(m=>`<button class="${THP.mode===m[0]?'on':''}" data-a="thm" data-v="${m[0]}" aria-pressed="${THP.mode===m[0]}">${m[1]}</button>`).join('')}</div>${THP.mode==='system'?`<p class="hint">Follows your phone. It is ${mode} right now.</p>`:''}</div>
   <div class="bf" style="border:0;padding-top:4px"><h3>${THEMES[mode].name} palettes</h3><div class="pals">${Object.entries(P).map(([k,v])=>{const t=tokens(mode,k);
    return `<button class="pal${cur===k?' on':''}" data-a="thp" data-v="${k}" aria-pressed="${cur===k}"><span class="swt"><i style="background:${t.bg}"></i><i style="background:${t.s2}"></i><i style="background:linear-gradient(155deg,${t.h1},${t.h2})"></i><i style="background:linear-gradient(135deg,${t.a1},${t.a2})"></i></span><span><b>${v[0]}</b><small>${v[2]}</small></span><span class="ck">${ic('check')}</span></button>`}).join('')}</div></div>
-  <div class="g2"><button class="btn ghost" data-a="thReset">Reset to default</button><button class="btn gold" data-a="thApply">Apply theme</button></div>
-  <p class="hint">These colours are used everywhere in the app, the exam screen too.</p>`}
-function openTheme(){THP=clone(TH);push({t:'Theme & colours',s:'Light, Dark or Black, with a palette',html:themeHtml,leave:()=>{THP=null;applyTheme(TH)}})}
-/* a theme change opens out from the button that was tapped, as one smooth picture (View Transitions); where the
-   browser cannot, or with reduced motion, the colours simply change */
-function themeSwap(fn,el){const D=document,H=D.documentElement;if(RM||!D.startViewTransition){fn();return}
-  const r=el&&el.getBoundingClientRect&&el.getBoundingClientRect(),x=r&&r.width?r.left+r.width/2:window.innerWidth/2,y=r&&r.width?r.top+r.height/2:window.innerHeight/2,R=Math.hypot(Math.max(x,window.innerWidth-x),Math.max(y,window.innerHeight-y));
-  H.classList.add('v3th');let vt=null;try{vt=D.startViewTransition(fn)}catch(e){H.classList.remove('v3th');fn();return}
-  vt.ready.then(()=>H.animate({clipPath:[`circle(0px at ${x}px ${y}px)`,`circle(${R}px at ${x}px ${y}px)`]},{duration:560,easing:'cubic-bezier(.22,.8,.24,1)',pseudoElement:'::view-transition-new(root)'})).catch(()=>{});
-  vt.finished.then(()=>H.classList.remove('v3th'),()=>H.classList.remove('v3th'))}
-A.thm=el=>{if(THP.mode===el.dataset.v)return;themeSwap(()=>{THP.mode=el.dataset.v;applyTheme(THP);redraw()},el)};
-A.thp=el=>{const m=resolveMode(THP.mode);if(THP.pal[m]===el.dataset.v)return;themeSwap(()=>{THP.pal[m]=el.dataset.v;applyTheme(THP);redraw()},el.querySelector('.swt')||el)};
-A.thApply=()=>{TH=clone(THP);saveTheme();toast3('Theme applied: '+themeLabel())};
-A.thReset=el=>{themeSwap(()=>{THP=clone(DEF_TH);applyTheme(THP);redraw()},el);toast3('Default theme shown. Tap Apply theme to keep it.')};
+  <p class="hint">Tap a theme to use it. It is saved at once and used everywhere in the app, the exam screen too.</p>`}
+function openTheme(){THP=clone(TH);push({t:'Theme & colours',s:'Tap a theme to use it',html:themeHtml,leave:()=>{THP=null;applyTheme(TH)}})}
+/* Theme page: a tap is the choice. It is applied and saved at once (no Apply button); Reset sits in the page header.
+   Light <-> Dark is a big jump, so a soft veil in the new background colour covers the swap for a moment (opacity
+   only). A palette change inside the same mode is small and simply changes, with no redraw of the page. */
+function thKeep(){TH=clone(THP);saveTheme()}
+function themeSwap(fn){const a=$('#app3');if(RM||!a){fn();return}
+  const before=resolveMode((THP||TH).mode),v=document.createElement('i');v.className='thveil';a.appendChild(v);
+  fn();const after=resolveMode((THP||TH).mode);if(before===after){v.remove();return}
+  v.style.background=getComputedStyle(host).getPropertyValue('--bg').trim()||'#000';
+  requestAnimationFrame(()=>{v.classList.add('go');setTimeout(()=>v.remove(),460)})}
+A.thm=el=>{if(THP.mode===el.dataset.v)return;themeSwap(()=>{THP.mode=el.dataset.v;applyTheme(THP);thKeep();redraw()})};
+A.thp=el=>{const m=resolveMode(THP.mode);if(THP.pal[m]===el.dataset.v)return;THP.pal[m]=el.dataset.v;applyTheme(THP);thKeep();
+  $$('.pal').forEach(b=>{const on=b===el;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)});try{navigator.vibrate&&navigator.vibrate(8)}catch(e){}};
+A.thReset=()=>{themeSwap(()=>{THP=clone(DEF_TH);applyTheme(THP);thKeep();redraw()});toast3('Default theme is back.')};
 
 
 /* ================= SWIPE BETWEEN TABS, and SLIDE ALONG THE DOCK =================
