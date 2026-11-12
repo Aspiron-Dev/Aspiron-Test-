@@ -15,7 +15,7 @@ const can = () => AX.can('store', 'manage');
 const SQL = 'supabase_v52_coupons_refer.sql';
 const ERR = { code: 'Code: 3–24 letters or numbers (A–Z, 0–9, - or _), e.g. DIWALI.', ends_at: 'Choose an end time in the future (after the start).', item: 'Series not found. Refresh the page.',
   kind: 'Choose % or ₹.', value: 'Discount: 1–100 for %, or ₹1 up to the price for ₹.', reward: 'Reward: a whole number from 0 to 10000.', mobile: 'Enter a valid 10-digit mobile number.',
-  amount: 'Amount: a whole number, + to add or − to remove (not 0).', too_much: 'The wallet would go below ₹0.', missing: 'Run ' + SQL + ' in Supabase first (then supabase_v35_admin_team.sql again).', network: 'No internet. Try again.' };
+  amount: 'Enter the amount: a whole number, more than 0.', too_much: 'The wallet would go below ₹0.', missing: 'Run ' + SQL + ' in Supabase first (then supabase_v35_admin_team.sql again).', network: 'No internet. Try again.' };
 const errText = r => ERR[r && r.error] || AX.errText(r);
 const off = (c, price) => c.kind === 'pct' ? Math.floor(price * c.value / 100) : Math.min(c.value, price);
 const offTxt = c => c.kind === 'pct' ? c.value + '% off' : fmt.inr(c.value) + ' off';
@@ -39,7 +39,7 @@ AX.mod({
   async render(ctx) {
     O.tab = ctx.parts[0] === 'refer' ? 'refer' : 'coupons';
     const m = can();
-    ctx.head({ title: 'Coupons & Refer', sub: 'One coupon per test series (e.g. DIWALI) with its own discount and end date, and Refer & earn: wallet money for every new student a student brings.',
+    ctx.head({ title: 'Coupons & Refer', sub: 'As many coupon codes as you want, on any series, each with its own discount, limit and end date. Refer & earn: wallet money for every new student a student brings.',
       tabs: [{ id: 'coupons', title: 'Coupons', icon: 'tag', href: '#/offers/coupons' }, { id: 'refer', title: 'Refer & earn', icon: 'gift', href: '#/offers/refer' }], tab: O.tab,
       actions: m && O.tab === 'coupons' ? h`<button class="btn pri" data-act="new">${icon('plus', 16)} New coupon</button>` : '' });
     const ph = document.getElementById('ax-ph'); if (ph) AX.act(ph, { new: () => editCode(null) });
@@ -200,7 +200,7 @@ function refer(el) {
           ${m ? h`<div class="row end"><button type="button" class="btn pri" data-act="rsave" data-busy="Saving…">${icon('check', 16)} Save</button></div>` : ''}
         </form></div>
       <div class="card"><div class="card-h">${icon('info')}<h3 class="grow">How it works</h3></div>
-        <ol class="of-how"><li>Every student gets a link on the store and in the app (Me → Refer &amp; earn): <span class="mono">store?r=name12345</span> (first name + last 5 digits). It opens the store.</li>
+        <ol class="of-how"><li>Every student gets a link on the store and in the app (Me → Refer &amp; earn): <span class="mono">store?r=asp48213</span> (a short code; no name or number in it). It opens the store.</li>
           <li>A <b>new</b> number that orders from the link is counted as <b>joined</b> — no money for joining.</li>
           <li>When you approve that order (paid at least the minimum above), the sharer gets the reward in the wallet. Undo / reject / delete takes it back.</li>
           <li>The wallet is used only by its owner, signed in to the student app. An order never gets approved if the wallet money was already used elsewhere.</li>
@@ -226,13 +226,14 @@ function refer(el) {
   const qi = el.querySelector('#of-q');
   qi.addEventListener('input', AX.u.debounce(e => { O.q = e.target.value; const s2 = O.q.trim().toLowerCase(); AX.set(el.querySelector('#of-l'), list((d.people || []).filter(p => !s2 || (p.name + ' ' + p.mobile + ' ' + p.code).toLowerCase().includes(s2)))); }, 150));
 }
+const anyBtn = () => can() ? h`<div class="row end mt12"><button class="btn sm" data-act="adj" data-m="">${icon('wallet', 14)} Add or remove wallet money (any number)</button></div>` : '';
 function list(L) {
-  if (!L.length) return h`<div class="card">${UI.empty({ icon: 'gift', title: O.q ? 'Nobody matches' : 'No referrals yet', text: O.q ? 'Try another search.' : 'When students share their link and friends join or buy, they show here.' })}</div>`;
+  if (!L.length) return h`<div class="card">${UI.empty({ icon: 'gift', title: O.q ? 'Nobody matches' : 'No referrals yet', text: O.q ? 'Try another search.' : 'When students share their link and friends join or buy, they show here.' })}</div>${anyBtn()}`;
   return h`<div class="card pad0 list">${join(L, p => h`<div class="li of-p">${UI.avatar(p.name || 'Student', p.mobile, 'sm')}<div class="grow"><div class="row gap6 wrap"><b class="ell">${p.name || 'Student'}</b><span class="pill mono">${p.code}</span></div>
       <div class="xs mut">${fmt.mobile(p.mobile)} · ${fmt.plural(+p.joined || 0, 'joined', 'joined')} · ${+p.bought || 0} bought · earned ${fmt.inr(p.earned)}${+p.adjusted ? ' · by hand ' + fmt.inr(p.adjusted) : ''} · used ${fmt.inr(p.spent)}</div></div>
       <div class="of-bal"><span class="xs mut">Wallet</span><b class="num">${fmt.inr(p.balance)}</b></div>
       <button class="btn xs" data-act="open" data-m="${p.mobile}">${icon('list', 13)} Details</button>${can() ? h`<button class="btn xs ghost" data-act="adj" data-m="${p.mobile}">${icon('rupee', 13)} Wallet</button>` : ''}</div>`)}</div>
-    ${can() ? h`<div class="row end mt12"><button class="btn sm ghost" data-act="adj" data-m="">${icon('plus', 14)} Add wallet money to any number</button></div>` : ''}`;
+    ${anyBtn()}`;
 }
 function detail(mobile) {
   UI.drawer({ title: 'Refer & earn · ' + fmt.mobile(mobile), body: UI.skeleton(4),
@@ -257,28 +258,30 @@ function adjust(mobile, pre) {
   if (!can()) return;
   pre = pre || {};
   const fromOrder = !!(pre.order || pre.put);   // a put: an extra amount, from an order or the student's page
-  UI.modal({ title: fromOrder ? 'Put money in the wallet' : 'Change wallet money', size: 'narrow',
-    sub: fromOrder ? `${pre.order ? 'Order ' + pre.order + ' · ' : ''}${pre.name || ''}. The student keeps this money in the wallet for their next test series. It cannot be withdrawn and is not refunded.`
-      : 'Add money (e.g. a gift or a correction) or remove it. It shows in the student\'s wallet at once and cannot be withdrawn.',
+  UI.modal({ title: pre.order ? 'Put money in the wallet' : 'Wallet: add or remove money', size: 'narrow',
+    sub: pre.order ? `${pre.order ? 'Order ' + pre.order + ' · ' : ''}${pre.name || ''}. The student keeps this money in the wallet for their next test series. It cannot be withdrawn and is not refunded.`
+      : `${pre.name ? pre.name + '. ' : ''}Add money (a gift, an extra payment, a correction) or remove money that was added by mistake. It shows in the student's wallet at once. A wallet never goes below ₹0.`,
     body: h`<form id="af" class="form-grid" autocomplete="off">
+      ${pre.order ? '' : h`<div class="full">${AX.f.seg({ name: 'dir', options: [{ value: 'add', label: '+ Add money' }, { value: 'remove', label: '− Remove money' }], value: 'add' })}</div>`}
       ${AX.f.input({ name: 'mobile', label: 'Mobile number', value: mobile || '', type: 'tel', inputmode: 'numeric', max: 14, full: true, readonly: !!mobile })}
-      ${AX.f.input({ name: 'amount', label: 'Amount (₹)', value: pre.amount || '', placeholder: fromOrder ? 'e.g. 100' : '50 to add · -50 to remove', inputmode: 'numeric', full: true, hint: fromOrder ? 'The extra amount they paid' : '' })}
+      ${AX.f.input({ name: 'amount', label: 'Amount (₹)', value: pre.amount || '', placeholder: 'e.g. 100', inputmode: 'numeric', full: true, hint: fromOrder ? 'The extra amount they paid' : '' })}
       ${AX.f.input({ name: 'public_note', label: 'Line the student sees', value: fromOrder ? 'Extra amount paid for your order, kept in your wallet' : '', max: 120, placeholder: 'e.g. Extra amount kept in your wallet', full: true, hint: 'Shown in their wallet history' })}
       ${AX.f.input({ name: 'note', label: 'Internal note', value: pre.order ? `Extra paid for ${pre.order}` : '', max: 300, placeholder: 'Why (the student does not see this)', full: true })}</form>`,
     foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="ok" data-busy="Saving…">${icon('check', 16)} Save</button>`,
     onOpen(el, close) {
-      const f = el.querySelector('#af');
+      const f = el.querySelector('#af'); AX.f.wireSeg(f);
       AX.act(el, { async ok(b) {
         AX.f.clearErrors(f); const v = AX.f.read(f), mb = String(v.mobile).replace(/\D/g, '').slice(-10), amt = String(v.amount).replace(/\s|₹/g, '').replace('−', '-');
         if (!/^[6-9]\d{9}$/.test(mb)) return AX.f.error(f, 'mobile', ERR.mobile);
         if (!/^-?\d{1,6}$/.test(amt) || +amt === 0) return AX.f.error(f, 'amount', ERR.amount);
-        if (fromOrder && +amt <= 0) return AX.f.error(f, 'amount', 'Enter the extra amount (more than 0).');
+        if (pre.order && +amt <= 0) return AX.f.error(f, 'amount', 'Enter the extra amount (more than 0).');
+        const n = Math.abs(+amt), remove = !pre.order && (v.dir === 'remove' || +amt < 0);
         await UI.busy(b, async () => {
-          const r = fromOrder
-            ? await AX.api.call('cbt_admin_refer_put', 'add', { mobile: mb, amount: amt.replace('-', ''), note: v.note.trim(), public_note: v.public_note.trim(), order: pre.order || '' })
-            : await AX.api.call('cbt_admin_refer', 'adjust', { mobile: mb, amount: amt, note: v.note.trim() });
+          const r = remove ? await AX.api.call('cbt_admin_refer', 'adjust', { mobile: mb, amount: String(-n), note: v.note.trim() })
+            : fromOrder || v.public_note.trim() ? await AX.api.call('cbt_admin_refer_put', 'add', { mobile: mb, amount: String(n), note: v.note.trim(), public_note: v.public_note.trim(), order: pre.order || '' })
+            : await AX.api.call('cbt_admin_refer', 'adjust', { mobile: mb, amount: String(n), note: v.note.trim() });
           if (!r.ok) return r.error === 'amount' || r.error === 'too_much' ? AX.f.error(f, 'amount', errText(r)) : UI.toast(errText(r), { tone: 'bad' });
-          close(); UI.toast('Wallet now ' + fmt.inr(r.balance)); repaint();
+          close(); UI.toast((remove ? 'Removed ' : 'Added ') + fmt.inr(n) + ' · wallet now ' + fmt.inr(r.balance)); repaint();
         });
       } });
     } });

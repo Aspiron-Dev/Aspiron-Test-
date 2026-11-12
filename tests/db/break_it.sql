@@ -387,7 +387,8 @@ set role anon;
 select pg_temp.chk('19g a removed coupon stops working', public.cbt_store_order_apply(:'co1','9822222222','DIWALI',false)->>'error' = 'coupon');
 -- referral: A shares, B joins and buys, A gets the reward once
 select public.cbt_refer_me('9844444444','Rahul Sharma')->>'code' as rc \gset
-select pg_temp.chk('19h the referral code is first name + last 5 digits', :'rc' = 'rahul44444');
+select pg_temp.chk('19h the referral code is asp + 5–7 digits: no name, not the last digits of the mobile, the same every time (v71)',
+  :'rc' ~ '^asp[0-9]{5,7}$' and right(:'rc', 5) <> '44444' and :'rc' !~ 'rahul' and public.cbt_refer_me('9844444444','Rahul Sharma')->>'code' = :'rc');
 -- v53: a referral is joined through the order made from the link (cbt_refer_order), not by the link alone
 reset role;
 select set_config('request.headers', '{"x-real-ip":"198.51.100.67"}', false);
@@ -454,15 +455,15 @@ select set_config('request.headers', '{"x-real-ip":"203.0.113.10"}', false);
 select set_config('request.headers', '{"x-real-ip":"198.51.100.70"}', false);
 delete from public.cbt_store_tries;
 set role anon;
-select public.cbt_refer_me('9811111111','Asha')->>'ok';
-select public.cbt_refer_me('9822222222','Xavi')->>'ok';
+select public.cbt_refer_me('9811111111','Asha')->>'code' as c_asha \gset
+select public.cbt_refer_me('9822222222','Xavi')->>'code' as c_xavi \gset
 -- hijack: X puts a friend's number under his link first; the friend then orders from A's link
-select public.cbt_refer_join('xavi22222','9833333333','Victim')->>'ok';
+select public.cbt_refer_join(:'c_xavi','9833333333','Victim')->>'ok';
 select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Victim','9833333333')->>'ok';
 reset role;
 select code as rv from public.cbt_store_orders where mobile='9833333333' order by created_at desc limit 1 \gset
 set role anon;
-select public.cbt_refer_order(:'rv','9833333333','asha11111')->>'ok';
+select public.cbt_refer_order(:'rv','9833333333',:'c_asha')->>'ok';
 reset role;
 update public.cbt_store_orders set status='paid' where code=:'rv';
 select pg_temp.chk('20a refer: the reward goes to the link the buyer ordered from, not to a number put in earlier',
@@ -475,7 +476,7 @@ select public.cbt_store_order('cccccccc-0000-0000-0000-000000000001','Sim Two','
 reset role;
 select code as rc2 from public.cbt_store_orders where mobile='9844444444' order by created_at desc limit 1 \gset
 set role anon;
-select public.cbt_refer_order(:'rc2','9844444444','xavi22222')->>'ok';
+select public.cbt_refer_order(:'rc2','9844444444',:'c_xavi')->>'ok';
 select public.cbt_store_order_apply(:'rc2','9844444444','BIG99',false)->>'ok';
 reset role;
 update public.cbt_store_orders set status='paid' where code=:'rc2';
@@ -1117,6 +1118,20 @@ select pg_temp.chk('35f costs: every change and every refused try is in the acti
   and not exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_ops' and act = 'storage' and result = ''));
 select pg_temp.chk('35g costs: the tables cannot be read from outside',
   not has_table_privilege('anon', 'cbt_private.ops_costs', 'select') and not has_table_privilege('anon', 'cbt_private.ops_snap', 'select'));
+
+-- ===== 36. wallet: an admin can remove money too, never below ₹0; the student sees "Removed by us" (v71) =====
+set role anon;
+select public.cbt_admin_refer(:'ow9','adjust','{"mobile":"9855500001","amount":"300","note":"gift"}')->>'balance' as w1 \gset
+select public.cbt_admin_refer(:'ow9','adjust','{"mobile":"9855500001","amount":"-120","note":"added too much"}')->>'balance' as w2 \gset
+select pg_temp.chk('36a wallet: money can be added and removed by the owner', :'w1' = '300' and :'w2' = '180');
+select pg_temp.chk('36b wallet: it cannot go below ₹0, and a team member without Store access cannot change it',
+  public.cbt_admin_refer(:'ow9','adjust','{"mobile":"9855500001","amount":"-181","note":"x"}')->>'error' = 'too_much'
+  and public.cbt_admin_refer(:'smt','adjust','{"mobile":"9855500001","amount":"-10","note":"x"}')->>'error' = 'forbidden');
+reset role;
+select pg_temp.chk('36c wallet: the removal is in the student''s history as "Removed by us", and in the activity log',
+  exists (select 1 from jsonb_array_elements(cbt_private.refer_info('9855500001')->'history') x where (x->>'amount')::int = -120 and x->>'note' = 'Removed by us')
+  and exists (select 1 from jsonb_array_elements(cbt_private.refer_info('9855500001')->'history') x where (x->>'amount')::int = 300 and x->>'note' = 'Added by us')
+  and exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_refer' and act = 'adjust' and who = 'Owner'));
 
 -- ===== report =====
 \t off

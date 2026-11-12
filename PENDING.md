@@ -27,6 +27,8 @@ Live database Claude ko nahi dikhta. Jo kaam pehle hi ho chuka ho, use seedha ti
 - [x] **1.4 GitHub settings:** Settings → Code security → Secret scanning + Push protection ON. Settings → Pages → Enforce HTTPS ON.
 - [x] **1.5 GitHub Actions** → "Backup restore drill" → Run workflow. "Security alerts" → Run workflow. *Check:* dono green.
 - [x] **1.6 Admin → Team & access:** jo log chale gaye unhe hatao, jahan ho sake Full ki jagah View do, "Require two-step sign-in" ON karo.
+- [ ] **1.11 Clean referral code:** Supabase → SQL Editor: `supabase_v71_refer_code.sql` (nothing after it).
+  *Check:* a new student's Refer & earn link looks like `store?r=asp48213`.
 - [ ] **1.7 R11, backup ke liye read-only login:** `supabase_backup_role.sql` chalao + GitHub secret `SUPABASE_BACKUP_DB_URL` (`BACKUP.md` → "Read-only login").
 - [ ] **1.8 R7, purani Supabase keys band karo:** `SECURITY_RUNBOOK.md` §7 (naya secret key → test notification → tab legacy keys off).
   Notification test kiye bina keys band mat karna.
