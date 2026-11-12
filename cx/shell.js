@@ -10,19 +10,11 @@ const S = AX.session;
 const GROUPS = ['', 'Students & accounts', 'Tests & questions', 'Analytics', 'Content & storage', 'Sales & billing', 'Communication', 'Costs & integrations', 'Team & security'];
 let ATT = [], ATT_AT = 0, CUR = null, ROUTE_N = 0;
 
-/* ---------- design: 'v2' (Studio, default) or 'classic' — looks only (cx/cx2.css), nothing else changes ---------- */
-AX.design = {
-  get: () => AX.ls.get('cx_ui', 'v2') === 'classic' ? 'classic' : 'v2',
-  apply() { const r = document.documentElement; if (AX.design.get() === 'v2') r.dataset.ui = 'v2'; else delete r.dataset.ui; },
-  toggle() { AX.ls.set('cx_ui', AX.design.get() === 'v2' ? 'classic' : 'v2'); AX.design.apply(); UI.toast(AX.design.get() === 'v2' ? 'New design on' : 'Classic design on'); }
-};
-
 /* ---------- boot ---------- */
 AX.boot = async () => {
   // v13 redesign: light is the new default; a theme saved automatically by the old version is reset once
   if (!AX.ls.get('cx_th2', null)) { AX.ls.del('cx_theme'); AX.ls.set('cx_th2', 1); }
   AX.theme.set(AX.ls.get('cx_theme', 'light'));
-  AX.design.apply();
   if (!AX.url) { document.body.innerHTML = '<p style="padding:24px">config.js is missing.</p>'; return; }
   if (!S.load()) return login();
   splash();
@@ -147,6 +139,21 @@ function navHtml(cur) {
   });
   return join(out);
 }
+// sections of the rail: group → [short name, icon]
+const SECT = { '': ['Home', 'home'], 'Students & accounts': ['Students', 'users'], 'Tests & questions': ['Tests', 'layers'], 'Analytics': ['Analytics', 'chart'],
+  'Content & storage': ['Storage', 'db'], 'Sales & billing': ['Sales', 'cart'], 'Communication': ['Messages', 'megaphone'], 'Costs & integrations': ['Costs', 'rupee'], 'Team & security': ['Security', 'shield'] };
+const groupOf = id => { const m = AX.mods[id]; return m ? m.group || '' : ''; };
+function railHtml(cur) {
+  const items = navItems(), g = groupOf(cur);
+  return join(GROUPS.filter(x => items.some(m => (m.group || '') === x)), x => {
+    const L = items.filter(m => (m.group || '') === x), n = L.reduce((t, m) => t + badgeOf(m.id), 0), [name, ic] = SECT[x] || [x, 'grid'];
+    return h`<a class="ax-ri ${g === x ? 'on' : ''}" href="#/${L[0].id}" title="${x || 'Command centre'}"><span class="ri-ic">${icon(ic)}${n ? h`<span class="nb">${n > 99 ? '99+' : n}</span>` : ''}</span><span class="ri-t">${name}</span></a>`;
+  });
+}
+function subHtml(cur) {
+  const g = groupOf(cur), L = navItems().filter(m => (m.group || '') === g);
+  return L.length < 2 ? '' : join(L, m => { const n = badgeOf(m.id); return h`<a class="${cur === m.id ? 'on' : ''}" href="#/${m.id}">${icon(m.icon, 16)}<span>${m.title}</span>${n ? h`<em>${n > 99 ? '99+' : n}</em>` : ''}</a>`; });
+}
 function badgeOf(id) { return ATT.filter(a => a.mod === id && a.badge).reduce((s, a) => s + (a.count || 0), 0); }
 function meCard() {
   const me = S.me || {};
@@ -154,8 +161,8 @@ function meCard() {
 }
 function start() {
   document.body.innerHTML = AX.html(h`<div class="ax-app">
-    <aside class="ax-side glass"><a class="ax-brand" href="#/home"><span class="mk"><img src="admin-icon-192.png" alt="Aspiron" width="38" height="38"></span><span class="grow"><div class="bt">Aspiron</div><div class="bs">Control</div></span></a>
-      <nav class="ax-nav" id="ax-nav" aria-label="Main"></nav><div id="ax-mewrap">${meCard()}</div></aside>
+    <aside class="ax-side"><a class="ax-brand" href="#/home" title="Aspiron Control"><span class="mk"><img src="admin-icon-192.png" alt="Aspiron" width="40" height="40"></span></a>
+      <nav class="ax-rail-nav" id="ax-nav" aria-label="Sections"></nav><div id="ax-mewrap">${meCard()}</div></aside>
     <div class="ax-main">
       <header class="ax-top glass"><button class="ibtn ax-menu-btn" id="ax-menu" aria-label="Menu" style="display:none">${icon('menu')}</button>
         <div class="crumb" id="ax-crumb"></div>
@@ -165,6 +172,7 @@ function start() {
         <button class="ibtn" id="ax-theme" aria-label="Theme">${icon(AX.theme.get() === 'dark' ? 'sun' : 'moon')}</button>
       </header>
       ${S.legacy ? h`<div class="callout gold" style="margin:14px 28px 0;border-radius:14px">${icon('info')}<div class="sm"><b>Team accounts and sign-in sessions are off.</b> Run <span class="mono">supabase_v35_admin_team.sql</span> once in Supabase → SQL Editor to add team members, permissions, the activity log and remote sign-out. Until then you are signed in with the password for this tab only.</div></div>` : ''}
+      <nav class="ax-sub hide" id="ax-sub" aria-label="Pages of this section"></nav>
       <main class="ax-page" id="ax-page"></main>
     </div></div>
     <nav class="ax-bottom glass" id="ax-bottom" aria-label="Main"></nav>`);
@@ -196,7 +204,8 @@ document.addEventListener('keydown', e => {
 function drawNav() {
   const cur = CUR && CUR.mod;
   const nav = document.getElementById('ax-nav'); if (!nav) return;
-  AX.set(nav, navHtml(cur));
+  AX.set(nav, railHtml(cur));
+  const sub = document.getElementById('ax-sub'), sh = subHtml(cur); AX.set(sub, sh); sub.classList.toggle('hide', !sh);
   const prim = ['home', 'students', 'tests', 'orders'].map(id => AX.mods[id]).filter(m => m && AX.allowed(m));
   AX.set('#ax-bottom', h`${join(prim, m => { const n = badgeOf(m.id); return h`<a href="#/${m.id}" class="${cur === m.id ? 'on' : ''}">${icon(m.icon)}<span>${m.short || m.title}</span>${n ? h`<span class="nb">${n > 99 ? '99+' : n}</span>` : ''}</a>`; })}<button id="ax-more" class="${prim.some(m => m.id === cur) ? '' : 'on'}">${icon('grid')}<span>Menu</span></button>`);
   const more = document.getElementById('ax-more'); if (more) more.onclick = navSheet;
@@ -225,8 +234,8 @@ addEventListener('blur', () => priv(true)); addEventListener('focus', () => priv
 function navSheet() {
   const me = S.me || {};
   UI.modal({ title: null, size: 'narrow', foot: null,
-    body: h`<div class="row" style="padding:4px 4px 12px">${UI.avatar(me.name || 'Owner', me.username || 'owner')}<div class="grow"><div class="b">${me.name || 'Owner'}</div><div class="xs mut">${me.owner ? 'Owner' : '@' + me.username}</div></div><button class="ibtn line" data-close data-act="design" aria-label="Switch design" title="Classic / new design">${icon('sparkle')}</button><button class="ibtn line" data-close data-act="theme" aria-label="Theme">${icon(AX.theme.get() === 'dark' ? 'sun' : 'moon')}</button><button class="ibtn line" data-close data-act="out" aria-label="Sign out">${icon('logout')}</button></div><nav class="ax-nav navsheet" data-close>${navHtml(CUR && CUR.mod)}</nav>`,
-    onOpen(el) { AX.act(el, { design() { AX.design.toggle(); }, theme() { AX.theme.toggle(); }, out() { AX.signOut(); } }); } });
+    body: h`<div class="row" style="padding:4px 4px 12px">${UI.avatar(me.name || 'Owner', me.username || 'owner')}<div class="grow"><div class="b">${me.name || 'Owner'}</div><div class="xs mut">${me.owner ? 'Owner' : '@' + me.username}</div></div><button class="ibtn line" data-close data-act="theme" aria-label="Theme">${icon(AX.theme.get() === 'dark' ? 'sun' : 'moon')}</button><button class="ibtn line" data-close data-act="out" aria-label="Sign out">${icon('logout')}</button></div><nav class="ax-nav navsheet" data-close>${navHtml(CUR && CUR.mod)}</nav>`,
+    onOpen(el) { AX.act(el, { theme() { AX.theme.toggle(); }, out() { AX.signOut(); } }); } });
 }
 function profileMenu(anchor) {
   const me = S.me || {};
@@ -234,7 +243,6 @@ function profileMenu(anchor) {
     { head: (me.name || 'Owner') + (me.owner ? ' · Owner' : ' · Team') },
     !S.legacy ? { label: me.owner ? 'Team & access' : 'My sign-ins', icon: 'team', fn: () => AX.go('team') } : null,
     { label: AX.theme.get() === 'dark' ? 'Light theme' : 'Dark theme', icon: AX.theme.get() === 'dark' ? 'sun' : 'moon', fn: () => { AX.theme.toggle(); drawNav(); } },
-    { label: AX.design.get() === 'v2' ? 'Classic design' : 'New design', icon: 'sparkle', fn: () => AX.design.toggle() },
     { label: 'Settings', icon: 'settings', fn: () => AX.go('settings') },
     { label: 'Open student website', icon: 'external', href: './' },
     { sep: true },
@@ -275,7 +283,7 @@ function route() {
   const page = document.getElementById('ax-page');
   page.innerHTML = '<div class="ph" id="ax-ph"></div><nav class="ptabs hide" id="ax-tabs"></nav><div id="ax-body"></div>';
   const body = document.getElementById('ax-body');
-  window.scrollTo(0, 0);
+  window.scrollTo(0, 0); page.classList.remove('enter'); void page.offsetWidth; page.classList.add('enter');
   const ctx = {
     el: body, mod: m, parts: p.parts, q: p.q,
     alive: () => n === ROUTE_N,
@@ -300,6 +308,30 @@ function route() {
   });
 }
 AX.route = route;
+
+/* ---------- motion: numbers count up once, cards lean a little towards the pointer (computers only) ---------- */
+const CALM = matchMedia('(prefers-reduced-motion: reduce)').matches, FINE = matchMedia('(hover:hover) and (pointer:fine)').matches;
+new MutationObserver(() => {
+  if (CALM) return;
+  document.querySelectorAll('#ax-body .k-v:not([data-cu])').forEach(el => {
+    el.dataset.cu = 1;
+    const t = el.textContent, m = /^(\D*)([\d,]+)(\D*)$/.exec(t.trim()); if (!m) return;
+    const to = Number(m[2].replace(/,/g, '')); if (!(to > 0) || to > 1e9) return;
+    const t0 = performance.now(), step = now => { const k = Math.min(1, (now - t0) / 600), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = k < 1 ? m[1] + Math.round(to * e).toLocaleString('en-IN') + m[3] : t; if (k < 1 && el.isConnected) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
+  });
+}).observe(document.documentElement, { childList: true, subtree: true });
+if (FINE && !CALM) {
+  let last = null;
+  document.addEventListener('pointermove', e => {
+    const el = e.target.closest && e.target.closest('.kpi, .ax-page > .ph');
+    if (last && last !== el) { last.style.transform = ''; last = null; }
+    if (!el) return;
+    const r = el.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5, a = el.classList.contains('ph') ? 2 : 6;
+    el.style.transform = `perspective(900px) rotateX(${(-y * a).toFixed(2)}deg) rotateY(${(x * a).toFixed(2)}deg) translateZ(0)`; last = el;
+  }, { passive: true });
+}
 AX.current = () => CUR;
 
 /* ---------- attention centre ---------- */

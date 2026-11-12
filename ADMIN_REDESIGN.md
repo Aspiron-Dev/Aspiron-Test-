@@ -80,12 +80,15 @@ Routes did not change (no redirect needed); only the menu groups did.
 | `#/team` | m-team.js | Team & security | cbt_admin_team, cbt_admin_security, cbt_admin_telegram | any (owner tabs) | tour ✓, admin.js |
 | `#/settings` | m-settings.js | Team & security | cbt_admin_2fa … | any | tour ✓, admin.js |
 
-## 3. Design (Phase 2–3, done in this change)
-Light by default (dark still one tap away), white + blue, calm SaaS look inspired by the owner's reference picture but
-without its water/bubble effects. Bold sans headings (Plus Jakarta Sans; the serif font is no longer downloaded), floating
-rounded sidebar with a blue pill for the open page, solid white cards with soft blue shadows, KPI icons in tinted chips,
-one gradient "hero" number, less blur (faster phones). Status colours: green ok, amber pending, red error, blue info.
-All in `cx/cx.css` tokens — modules did not change. Phone: bottom tab bar as before.
+## 3. Design (v3 "Graphite & Champagne")
+Same family as the student app (`v3.css`): warm paper, graphite, champagne-gold, Geist. New structure, not a recolour:
+- **Menu:** a floating graphite rail of 9 sections (Home, Students, Tests, Analytics, Storage, Sales, Messages, Costs,
+  Security); the pages of the open section are a strip under the top bar. Phones: floating dock + a tile menu.
+- **Page:** one dark hero card per page (title, subtitle, actions; the main action is gold), then white cards.
+- **Motion:** one entrance per page, numbers count up once, cards lean towards the pointer on computers;
+  all off with "reduce motion".
+- Files: `cx/cx2.css` (looks), `cx/shell.js` (rail, strip, motion). `cx/cx.css` stays the base layer. Routes, data
+  and permissions did not change. Light is the default; dark is one tap away.
 
 ## 4. What next, and which model
 | Phase | Work | Model |
