@@ -2,11 +2,12 @@
 # that must not be served: after every change to main, every Monday and on demand. Uses gitleaks (pinned version, checksum checked) and scripts/check-exposed.sh.
 name: Security checks
 on:
-  push: {}
+  push: { branches: [main] }   # other branches are scanned by their pull request (not twice)
   pull_request: {}
   schedule:
     - cron: '17 3 * * 1'        # Mondays 8:47 AM India time
   workflow_dispatch: {}
+concurrency: { group: "security-${{ github.ref }}", cancel-in-progress: true }
 permissions:
   contents: read
 jobs:

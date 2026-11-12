@@ -65,7 +65,7 @@ html[data-ui="v2"] .ax-sp a{position:relative;display:flex;align-items:center;ga
 html[data-ui="v2"] .ax-sp a:hover{background:var(--hover);color:var(--tx)}
 html[data-ui="v2"] .ax-sp a.on{color:var(--tx);font-weight:650;background:var(--pri-soft)}
 html[data-ui="v2"] .ax-sp a.on::before{content:"";position:absolute;left:-17.5px;top:8px;bottom:8px;width:1.5px;background:var(--acc2)}
-html[data-ui="v2"] .ax-side .nb,html[data-ui="v2"] .ax-more .nb{min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#d9534c;color:#fff;font-size:10.5px;font-weight:700;display:grid;place-items:center;flex:none}
+html[data-ui="v2"] .ax-side .nb{min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#d9534c;color:#fff;font-size:10.5px;font-weight:700;display:grid;place-items:center;flex:none}
 html[data-ui="v2"] .ax-side .ax-me{margin:8px 12px 14px;padding:10px;border-radius:16px;background:var(--solid-2);border:1px solid var(--line)}
 html[data-ui="v2"] .ax-side .ax-me .av{border-radius:50%}
 /* computers show the pages in the side menu, so the strip is for tablets and phones */
@@ -245,18 +245,23 @@ html[data-ui="v2"] .lg-t{font-family:var(--font);font-weight:650;font-size:30px;
   html[data-ui="v2"] .ax-bottom .on .bt{transform:translateY(-6px)}
   html[data-ui="v2"] .ax-bottom .nb{position:absolute;top:-3px;right:-2px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#d9534c;color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;border:2px solid var(--solid)}
 }
-/* More sheet: one card per section */
-html[data-ui="v2"] .ax-more{display:grid;gap:10px}
-html[data-ui="v2"] .ms-sec{border:1px solid var(--line);border-radius:18px;padding:12px;background:var(--solid)}
-html[data-ui="v2"] .ms-h{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:14px}
-html[data-ui="v2"] .ms-h .si{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:var(--hero);color:var(--acc1)}
-html[data-ui="v2"] .ms-h .si .ax-ic{width:16px;height:16px}
-html[data-ui="v2"] .ms-g{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-html[data-ui="v2"] .ms-g a{display:flex;align-items:center;gap:9px;min-height:46px;padding:0 12px;border-radius:13px;background:var(--solid-2);color:var(--tx-2);font-size:13.5px;font-weight:550;text-decoration:none;min-width:0}
-html[data-ui="v2"] .ms-g a span:first-of-type{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-html[data-ui="v2"] .ms-g a .ax-ic{color:var(--mut);flex:none}
-html[data-ui="v2"] .ms-g a.on{background:var(--pri-soft);color:var(--tx);font-weight:650;box-shadow:inset 0 0 0 1.5px var(--acc2)}
-html[data-ui="v2"] .ms-g a.on .ax-ic{color:var(--pri)}
+/* menu drawer: slides in from the side, one line per page */
+html[data-ui="v2"] .drawer-ov:has(.drawer.left){justify-content:flex-start}
+html[data-ui="v2"] .drawer.side{width:min(310px,86vw);border-radius:22px 0 0 22px;animation:v3in .28s var(--out)}
+html[data-ui="v2"] .drawer.side.left{border-radius:0 22px 22px 0;animation-name:v3inl}
+@keyframes v3in{from{transform:translateX(100%)}to{transform:none}}
+@keyframes v3inl{from{transform:translateX(-100%)}to{transform:none}}
+html[data-ui="v2"] .drawer.side .m-h{padding:16px 16px 10px}
+html[data-ui="v2"] .drawer.side .m-b{padding:0 10px 20px}
+html[data-ui="v2"] .ax-md{display:flex;flex-direction:column;gap:1px}
+html[data-ui="v2"] .md-g{font-size:12px;font-weight:600;color:var(--faint);padding:14px 8px 4px}
+html[data-ui="v2"] .md-i{display:flex;align-items:center;gap:11px;min-height:42px;padding:4px 8px;border-radius:12px;color:var(--tx-2);font-size:14px;font-weight:500;text-decoration:none;min-width:0}
+html[data-ui="v2"] .md-i .si{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:var(--solid-2);color:var(--mut);flex:none}
+html[data-ui="v2"] .md-i .si .ax-ic{width:16px;height:16px}
+html[data-ui="v2"] .md-i:active{background:var(--hover)}
+html[data-ui="v2"] .md-i.on{background:var(--pri-soft);color:var(--tx);font-weight:650}
+html[data-ui="v2"] .md-i.on .si{background:var(--hero);color:var(--acc1)}
+html[data-ui="v2"] .ax-md .nb{min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:#d9534c;color:#fff;font-size:10.5px;font-weight:700;display:grid;place-items:center;flex:none}
 @media (prefers-reduced-motion:reduce){html[data-ui="v2"] *{transition:none!important;animation:none!important}}
 html[data-ui="v2"] body::before{background:var(--canvas)}
 html[data-ui="v2"] .kpi:not(.hero) .k-v{color:var(--tx)}

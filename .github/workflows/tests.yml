@@ -1,11 +1,12 @@
-# "Break it" security tests on every push and pull request (SECURITY_REPORT.md, item 85).
+# "Break it" security tests on every pull request (SECURITY_REPORT.md, item 85).
 # Each job builds a THROW-AWAY PostgreSQL in the runner from tests/db (Supabase stand-ins, mock tables, the exported
 # base functions, every supabase_v*.sql file, fake data) — the real database is never touched and no secret is used.
 name: Security tests
 on:
-  push: {}
-  pull_request: {}
+  pull_request: {}             # once per pull request update (not again for the same push: that doubled the minutes)
   workflow_dispatch: {}
+# a newer push to the same pull request stops the older run
+concurrency: { group: "tests-${{ github.ref }}", cancel-in-progress: true }
 permissions:
   contents: read
 jobs:
