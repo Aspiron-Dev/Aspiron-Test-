@@ -226,13 +226,14 @@ function refer(el) {
   const qi = el.querySelector('#of-q');
   qi.addEventListener('input', AX.u.debounce(e => { O.q = e.target.value; const s2 = O.q.trim().toLowerCase(); AX.set(el.querySelector('#of-l'), list((d.people || []).filter(p => !s2 || (p.name + ' ' + p.mobile + ' ' + p.code).toLowerCase().includes(s2)))); }, 150));
 }
+const anyBtn = () => can() ? h`<div class="row end mt12"><button class="btn sm" data-act="adj" data-m="">${icon('wallet', 14)} Add or remove wallet money (any number)</button></div>` : '';
 function list(L) {
-  if (!L.length) return h`<div class="card">${UI.empty({ icon: 'gift', title: O.q ? 'Nobody matches' : 'No referrals yet', text: O.q ? 'Try another search.' : 'When students share their link and friends join or buy, they show here.' })}</div>`;
+  if (!L.length) return h`<div class="card">${UI.empty({ icon: 'gift', title: O.q ? 'Nobody matches' : 'No referrals yet', text: O.q ? 'Try another search.' : 'When students share their link and friends join or buy, they show here.' })}</div>${anyBtn()}`;
   return h`<div class="card pad0 list">${join(L, p => h`<div class="li of-p">${UI.avatar(p.name || 'Student', p.mobile, 'sm')}<div class="grow"><div class="row gap6 wrap"><b class="ell">${p.name || 'Student'}</b><span class="pill mono">${p.code}</span></div>
       <div class="xs mut">${fmt.mobile(p.mobile)} · ${fmt.plural(+p.joined || 0, 'joined', 'joined')} · ${+p.bought || 0} bought · earned ${fmt.inr(p.earned)}${+p.adjusted ? ' · by hand ' + fmt.inr(p.adjusted) : ''} · used ${fmt.inr(p.spent)}</div></div>
       <div class="of-bal"><span class="xs mut">Wallet</span><b class="num">${fmt.inr(p.balance)}</b></div>
       <button class="btn xs" data-act="open" data-m="${p.mobile}">${icon('list', 13)} Details</button>${can() ? h`<button class="btn xs ghost" data-act="adj" data-m="${p.mobile}">${icon('rupee', 13)} Wallet</button>` : ''}</div>`)}</div>
-    ${can() ? h`<div class="row end mt12"><button class="btn sm ghost" data-act="adj" data-m="">${icon('plus', 14)} Add wallet money to any number</button></div>` : ''}`;
+    ${anyBtn()}`;
 }
 function detail(mobile) {
   UI.drawer({ title: 'Refer & earn · ' + fmt.mobile(mobile), body: UI.skeleton(4),
