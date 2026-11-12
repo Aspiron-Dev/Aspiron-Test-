@@ -51,6 +51,10 @@ async function rpcRoute(route) {
   await q(`delete from cbt_private.ops_costs`);
   await q(`insert into cbt_private.ops_costs (service, month, amount, note, due_ms) values ('Supabase', to_char(now(),'YYYY-MM'), 1650, 'Pro plan', (extract(epoch from now() + interval '3 days')*1000)::bigint)`);
   await q(`insert into cbt_private.settings values ('ops_budget','{"Supabase":2000,"GitHub Pages":500}') on conflict (key) do update set value = excluded.value`);
+  // long names, to catch overlaps on phones: an order waiting to be verified and a coupon on a long series name
+  await q(`update public.cbt_store_items set title = 'NEET ASPIRON TEST SERIES ( Coming soon ) 2027' where id = 'cccccccc-0000-0000-0000-000000000001'`);
+  await q(`insert into public.cbt_store_orders (code, item_id, item_title, amount, name, mobile, status, payer, utr, paid_at, lang) values ('ASP-TOUR1', 'cccccccc-0000-0000-0000-000000000001', 'PHYSICS PRO TEST SERIES', 299, 'Tour Student', '9877700001', 'pending', 'Tour Student', '875931003890', now(), 'hi') on conflict do nothing`);
+  await q(`insert into cbt_private.store_coupons (item_id, code, kind, value, active, starts_at, ends_at) select 'cccccccc-0000-0000-0000-000000000001', 'TOURLONG', 'flat', 100, true, now(), now() + interval '9 days' where not exists (select 1 from cbt_private.store_coupons where code = 'TOURLONG')`);
   await new Promise(r => server.listen(PORT, '127.0.0.1', r));
   fs.mkdirSync(path.join(__dirname, 'shots'), { recursive: true });
   const br = await chromium.launch();
@@ -75,7 +79,7 @@ async function rpcRoute(route) {
       if (id === 'tests' && vw.width < 500) { await page.click('#ax-more'); await page.waitForTimeout(500); await page.screenshot({ path: path.join(__dirname, 'shots', `more_${vw.width}_${theme}.png`) }); await page.keyboard.press('Escape'); await page.waitForTimeout(300); 
         await page.click('#ax-menu'); await page.waitForTimeout(500); await page.screenshot({ path: path.join(__dirname, 'shots', `menu_${vw.width}_${theme}.png`) }); await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
       if (id === 'home') { await page.click('#ax-prof'); await page.waitForTimeout(500); ok(/Sign out/.test(await page.textContent('.modal')), tag + ' profile sheet opens'); await page.screenshot({ path: path.join(__dirname, 'shots', `profile_${vw.width}_${theme}.png`) }); await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
-      if (['home', 'storage', 'billing', 'students', 'orders', 'tests', 'team'].includes(id)) await page.screenshot({ path: path.join(__dirname, 'shots', `${id}_${vw.width}_${theme}.png`), fullPage: vw.width > 500 });
+      if (['home', 'storage', 'billing', 'students', 'orders', 'offers', 'tests', 'team'].includes(id)) await page.screenshot({ path: path.join(__dirname, 'shots', `${id}_${vw.width}_${theme}.png`), fullPage: vw.width > 500 });
     }
     await ctx.close();
   }
