@@ -72,6 +72,7 @@ async function rpcRoute(route) {
       const txt = await page.textContent('#ax-page');
       const ovf = vw.width < 500 && await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
       ok(!/hit a problem/.test(txt) && !errs.length && !ovf, `${tag} #/${id}${errs.length ? ' errors: ' + errs.join(' | ') : ''}${ovf ? ' horizontal scroll' : ''}`);
+      if (id === 'tests' && vw.width < 500) { await page.click('#ax-more'); await page.waitForTimeout(500); await page.screenshot({ path: path.join(__dirname, 'shots', `more_${vw.width}_${theme}.png`) }); await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
       if (['home', 'storage', 'billing', 'students', 'orders', 'tests', 'team'].includes(id)) await page.screenshot({ path: path.join(__dirname, 'shots', `${id}_${vw.width}_${theme}.png`), fullPage: vw.width > 500 });
     }
     await ctx.close();

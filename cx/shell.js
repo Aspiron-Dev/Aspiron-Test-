@@ -130,25 +130,26 @@ AX.signOut = async (all) => {
 function navItems() {
   return Object.values(AX.mods).filter(m => m.nav && AX.allowed(m)).sort((a, b) => GROUPS.indexOf(a.group || '') - GROUPS.indexOf(b.group || '') || a.order - b.order);
 }
-function navHtml(cur) {
-  let g = null; const out = [];
-  navItems().forEach(m => {
-    if ((m.group || '') !== g) { g = m.group || ''; if (g) out.push(h`<div class="ax-ng">${g}</div>`); }
-    const n = badgeOf(m.id);
-    out.push(h`<a class="ax-ni ${cur === m.id ? 'on' : ''}" href="#/${m.id}" title="${m.title}">${icon(m.icon)}<span class="lt">${m.title}</span>${n ? h`<span class="nb">${n > 99 ? '99+' : n}</span>` : ''}</a>`);
-  });
-  return join(out);
-}
 // sections of the rail: group → [short name, icon]
 const SECT = { '': ['Home', 'home'], 'Students & accounts': ['Students', 'users'], 'Tests & questions': ['Tests', 'layers'], 'Analytics': ['Analytics', 'chart'],
   'Content & storage': ['Storage', 'db'], 'Sales & billing': ['Sales', 'cart'], 'Communication': ['Messages', 'megaphone'], 'Costs & integrations': ['Costs', 'rupee'], 'Team & security': ['Security', 'shield'] };
 const groupOf = id => { const m = AX.mods[id]; return m ? m.group || '' : ''; };
+const sections = () => { const items = navItems(); return GROUPS.map(x => ({ g: x, L: items.filter(m => (m.group || '') === x) })).filter(x => x.L.length).map(x => Object.assign(x, { name: (SECT[x.g] || [x.g])[0], ic: (SECT[x.g] || [0, 'grid'])[1], n: x.L.reduce((t, m) => t + badgeOf(m.id), 0) })); };
+const nb = n => n ? h`<span class="nb">${n > 99 ? '99+' : n}</span>` : '';
+// side menu (computers): every section is a row; the open section shows its pages under it
 function railHtml(cur) {
-  const items = navItems(), g = groupOf(cur);
-  return join(GROUPS.filter(x => items.some(m => (m.group || '') === x)), x => {
-    const L = items.filter(m => (m.group || '') === x), n = L.reduce((t, m) => t + badgeOf(m.id), 0), [name, ic] = SECT[x] || [x, 'grid'];
-    return h`<a class="ax-ri ${g === x ? 'on' : ''}" href="#/${L[0].id}" title="${x || 'Command centre'}"><span class="ri-ic">${icon(ic)}${n ? h`<span class="nb">${n > 99 ? '99+' : n}</span>` : ''}</span><span class="ri-t">${name}</span></a>`;
-  });
+  const g = groupOf(cur);
+  return join(sections(), x => { const on = g === x.g, many = x.L.length > 1;
+    return h`<div class="ax-sec ${on ? 'on' : ''}"><a class="ax-sh" href="#/${x.L[0].id}" title="${x.g || 'Command centre'}"><span class="si">${icon(x.ic)}</span><span class="st">${x.g || 'Command centre'}</span>${on && many ? '' : nb(x.n)}${many ? icon(on ? 'chevD' : 'chevR', 15) : ''}</a>
+      ${on && many ? h`<div class="ax-sp">${join(x.L, m => h`<a class="${cur === m.id ? 'on' : ''}" href="#/${m.id}"><span class="st">${m.title}</span>${nb(badgeOf(m.id))}</a>`)}</div>` : ''}</div>`; });
+}
+// "More" sheet (phones): the sections as cards, each with its own pages
+const PRIM = ['', 'Students & accounts', 'Tests & questions', 'Sales & billing'];   // the sections of the phone bottom bar
+function sheetHtml(cur) {
+  const rest = sections().filter(x => !PRIM.includes(x.g)), one = rest.filter(x => x.L.length === 1), many = rest.filter(x => x.L.length > 1);
+  const tile = (m, label, ic) => h`<a class="${cur === m.id ? 'on' : ''}" href="#/${m.id}">${icon(ic || m.icon, 18)}<span>${label}</span>${nb(badgeOf(m.id))}</a>`;
+  return h`${one.length ? h`<section class="ms-sec"><div class="ms-g">${join(one, x => tile(x.L[0], x.L[0].title, x.ic))}</div></section>` : ''}
+    ${join(many, x => h`<section class="ms-sec"><div class="ms-h"><span class="si">${icon(x.ic)}</span><b>${x.g}</b></div><div class="ms-g">${join(x.L, m => tile(m, m.short || m.title))}</div></section>`)}`;
 }
 function subHtml(cur) {
   const g = groupOf(cur), L = navItems().filter(m => (m.group || '') === g);
@@ -161,7 +162,7 @@ function meCard() {
 }
 function start() {
   document.body.innerHTML = AX.html(h`<div class="ax-app">
-    <aside class="ax-side"><a class="ax-brand" href="#/home" title="Aspiron Control"><span class="mk"><img src="admin-icon-192.png" alt="Aspiron" width="40" height="40"></span></a>
+    <aside class="ax-side"><a class="ax-brand" href="#/home" title="Aspiron Control"><span class="mk"><img src="admin-icon-192.png" alt="Aspiron" width="40" height="40"></span><span class="bn"><b>Aspiron</b><span>Control</span></span></a>
       <nav class="ax-rail-nav" id="ax-nav" aria-label="Sections"></nav><div id="ax-mewrap">${meCard()}</div></aside>
     <div class="ax-main">
       <header class="ax-top glass"><button class="ibtn ax-menu-btn" id="ax-menu" aria-label="Menu" style="display:none">${icon('menu')}</button>
@@ -206,8 +207,10 @@ function drawNav() {
   const nav = document.getElementById('ax-nav'); if (!nav) return;
   AX.set(nav, railHtml(cur));
   const sub = document.getElementById('ax-sub'), sh = subHtml(cur); AX.set(sub, sh); sub.classList.toggle('hide', !sh);
-  const prim = ['home', 'students', 'tests', 'orders'].map(id => AX.mods[id]).filter(m => m && AX.allowed(m));
-  AX.set('#ax-bottom', h`${join(prim, m => { const n = badgeOf(m.id); return h`<a href="#/${m.id}" class="${cur === m.id ? 'on' : ''}">${icon(m.icon)}<span>${m.short || m.title}</span>${n ? h`<span class="nb">${n > 99 ? '99+' : n}</span>` : ''}</a>`; })}<button id="ax-more" class="${prim.some(m => m.id === cur) ? '' : 'on'}">${icon('grid')}<span>Menu</span></button>`);
+  // phones: Home, Students, Tests, Sales open their section (its pages are the strip at the top); More = the other sections
+  const all = sections(), gcur = groupOf(cur), prim = PRIM.map(g => all.find(x => x.g === g)).filter(Boolean);
+  const rest = all.filter(x => !prim.includes(x)), moreOn = !prim.some(x => x.g === gcur);
+  AX.set('#ax-bottom', h`${join(prim, x => h`<a href="#/${x.L[0].id}" class="${x.g === gcur ? 'on' : ''}"><span class="bi">${icon(x.ic)}${nb(x.n)}</span><span class="bt">${x.name}</span></a>`)}<button id="ax-more" class="${moreOn ? 'on' : ''}" aria-label="More sections"><span class="bi">${icon('grid')}${nb(rest.reduce((t, x) => t + x.n, 0))}</span><span class="bt">More</span></button>`);
   const more = document.getElementById('ax-more'); if (more) more.onclick = navSheet;
   const bell = document.getElementById('ax-bell'), tot = ATT.reduce((s, a) => s + (a.count || 0), 0);
   if (bell) AX.set(bell, h`${icon('bell')}${tot ? h`<span class="dot">${tot > 99 ? '99+' : tot}</span>` : ''}`);
@@ -234,7 +237,7 @@ addEventListener('blur', () => priv(true)); addEventListener('focus', () => priv
 function navSheet() {
   const me = S.me || {};
   UI.modal({ title: null, size: 'narrow', foot: null,
-    body: h`<div class="row" style="padding:4px 4px 12px">${UI.avatar(me.name || 'Owner', me.username || 'owner')}<div class="grow"><div class="b">${me.name || 'Owner'}</div><div class="xs mut">${me.owner ? 'Owner' : '@' + me.username}</div></div><button class="ibtn line" data-close data-act="theme" aria-label="Theme">${icon(AX.theme.get() === 'dark' ? 'sun' : 'moon')}</button><button class="ibtn line" data-close data-act="out" aria-label="Sign out">${icon('logout')}</button></div><nav class="ax-nav navsheet" data-close>${navHtml(CUR && CUR.mod)}</nav>`,
+    body: h`<div class="row" style="padding:4px 4px 12px">${UI.avatar(me.name || 'Owner', me.username || 'owner')}<div class="grow"><div class="b">${me.name || 'Owner'}</div><div class="xs mut">${me.owner ? 'Owner' : '@' + me.username}</div></div><button class="ibtn line" data-close data-act="theme" aria-label="Theme">${icon(AX.theme.get() === 'dark' ? 'sun' : 'moon')}</button><button class="ibtn line" data-close data-act="out" aria-label="Sign out">${icon('logout')}</button></div><nav class="ax-more" data-close aria-label="All sections">${sheetHtml(CUR && CUR.mod)}</nav>`,
     onOpen(el) { AX.act(el, { theme() { AX.theme.toggle(); }, out() { AX.signOut(); } }); } });
 }
 function profileMenu(anchor) {
@@ -289,7 +292,7 @@ function route() {
     alive: () => n === ROUTE_N,
     head(o) {
       if (n !== ROUTE_N) return;
-      AX.set('#ax-ph', h`<div class="pt"><h1>${o.title || m.title}</h1>${o.sub ? h`<p class="ps">${o.sub}</p>` : ''}</div>${o.actions ? h`<div class="pa">${o.actions}</div>` : ''}`);
+      AX.set('#ax-ph', h`<span class="ph-ic" aria-hidden="true">${icon(m.icon, 24)}</span><div class="pt"><h1>${o.title || m.title}</h1>${o.sub ? h`<p class="ps">${o.sub}</p>` : ''}</div>${o.actions ? h`<div class="pa">${o.actions}</div>` : ''}`);
       const tb = document.getElementById('ax-tabs');
       if (o.tabs && o.tabs.length) { tb.classList.remove('hide'); AX.set(tb, join(o.tabs.filter(t => !t.perm || AX.can(...[].concat(t.perm))), t => h`<a href="${t.href || '#/' + m.id + '/' + t.id}" class="${t.id === o.tab ? 'on' : ''}">${t.icon ? icon(t.icon, 16) : ''}${t.title}${t.count ? h`<em>${t.count}</em>` : ''}</a>`)); }
       else tb.classList.add('hide');
