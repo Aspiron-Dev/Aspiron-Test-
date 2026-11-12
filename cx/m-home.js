@@ -15,7 +15,7 @@ AX.mod({
   async render(ctx) {
     const me = AX.session.me || {};
     const first = String(me.name || 'Owner').split(' ')[0];
-    ctx.head({ title: greet() + ', ' + (me.owner ? 'Owner' : first),
+    ctx.head({ title: greet() + ', ' + first,
       sub: new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' · here is what needs you today.',
       actions: h`${AX.can('content', 'manage') ? h`<button class="btn" data-act="newTest">${icon('plus', 16)} New test</button>` : ''}${AX.can('store') ? h`<a class="btn pri" href="#/orders">${icon('checkCircle', 16)} Verify payments</a>` : ''}` });
     const ph = document.getElementById('ax-ph');

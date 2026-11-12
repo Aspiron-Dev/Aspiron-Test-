@@ -1133,6 +1133,25 @@ select pg_temp.chk('36c wallet: the removal is in the student''s history as "Rem
   and exists (select 1 from jsonb_array_elements(cbt_private.refer_info('9855500001')->'history') x where (x->>'amount')::int = 300 and x->>'note' = 'Added by us')
   and exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_refer' and act = 'adjust' and who = 'Owner'));
 
+-- ===== 37. v72 owner profile: owner only, input checked, logged =====
+set role anon;
+select pg_temp.chk('37a owner profile: a stranger and a team member get nothing and change nothing',
+  public.cbt_admin_profile('wrong-password','get','{}')->>'ok' is distinct from 'true'
+  and public.cbt_admin_profile(:'smt','get','{}')->>'error' = 'forbidden'
+  and public.cbt_admin_profile(:'smt','save','{"name":"Hacker"}')->>'error' = 'forbidden');
+select pg_temp.chk('37b owner profile: bad name / mobile / e-mail are refused',
+  public.cbt_admin_profile(:'ow9','save','{"name":"A"}')->>'detail' = 'name'
+  and public.cbt_admin_profile(:'ow9','save','{"name":"Sanjay","mobile":"12345"}')->>'detail' = 'mobile'
+  and public.cbt_admin_profile(:'ow9','save','{"name":"Sanjay","email":"not-an-email"}')->>'detail' = 'email');
+select public.cbt_admin_profile(:'ow9','save','{"name":"<b>Sanjay</b> Joshi","mobile":"+91 98765 43210","email":"Owner@Example.com"}') as pf \gset
+select pg_temp.chk('37c owner profile: saved clean (no tags, 10-digit mobile, lower-case e-mail) and read back',
+  (:'pf'::jsonb->>'ok')::boolean and :'pf'::jsonb->>'name' = 'bSanjay/b Joshi' and :'pf'::jsonb->>'mobile' = '9876543210'
+  and public.cbt_admin_profile(:'ow9','get','{}')->>'email' = 'owner@example.com');
+reset role;
+select pg_temp.chk('37d owner profile: the change and the refused try are in the activity log',
+  exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_profile' and act = 'save' and who = 'Owner' and result = '')
+  and exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_profile' and result = 'refused'));
+
 -- ===== report =====
 \t off
 \a
