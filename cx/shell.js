@@ -177,6 +177,7 @@ function start() {
         <button class="ax-sbtn" id="ax-search" aria-label="Search">${icon('search', 17)}<span>Search students, orders, tests…</span><span class="kbd">Ctrl K</span></button>
         <button class="ibtn" id="ax-new" aria-label="Create">${icon('plus')}</button>
         <button class="ibtn" id="ax-bell" aria-label="Needs attention">${icon('bell')}</button>
+        ${AX.can('contacts') ? h`<button class="ibtn" id="ax-eye" aria-label="Show phone numbers" title="Show phone numbers and e-mails (written to the activity log)">${icon(AX.reveal.on() ? 'eyeOff' : 'eye')}</button>` : ''}
         <button class="ibtn" id="ax-theme" aria-label="Theme">${icon(AX.theme.get() === 'dark' ? 'sun' : 'moon')}</button>
         <button class="ax-prof" id="ax-prof" aria-label="Your profile">${UI.avatar((S.me || {}).name || 'Owner', (S.me || {}).username || 'owner', 'sm')}</button>
       </header>
@@ -191,6 +192,7 @@ function start() {
   $('ax-crumb').onclick = e => { if (e.target.closest('[data-act=back]')) goBack(); };
   $('ax-new').onclick = e => createMenu(e.currentTarget);
   $('ax-menu').onclick = () => navSheet(true);
+  if ($('ax-eye')) $('ax-eye').onclick = toggleReveal;
   $('ax-prof').onclick = profile;
   $('ax-bell').onclick = e => attention(e.currentTarget);
   $('ax-theme').onclick = () => { AX.theme.toggle(); AX.set($('ax-theme'), icon(AX.theme.get() === 'dark' ? 'sun' : 'moon')); };
@@ -253,7 +255,7 @@ function profile() {
   UI.modal({ title: null, size: 'narrow', foot: null,
     body: h`<div class="pf-head">${UI.avatar(name, me.username || 'owner', 'lg')}<div class="grow"><div class="pf-n">${name}</div><div class="sm mut">${me.owner ? 'Owner · full access' : 'Team member · @' + (me.username || '')}</div></div></div>
       <div class="list pf-list">
-        ${me.owner && !S.legacy ? row('edit', 'edit', 'Edit profile', PROF && PROF.mobile ? AX.fmt.mobile(PROF.mobile) + (PROF.email ? ' · ' + PROF.email : '') : 'Your name, mobile number and e-mail') : ''}
+        ${me.owner && !S.legacy ? row('edit', 'edit', 'Edit profile', PROF && PROF.mobile ? AX.fmt.mobileFull(PROF.mobile) + (PROF.email ? ' · ' + PROF.email : '') : 'Your name, mobile number and e-mail') : ''}
         ${!S.legacy ? row('pw', 'key', 'Password', 'Change your sign-in password') : ''}
         ${!S.legacy ? row('tfa', 'shieldCheck', 'Two-step sign-in', 'Authenticator app and recovery codes') : ''}
         ${!S.legacy ? row('dev', 'device', 'Where you are signed in', 'See and sign out your devices') : ''}
@@ -264,6 +266,15 @@ function profile() {
     onOpen(el) { AX.act(el, { edit: editProfile, pw: () => AX.go('team/security'), tfa: () => AX.go('settings'), dev: () => AX.go('team/sessions'), theme() { AX.theme.toggle(); drawNav(); },
       set: () => AX.go('settings'), site: () => window.open('./', '_blank', 'noopener'), out: () => AX.signOut() }); } });
 }
+// phone numbers and e-mails: cut on screen until asked for; asking is logged by the server (supabase_v73_contacts.sql)
+function eyeDraw() { const b = document.getElementById('ax-eye'); if (!b) return; const on = AX.reveal.on(); AX.set(b, icon(on ? 'eyeOff' : 'eye')); b.classList.toggle('on', on); b.setAttribute('aria-label', on ? 'Hide phone numbers' : 'Show phone numbers'); }
+async function toggleReveal() {
+  if (AX.reveal.on()) { AX.reveal.set(false); eyeDraw(); route(); return UI.toast('Phone numbers hidden'); }
+  const st = document.querySelector('.drawer #s3-head h2'), r = S.legacy ? { ok: true } : await AX.api.call('cbt_admin_contacts', 'reveal', { name: st ? st.textContent.trim().slice(0, 80) : '' });
+  if (!r.ok && r.error !== 'missing') return UI.toast(r.error === 'forbidden' ? 'You do not have access to contact details. Ask the owner.' : AX.errText(r), { tone: 'bad' });
+  AX.reveal.set(true); eyeDraw(); route(); UI.toast('Phone numbers shown for 15 minutes · noted in the activity log', { ms: 4500 });
+}
+setInterval(() => { const b = document.getElementById('ax-eye'); if (b && b.classList.contains('on') && !AX.reveal.on()) { eyeDraw(); if (!UI.top()) route(); UI.toast('Phone numbers hidden again'); } }, 20000);
 function editProfile() {
   const p = PROF || {};
   UI.modal({ title: 'Your profile', sub: 'Only shown inside this admin panel. Students never see it.', size: 'narrow',

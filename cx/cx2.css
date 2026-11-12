@@ -382,3 +382,6 @@ html[data-ui="v2"] .drawer .m-b{padding:18px 20px}
   html[data-ui="v2"][data-theme="dark"] .ax-bottom .on .ax-ic{color:#1d1608}
   html[data-ui="v2"] .ax-page{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
 }
+
+/* "Show phone numbers" is on */
+html[data-ui="v2"] .ax-top #ax-eye.on{background:var(--hero);color:var(--acc1);border-color:transparent}

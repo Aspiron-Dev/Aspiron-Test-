@@ -86,6 +86,16 @@ async function rpcRoute(route) {
         ok((await q(`select cbt_private.wallet_balance('9866600001') b`))[0].b === 150, tag + ' wallet: add ₹200 then remove ₹50 leaves ₹150');
       }
       if (id === 'students' && vw.width < 500 && theme === 'light') { await page.click('[data-act=open][data-id] .sx-name, [data-act=open][data-id]'); await page.waitForSelector('.s3-tabs'); await page.waitForTimeout(500); await page.screenshot({ path: path.join(__dirname, 'shots', 'student_drawer_390.png') }); await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
+      if (id === 'students' && theme === 'light' && vw.width > 500) {   // phone numbers: cut until "Show phone numbers", and that press is logged
+        const full = /9\d{4} \d{5}/, before = await page.textContent('#ax-page');
+        ok(!full.test(before) && /\d{2}••• ••\d{3}/.test(before), tag + ' students: phone numbers are cut by default');
+        await page.screenshot({ path: path.join(__dirname, 'shots', 'contacts_hidden.png') });
+        await page.click('#ax-eye'); await page.waitForTimeout(1500);
+        ok(full.test(await page.textContent('#ax-page')) && (await q(`select count(*)::int n from cbt_private.admin_audit where fn = 'cbt_admin_contacts' and act = 'reveal' and who = 'Owner'`))[0].n >= 1, tag + ' students: "Show phone numbers" shows them and is in the activity log');
+        await page.screenshot({ path: path.join(__dirname, 'shots', 'contacts_shown.png') });
+        await page.click('#ax-eye'); await page.waitForTimeout(800);
+        ok(!full.test(await page.textContent('#ax-page')), tag + ' students: hidden again');
+      }
       if (id === 'home' && theme === 'light' && vw.width > 500) {   // owner profile: save through the form, the name shows at once
         await page.click('#ax-prof'); await page.click('.modal [data-act=edit]'); await page.waitForSelector('#pf');
         await page.fill('#pf [name=name]', 'Sanjay Joshi'); await page.fill('#pf [name=mobile]', '9876543210'); await page.fill('#pf [name=email]', 'owner@example.com');

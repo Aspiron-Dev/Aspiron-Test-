@@ -48,7 +48,7 @@ light/dark): see the commit message for the counts.
 | A1 | **Bug:** Admin → PYQ bank → Papers always failed ("column reference n is ambiguous", `supabase_v11_pyq.sql`). | **Fixed** (v11 + v70, test 35h) |
 | A2 | No view of storage use / free-plan limits; Supabase Free pauses or refuses writes when full. | **Done:** Storage page (v70) |
 | A3 | No place for bills, budgets, renewals. | **Done:** Billing & costs page (v70) |
-| A4 | Phone / e-mail shown in full to everyone with "students" view (brief §7 wants masked + reveal logged). | Open — Phase 4 |
+| A4 | Phone / e-mail shown in full to everyone with "students" view. | **Done (v73):** cut in the database for members without the new "contacts" permission (all admin functions at once, tests 38a–38h); cut on screen for everyone until "Show phone numbers" (15 min, logged). Not covered: CSV exports and the edit form of a member who has the permission show full values without pressing it. |
 | A5 | Roles are per-module switches, not the 7 named roles of the brief. | Open — presets on top of the same switches (Phase 7) |
 | A6 | Re-login before refund / role change / export / delete. Today: confirm dialog (+ password for team changes). | Open — Phase 7 |
 | A7 | No payment gateway → no webhook / idempotency to build yet. | Waits for gateway (owner) |

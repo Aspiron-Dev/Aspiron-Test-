@@ -29,6 +29,8 @@ Live database Claude ko nahi dikhta. Jo kaam pehle hi ho chuka ho, use seedha ti
 - [x] **1.6 Admin → Team & access:** jo log chale gaye unhe hatao, jahan ho sake Full ki jagah View do, "Require two-step sign-in" ON karo.
 - [ ] **1.11 Clean referral code:** Supabase → SQL Editor: `supabase_v71_refer_code.sql` (nothing after it).
   *Check:* a new student's Refer & earn link looks like `store?r=asp48213`.
+- [ ] **1.12 Owner profile + hidden phone numbers:** Supabase → SQL Editor: `supabase_v72_owner_profile.sql` → `supabase_v73_contacts.sql` → `supabase_v35_admin_team.sql`.
+  *Check:* student numbers show as `98••• ••210` until the eye button is pressed; Team & access → a member has a "Contact details" row.
 - [ ] **1.7 R11, backup ke liye read-only login:** `supabase_backup_role.sql` chalao + GitHub secret `SUPABASE_BACKUP_DB_URL` (`BACKUP.md` → "Read-only login").
 - [ ] **1.8 R7, purani Supabase keys band karo:** `SECURITY_RUNBOOK.md` §7 (naya secret key → test notification → tab legacy keys off).
   Notification test kiye bina keys band mat karna.

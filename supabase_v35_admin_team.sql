@@ -214,7 +214,7 @@ create or replace function cbt_private.adm_ctx_clear() returns void language plp
 declare k text;
 begin
   foreach k in array array['cbt.fn','cbt.act','cbt.detail','cbt.sid','cbt.uid','cbt.who','cbt.need','cbt.denied','cbt.logged',
-                           'cbt.recovery_used','cbt.pwlogin','cbt.depth'] loop
+                           'cbt.recovery_used','cbt.pwlogin','cbt.depth','cbt.contacts'] loop
     perform set_config(k, '', true);
   end loop;
 end $$;
@@ -309,6 +309,16 @@ revoke all on function cbt_private.adm_hmac1(bytea, bytea), cbt_private.adm_rand
   cbt_private.adm_totp(text, bigint), cbt_private.adm_recovery_codes(), cbt_private.adm_otp_check(text, text, boolean),
   cbt_private.adm_pw_weak(text), cbt_private.adm_pw_match(uuid, text) from public, anon, authenticated;
 
+-- ---------- v73: contact details (phone, e-mail) are cut for team members without the "contacts" permission ----------
+-- Works on the finished answer of any admin function: every "…mobile" / "phone" value that is a 10-digit number becomes
+-- 98•••••210 and every "…email" value becomes ab•••@domain. The real value never leaves the database for them.
+create or replace function cbt_private.mask_contacts(j jsonb) returns jsonb language sql immutable as $$
+  select regexp_replace(regexp_replace(j::text,
+    '("(?:[a-z_]*mobile|phone)": ")([0-9]{2})[0-9]{5}([0-9]{3})"', '\1\2•••••\3"', 'g'),
+    '("[a-z_]*email": ")([^"@\\]{1,2})[^"@\\]*@([^"\\]*)"', '\1\2•••@\3"', 'g')::jsonb
+$$;
+revoke all on function cbt_private.mask_contacts(jsonb) from public, anon, authenticated;
+
 -- ---------- which permission a function + action needs ----------
 -- 'module:view' | 'module:manage' | 'any' (every signed-in member) | 'any_write' (same, but logged)
 -- | 'owner' | 'owner_read' | 'ping' | null (unknown = refused for team members)
@@ -378,6 +388,7 @@ create or replace function cbt_private.admin_need(p_fn text, p_act text) returns
     when 'cbt_admin_suspects'       then case when p_act = 'ok' then 'integrity:manage' else 'integrity:view' end   -- v68
     when 'cbt_admin_test_pdf'       then case when p_act = 'get' then 'owner_read' else 'owner' end   -- v51: owner only, changes are logged
     when 'cbt_admin_profile'        then case when p_act = 'get' then 'owner_read' else 'owner' end   -- v72: owner only, changes are logged
+    when 'cbt_admin_contacts'       then 'any_write'   -- v73: "show phone numbers" is written to the activity log
     when 'cbt_admin_ops'            then case when p_act in ('storage', 'costs') then 'owner_read' else 'owner' end   -- v70: owner only, changes are logged
   end
 $$;
@@ -409,6 +420,7 @@ begin
   perform set_config('cbt.sid', v_id::text, true);
   perform set_config('cbt.uid', coalesce(r.user_id::text, ''), true);
   perform set_config('cbt.who', case when r.user_id is null then 'Owner' else r.uname end, true);
+  perform set_config('cbt.contacts', case when r.user_id is null or coalesce(r.perms->>'contacts', '') in ('view', 'manage') then '1' else '0' end, true);   -- v73
 
   v_need := admin_need(v_fn, v_act);
   -- the send-push function on the server checks the sender with a bare 'ping'
@@ -528,7 +540,7 @@ begin
        and p.prorettype in ('jsonb'::regtype, 'json'::regtype) and p.proretset = false
        and p.proargnames is not null and p.proargnames[1] = 'p_pw'
   loop
-    if pg_get_functiondef(f.oid) like '%cbt-wrap-v35.3%' then continue; end if;
+    if pg_get_functiondef(f.oid) like '%cbt-wrap-v35.4%' then continue; end if;
     if pg_get_functiondef(f.oid) like '%cbt-wrap-v35%' then
       -- an older wrapper: the real function is already in cbt_private; only the wrapper is made again
       execute format('drop function public.%I(%s)', f.proname, f.idargs);
@@ -556,7 +568,7 @@ begin
       create function public.%I(%s) returns %s language plpgsql security definer set search_path = cbt_private, pg_temp as $w$
       declare r %s; d int := coalesce(nullif(current_setting('cbt.depth', true), ''), '0')::int;
       begin
-        -- cbt-wrap-v35.3: note what is being called (only the first, outer call counts), run the real function, log changes
+        -- cbt-wrap-v35.4: note what is being called (only the first, outer call counts), run the real function, log changes
         if d = 0 then
           perform cbt_private.adm_ctx_clear();
           perform set_config('cbt.fn', %L, true);
@@ -566,6 +578,8 @@ begin
         perform set_config('cbt.depth', (d + 1)::text, true);
         r := cbt_private.%I(%s);
         perform set_config('cbt.depth', d::text, true);
+        -- v73: a team member without the "contacts" permission gets phone numbers and e-mails cut (outer call only)
+        if d = 0 and coalesce(current_setting('cbt.contacts', true), '') = '0' then r := cbt_private.mask_contacts(r::jsonb); end if;
         perform cbt_private.admin_after(r::jsonb, %L);
         return r;
       end $w$ $f$, f.proname, f.args, f.ret, f.ret, f.proname, v_act, v_det, f.proname || '__core', v_call, f.proname);
@@ -704,7 +718,7 @@ returns jsonb language plpgsql security definer set search_path = cbt_private, p
 declare
   e text; d jsonb := coalesce(p_data, '{}'::jsonb); v_id uuid; v_uid uuid; v_sid uuid; v_un text; v_nm text; v_pw text;
   v_perms jsonb; k text; v text; sl text; n int; h text; asl text;
-  v_mods text[] := array['students', 'payments', 'content', 'results', 'integrity', 'store', 'promotions', 'messaging', 'reviews'];
+  v_mods text[] := array['students', 'payments', 'content', 'results', 'integrity', 'store', 'promotions', 'messaging', 'reviews', 'contacts'];
 begin
   e := admin_ok(p_pw);
   if e is not null then return jsonb_build_object('ok', false, 'error', e); end if;

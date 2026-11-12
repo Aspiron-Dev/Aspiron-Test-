@@ -668,7 +668,7 @@ function drawDrawer() {
         <button class="ibtn sm line" data-copy="${s.mobile}" aria-label="Copy number" title="Copy number">${icon('copy', 15)}</button>
         ${AX.can('store', 'manage') && AX.walletPut ? h`<button class="btn xs soft" data-act="dWallet" title="Add money to this student's wallet, or remove money added by mistake">${icon('wallet', 13)} Wallet + / −</button>` : ''}</div>
       ${infoOk() && DR.info.changes.length ? h`<div class="xs mt8" style="color:var(--gold)">${icon('refresh', 12)} Number changed ${fmt.ago(DR.info.changes[0].at)} · old: <span class="mono">${fmt.mobile(DR.info.changes[0].old)}</span></div>` : ''}
-      ${infoOk() && DR.info.email ? h`<div class="xs mut mt4">${icon('inbox', 12)} ${DR.info.email}</div>` : ''}
+      ${infoOk() && DR.info.email ? h`<div class="xs mut mt4">${icon('inbox', 12)} ${AX.fmt.email(DR.info.email)}</div>` : ''}
       <div class="xs mut mt8">Joined ${fmt.date(s.created)} · ${seenTxt(s)} · ${s.devices || 0}/${s.max_devices || 2} phones</div></div></div>`);
   const counts = { results: R.length || '', payments: M ? M.n || '' : '' };
   AX.set(el.querySelector('#s3-body'), h`<nav class="s3-tabs" role="tablist">${join(TABS, ([k, l, ic]) => h`<button type="button" role="tab" class="${DR.tab === k ? 'on' : ''}" data-act="tab" data-v="${k}" aria-selected="${DR.tab === k ? 'true' : 'false'}">${icon(ic, 16)}<span>${l}</span>${counts[k] ? h`<em>${counts[k]}</em>` : ''}</button>`)}</nav>

@@ -79,7 +79,7 @@ const S = AX.session = {
   },
   clear() { S.token = ''; S.legacy = false; S.me = null; S.id = null; AX.ls.del('cx_tok'); AX.ss.del('cx_tok'); AX.cache.clear(); }
 };
-AX.MODS = ['students', 'payments', 'content', 'results', 'integrity', 'store', 'promotions', 'messaging', 'reviews'];
+AX.MODS = ['students', 'payments', 'content', 'results', 'integrity', 'store', 'promotions', 'messaging', 'reviews', 'contacts'];
 AX.MOD_INFO = {
   students:   { t: 'Students',            d: 'Student list, profiles, access codes, devices, series unlocks, access requests' },
   payments:   { t: 'Payments',            d: 'Money received, adding old payments, payment history' },
@@ -89,7 +89,8 @@ AX.MOD_INFO = {
   store:      { t: 'Store & orders',      d: 'Orders, payment verification, store items, layout and settings' },
   promotions: { t: 'Promotions',          d: 'Promotion links, commissions and payouts' },
   messaging:  { t: 'Messaging',           d: 'Banners, notices and phone notifications' },
-  reviews:    { t: 'Reviews',             d: 'Ratings and reviews on the store' }
+  reviews:    { t: 'Reviews',             d: 'Ratings and reviews on the store' },
+  contacts:   { t: 'Contact details',     d: 'Full phone numbers and e-mails of students. Without this the database sends them cut (98•••••210), so calling and WhatsApp buttons do not work' }
 };
 // AX.can('students') → may view; AX.can('students','manage') → may change. The owner can do everything.
 AX.can = (mod, lvl = 'view') => {
@@ -101,6 +102,11 @@ AX.can = (mod, lvl = 'view') => {
   return p === 'manage' || (p === 'view' && lvl === 'view');
 };
 AX.isOwner = () => !!(S.me && S.me.owner);
+// "Show phone numbers": on for 15 minutes in this tab, then cut again. Turning it on is written to the activity log (shell.js).
+AX.reveal = {
+  on: () => Date.now() < (AX.ss.get('cx_rv', 0) || 0),
+  set(v) { if (v) AX.ss.set('cx_rv', Date.now() + 15 * 60000); else AX.ss.del('cx_rv'); }
+};
 
 /* ---------- API ---------- */
 const AUTH_ERR = ['invalid', 'signed_out', 'expired', 'disabled', 'not_set', 'need_2fa'];
@@ -276,7 +282,10 @@ AX.fmt = {
   dur: sec => { sec = Math.round(Number(sec) || 0); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60; return h ? h + 'h ' + m + 'm' : m ? m + 'm ' + (s ? s + 's' : '') : s + 's'; },
   bytes: b => { b = Number(b) || 0; return b >= 1073741824 ? (b / 1073741824).toFixed(2) + ' GB' : b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : b >= 1024 ? Math.round(b / 1024) + ' KB' : b + ' B'; },
   plural: (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's')),
-  mobile: m => { m = String(m || ''); return m.length === 10 ? m.slice(0, 5) + ' ' + m.slice(5) : m; }
+  // v73: phone numbers and e-mails are shown cut until "Show phone numbers" is pressed (AX.reveal); mobileFull = never cut
+  mobileFull: m => { m = String(m || ''); return m.length === 10 ? m.slice(0, 5) + ' ' + m.slice(5) : m; },
+  mobile: m => { m = String(m || ''); return AX.fmt.mobileFull(/^\d{10}$/.test(m) && !AX.reveal.on() ? m.slice(0, 2) + '•••••' + m.slice(7) : m); },
+  email: e => { e = String(e || ''); const i = e.indexOf('@'); return i > 0 && !AX.reveal.on() && !e.includes('•') ? e.slice(0, Math.min(2, i)) + '•••' + e.slice(i) : e; }
 };
 
 /* ---------- utilities ---------- */
@@ -375,10 +384,10 @@ AX.u = {
     return br + ' · ' + os + app;
   },
   // links for messaging a student (mobile = 10 digits)
-  wa: (mobile, text) => 'https://wa.me/91' + String(mobile || '').replace(/\D/g, '').slice(-10) + (text ? '?text=' + encodeURIComponent(text) : ''),
-  tg: mobile => 'https://t.me/+91' + String(mobile || '').replace(/\D/g, '').slice(-10),
-  sms: (mobile, text) => 'sms:+91' + String(mobile || '').replace(/\D/g, '').slice(-10) + (text ? '?body=' + encodeURIComponent(text) : ''),
-  tel: mobile => 'tel:+91' + String(mobile || '').replace(/\D/g, '').slice(-10),
+  wa: (mobile, text) => /•/.test(mobile) ? '#' : 'https://wa.me/91' + String(mobile || '').replace(/\D/g, '').slice(-10) + (text ? '?text=' + encodeURIComponent(text) : ''),
+  tg: mobile => /•/.test(mobile) ? '#' : 'https://t.me/+91' + String(mobile || '').replace(/\D/g, '').slice(-10),
+  sms: (mobile, text) => /•/.test(mobile) ? '#' : 'sms:+91' + String(mobile || '').replace(/\D/g, '').slice(-10) + (text ? '?body=' + encodeURIComponent(text) : ''),
+  tel: mobile => /•/.test(mobile) ? '#' : 'tel:+91' + String(mobile || '').replace(/\D/g, '').slice(-10),
   site: () => String(CFG.SHORT_URL || '').replace(/\/?$/, '/'),
   storeUrl: () => AX.u.site() + 'store'
 };
