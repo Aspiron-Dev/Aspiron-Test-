@@ -39,7 +39,7 @@ AX.mod({
   async render(ctx) {
     O.tab = ctx.parts[0] === 'refer' ? 'refer' : 'coupons';
     const m = can();
-    ctx.head({ title: 'Coupons & Refer', sub: 'One coupon per test series (e.g. DIWALI) with its own discount and end date, and Refer & earn: wallet money for every new student a student brings.',
+    ctx.head({ title: 'Coupons & Refer', sub: 'As many coupon codes as you want, on any series, each with its own discount, limit and end date. Refer & earn: wallet money for every new student a student brings.',
       tabs: [{ id: 'coupons', title: 'Coupons', icon: 'tag', href: '#/offers/coupons' }, { id: 'refer', title: 'Refer & earn', icon: 'gift', href: '#/offers/refer' }], tab: O.tab,
       actions: m && O.tab === 'coupons' ? h`<button class="btn pri" data-act="new">${icon('plus', 16)} New coupon</button>` : '' });
     const ph = document.getElementById('ax-ph'); if (ph) AX.act(ph, { new: () => editCode(null) });
@@ -200,7 +200,7 @@ function refer(el) {
           ${m ? h`<div class="row end"><button type="button" class="btn pri" data-act="rsave" data-busy="Saving…">${icon('check', 16)} Save</button></div>` : ''}
         </form></div>
       <div class="card"><div class="card-h">${icon('info')}<h3 class="grow">How it works</h3></div>
-        <ol class="of-how"><li>Every student gets a link on the store and in the app (Me → Refer &amp; earn): <span class="mono">store?r=name12345</span> (first name + last 5 digits). It opens the store.</li>
+        <ol class="of-how"><li>Every student gets a link on the store and in the app (Me → Refer &amp; earn): <span class="mono">store?r=asp48213</span> (a short code; no name or number in it). It opens the store.</li>
           <li>A <b>new</b> number that orders from the link is counted as <b>joined</b> — no money for joining.</li>
           <li>When you approve that order (paid at least the minimum above), the sharer gets the reward in the wallet. Undo / reject / delete takes it back.</li>
           <li>The wallet is used only by its owner, signed in to the student app. An order never gets approved if the wallet money was already used elsewhere.</li>

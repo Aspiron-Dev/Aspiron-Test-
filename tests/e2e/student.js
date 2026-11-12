@@ -131,7 +131,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   const wo = (await q(`select amount, wallet_used, coupon_off from public.cbt_store_orders where mobile='9822200002' order by created_at desc limit 1`))[0];
   ok(wo.amount === 0 && wo.wallet_used === 400 && wo.coupon_off === 99, 'wallet: pays the rest of the order (₹0 left to pay)');
   await p.click('[data-close]'); await p.waitForTimeout(500); await p.evaluate(() => go('refer')); await p.waitForTimeout(1500);
-  ok(/aman00002/.test(await p.textContent('#rfbox')) && /₹50/.test(await p.textContent('#rfbox')), 'refer page: own link and wallet balance');
+  ok(/asp\d{5,7}/.test(await p.textContent('#rfbox')) && /₹50/.test(await p.textContent('#rfbox')), 'refer page: own link and wallet balance');
   ok(!(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth)), 'refer page: no sideways scroll on a phone');
   ok(!errs.length, 'no page errors (coupon / wallet / refer) ' + errs.join(' | ')); await c.close();
   // 5c. Edit name on the summary makes a new order: the coupon stays on it (same amount in the summary and in Orders)
@@ -154,7 +154,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   const view = await p.$$eval('.modal a', a => a.map(x => x.textContent.trim()));
   ok(!view.some(t => /View/.test(t)), 'HTML file offered only as a download, never opened: ' + view.join('|'));
   await p.evaluate(() => { try { closeModal(); } catch (e) {} location.hash = '#/refer'; }); await p.waitForTimeout(2000);
-  ok(/store\?r=paid00002$/.test(await p.textContent('.rfu span')), 'app refer page: the link opens the store with the student\'s code');
+  ok(/store\?r=asp\d{5,7}$/.test(await p.textContent('.rfu span')), 'app refer page: the link opens the store with the student\'s code');
   ok(!errs.length, 'no page errors (checklist C/D) ' + errs.join(' | ')); await c.close();
   ({ c, p, errs } = await mk());
   await p.goto(BASE + 'index.html'); await codeScreen(p);
