@@ -15,7 +15,7 @@ const can = () => AX.can('store', 'manage');
 const SQL = 'supabase_v52_coupons_refer.sql';
 const ERR = { code: 'Code: 3–24 letters or numbers (A–Z, 0–9, - or _), e.g. DIWALI.', ends_at: 'Choose an end time in the future (after the start).', item: 'Series not found. Refresh the page.',
   kind: 'Choose % or ₹.', value: 'Discount: 1–100 for %, or ₹1 up to the price for ₹.', reward: 'Reward: a whole number from 0 to 10000.', mobile: 'Enter a valid 10-digit mobile number.',
-  amount: 'Amount: a whole number, + to add or − to remove (not 0).', too_much: 'The wallet would go below ₹0.', missing: 'Run ' + SQL + ' in Supabase first (then supabase_v35_admin_team.sql again).', network: 'No internet. Try again.' };
+  amount: 'Enter the amount: a whole number, more than 0.', too_much: 'The wallet would go below ₹0.', missing: 'Run ' + SQL + ' in Supabase first (then supabase_v35_admin_team.sql again).', network: 'No internet. Try again.' };
 const errText = r => ERR[r && r.error] || AX.errText(r);
 const off = (c, price) => c.kind === 'pct' ? Math.floor(price * c.value / 100) : Math.min(c.value, price);
 const offTxt = c => c.kind === 'pct' ? c.value + '% off' : fmt.inr(c.value) + ' off';
@@ -257,28 +257,30 @@ function adjust(mobile, pre) {
   if (!can()) return;
   pre = pre || {};
   const fromOrder = !!(pre.order || pre.put);   // a put: an extra amount, from an order or the student's page
-  UI.modal({ title: fromOrder ? 'Put money in the wallet' : 'Change wallet money', size: 'narrow',
-    sub: fromOrder ? `${pre.order ? 'Order ' + pre.order + ' · ' : ''}${pre.name || ''}. The student keeps this money in the wallet for their next test series. It cannot be withdrawn and is not refunded.`
-      : 'Add money (e.g. a gift or a correction) or remove it. It shows in the student\'s wallet at once and cannot be withdrawn.',
+  UI.modal({ title: pre.order ? 'Put money in the wallet' : 'Wallet: add or remove money', size: 'narrow',
+    sub: pre.order ? `${pre.order ? 'Order ' + pre.order + ' · ' : ''}${pre.name || ''}. The student keeps this money in the wallet for their next test series. It cannot be withdrawn and is not refunded.`
+      : `${pre.name ? pre.name + '. ' : ''}Add money (a gift, an extra payment, a correction) or remove money that was added by mistake. It shows in the student's wallet at once. A wallet never goes below ₹0.`,
     body: h`<form id="af" class="form-grid" autocomplete="off">
+      ${pre.order ? '' : h`<div class="full">${AX.f.seg({ name: 'dir', options: [{ value: 'add', label: '+ Add money' }, { value: 'remove', label: '− Remove money' }], value: 'add' })}</div>`}
       ${AX.f.input({ name: 'mobile', label: 'Mobile number', value: mobile || '', type: 'tel', inputmode: 'numeric', max: 14, full: true, readonly: !!mobile })}
-      ${AX.f.input({ name: 'amount', label: 'Amount (₹)', value: pre.amount || '', placeholder: fromOrder ? 'e.g. 100' : '50 to add · -50 to remove', inputmode: 'numeric', full: true, hint: fromOrder ? 'The extra amount they paid' : '' })}
+      ${AX.f.input({ name: 'amount', label: 'Amount (₹)', value: pre.amount || '', placeholder: 'e.g. 100', inputmode: 'numeric', full: true, hint: fromOrder ? 'The extra amount they paid' : '' })}
       ${AX.f.input({ name: 'public_note', label: 'Line the student sees', value: fromOrder ? 'Extra amount paid for your order, kept in your wallet' : '', max: 120, placeholder: 'e.g. Extra amount kept in your wallet', full: true, hint: 'Shown in their wallet history' })}
       ${AX.f.input({ name: 'note', label: 'Internal note', value: pre.order ? `Extra paid for ${pre.order}` : '', max: 300, placeholder: 'Why (the student does not see this)', full: true })}</form>`,
     foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="ok" data-busy="Saving…">${icon('check', 16)} Save</button>`,
     onOpen(el, close) {
-      const f = el.querySelector('#af');
+      const f = el.querySelector('#af'); AX.f.wireSeg(f);
       AX.act(el, { async ok(b) {
         AX.f.clearErrors(f); const v = AX.f.read(f), mb = String(v.mobile).replace(/\D/g, '').slice(-10), amt = String(v.amount).replace(/\s|₹/g, '').replace('−', '-');
         if (!/^[6-9]\d{9}$/.test(mb)) return AX.f.error(f, 'mobile', ERR.mobile);
         if (!/^-?\d{1,6}$/.test(amt) || +amt === 0) return AX.f.error(f, 'amount', ERR.amount);
-        if (fromOrder && +amt <= 0) return AX.f.error(f, 'amount', 'Enter the extra amount (more than 0).');
+        if (pre.order && +amt <= 0) return AX.f.error(f, 'amount', 'Enter the extra amount (more than 0).');
+        const n = Math.abs(+amt), remove = !pre.order && (v.dir === 'remove' || +amt < 0);
         await UI.busy(b, async () => {
-          const r = fromOrder
-            ? await AX.api.call('cbt_admin_refer_put', 'add', { mobile: mb, amount: amt.replace('-', ''), note: v.note.trim(), public_note: v.public_note.trim(), order: pre.order || '' })
-            : await AX.api.call('cbt_admin_refer', 'adjust', { mobile: mb, amount: amt, note: v.note.trim() });
+          const r = remove ? await AX.api.call('cbt_admin_refer', 'adjust', { mobile: mb, amount: String(-n), note: v.note.trim() })
+            : fromOrder || v.public_note.trim() ? await AX.api.call('cbt_admin_refer_put', 'add', { mobile: mb, amount: String(n), note: v.note.trim(), public_note: v.public_note.trim(), order: pre.order || '' })
+            : await AX.api.call('cbt_admin_refer', 'adjust', { mobile: mb, amount: String(n), note: v.note.trim() });
           if (!r.ok) return r.error === 'amount' || r.error === 'too_much' ? AX.f.error(f, 'amount', errText(r)) : UI.toast(errText(r), { tone: 'bad' });
-          close(); UI.toast('Wallet now ' + fmt.inr(r.balance)); repaint();
+          close(); UI.toast((remove ? 'Removed ' : 'Added ') + fmt.inr(n) + ' · wallet now ' + fmt.inr(r.balance)); repaint();
         });
       } });
     } });

@@ -78,6 +78,13 @@ async function rpcRoute(route) {
       ok(!/hit a problem/.test(txt) && !errs.length && !ovf, `${tag} #/${id}${errs.length ? ' errors: ' + errs.join(' | ') : ''}${ovf ? ' horizontal scroll' : ''}`);
       if (id === 'tests' && vw.width < 500) { await page.click('#ax-more'); await page.waitForTimeout(500); await page.screenshot({ path: path.join(__dirname, 'shots', `more_${vw.width}_${theme}.png`) }); await page.keyboard.press('Escape'); await page.waitForTimeout(300); 
         await page.click('#ax-menu'); await page.waitForTimeout(500); await page.screenshot({ path: path.join(__dirname, 'shots', `menu_${vw.width}_${theme}.png`) }); await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
+      if (id === 'offers' && theme === 'light' && vw.width > 500) {   // wallet: add ₹200, then remove ₹50, through the real dialog
+        const wal = async (dir, amt) => { await page.goto(BASE + 'cp-dt764twzf54s5m.html#/offers/refer'); await page.waitForSelector('[data-act=adj][data-m=""]'); await page.click('[data-act=adj][data-m=""]'); await page.waitForSelector('#af');
+          await page.fill('#af [name=mobile]', '9866600001'); if (dir === 'remove') await page.click('#af [data-seg=dir] [data-v=remove]'); await page.fill('#af [name=amount]', amt); await page.fill('#af [name=note]', 'tour');
+          if (dir === 'remove') await page.screenshot({ path: path.join(__dirname, 'shots', 'wallet_remove.png') }); await page.click('.modal [data-act=ok]'); await page.waitForTimeout(900); };
+        await wal('add', '200'); await wal('remove', '50');
+        ok((await q(`select cbt_private.wallet_balance('9866600001') b`))[0].b === 150, tag + ' wallet: add ₹200 then remove ₹50 leaves ₹150');
+      }
       if (id === 'home') { await page.click('#ax-prof'); await page.waitForTimeout(500); ok(/Sign out/.test(await page.textContent('.modal')), tag + ' profile sheet opens'); await page.screenshot({ path: path.join(__dirname, 'shots', `profile_${vw.width}_${theme}.png`) }); await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
       if (['home', 'storage', 'billing', 'students', 'orders', 'offers', 'tests', 'team'].includes(id)) await page.screenshot({ path: path.join(__dirname, 'shots', `${id}_${vw.width}_${theme}.png`), fullPage: vw.width > 500 });
     }

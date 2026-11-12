@@ -1119,6 +1119,20 @@ select pg_temp.chk('35f costs: every change and every refused try is in the acti
 select pg_temp.chk('35g costs: the tables cannot be read from outside',
   not has_table_privilege('anon', 'cbt_private.ops_costs', 'select') and not has_table_privilege('anon', 'cbt_private.ops_snap', 'select'));
 
+-- ===== 36. wallet: an admin can remove money too, never below ₹0; the student sees "Removed by us" (v71) =====
+set role anon;
+select public.cbt_admin_refer(:'ow9','adjust','{"mobile":"9855500001","amount":"300","note":"gift"}')->>'balance' as w1 \gset
+select public.cbt_admin_refer(:'ow9','adjust','{"mobile":"9855500001","amount":"-120","note":"added too much"}')->>'balance' as w2 \gset
+select pg_temp.chk('36a wallet: money can be added and removed by the owner', :'w1' = '300' and :'w2' = '180');
+select pg_temp.chk('36b wallet: it cannot go below ₹0, and a team member without Store access cannot change it',
+  public.cbt_admin_refer(:'ow9','adjust','{"mobile":"9855500001","amount":"-181","note":"x"}')->>'error' = 'too_much'
+  and public.cbt_admin_refer(:'smt','adjust','{"mobile":"9855500001","amount":"-10","note":"x"}')->>'error' = 'forbidden');
+reset role;
+select pg_temp.chk('36c wallet: the removal is in the student''s history as "Removed by us", and in the activity log',
+  exists (select 1 from jsonb_array_elements(cbt_private.refer_info('9855500001')->'history') x where (x->>'amount')::int = -120 and x->>'note' = 'Removed by us')
+  and exists (select 1 from jsonb_array_elements(cbt_private.refer_info('9855500001')->'history') x where (x->>'amount')::int = 300 and x->>'note' = 'Added by us')
+  and exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_refer' and act = 'adjust' and who = 'Owner'));
+
 -- ===== report =====
 \t off
 \a
