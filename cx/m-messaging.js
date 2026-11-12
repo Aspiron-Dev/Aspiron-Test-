@@ -83,7 +83,7 @@ function audWire(root) {
 }
 
 AX.mod({
-  id: 'messages', title: 'Broadcasts', icon: 'megaphone', group: 'Engagement', order: 10, perm: 'messaging',
+  id: 'messages', title: 'Broadcasts', icon: 'megaphone', group: 'Communication', order: 10, perm: 'messaging',
   sub: 'Notices, home banners and phone notifications for students.',
   async render(ctx) {
     const tab = ctx.parts[0] || 'notices';

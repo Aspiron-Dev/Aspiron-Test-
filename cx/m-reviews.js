@@ -13,7 +13,7 @@ async function load(force) {
 }
 
 AX.mod({
-  id: 'reviews', title: 'Reviews', icon: 'star', group: 'Engagement', order: 20, perm: 'reviews',
+  id: 'reviews', title: 'Reviews', icon: 'star', group: 'Communication', order: 20, perm: 'reviews',
   sub: 'Ratings and reviews shown on the store.',
   async render(ctx) {
     const f = ctx.q.f || 'all';

@@ -56,7 +56,7 @@ async function load(force) {
 }
 
 AX.mod({
-  id: 'team', title: 'Team & access', short: 'Team', icon: 'team', group: 'Workspace', order: 10, perm: 'any',
+  id: 'team', title: 'Team & access', short: 'Team', icon: 'team', group: 'Team & security', order: 10, perm: 'any',
   sub: 'Who can use the admin console, what each person may do, and where it is signed in.',
   async render(ctx) {
     if (AX.session.legacy) {

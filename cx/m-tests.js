@@ -76,7 +76,7 @@ AX.css('tests', `
 
 /* ---------- module ---------- */
 AX.mod({
-  id: 'tests', title: 'Test studio', short: 'Tests', icon: 'layers', group: 'Academics', order: 10, perm: 'content',
+  id: 'tests', title: 'Test studio', short: 'Tests', icon: 'layers', group: 'Tests & questions', order: 10, perm: 'content',
   sub: 'Series, folders and tests. Changes are live for students at once.',
   async render(ctx) {
     const p = ctx.parts;

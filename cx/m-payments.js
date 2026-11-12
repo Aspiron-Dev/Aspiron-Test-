@@ -165,7 +165,7 @@ AX.css('payments', `
 }`);
 
 AX.mod({
-  id: 'payments', title: 'Payments', short: 'Payments', icon: 'wallet', group: 'People', order: 20, perm: 'payments',
+  id: 'payments', title: 'Payments', short: 'Payments', icon: 'wallet', group: 'Sales & billing', order: 15, perm: 'payments',
   sub: 'Every payment: store orders you approved, and payments you add yourself.',
   async render(ctx) {
     V.ctx = ctx; V.more = 0;

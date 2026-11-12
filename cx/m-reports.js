@@ -12,7 +12,7 @@ const load = force => AX.cache.get('reports', () => AX.api.admin('reports'), 300
 const openQ = (tid, qi) => { if (AX.openTest && can()) AX.openTest(tid, { question: qi }); else UI.toast('Open the test in Test studio to edit this question', { tone: 'warn' }); };
 
 AX.mod({
-  id: 'reports', title: 'Question reports', short: 'Reports', icon: 'flag', group: 'Academics', order: 40, perm: 'content',
+  id: 'reports', title: 'Question reports', short: 'Reports', icon: 'flag', group: 'Tests & questions', order: 40, perm: 'content',
   sub: 'Problems students found in questions and answers.',
   async render(ctx) {
     const tab = ctx.parts[0] || 'reports', f = ctx.q.f || 'open';

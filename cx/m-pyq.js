@@ -21,7 +21,7 @@ const sbOpts = sid => join(S().subjects, s => h`<option value="${s.id}" ${s.id =
 const call = (a, d) => AX.api.call('cbt_admin_pyq', a, Object.assign({ exam: EXAM }, d || {}));
 
 AX.mod({
-  id: 'pyq', title: 'PYQ bank', icon: 'book', group: 'Academics', order: 60, perm: 'content',
+  id: 'pyq', title: 'PYQ bank', icon: 'book', group: 'Tests & questions', order: 60, perm: 'content',
   sub: 'Past papers, tagged by chapter and topic.',
   async render(ctx) {
     const paper = ctx.parts[0] === 'paper' ? ctx.parts[1] : null;

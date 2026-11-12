@@ -1074,6 +1074,50 @@ select pg_temp.chk('34c chapters: a test whose result is not out yet is not coun
   not exists (select 1 from jsonb_array_elements(:'tc2'::jsonb->'chapters') c where c->>'c' = 'hidden'));
 reset role;
 
+-- ===== 35. v70 storage + costs: owner only, every change logged, bad input refused =====
+insert into storage.objects (bucket_id, name, metadata) values
+  ('notes', 'bio/cell.pdf', '{"size": 5000000, "mimetype": "application/pdf"}'),
+  ('notes', 'covers/a.png', '{"size": 200000, "mimetype": "image/png"}');
+insert into public.cbt_pyq (exam, subject, chapter, year, paper, qno, q, options, answer) values ('NEET', 'bio', 'cell', 2024, 'NEET 2024', 1, 'q', '[]', 1);
+set role anon;
+select pg_temp.chk('35a storage/costs: a stranger and a team member get nothing',
+  public.cbt_admin_ops('wrong-password','storage','{}')->>'ok' is distinct from 'true'
+  and public.cbt_admin_ops(:'smt','storage','{}')->>'error' = 'forbidden'
+  and public.cbt_admin_ops(:'smt','costs','{}')->>'error' = 'forbidden'
+  and public.cbt_admin_ops(:'smt','budget_set','{"service":"Supabase","amount":"1"}')->>'error' = 'forbidden'
+  and public.cbt_admin_ops(:'smt','cost_add','{"service":"Supabase","month":"2026-11","amount":"1"}')->>'error' = 'forbidden');
+select public.cbt_admin_ops(:'ow9','storage','{}') as st \gset
+select pg_temp.chk('35b storage: real sizes from the database and Supabase Storage',
+  (:'st'::jsonb->>'ok')::boolean and (:'st'::jsonb->>'db_bytes')::bigint > 0 and (:'st'::jsonb->>'file_bytes')::bigint = 5200000
+  and jsonb_array_length(:'st'::jsonb->'tables') between 1 and 15
+  and exists (select 1 from jsonb_array_elements(:'st'::jsonb->'types') x where x->>'type' = 'PDFs' and (x->>'bytes')::bigint = 5000000)
+  and (:'st'::jsonb->'largest'->0->>'name') = 'bio/cell.pdf' and jsonb_array_length(:'st'::jsonb->'history') = 1);
+select pg_temp.chk('35c costs: bad budget / bill input is refused',
+  public.cbt_admin_ops(:'ow9','budget_set','{"service":"<script>","amount":"10"}')->>'error' = 'bad_request'
+  and public.cbt_admin_ops(:'ow9','budget_set','{"service":"Supabase","amount":"-5"}')->>'error' = 'bad_request'
+  and public.cbt_admin_ops(:'ow9','cost_add','{"service":"Supabase","month":"2026-13","amount":"10"}')->>'error' = 'bad_request'
+  and public.cbt_admin_ops(:'ow9','cost_add','{"service":"Supabase","month":"2026-11","amount":"abc"}')->>'error' = 'bad_request'
+  and public.cbt_admin_ops(:'ow9','cost_add','{"service":"Supabase","month":"2026-11","amount":"10","currency":"EUR"}')->>'error' = 'bad_request');
+select public.cbt_admin_ops(:'ow9','budget_set','{"service":"Supabase","amount":"2000"}')->>'ok' as b1 \gset
+select public.cbt_admin_ops(:'ow9','cost_add','{"service":"Supabase","month":"2026-11","amount":"1850.50","note":"Pro plan"}')->>'id' as c1 \gset
+select public.cbt_admin_ops(:'ow9','costs','{}') as co \gset
+select pg_temp.chk('35d costs: budget and manual bill are saved and read back',
+  :'b1' = 'true' and (:'co'::jsonb->'budgets'->>'Supabase')::numeric = 2000
+  and exists (select 1 from jsonb_array_elements(:'co'::jsonb->'costs') x where x->>'note' = 'Pro plan' and (x->>'amount')::numeric = 1850.50 and x->>'by' = 'Owner'));
+select pg_temp.chk('35e costs: mark paid and delete work, and the budget can be removed',
+  (public.cbt_admin_ops(:'ow9','cost_paid',('{"id":' || :'c1' || ',"paid":true}')::jsonb)->>'ok')::boolean
+  and (public.cbt_admin_ops(:'ow9','cost_delete',('{"id":' || :'c1' || '}')::jsonb)->>'ok')::boolean
+  and (public.cbt_admin_ops(:'ow9','budget_set','{"service":"Supabase","amount":""}')->'budgets') = '{}'::jsonb);
+select pg_temp.chk('35h PYQ bank: the papers list works (was "column reference n is ambiguous")',
+  (public.cbt_admin_pyq(:'ow9','papers','{}')->>'ok')::boolean and (public.cbt_admin_pyq(:'ow9','papers','{}')->'items'->0->>'n')::int >= 1);
+reset role;
+select pg_temp.chk('35f costs: every change and every refused try is in the activity log; reads are not',
+  (select count(*) from cbt_private.admin_audit where fn = 'cbt_admin_ops' and act in ('budget_set', 'cost_add', 'cost_paid', 'cost_delete') and who = 'Owner') >= 4
+  and exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_ops' and result = 'refused')
+  and not exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_ops' and act = 'storage' and result = ''));
+select pg_temp.chk('35g costs: the tables cannot be read from outside',
+  not has_table_privilege('anon', 'cbt_private.ops_costs', 'select') and not has_table_privilege('anon', 'cbt_private.ops_snap', 'select'));
+
 -- ===== report =====
 \t off
 \a

@@ -693,7 +693,7 @@ const SUB = {
   insights: 'How your students are doing — activity, scores, who needs a push and who is topping.'
 };
 AX.mod({
-  id: 'results', title: 'Results & analytics', short: 'Results', icon: 'chart', group: 'Academics', order: 20, perm: 'results',
+  id: 'results', title: 'Results & analytics', short: 'Results', icon: 'chart', group: 'Analytics', order: 10, perm: 'results',
   sub: SUB.all,
   async render(ctx) {
     const p0 = ctx.parts[0] || 'all';

@@ -15,7 +15,7 @@ const sicon = (k, s) => raw(window.socialIcon ? window.socialIcon(k, s || 20) : 
 const ERR = { url: 'This link is not right. Paste the full link of this page, starting with https://', url_needed: 'Paste the link first, or turn this Off', platform: 'Unknown platform' };
 
 AX.mod({
-  id: 'social', title: 'Social media', short: 'Social', icon: 'globe', group: 'Engagement', order: 30, perm: 'messaging',
+  id: 'social', title: 'Social media', short: 'Social', icon: 'globe', group: 'Communication', order: 30, perm: 'messaging',
   sub: 'Links shown on the website and in the app.',
   async render(ctx) {
     ctx.head({ title: 'Social media', sub: 'Turn a platform On and paste its link: it shows on the website footer, the store, the Contact page and in the student app menu. Off = hidden everywhere.' });

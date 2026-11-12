@@ -13,3 +13,4 @@ service-account*.json
 node_modules/
 supabase/.branches/
 supabase/.temp/
+tests/e2e/shots/
