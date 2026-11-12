@@ -148,7 +148,7 @@ const PRIM = ['', 'Students & accounts', 'Tests & questions', 'Sales & billing']
 function sheetHtml(cur) {
   const rest = sections().filter(x => !PRIM.includes(x.g)), one = rest.filter(x => x.L.length === 1), many = rest.filter(x => x.L.length > 1);
   const tile = (m, label, ic) => h`<a class="${cur === m.id ? 'on' : ''}" href="#/${m.id}">${icon(ic || m.icon, 18)}<span>${label}</span>${nb(badgeOf(m.id))}</a>`;
-  return h`${one.length ? h`<section class="ms-sec"><div class="ms-g">${join(one, x => tile(x.L[0], x.L[0].title, x.ic))}</div></section>` : ''}
+  return h`${one.length ? h`<section class="ms-sec"><div class="ms-g">${join(one, x => tile(x.L[0], x.L[0].short || x.L[0].title, x.ic))}</div></section>` : ''}
     ${join(many, x => h`<section class="ms-sec"><div class="ms-h"><span class="si">${icon(x.ic)}</span><b>${x.g}</b></div><div class="ms-g">${join(x.L, m => tile(m, m.short || m.title))}</div></section>`)}`;
 }
 function subHtml(cur) {
