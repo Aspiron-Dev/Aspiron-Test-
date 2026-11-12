@@ -145,8 +145,8 @@ function railHtml(cur) {
 }
 // "More" sheet (phones): the sections as cards, each with its own pages
 const PRIM = ['', 'Students & accounts', 'Tests & questions', 'Sales & billing'];   // the sections of the phone bottom bar
-function sheetHtml(cur) {
-  const rest = sections().filter(x => !PRIM.includes(x.g)), one = rest.filter(x => x.L.length === 1), many = rest.filter(x => x.L.length > 1);
+function sheetHtml(cur, all) {
+  const rest = sections().filter(x => all || !PRIM.includes(x.g)), one = rest.filter(x => x.L.length === 1), many = rest.filter(x => x.L.length > 1);
   const tile = (m, label, ic) => h`<a class="${cur === m.id ? 'on' : ''}" href="#/${m.id}">${icon(ic || m.icon, 18)}<span>${label}</span>${nb(badgeOf(m.id))}</a>`;
   return h`${one.length ? h`<section class="ms-sec"><div class="ms-g">${join(one, x => tile(x.L[0], x.L[0].short || x.L[0].title, x.ic))}</div></section>` : ''}
     ${join(many, x => h`<section class="ms-sec"><div class="ms-h"><span class="si">${icon(x.ic)}</span><b>${x.g}</b></div><div class="ms-g">${join(x.L, m => tile(m, m.short || m.title))}</div></section>`)}`;
@@ -165,27 +165,29 @@ function start() {
     <aside class="ax-side"><a class="ax-brand" href="#/home" title="Aspiron Control"><span class="mk"><img src="admin-icon-192.png" alt="Aspiron" width="40" height="40"></span><span class="bn"><b>Aspiron</b><span>Control</span></span></a>
       <nav class="ax-rail-nav" id="ax-nav" aria-label="Sections"></nav><div id="ax-mewrap">${meCard()}</div></aside>
     <div class="ax-main">
-      <header class="ax-top glass"><button class="ibtn ax-menu-btn" id="ax-menu" aria-label="Menu" style="display:none">${icon('menu')}</button>
+      <header class="ax-top glass"><button class="ibtn ax-menu-btn" id="ax-menu" aria-label="Menu: all sections">${icon('menu')}</button>
         <div class="crumb" id="ax-crumb"></div>
         <button class="ax-sbtn" id="ax-search" aria-label="Search">${icon('search', 17)}<span>Search students, orders, tests…</span><span class="kbd">Ctrl K</span></button>
         <button class="ibtn" id="ax-new" aria-label="Create">${icon('plus')}</button>
         <button class="ibtn" id="ax-bell" aria-label="Needs attention">${icon('bell')}</button>
         <button class="ibtn" id="ax-theme" aria-label="Theme">${icon(AX.theme.get() === 'dark' ? 'sun' : 'moon')}</button>
+        <button class="ax-prof" id="ax-prof" aria-label="Your profile">${UI.avatar((S.me || {}).name || 'Owner', (S.me || {}).username || 'owner', 'sm')}</button>
       </header>
       ${S.legacy ? h`<div class="callout gold" style="margin:14px 28px 0;border-radius:14px">${icon('info')}<div class="sm"><b>Team accounts and sign-in sessions are off.</b> Run <span class="mono">supabase_v35_admin_team.sql</span> once in Supabase → SQL Editor to add team members, permissions, the activity log and remote sign-out. Until then you are signed in with the password for this tab only.</div></div>` : ''}
       <nav class="ax-sub hide" id="ax-sub" aria-label="Pages of this section"></nav>
       <main class="ax-page" id="ax-page"></main>
     </div></div>
     <nav class="ax-bottom glass" id="ax-bottom" aria-label="Main"></nav>`);
-  if (matchMedia('(max-width:759px)').matches) document.getElementById('ax-menu').style.display = 'none';
   drawNav();
   const $ = id => document.getElementById(id);
   $('ax-search').onclick = palette;
   $('ax-crumb').onclick = e => { if (e.target.closest('[data-act=back]')) goBack(); };
   $('ax-new').onclick = e => createMenu(e.currentTarget);
+  $('ax-menu').onclick = () => navSheet(true);
+  $('ax-prof').onclick = profile;
   $('ax-bell').onclick = e => attention(e.currentTarget);
   $('ax-theme').onclick = () => { AX.theme.toggle(); AX.set($('ax-theme'), icon(AX.theme.get() === 'dark' ? 'sun' : 'moon')); };
-  document.querySelector('.ax-side').addEventListener('click', e => { if (e.target.closest('#ax-me')) profileMenu(e.target.closest('#ax-me')); });
+  document.querySelector('.ax-side').addEventListener('click', e => { if (e.target.closest('#ax-me')) profile(); });
   window.onhashchange = route;
   // the installed app opens with ?app=control (its app id); keep the address short
   if (location.search) history.replaceState(null, '', location.pathname + location.hash);
@@ -211,7 +213,7 @@ function drawNav() {
   const all = sections(), gcur = groupOf(cur), prim = PRIM.map(g => all.find(x => x.g === g)).filter(Boolean);
   const rest = all.filter(x => !prim.includes(x)), moreOn = !prim.some(x => x.g === gcur);
   AX.set('#ax-bottom', h`${join(prim, x => h`<a href="#/${x.L[0].id}" class="${x.g === gcur ? 'on' : ''}"><span class="bi">${icon(x.ic)}${nb(x.n)}</span><span class="bt">${x.name}</span></a>`)}<button id="ax-more" class="${moreOn ? 'on' : ''}" aria-label="More sections"><span class="bi">${icon('grid')}${nb(rest.reduce((t, x) => t + x.n, 0))}</span><span class="bt">More</span></button>`);
-  const more = document.getElementById('ax-more'); if (more) more.onclick = navSheet;
+  const more = document.getElementById('ax-more'); if (more) more.onclick = () => navSheet(false);
   const bell = document.getElementById('ax-bell'), tot = ATT.reduce((s, a) => s + (a.count || 0), 0);
   if (bell) AX.set(bell, h`${icon('bell')}${tot ? h`<span class="dot">${tot > 99 ? '99+' : tot}</span>` : ''}`);
   const mw = document.getElementById('ax-mewrap'); if (mw) AX.set(mw, meCard());
@@ -234,23 +236,26 @@ setInterval(() => {
 const priv = on => { if (S.token && document.getElementById('ax-page')) document.body.classList.toggle('privacy', on); };
 document.addEventListener('visibilitychange', () => priv(document.hidden));
 addEventListener('blur', () => priv(true)); addEventListener('focus', () => priv(false));
-function navSheet() {
-  const me = S.me || {};
-  UI.modal({ title: null, size: 'narrow', foot: null,
-    body: h`<div class="row" style="padding:4px 4px 12px">${UI.avatar(me.name || 'Owner', me.username || 'owner')}<div class="grow"><div class="b">${me.name || 'Owner'}</div><div class="xs mut">${me.owner ? 'Owner' : '@' + me.username}</div></div><button class="ibtn line" data-close data-act="theme" aria-label="Theme">${icon(AX.theme.get() === 'dark' ? 'sun' : 'moon')}</button><button class="ibtn line" data-close data-act="out" aria-label="Sign out">${icon('logout')}</button></div><nav class="ax-more" data-close aria-label="All sections">${sheetHtml(CUR && CUR.mod)}</nav>`,
-    onOpen(el) { AX.act(el, { theme() { AX.theme.toggle(); }, out() { AX.signOut(); } }); } });
+function navSheet(all) {
+  UI.modal({ title: all ? 'Menu' : 'More', sub: all ? 'Every section and page' : null, size: 'narrow', foot: null,
+    body: h`<nav class="ax-more" data-close aria-label="Sections">${sheetHtml(CUR && CUR.mod, all)}</nav>` });
 }
-function profileMenu(anchor) {
-  const me = S.me || {};
-  UI.menu(anchor, [
-    { head: (me.name || 'Owner') + (me.owner ? ' · Owner' : ' · Team') },
-    !S.legacy ? { label: me.owner ? 'Team & access' : 'My sign-ins', icon: 'team', fn: () => AX.go('team') } : null,
-    { label: AX.theme.get() === 'dark' ? 'Light theme' : 'Dark theme', icon: AX.theme.get() === 'dark' ? 'sun' : 'moon', fn: () => { AX.theme.toggle(); drawNav(); } },
-    { label: 'Settings', icon: 'settings', fn: () => AX.go('settings') },
-    { label: 'Open student website', icon: 'external', href: './' },
-    { sep: true },
-    { label: 'Sign out', icon: 'logout', tone: 'danger', fn: () => AX.signOut() }
-  ]);
+// profile: who is signed in, and everything about the own account in one place
+function profile() {
+  const me = S.me || {}, name = me.name || 'Owner';
+  const row = (act, ic, t, sub) => h`<button class="li click pf-row" data-close data-act="${act}"><span class="si">${icon(ic)}</span><span class="grow"><span class="t">${t}</span>${sub ? h`<span class="s">${sub}</span>` : ''}</span>${icon('chevR', 16)}</button>`;
+  UI.modal({ title: null, size: 'narrow', foot: null,
+    body: h`<div class="pf-head">${UI.avatar(name, me.username || 'owner', 'lg')}<div class="grow"><div class="pf-n">${name}</div><div class="sm mut">${me.owner ? 'Owner · full access' : 'Team member · @' + (me.username || '')}</div></div></div>
+      <div class="list pf-list">
+        ${!S.legacy ? row('pw', 'key', 'Password', 'Change your sign-in password') : ''}
+        ${!S.legacy ? row('tfa', 'shieldCheck', 'Two-step sign-in', 'Authenticator app and recovery codes') : ''}
+        ${!S.legacy ? row('dev', 'device', 'Where you are signed in', 'See and sign out your devices') : ''}
+        ${row('theme', AX.theme.get() === 'dark' ? 'sun' : 'moon', AX.theme.get() === 'dark' ? 'Light theme' : 'Dark theme')}
+        ${row('set', 'settings', 'Settings', 'This device, shortcuts, links')}
+        ${row('site', 'external', 'Open student website')}
+      </div><button class="btn danger block mt16" data-close data-act="out">${icon('logout')} Sign out</button>`,
+    onOpen(el) { AX.act(el, { pw: () => AX.go('team/security'), tfa: () => AX.go('settings'), dev: () => AX.go('team/sessions'), theme() { AX.theme.toggle(); drawNav(); },
+      set: () => AX.go('settings'), site: () => window.open('./', '_blank', 'noopener'), out: () => AX.signOut() }); } });
 }
 async function heartbeat() {
   if (!S.token || S.legacy) return;

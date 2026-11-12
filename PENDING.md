@@ -30,7 +30,7 @@ Live database Claude ko nahi dikhta. Jo kaam pehle hi ho chuka ho, use seedha ti
 - [ ] **1.7 R11, backup ke liye read-only login:** `supabase_backup_role.sql` chalao + GitHub secret `SUPABASE_BACKUP_DB_URL` (`BACKUP.md` → "Read-only login").
 - [ ] **1.8 R7, purani Supabase keys band karo:** `SECURITY_RUNBOOK.md` §7 (naya secret key → test notification → tab legacy keys off).
   Notification test kiye bina keys band mat karna.
-- [ ] **1.10 Admin redesign (Storage + Billing & costs + PYQ fix):** Supabase → SQL Editor: `supabase_v70_ops.sql` → `supabase_v35_admin_team.sql`.
+- [x] **1.10 Admin redesign (Storage + Billing & costs + PYQ fix):** Supabase → SQL Editor: `supabase_v70_ops.sql` → `supabase_v35_admin_team.sql`.
   *Check:* Admin → Storage shows the database size; Admin → PYQ bank → Papers opens.
 - [ ] **1.9** Backup password aur 2FA recovery codes kagaz par likh kar offline rakho.
 
