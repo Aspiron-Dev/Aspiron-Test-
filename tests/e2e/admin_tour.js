@@ -85,6 +85,13 @@ async function rpcRoute(route) {
         await wal('add', '200'); await wal('remove', '50');
         ok((await q(`select cbt_private.wallet_balance('9866600001') b`))[0].b === 150, tag + ' wallet: add ₹200 then remove ₹50 leaves ₹150');
       }
+      if (id === 'students' && vw.width < 500 && theme === 'light') { await page.click('[data-act=open][data-id] .sx-name, [data-act=open][data-id]'); await page.waitForSelector('.s3-tabs'); await page.waitForTimeout(500); await page.screenshot({ path: path.join(__dirname, 'shots', 'student_drawer_390.png') }); await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
+      if (id === 'home' && theme === 'light' && vw.width > 500) {   // owner profile: save through the form, the name shows at once
+        await page.click('#ax-prof'); await page.click('.modal [data-act=edit]'); await page.waitForSelector('#pf');
+        await page.fill('#pf [name=name]', 'Sanjay Joshi'); await page.fill('#pf [name=mobile]', '9876543210'); await page.fill('#pf [name=email]', 'owner@example.com');
+        await page.screenshot({ path: path.join(__dirname, 'shots', 'profile_edit.png') }); await page.click('.modal [data-act=save]'); await page.waitForTimeout(1200);
+        ok((await q(`select value::jsonb->>'mobile' m from cbt_private.settings where key = 'owner_profile'`))[0].m === '9876543210' && /Sanjay/.test(await page.textContent('#ax-page')), tag + ' owner profile: saved, and the name shows on the page');
+      }
       if (id === 'home') { await page.click('#ax-prof'); await page.waitForTimeout(500); ok(/Sign out/.test(await page.textContent('.modal')), tag + ' profile sheet opens'); await page.screenshot({ path: path.join(__dirname, 'shots', `profile_${vw.width}_${theme}.png`) }); await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
       if (['home', 'storage', 'billing', 'students', 'orders', 'offers', 'tests', 'team'].includes(id)) await page.screenshot({ path: path.join(__dirname, 'shots', `${id}_${vw.width}_${theme}.png`), fullPage: vw.width > 500 });
     }

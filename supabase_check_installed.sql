@@ -20,7 +20,8 @@ from (values
   (15, 'supabase_v67_test_reviews.sql',        'public.cbt_admin_test_reviews'),
   (16, 'supabase_v68_reattempt_cheat_pdf.sql', 'public.cbt_admin_suspects'),
   (17, 'supabase_v69_test_chapters.sql',       'public.cbt_test_chapters'),
-  (18, 'supabase_v70_ops.sql',                 'public.cbt_admin_ops')
+  (18, 'supabase_v70_ops.sql',                 'public.cbt_admin_ops'),
+  (19, 'supabase_v72_owner_profile.sql',       'public.cbt_admin_profile')
 ) as f(n, file, fn) order by f.n;
 -- v71 changes an existing function: 'ok' when its text has the new code
 select 'supabase_v71_refer_code.sql' as file, case when pg_get_functiondef('cbt_private.refer_code_for(text,text,text)'::regprocedure) like '%''asp''%' then 'ok' else 'MISSING — run this file' end as status;

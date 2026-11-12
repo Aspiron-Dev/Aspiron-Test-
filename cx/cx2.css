@@ -364,3 +364,21 @@ html[data-ui="v2"] .li>.grow{min-width:0}
   html[data-ui="v2"] .ax-bottom .on{box-shadow:inset 0 2px 0 var(--acc2)}
   html[data-ui="v2"] .ax-bottom .bi{transition:background .2s}
 }
+
+/* a drawer keeps the padding its pages were built for (the student page's tabs sit at the very top of it) */
+html[data-ui="v2"] .drawer .m-b{padding:18px 20px}
+@media (max-width:759px){
+  html[data-ui="v2"] .s3-tabs button{height:56px;gap:4px;padding:6px 2px 4px;font-size:11px;font-weight:600}
+  html[data-ui="v2"] .s3-tabs button .ax-ic{width:18px;height:18px;flex:none}
+  /* bottom bar: taller, bigger icons and labels */
+  html[data-ui="v2"] .ax-bottom{height:calc(68px + env(safe-area-inset-bottom));padding:0 4px env(safe-area-inset-bottom)}
+  html[data-ui="v2"] .ax-bottom a,html[data-ui="v2"] .ax-bottom button{gap:5px;font-size:11.5px;font-weight:600}
+  html[data-ui="v2"] .ax-bottom .bi,html[data-ui="v2"] .ax-bottom .on .bi{width:56px;height:32px;border-radius:10px}
+  html[data-ui="v2"] .ax-bottom .ax-ic{width:23px;height:23px}
+  html[data-ui="v2"] .ax-bottom .on{box-shadow:none}
+  html[data-ui="v2"] .ax-bottom .on .bi{background:var(--hero);color:#fff}
+  html[data-ui="v2"] .ax-bottom .on .ax-ic{color:var(--acc1)}
+  html[data-ui="v2"][data-theme="dark"] .ax-bottom .on .bi{background:var(--goldg)}
+  html[data-ui="v2"][data-theme="dark"] .ax-bottom .on .ax-ic{color:#1d1608}
+  html[data-ui="v2"] .ax-page{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
+}

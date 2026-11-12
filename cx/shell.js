@@ -10,6 +10,15 @@ const S = AX.session;
 const GROUPS = ['', 'Students & accounts', 'Tests & questions', 'Analytics', 'Content & storage', 'Sales & billing', 'Communication', 'Costs & integrations', 'Team & security'];
 let ATT = [], ATT_AT = 0, CUR = null, ROUTE_N = 0;
 
+/* ---------- owner profile (supabase_v72_owner_profile.sql): name, mobile, e-mail the owner typed in ---------- */
+let PROF = null;
+const applyProf = () => { if (PROF && PROF.name && S.me && S.me.owner) S.me.name = PROF.name; };
+async function loadProf() {
+  if (S.legacy || !AX.isOwner()) return;
+  const r = await AX.api.call('cbt_admin_profile', 'get');
+  if (r.ok) { const was = S.me.name; PROF = r; applyProf(); S.save(!!AX.ls.get('cx_tok', null)); drawNav(); if (S.me.name !== was && CUR && CUR.mod === 'home' && !CUR.parts.length && !UI.top()) route(); const b = document.getElementById('ax-prof'); if (b) AX.set(b, UI.avatar(S.me.name || 'Owner', 'owner', 'sm')); }
+}
+
 /* ---------- boot ---------- */
 AX.boot = async () => {
   // v13 redesign: light is the new default; a theme saved automatically by the old version is reset once
@@ -30,7 +39,7 @@ function splash() {
 async function check() {
   if (S.legacy) return AX.api.admin('ping');
   const r = await AX.api.rpc('cbt_admin_me', {});
-  if (r.ok) { S.me = r.me; S.id = r.session; S.save(!!AX.ls.get('cx_tok', null)); }
+  if (r.ok) { const nm = S.me && S.me.owner && r.me.owner ? S.me.name : ''; S.me = r.me; if (nm) S.me.name = nm; S.id = r.session; S.save(!!AX.ls.get('cx_tok', null)); }
   return r;
 }
 
@@ -191,7 +200,7 @@ function start() {
   if (location.search) history.replaceState(null, '', location.pathname + location.hash);
   if (!location.hash || location.hash === '#' || location.hash === '#/') history.replaceState(null, '', '#/home');
   route();
-  refreshAttention();
+  refreshAttention(); loadProf();
   clearInterval(AX._hb); AX._hb = setInterval(() => { if (!document.hidden) heartbeat(); }, 60000);
   clearInterval(AX._att); AX._att = setInterval(() => { if (!document.hidden) refreshAttention(); }, 120000);
 }
@@ -244,6 +253,7 @@ function profile() {
   UI.modal({ title: null, size: 'narrow', foot: null,
     body: h`<div class="pf-head">${UI.avatar(name, me.username || 'owner', 'lg')}<div class="grow"><div class="pf-n">${name}</div><div class="sm mut">${me.owner ? 'Owner · full access' : 'Team member · @' + (me.username || '')}</div></div></div>
       <div class="list pf-list">
+        ${me.owner && !S.legacy ? row('edit', 'edit', 'Edit profile', PROF && PROF.mobile ? AX.fmt.mobile(PROF.mobile) + (PROF.email ? ' · ' + PROF.email : '') : 'Your name, mobile number and e-mail') : ''}
         ${!S.legacy ? row('pw', 'key', 'Password', 'Change your sign-in password') : ''}
         ${!S.legacy ? row('tfa', 'shieldCheck', 'Two-step sign-in', 'Authenticator app and recovery codes') : ''}
         ${!S.legacy ? row('dev', 'device', 'Where you are signed in', 'See and sign out your devices') : ''}
@@ -251,15 +261,40 @@ function profile() {
         ${row('set', 'settings', 'Settings', 'This device, shortcuts, links')}
         ${row('site', 'external', 'Open student website')}
       </div><button class="btn danger block mt16" data-close data-act="out">${icon('logout')} Sign out</button>`,
-    onOpen(el) { AX.act(el, { pw: () => AX.go('team/security'), tfa: () => AX.go('settings'), dev: () => AX.go('team/sessions'), theme() { AX.theme.toggle(); drawNav(); },
+    onOpen(el) { AX.act(el, { edit: editProfile, pw: () => AX.go('team/security'), tfa: () => AX.go('settings'), dev: () => AX.go('team/sessions'), theme() { AX.theme.toggle(); drawNav(); },
       set: () => AX.go('settings'), site: () => window.open('./', '_blank', 'noopener'), out: () => AX.signOut() }); } });
+}
+function editProfile() {
+  const p = PROF || {};
+  UI.modal({ title: 'Your profile', sub: 'Only shown inside this admin panel. Students never see it.', size: 'narrow',
+    body: h`<form id="pf" class="col gap16" autocomplete="off" novalidate>
+      ${AX.f.input({ name: 'name', label: 'Your name', value: p.name || '', max: 60, placeholder: 'e.g. Sanjay Joshi', auto: 'name' })}
+      ${AX.f.input({ name: 'mobile', label: 'Mobile number', value: p.mobile || '', type: 'tel', inputmode: 'numeric', max: 14, placeholder: '10-digit number', auto: 'tel' })}
+      ${AX.f.input({ name: 'email', label: 'E-mail', value: p.email || '', type: 'email', inputmode: 'email', max: 120, placeholder: 'you@example.com', auto: 'email' })}</form>`,
+    foot: h`<button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="save" data-busy="Saving…">${icon('check', 16)} Save</button>`,
+    onOpen(el, close) {
+      const f = el.querySelector('#pf');
+      AX.act(el, { async save(b) {
+        AX.f.clearErrors(f); const v = AX.f.read(f), mb = String(v.mobile).replace(/\D/g, '').slice(-10);
+        if (v.name.trim().length < 2) return AX.f.error(f, 'name', 'Type your name');
+        if (v.mobile.trim() && !/^[6-9]\d{9}$/.test(mb)) return AX.f.error(f, 'mobile', 'Enter a 10-digit mobile number');
+        if (v.email.trim() && !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(v.email.trim())) return AX.f.error(f, 'email', 'This e-mail does not look right');
+        await UI.busy(b, async () => {
+          const r = await AX.api.call('cbt_admin_profile', 'save', { name: v.name.trim(), mobile: mb, email: v.email.trim() });
+          if (!r.ok) return r.detail && ['name', 'mobile', 'email'].includes(r.detail) ? AX.f.error(f, r.detail, 'Please check this') : UI.toast(AX.errText(r, 'supabase_v72_owner_profile.sql'), { tone: 'bad' });
+          PROF = r; applyProf(); S.save(!!AX.ls.get('cx_tok', null)); close(); UI.toast('Profile saved'); drawNav();
+          const pb = document.getElementById('ax-prof'); if (pb) AX.set(pb, UI.avatar(S.me.name, 'owner', 'sm'));
+          if (CUR && CUR.mod === 'home') route();
+        });
+      } });
+    } });
 }
 async function heartbeat() {
   if (!S.token || S.legacy) return;
   const r = await AX.api.rpc('cbt_admin_me', {});
   if (!r.ok) return;           // auth errors already send the user to sign-in
   const before = JSON.stringify(S.me && S.me.perms);
-  S.me = r.me; S.id = r.session; S.save(!!AX.ls.get('cx_tok', null));
+  S.me = r.me; applyProf(); S.id = r.session; S.save(!!AX.ls.get('cx_tok', null));
   if (JSON.stringify(r.me.perms) !== before) { UI.toast('Your access was updated by the owner'); drawNav(); route(); }
 }
 
