@@ -143,13 +143,11 @@ function railHtml(cur) {
     return h`<div class="ax-sec ${on ? 'on' : ''}"><a class="ax-sh" href="#/${x.L[0].id}" title="${x.g || 'Command centre'}"><span class="si">${icon(x.ic)}</span><span class="st">${x.g || 'Command centre'}</span>${on && many ? '' : nb(x.n)}${many ? icon(on ? 'chevD' : 'chevR', 15) : ''}</a>
       ${on && many ? h`<div class="ax-sp">${join(x.L, m => h`<a class="${cur === m.id ? 'on' : ''}" href="#/${m.id}"><span class="st">${m.title}</span>${nb(badgeOf(m.id))}</a>`)}</div>` : ''}</div>`; });
 }
-// "More" sheet (phones): the sections as cards, each with its own pages
 const PRIM = ['', 'Students & accounts', 'Tests & questions', 'Sales & billing'];   // the sections of the phone bottom bar
-function sheetHtml(cur, all) {
-  const rest = sections().filter(x => all || !PRIM.includes(x.g)), one = rest.filter(x => x.L.length === 1), many = rest.filter(x => x.L.length > 1);
-  const tile = (m, label, ic) => h`<a class="${cur === m.id ? 'on' : ''}" href="#/${m.id}">${icon(ic || m.icon, 18)}<span>${label}</span>${nb(badgeOf(m.id))}</a>`;
-  return h`${one.length ? h`<section class="ms-sec"><div class="ms-g">${join(one, x => tile(x.L[0], x.L[0].short || x.L[0].title, x.ic))}</div></section>` : ''}
-    ${join(many, x => h`<section class="ms-sec"><div class="ms-h"><span class="si">${icon(x.ic)}</span><b>${x.g}</b></div><div class="ms-g">${join(x.L, m => tile(m, m.short || m.title))}</div></section>`)}`;
+// menu drawer (phones): one line per page, under the name of its section. all = every section; else only those not in the bottom bar
+function menuHtml(cur, all) {
+  return join(sections().filter(x => all || !PRIM.includes(x.g)), x => h`${x.g ? h`<div class="md-g">${x.g}</div>` : ''}
+    ${join(x.L, m => h`<a class="md-i ${cur === m.id ? 'on' : ''}" href="#/${m.id}"><span class="si">${icon(m.icon)}</span><span class="grow ell">${m.title}</span>${nb(badgeOf(m.id))}</a>`)}`);
 }
 function subHtml(cur) {
   const g = groupOf(cur), L = navItems().filter(m => (m.group || '') === g);
@@ -237,8 +235,7 @@ const priv = on => { if (S.token && document.getElementById('ax-page')) document
 document.addEventListener('visibilitychange', () => priv(document.hidden));
 addEventListener('blur', () => priv(true)); addEventListener('focus', () => priv(false));
 function navSheet(all) {
-  UI.modal({ title: all ? 'Menu' : 'More', sub: all ? 'Every section and page' : null, size: 'narrow', foot: null,
-    body: h`<nav class="ax-more" data-close aria-label="Sections">${sheetHtml(CUR && CUR.mod, all)}</nav>` });
+  UI.drawer({ title: all ? 'Menu' : 'More', size: all ? 'side left' : 'side', body: h`<nav class="ax-md" data-close aria-label="Pages">${menuHtml(CUR && CUR.mod, all)}</nav>` });
 }
 // profile: who is signed in, and everything about the own account in one place
 function profile() {
