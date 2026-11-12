@@ -34,7 +34,7 @@ let VIEW = null;
 const repaint = async () => { O.c = null; O.r = null; AX.cache.drop('store'); if (VIEW && VIEW.alive()) VIEW.reload(); };
 
 AX.mod({
-  id: 'offers', title: 'Coupons & Refer', short: 'Offers', icon: 'gift', group: 'Commerce', order: 25, perm: 'store',
+  id: 'offers', title: 'Coupons & Refer', short: 'Offers', icon: 'gift', group: 'Sales & billing', order: 25, perm: 'store',
   sub: 'Coupon codes for the store and the Refer & earn wallet.',
   async render(ctx) {
     O.tab = ctx.parts[0] === 'refer' ? 'refer' : 'coupons';

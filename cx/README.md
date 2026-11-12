@@ -33,7 +33,7 @@ No build step, no framework. Each module is one classic script wrapped in an IIF
 AX.mod({
   id: 'students',            // route #/students/...
   title: 'Students', short: 'Students', icon: 'users',      // icon = key of AX.ICONS (cx/core.js)
-  group: 'People',           // '', 'People', 'Academics', 'Commerce', 'Engagement', 'Workspace'
+  group: 'Students & accounts',  // '', 'Students & accounts', 'Tests & questions', 'Analytics', 'Content & storage', 'Sales & billing', 'Communication', 'Costs & integrations', 'Team & security'
   order: 10, perm: 'students',   // module key needed to SEE it ('any' = everyone, 'owner' = owner only)
   sub: 'One-line page subtitle',
   async render(ctx) { ... },
@@ -94,7 +94,11 @@ check `errors` is empty, `H.unknown` lists no unexpected calls, and `H.overflow(
 | reviews | m-reviews.js | Reviews | Engagement / 20 | reviews |
 | social | m-social.js | Social media | Engagement / 30 | messaging |
 | team | m-team.js | Team & access | Workspace / 10 | any (owner tabs) |
-| settings | m-settings.js | Settings | Workspace / 20 | any |
+| settings | m-settings.js | Settings | Team & security / 20 | any |
+| storage | m-ops.js | Storage | Content & storage / 10 | owner |
+| billing | m-ops.js | Billing & costs | Costs & integrations / 10 | owner |
+
+Groups were renamed in the v13 redesign (see `ADMIN_REDESIGN.md`); the table's old group names map to the new ones there.
 
 Cross-module hooks (define in your module, call others defensively: `AX.openStudent ? AX.openStudent(x) : AX.go('students/'+id)`):
 - `AX.openStudent(idOrMobile)` — Students: opens the student 360° drawer.

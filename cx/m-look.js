@@ -22,7 +22,7 @@ const split = v => { const out = []; String(v || '').split(',').map(x => x.trim(
   .forEach(x => { if (!out.some(y => y.toLowerCase() === x.toLowerCase())) out.push(x); }); return out.slice(0, 20); };
 
 AX.mod({
-  id: 'look', title: 'Tests page', short: 'Tests page', icon: 'image', group: 'Commerce', order: 22, perm: 'store',
+  id: 'look', title: 'Tests page', short: 'Tests page', icon: 'image', group: 'Sales & billing', order: 22, perm: 'store',
   sub: 'Poster and filter of the Tests page in the new student design.',
   async render(ctx) {
     ctx.head({ title: 'Tests page', sub: 'The poster at the top of the Tests page (new student design) and the filter students use there: Exam, Class and Subject.' });

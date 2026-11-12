@@ -13,7 +13,7 @@ async function load(force) {
 }
 
 AX.mod({
-  id: 'testfb', title: 'Test feedback', icon: 'star', group: 'Engagement', order: 21, perm: 'reviews',
+  id: 'testfb', title: 'Test feedback', icon: 'star', group: 'Communication', order: 21, perm: 'reviews',
   sub: 'How students rated each test, right after submitting it.',
   async render(ctx) {
     ctx.head({ title: 'Test feedback', sub: 'Stars and a short comment from students, asked right after they submit a test. Only you and your team see these.' });

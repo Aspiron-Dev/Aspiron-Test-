@@ -29,7 +29,7 @@ const list = k => (LV.data && LV.data[k]) || [];
 AX.openLive = id => AX.go('live' + (id ? '/' + encodeURIComponent(id) : ''));
 
 AX.mod({
-  id: 'live', title: 'Live monitor', short: 'Live', icon: 'live', group: 'Academics', order: 30, perm: 'results',
+  id: 'live', title: 'Live monitor', short: 'Live', icon: 'live', group: 'Tests & questions', order: 15, perm: 'results',
   sub: 'See who is writing, who submitted and who has not started — updates every 15 seconds.',
   async render(ctx) {
     stop();

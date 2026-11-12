@@ -370,7 +370,7 @@ const HINT = {
 };
 
 AX.mod({
-  id: 'orders', title: 'Orders', short: 'Orders', icon: 'cart', group: 'Commerce', order: 10, perm: 'store',
+  id: 'orders', title: 'Orders', short: 'Orders', icon: 'cart', group: 'Sales & billing', order: 10, perm: 'store',
   sub: 'Verify payments, unlock series and follow up with students who did not pay.',
   async render(ctx) {
     const sg = SEGS.find(s => s.id === ctx.parts[0]); if (sg) V.seg = sg.id;

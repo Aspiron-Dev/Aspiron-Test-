@@ -193,7 +193,7 @@ button.sx-ac.on:hover{background:var(--bad-soft);color:var(--bad)}
 
 /* ---------- module ---------- */
 AX.mod({
-  id: 'students', title: 'Students', short: 'Students', icon: 'users', group: 'People', order: 10, perm: 'students',
+  id: 'students', title: 'Students', short: 'Students', icon: 'users', group: 'Students & accounts', order: 10, perm: 'students',
   sub: 'Everyone who can use the test series: access, codes, devices, results and payments.',
   async render(ctx) {
     V.ctx = ctx; V.more = 0;

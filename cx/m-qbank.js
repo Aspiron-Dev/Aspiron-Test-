@@ -37,7 +37,7 @@ const setupBox = () => h`<div class="card">${UI.empty({ tone: 'lock', icon: 'db'
 const B = { rows: null, test: null, src: 'ncert', lv: 'medium', sel: new Set(), f: { s: '', c: '', l: '', y: '', o: '', on: '', q: '' }, page: 0 };
 
 AX.mod({
-  id: 'qbank', title: 'Question bank', short: 'Q bank', icon: 'db', group: 'Academics', order: 62, perm: 'content',
+  id: 'qbank', title: 'Question bank', short: 'Q bank', icon: 'db', group: 'Tests & questions', order: 62, perm: 'content',
   sub: 'Questions for practice and the student test generator.',
   async render(ctx) {
     const tab = ctx.parts[0] === 'browse' ? 'browse' : 'add';

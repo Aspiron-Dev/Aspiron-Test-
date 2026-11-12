@@ -91,7 +91,7 @@ function suspHtml(sp) {
 }
 
 AX.mod({
-  id: 'integrity', title: 'Integrity', icon: 'shieldCheck', group: 'Academics', order: 50, perm: 'integrity',
+  id: 'integrity', title: 'Integrity', icon: 'shieldCheck', group: 'Tests & questions', order: 50, perm: 'integrity',
   sub: 'Cheating tags and suspensions.',
   async render(ctx) {
     ctx.head({ title: 'Integrity', sub: 'Report cheating from Results (🚩), suspend from here or from a student\'s profile. A suspended student sees a full-screen notice with a Support button until you lift it.' });

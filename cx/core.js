@@ -485,7 +485,7 @@ AX.icon = (name, size, cls) => AX.raw('<svg class="ax-ic' + (cls ? ' ' + cls : '
 /* ---------- theme ---------- */
 AX.theme = {
   get() { return document.documentElement.dataset.theme || 'dark'; },
-  set(t) { document.documentElement.dataset.theme = t; AX.ls.set('cx_theme', t); const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = t === 'dark' ? '#060a13' : '#f3f6fa'; AX.emit('theme', t); },
+  set(t) { document.documentElement.dataset.theme = t; AX.ls.set('cx_theme', t); const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = t === 'dark' ? '#0a1120' : '#f2f6fc'; AX.emit('theme', t); },
   toggle() { AX.theme.set(AX.theme.get() === 'dark' ? 'light' : 'dark'); }
 };
 })();

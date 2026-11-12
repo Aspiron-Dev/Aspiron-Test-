@@ -7,8 +7,8 @@
   "scope": "./cp-dt764twzf54s5m.html",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#060a13",
-  "theme_color": "#060a13",
+  "background_color": "#f2f6fc",
+  "theme_color": "#2563eb",
   "icons": [
     {
       "src": "admin-icon-192.png",

@@ -62,7 +62,7 @@ begin
   if coalesce((a->>'ok')::boolean, false) is not true then return a; end if;
 
   if p_action = 'papers' then
-    return jsonb_build_object('ok', true, 'items', coalesce((select jsonb_agg(jsonb_build_object('paper', paper, 'year', year, 'n', n, 'subjects', s) order by year desc, paper)
+    return jsonb_build_object('ok', true, 'items', coalesce((select jsonb_agg(jsonb_build_object('paper', paper, 'year', year, 'n', y.n, 'subjects', s) order by year desc, paper)
       from (select paper, year, count(*) n, jsonb_agg(distinct subject) s from public.cbt_pyq where exam = v_exam group by paper, year) y), '[]'::jsonb),
       'total', (select count(*) from public.cbt_pyq where exam = v_exam));
 

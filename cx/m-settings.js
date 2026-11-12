@@ -8,7 +8,7 @@ let installEvt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
 
 AX.mod({
-  id: 'settings', title: 'Settings', icon: 'settings', group: 'Workspace', order: 20, perm: 'any',
+  id: 'settings', title: 'Settings', icon: 'settings', group: 'Team & security', order: 20, perm: 'any',
   sub: 'Appearance, this device and the database.',
   async render(ctx) {
     ctx.head({ title: 'Settings', sub: 'Appearance, this device and the database.' });

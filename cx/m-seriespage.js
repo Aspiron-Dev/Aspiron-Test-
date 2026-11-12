@@ -12,7 +12,7 @@ const LINK_RE = /^(https:\/\/|#\/|store\.html#)[^\s"'<>\\]*$/;
 const ERR = { date: 'The end must be after the start.', upgrades: 'Pick at most 4 plans that are still in the store.', features: 'Too many lines (20 at most).', series: 'This series no longer exists.', link: 'That link does not look right', image: 'The picture is too big. Try a smaller one.' };
 
 AX.mod({
-  id: 'seriespage', title: 'Series page', short: 'Series page', icon: 'layers', group: 'Commerce', order: 23, perm: 'store',
+  id: 'seriespage', title: 'Series page', short: 'Series page', icon: 'layers', group: 'Sales & billing', order: 23, perm: 'store',
   sub: 'Validity, upgrade plans, syllabus and banner of each test series page (new design).',
   async render(ctx) {
     ctx.head({ title: 'Series page', sub: 'What students see when they open a test series in the new design: when it starts and ends, what it includes, the plans they can upgrade to, a syllabus for each test, and a banner on the Tests tab.' });

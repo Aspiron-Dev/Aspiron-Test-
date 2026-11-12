@@ -7,12 +7,14 @@
 'use strict';
 const { h, raw, icon, join, ui: UI } = AX;
 const S = AX.session;
-const GROUPS = ['', 'People', 'Academics', 'Commerce', 'Engagement', 'Workspace'];
+const GROUPS = ['', 'Students & accounts', 'Tests & questions', 'Analytics', 'Content & storage', 'Sales & billing', 'Communication', 'Costs & integrations', 'Team & security'];
 let ATT = [], ATT_AT = 0, CUR = null, ROUTE_N = 0;
 
 /* ---------- boot ---------- */
 AX.boot = async () => {
-  AX.theme.set(AX.ls.get('cx_theme', matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
+  // v13 redesign: light is the new default; a theme saved automatically by the old version is reset once
+  if (!AX.ls.get('cx_th2', null)) { AX.ls.del('cx_theme'); AX.ls.set('cx_th2', 1); }
+  AX.theme.set(AX.ls.get('cx_theme', 'light'));
   if (!AX.url) { document.body.innerHTML = '<p style="padding:24px">config.js is missing.</p>'; return; }
   if (!S.load()) return login();
   splash();

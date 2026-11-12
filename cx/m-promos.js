@@ -33,7 +33,7 @@ let VIEW = null;
 const repaint = async () => { await load(true); if (VIEW && VIEW.alive()) VIEW.paint(); };
 
 AX.mod({
-  id: 'promos', title: 'Promotions', short: 'Promos', icon: 'megaphone', group: 'Commerce', order: 30, perm: 'promotions',
+  id: 'promos', title: 'Promotions', short: 'Promos', icon: 'megaphone', group: 'Sales & billing', order: 30, perm: 'promotions',
   sub: 'One link per influencer or campaign — clicks, paid students, commission owed and profit.',
   async render(ctx) {
     ctx.head({ title: 'Promotions', sub: 'One link per influencer or campaign. See clicks, real paid students, commission owed and profit. Pause or change any link at any time.',

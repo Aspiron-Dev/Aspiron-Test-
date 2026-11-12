@@ -377,6 +377,7 @@ create or replace function cbt_private.admin_need(p_fn text, p_act text) returns
     when 'cbt_admin_test_reviews'   then case when p_act = 'get' then 'reviews:view' else 'reviews:manage' end   -- v67
     when 'cbt_admin_suspects'       then case when p_act = 'ok' then 'integrity:manage' else 'integrity:view' end   -- v68
     when 'cbt_admin_test_pdf'       then case when p_act = 'get' then 'owner_read' else 'owner' end   -- v51: owner only, changes are logged
+    when 'cbt_admin_ops'            then case when p_act in ('storage', 'costs') then 'owner_read' else 'owner' end   -- v70: owner only, changes are logged
   end
 $$;
 revoke all on function cbt_private.admin_need(text, text) from public, anon, authenticated;

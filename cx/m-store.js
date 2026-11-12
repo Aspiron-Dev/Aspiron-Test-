@@ -131,7 +131,7 @@ function courseChips() {
 
 /* ---------- page ---------- */
 AX.mod({
-  id: 'store', title: 'Store', short: 'Store', icon: 'store', group: 'Commerce', order: 20, perm: 'store',
+  id: 'store', title: 'Store', short: 'Store', icon: 'store', group: 'Sales & billing', order: 20, perm: 'store',
   sub: 'What students see on the store page: series, prices, photos, layout, payment details — and how it sells.',
   async render(ctx) {
     T.tab = TABS.some(t => t.id === ctx.parts[0]) ? ctx.parts[0] : 'overview';
