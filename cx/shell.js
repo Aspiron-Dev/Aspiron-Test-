@@ -10,11 +10,19 @@ const S = AX.session;
 const GROUPS = ['', 'Students & accounts', 'Tests & questions', 'Analytics', 'Content & storage', 'Sales & billing', 'Communication', 'Costs & integrations', 'Team & security'];
 let ATT = [], ATT_AT = 0, CUR = null, ROUTE_N = 0;
 
+/* ---------- design: 'v2' (Studio, default) or 'classic' — looks only (cx/cx2.css), nothing else changes ---------- */
+AX.design = {
+  get: () => AX.ls.get('cx_ui', 'v2') === 'classic' ? 'classic' : 'v2',
+  apply() { const r = document.documentElement; if (AX.design.get() === 'v2') r.dataset.ui = 'v2'; else delete r.dataset.ui; },
+  toggle() { AX.ls.set('cx_ui', AX.design.get() === 'v2' ? 'classic' : 'v2'); AX.design.apply(); UI.toast(AX.design.get() === 'v2' ? 'New design on' : 'Classic design on'); }
+};
+
 /* ---------- boot ---------- */
 AX.boot = async () => {
   // v13 redesign: light is the new default; a theme saved automatically by the old version is reset once
   if (!AX.ls.get('cx_th2', null)) { AX.ls.del('cx_theme'); AX.ls.set('cx_th2', 1); }
   AX.theme.set(AX.ls.get('cx_theme', 'light'));
+  AX.design.apply();
   if (!AX.url) { document.body.innerHTML = '<p style="padding:24px">config.js is missing.</p>'; return; }
   if (!S.load()) return login();
   splash();
@@ -45,7 +53,9 @@ const LOST = {
 function login(reason) {
   UI.closeAll(); window.onhashchange = null;
   const mode = AX.ls.get('cx_lmode', 'owner');
-  document.body.innerHTML = AX.html(h`<div class="lg-wrap"><form class="lg-card glass" id="lg" autocomplete="on" novalidate>
+  document.body.innerHTML = AX.html(h`<div class="lg-wrap"><aside class="lg-side" aria-hidden="true"><div class="in"><img src="admin-icon-192.png" alt="" width="56" height="56">
+    <h2>Run Aspiron from one place.</h2><p>Tests, students, orders, storage and costs — on your phone or computer.</p>
+    <ul><li>${icon('shield')} Two-step sign-in and private page key</li><li>${icon('history')} Every change is written to the activity log</li><li>${icon('lock')} Permissions checked on the server</li></ul></div></aside><form class="lg-card glass" id="lg" autocomplete="on" novalidate>
     <div class="lg-mark"><img src="admin-icon-192.png" alt="Aspiron" width="56" height="56"></div>
     <div class="lg-t">Aspiron Control</div>
     <div class="lg-s">Sign in to the admin console</div>
@@ -215,8 +225,8 @@ addEventListener('blur', () => priv(true)); addEventListener('focus', () => priv
 function navSheet() {
   const me = S.me || {};
   UI.modal({ title: null, size: 'narrow', foot: null,
-    body: h`<div class="row" style="padding:4px 4px 12px">${UI.avatar(me.name || 'Owner', me.username || 'owner')}<div class="grow"><div class="b">${me.name || 'Owner'}</div><div class="xs mut">${me.owner ? 'Owner' : '@' + me.username}</div></div><button class="ibtn line" data-close data-act="theme" aria-label="Theme">${icon(AX.theme.get() === 'dark' ? 'sun' : 'moon')}</button><button class="ibtn line" data-close data-act="out" aria-label="Sign out">${icon('logout')}</button></div><nav class="ax-nav navsheet" data-close>${navHtml(CUR && CUR.mod)}</nav>`,
-    onOpen(el) { AX.act(el, { theme() { AX.theme.toggle(); }, out() { AX.signOut(); } }); } });
+    body: h`<div class="row" style="padding:4px 4px 12px">${UI.avatar(me.name || 'Owner', me.username || 'owner')}<div class="grow"><div class="b">${me.name || 'Owner'}</div><div class="xs mut">${me.owner ? 'Owner' : '@' + me.username}</div></div><button class="ibtn line" data-close data-act="design" aria-label="Switch design" title="Classic / new design">${icon('sparkle')}</button><button class="ibtn line" data-close data-act="theme" aria-label="Theme">${icon(AX.theme.get() === 'dark' ? 'sun' : 'moon')}</button><button class="ibtn line" data-close data-act="out" aria-label="Sign out">${icon('logout')}</button></div><nav class="ax-nav navsheet" data-close>${navHtml(CUR && CUR.mod)}</nav>`,
+    onOpen(el) { AX.act(el, { design() { AX.design.toggle(); }, theme() { AX.theme.toggle(); }, out() { AX.signOut(); } }); } });
 }
 function profileMenu(anchor) {
   const me = S.me || {};
@@ -224,6 +234,7 @@ function profileMenu(anchor) {
     { head: (me.name || 'Owner') + (me.owner ? ' · Owner' : ' · Team') },
     !S.legacy ? { label: me.owner ? 'Team & access' : 'My sign-ins', icon: 'team', fn: () => AX.go('team') } : null,
     { label: AX.theme.get() === 'dark' ? 'Light theme' : 'Dark theme', icon: AX.theme.get() === 'dark' ? 'sun' : 'moon', fn: () => { AX.theme.toggle(); drawNav(); } },
+    { label: AX.design.get() === 'v2' ? 'Classic design' : 'New design', icon: 'sparkle', fn: () => AX.design.toggle() },
     { label: 'Settings', icon: 'settings', fn: () => AX.go('settings') },
     { label: 'Open student website', icon: 'external', href: './' },
     { sep: true },

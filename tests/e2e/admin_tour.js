@@ -63,6 +63,7 @@ async function rpcRoute(route) {
     await page.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort());
     await page.route(SUPA + '/rest/v1/rpc/**', rpcRoute);
     await page.goto(BASE + 'cp-dt764twzf54s5m.html'); await page.waitForSelector('#lg-p');
+    await page.waitForTimeout(300); await page.screenshot({ path: path.join(__dirname, 'shots', `login_${vw.width}_${theme}.png`) });
     await page.fill('#lg-p', 'OwnerPass2026x'); await page.click('#lg-go'); await page.waitForSelector('#ax-page');
     const mods = await page.evaluate(() => Object.values(AX.mods).filter(m => m.nav !== false && AX.allowed(m)).map(m => m.id));
     for (const id of mods) {
@@ -71,7 +72,7 @@ async function rpcRoute(route) {
       const txt = await page.textContent('#ax-page');
       const ovf = vw.width < 500 && await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
       ok(!/hit a problem/.test(txt) && !errs.length && !ovf, `${tag} #/${id}${errs.length ? ' errors: ' + errs.join(' | ') : ''}${ovf ? ' horizontal scroll' : ''}`);
-      if (['home', 'storage', 'billing', 'students', 'orders'].includes(id)) await page.screenshot({ path: path.join(__dirname, 'shots', `${id}_${vw.width}_${theme}.png`), fullPage: vw.width > 500 });
+      if (['home', 'storage', 'billing', 'students', 'orders', 'tests', 'team'].includes(id)) await page.screenshot({ path: path.join(__dirname, 'shots', `${id}_${vw.width}_${theme}.png`), fullPage: vw.width > 500 });
     }
     await ctx.close();
   }
