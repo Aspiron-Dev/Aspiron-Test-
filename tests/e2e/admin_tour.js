@@ -60,7 +60,7 @@ async function rpcRoute(route) {
     await ctx.addInitScript(t => { try { localStorage.setItem('adm_k', 'e2eKey2026'); localStorage.setItem('cx_th2', '1'); localStorage.setItem('cx_theme', JSON.stringify(t)); } catch (e) {} }, theme);
     const page = await ctx.newPage(), errs = [];
     page.on('pageerror', e => errs.push(e.message)); page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(m.text()); });
-    await page.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort());
+    await page.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA) && !/^https:\/\/fonts\.(googleapis|gstatic)\.com\//.test(u.href), r => r.abort());   // the real fonts, for the screenshots
     await page.route(SUPA + '/rest/v1/rpc/**', rpcRoute);
     await page.goto(BASE + 'cp-dt764twzf54s5m.html'); await page.waitForSelector('#lg-p');
     await page.waitForTimeout(300); await page.screenshot({ path: path.join(__dirname, 'shots', `login_${vw.width}_${theme}.png`) });
