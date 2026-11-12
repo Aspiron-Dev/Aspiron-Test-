@@ -265,6 +265,25 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     ok(an.badges === 0 && an.rings === 0 && !/Badges|tests done/.test(an.text), 'Analytics: no badges and no ring charts');
     ok(an.wide <= 390, 'Analytics: no sideways scroll on a phone (' + an.wide + ' px)');
     ok(!e4.length, 'no page errors (analytics) ' + e4.join(' | ')); await c4.close(); }
+  // the phone's Back button closes an open sheet or the menu first, never the page behind it
+  await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
+  { const c5 = await br.newContext({ viewport: { width: 390, height: 844 } }); const p5 = await c5.newPage(); const e5 = []; p5.on('pageerror', e => e5.push(e.message));
+    await p5.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort()); await p5.route(SUPA + '/rest/v1/rpc/**', rpcRoute);
+    await p5.goto(BASE + 'index.html'); await codeScreen(p5); await p5.fill('#ph', '9000000002'); await p5.fill('#cd', 'BBBB2222'); await p5.click('#lbtn'); await p5.waitForTimeout(3500);
+    const ck = sel => p5.evaluate(x => { const e = document.getElementById('v3host').shadowRoot.querySelector(x); if (e) e.click(); return !!e; }, sel);
+    const st = () => p5.evaluate(() => { const r = document.getElementById('v3host').shadowRoot; return { hash: location.hash, layer: !!r.querySelector('#sheet.open,#drawer.open'), scr: r.querySelector('#scr').classList.contains('open'), t: r.querySelector('#scrT').textContent }; });
+    await ck('[data-ob="skip"]'); await p5.waitForTimeout(2600); await ck('#sheet.open [data-a="close"]'); await p5.waitForTimeout(800);
+    await p5.evaluate(() => { location.hash = '#/x/tools'; }); await p5.waitForTimeout(1200);
+    await ck('#mnu'); await p5.waitForTimeout(500); await ck('[data-k="contact"]'); await p5.waitForTimeout(800);
+    let s5 = await st(); ok(s5.layer, 'Back test: the help sheet is open');
+    await p5.goBack(); await p5.waitForTimeout(800); s5 = await st(); ok(!s5.layer && s5.hash === '#/x/tools', 'Back closes the sheet and stays on the page (' + JSON.stringify(s5) + ')');
+    await ck('#mnu'); await p5.waitForTimeout(500); await ck('[data-k="tracker"]'); await p5.waitForTimeout(1200); await ck('[data-a="trMenu"]'); await p5.waitForTimeout(800);
+    await p5.goBack(); await p5.waitForTimeout(800); s5 = await st(); ok(!s5.layer && s5.scr && /tracker/i.test(s5.t), 'Back closes a sheet over a page, the page stays (' + JSON.stringify(s5) + ')');
+    await p5.goBack(); await p5.waitForTimeout(800); s5 = await st(); ok(!s5.scr && s5.hash === '#/x/tools', 'a second Back closes the page');
+    await p5.evaluate(() => { location.hash = '#/x/lib'; }); await p5.waitForTimeout(1200);
+    await ck('#mnu'); await p5.waitForTimeout(500); await ck('[data-k="qb"]'); await p5.waitForTimeout(1500);
+    await p5.goBack(); await p5.waitForTimeout(900); s5 = await st(); ok(!s5.scr && s5.hash === '#/x/lib', 'a page opened from the menu: Back returns to where the menu was opened (' + s5.hash + ')');
+    ok(!e5.length, 'no page errors (Back button) ' + e5.join(' | ')); await c5.close(); }
   // Theme page with real finger taps (a touch phone): every tap must land on its button and be saved
   await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
   { const c3 = await br.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }); const p3 = await c3.newPage(); const e3 = []; p3.on('pageerror', e => e3.push(e.message));

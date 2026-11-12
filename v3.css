@@ -1853,3 +1853,11 @@ button:focus:not(:focus-visible){outline:none}
 @media (prefers-reduced-motion:reduce){.ahb i{animation:none}}
 .vb-x{grid-auto-columns:minmax(0,1fr)}.vb-x span{min-width:0;overflow:hidden;white-space:nowrap}
 .anlive .kpg{grid-template-columns:1fr 1fr}
+
+/* ================= v47: the soft blur behind the menu and every sheet is back =================
+   (#208 took it out while the real cause of the stuck taps, fixed in #210, was still unknown.) The page dims at once;
+   the blur fades in a moment later, so the slide itself starts light. */
+.scrim::before{background:rgba(8,8,12,.4);transition:opacity .26s ease}
+.scrim::after{display:block;content:"";position:absolute;inset:0;-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);opacity:0;transition:opacity .16s ease}
+.scrim.open::after{opacity:1;transition:opacity .3s ease .1s}
+@media (prefers-reduced-motion:reduce){.scrim::after,.scrim.open::after{transition:none}}

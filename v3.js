@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=46;
+const V3VER=47;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -175,8 +175,15 @@ const themeLabel=()=>{const m=resolveMode(TH.mode);return `${TH.mode==='system'?
 let tT=null,tMsg='';
 function toast3(m){const t=$('#toast');if(m===tMsg&&t.classList.contains('on')){clearTimeout(tT)}else{t.textContent=m;tMsg=m;t.classList.remove('on');void t.offsetWidth;t.classList.add('on')}tT=setTimeout(()=>{t.classList.remove('on');tMsg=''},2300)}
 let layer=null,lastF=null,sheet,drawer,scrim;
-function openLayer(el){if(layer&&layer!==el)layer.classList.remove('open');$('#app3').classList.add('lay');lastF=root.activeElement;layer=el;scrim.classList.add('open');el.classList.add('open');setTimeout(()=>{const f=el.querySelector('button,input');f&&f.focus({preventScroll:true})},80)}
-function closeLayer(){if(!layer)return;$('#app3').classList.remove('lay');layer.classList.remove('open');scrim.classList.remove('open');layer=null;sheet.onclick=null;lastF&&lastF.focus&&lastF.focus({preventScroll:true})}
+/* the phone's Back button closes an open sheet or the menu first (not the page behind it): opening one adds a history
+   entry; closing it by a tap or a swipe goes back over that entry, and the popstate it causes is ignored. Moves that
+   change the address wait until that step back is done (settled), so it can never undo them. */
+let layH=false,popIgnore=0,settleQ=[],settleT=0;
+function flushSettle(){popIgnore=0;clearTimeout(settleT);const q=settleQ;settleQ=[];q.forEach(f=>{try{f()}catch(e){console.error(e)}})}
+function settled(fn){if(!popIgnore){fn();return}settleQ.push(fn)}
+function openLayer(el){if(!layer&&!layH){try{history.pushState({v3l:1},'',location.href);layH=true}catch(e){}}if(layer&&layer!==el)layer.classList.remove('open');$('#app3').classList.add('lay');lastF=root.activeElement;layer=el;scrim.classList.add('open');el.classList.add('open');setTimeout(()=>{const f=el.querySelector('button,input');f&&f.focus({preventScroll:true})},80)}
+function closeLayer(fromBack){if(!layer)return;$('#app3').classList.remove('lay');layer.classList.remove('open');scrim.classList.remove('open');layer=null;sheet.onclick=null;lastF&&lastF.focus&&lastF.focus({preventScroll:true});
+  if(layH){layH=false;if(fromBack!==true){popIgnore++;clearTimeout(settleT);settleT=setTimeout(flushSettle,700);try{history.back()}catch(e){flushSettle()}}}}
 function openSheet(h){sheet.onclick=null;sheet.innerHTML='<div class="grab"></div>'+h;sheet.scrollTop=0;openLayer(sheet)}
 
 /* ---------- full-screen pages; the phone's back button closes them ---------- */
@@ -184,14 +191,14 @@ let STK=[],scr,undT=0;
 const top=()=>STK[STK.length-1],scrOpen=()=>STK.length>0;
 function drawScr(dir){const v=top();if(!v)return;$('#scrT').textContent=v.t;$('#scrS').textContent=v.s||'';$('#scrR').innerHTML=v.right?v.right():'';
   $('#scrB').innerHTML=`<div class="scr-in${dir?' '+dir:''}">${v.html()}</div>`;v.after&&v.after()}
-function push(v){const was=STK.length>0;STK.push(v);try{history.pushState({v3s:STK.length},'',location.href)}catch(e){}
+function push(v){if(popIgnore){settled(()=>push(v));return}const was=STK.length>0;STK.push(v);try{history.pushState({v3s:STK.length},'',location.href)}catch(e){}
   drawScr(!RM?'fwd':'');try{pstSync()}catch(e){}$('#scrB').scrollTop=0;if(!scr.classList.contains('open')){scr.classList.add('open');scr.setAttribute('aria-hidden','false');clearTimeout(undT);undT=setTimeout(()=>{if(STK.length)$('#app3').classList.add('under')},260)}setTimeout(()=>$('#scrBack').focus({preventScroll:true}),60)}
 function pop(){const v=STK.pop();v&&v.leave&&v.leave();if(STK.length){drawScr(RM?'':'bwd')}else{clearTimeout(undT);$('#app3').classList.remove('under');scr.classList.remove('open');scr.setAttribute('aria-hidden','true');$('#scrB').innerHTML='';try{pstSync()}catch(e){}}}
 function back(){if(!STK.length)return;history.back()}
 /* close every page first, wait for the browser history to settle, then run cb (so a hash change is never undone) */
 let afterUnwind=null;
-function unwind(cb){if(!STK.length){cb();return}const n=STK.length;while(STK.length)pop();afterUnwind=cb;try{history.go(-n)}catch(e){const f=afterUnwind;afterUnwind=null;f()}}
-addEventListener('popstate',()=>{if(afterUnwind){const f=afterUnwind;afterUnwind=null;setTimeout(f,0);return}if(STK.length)pop()});
+function unwind(cb){if(popIgnore){settled(()=>unwind(cb));return}if(!STK.length){cb();return}const n=STK.length;while(STK.length)pop();afterUnwind=cb;try{history.go(-n)}catch(e){const f=afterUnwind;afterUnwind=null;f()}}
+addEventListener('popstate',()=>{if(popIgnore){if(!--popIgnore)flushSettle();return}if(layer){closeLayer(true);return}if(afterUnwind){const f=afterUnwind;afterUnwind=null;setTimeout(f,0);return}if(STK.length)pop()});
 function redraw(){const b=$('#scrB'),y=b.scrollTop;drawScr('');b.scrollTop=y}
 
 /* ---------- actions: one delegated handler ---------- */
