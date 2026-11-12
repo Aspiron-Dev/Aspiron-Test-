@@ -125,14 +125,56 @@ revoke all on function public.cbt_admin_ops(text, text, jsonb) from public, auth
 grant execute on function public.cbt_admin_ops(text, text, jsonb) to anon;
 
 -- Bug fix: Admin → PYQ bank → Papers always failed ("column reference n is ambiguous": a variable and a column
--- were both called n). The column wins now; nothing else in the function changes.
-do $$ begin
-  if to_regprocedure('cbt_private.cbt_admin_pyq__core(text,text,jsonb)') is not null then
-    alter function cbt_private.cbt_admin_pyq__core(text, text, jsonb) set plpgsql.variable_conflict = use_column;
-  elsif to_regprocedure('public.cbt_admin_pyq(text,text,jsonb)') is not null then
-    alter function public.cbt_admin_pyq(text, text, jsonb) set plpgsql.variable_conflict = use_column;
+-- were both called n). The function is written again with the column named exactly (y.n); nothing else changes.
+-- Running supabase_v35_admin_team.sql after this file puts the team-permission wrapper and the activity log back
+-- around it (until then it works for the owner only).
+create or replace function public.cbt_admin_pyq(p_pw text, p_action text, p_data jsonb default '{}'::jsonb)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare a jsonb; x jsonb; n int := 0; v_exam text := coalesce(p_data->>'exam', 'NEET');
+begin
+  a := (public.cbt_admin(p_pw, 'ping', '{}'))::text::jsonb;
+  if coalesce((a->>'ok')::boolean, false) is not true then return a; end if;
+
+  if p_action = 'papers' then
+    return jsonb_build_object('ok', true, 'items', coalesce((select jsonb_agg(jsonb_build_object('paper', paper, 'year', year, 'n', y.n, 'subjects', s) order by year desc, paper)
+      from (select paper, year, count(*) n, jsonb_agg(distinct subject) s from public.cbt_pyq where exam = v_exam group by paper, year) y), '[]'::jsonb),
+      'total', (select count(*) from public.cbt_pyq where exam = v_exam));
+
+  elsif p_action = 'list' then
+    return jsonb_build_object('ok', true, 'items', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'subject', subject, 'chapter', chapter, 'topic', topic, 'year', year, 'paper', paper, 'qno', qno, 'q', left(q, 300)) order by year desc, qno)
+      from (select * from public.cbt_pyq where exam = v_exam
+              and (coalesce(p_data->>'paper','') = '' or paper = p_data->>'paper')
+              and (coalesce(p_data->>'chapter','') = '' or chapter = p_data->>'chapter')
+            order by year desc, qno limit 400) l), '[]'::jsonb));
+
+  elsif p_action = 'bulk' then
+    for x in select * from jsonb_array_elements(coalesce(p_data->'items', '[]'::jsonb)) loop
+      exit when n >= 400;
+      insert into public.cbt_pyq (exam, subject, chapter, topic, year, paper, qno, q, options, answer, explanation, has_img, rkey)
+      values (v_exam, left(x->>'subject', 10), left(x->>'chapter', 40), left(coalesce(x->>'topic', ''), 80), (x->>'year')::int, left(x->>'paper', 60),
+              nullif(x->>'qno', '')::int, left(x->>'q', 4000), coalesce(x->'options', '[]'::jsonb), nullif(x->>'answer', '')::int,
+              left(coalesce(x->>'explanation', ''), 4000), coalesce((x->>'has_img')::boolean, false), left(coalesce(x->>'rkey', ''), 120));
+      n := n + 1;
+    end loop;
+    return jsonb_build_object('ok', true, 'added', n);
+
+  elsif p_action = 'update' then
+    update public.cbt_pyq set subject = coalesce(p_data->>'subject', subject), chapter = coalesce(p_data->>'chapter', chapter), topic = coalesce(p_data->>'topic', topic)
+     where id = (p_data->>'id')::uuid;
+    return jsonb_build_object('ok', true);
+
+  elsif p_action = 'delete' then
+    delete from public.cbt_pyq where id = (p_data->>'id')::uuid;
+    return jsonb_build_object('ok', true);
+
+  elsif p_action = 'delete_paper' then
+    delete from public.cbt_pyq where exam = v_exam and paper = p_data->>'paper';
+    return jsonb_build_object('ok', true);
   end if;
-end $$;
+  return jsonb_build_object('ok', false, 'error', 'action');
+end; $$;
+revoke all on function public.cbt_admin_pyq(text, text, jsonb) from public, authenticated;
+grant execute on function public.cbt_admin_pyq(text, text, jsonb) to anon;
 
 notify pgrst, 'reload schema';
 select 'v70 installed — now run supabase_v35_admin_team.sql again' as status;
