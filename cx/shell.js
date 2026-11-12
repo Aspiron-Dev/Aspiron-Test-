@@ -16,7 +16,7 @@ const applyProf = () => { if (PROF && PROF.name && S.me && S.me.owner) S.me.name
 async function loadProf() {
   if (S.legacy || !AX.isOwner()) return;
   const r = await AX.api.call('cbt_admin_profile', 'get');
-  if (r.ok) { PROF = r; applyProf(); drawNav(); const b = document.getElementById('ax-prof'); if (b) AX.set(b, UI.avatar(S.me.name || 'Owner', 'owner', 'sm')); }
+  if (r.ok) { const was = S.me.name; PROF = r; applyProf(); S.save(!!AX.ls.get('cx_tok', null)); drawNav(); if (S.me.name !== was && CUR && CUR.mod === 'home' && !CUR.parts.length && !UI.top()) route(); const b = document.getElementById('ax-prof'); if (b) AX.set(b, UI.avatar(S.me.name || 'Owner', 'owner', 'sm')); }
 }
 
 /* ---------- boot ---------- */
@@ -39,7 +39,7 @@ function splash() {
 async function check() {
   if (S.legacy) return AX.api.admin('ping');
   const r = await AX.api.rpc('cbt_admin_me', {});
-  if (r.ok) { S.me = r.me; S.id = r.session; S.save(!!AX.ls.get('cx_tok', null)); }
+  if (r.ok) { const nm = S.me && S.me.owner && r.me.owner ? S.me.name : ''; S.me = r.me; if (nm) S.me.name = nm; S.id = r.session; S.save(!!AX.ls.get('cx_tok', null)); }
   return r;
 }
 
