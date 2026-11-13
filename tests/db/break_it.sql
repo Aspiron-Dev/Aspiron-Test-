@@ -1306,6 +1306,29 @@ select pg_temp.chk('34e admin: announcements and file folders / order; wrong pas
   and coalesce((public.cbt_admin_series_posts('wrong-password','get','{}')->>'ok')::boolean, false) is false);
 reset role;
 
+-- ===== 35. v78: what was added when (weekly schedule) =====
+delete from cbt_private.series_access where series_id = '11111111-1111-1111-1111-111111111111'
+  and student_id = (select id from cbt_private.students where mobile = '9000000001');
+set role anon;
+select public.cbt_series_feed('9000000001','AAAA1111','dev-aaaaaaaa','11111111-1111-1111-1111-111111111111') as fd1 \gset
+select pg_temp.chk('35a feed, free student: files with dates (locked except the schedule), no announcements, no answer-key PDFs',
+  (:'fd1'::jsonb->>'ok')::boolean
+  and exists (select 1 from jsonb_array_elements(:'fd1'::jsonb->'items') i where i->>'k' = 'file' and i->>'kind' = 'schedule' and not (i->>'locked')::boolean)
+  and exists (select 1 from jsonb_array_elements(:'fd1'::jsonb->'items') i where i->>'k' = 'file' and i->>'kind' = 'notes' and (i->>'locked')::boolean)
+  and not exists (select 1 from jsonb_array_elements(:'fd1'::jsonb->'items') i where i->>'k' in ('post', 'pdf'))
+  and public.cbt_series_feed('9000000001','AAAA1111','dev-aaaaaaaa','bad')->>'error' = 'not_found'
+  and public.cbt_series_feed('9000000001','wrong','dev-aaaaaaaa','11111111-1111-1111-1111-111111111111')->>'ok' is distinct from 'true');
+reset role;
+insert into cbt_private.series_access (student_id, series_id)
+select id, '11111111-1111-1111-1111-111111111111' from cbt_private.students where mobile = '9000000001' on conflict do nothing;
+set role anon;
+select public.cbt_series_feed('9000000001','AAAA1111','dev-aaaaaaaa','11111111-1111-1111-1111-111111111111') as fd2 \gset
+select pg_temp.chk('35b feed, paid student: announcements and answer-key PDFs too, newest first',
+  exists (select 1 from jsonb_array_elements(:'fd2'::jsonb->'items') i where i->>'k' = 'post')
+  and exists (select 1 from jsonb_array_elements(:'fd2'::jsonb->'items') i where i->>'k' = 'pdf' and i->>'test_id' = 'aaaaaaaa-0000-0000-0000-000000000001')
+  and not exists (select 1 from jsonb_array_elements(:'fd2'::jsonb->'items') i where (i->>'locked')::boolean));
+reset role;
+
 -- ===== report =====
 \t off
 \a
