@@ -174,6 +174,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   await p.click('#lpMenu .lp-mh .lp-ib'); await p.waitForTimeout(400);
   ok(await p.$('#lpMenu') === null, 'landing: the menu opens and ✕ closes it');
   await p.click('.lp-login'); await p.waitForSelector('#em');
+  await p.evaluate(() => { CBT_CONFIG.EMAIL_LOGIN = false; login(); }); await p.waitForSelector('#au3lock');
   await p.click('.au3-btn.g'); await p.waitForTimeout(300);
   ok((await p.$$('.au3-steps li')).length === 4 && /coming soon/i.test(await p.textContent('.au3-note')), 'Google (switched off): shows how to get an access code');
   await p.click('.au3-x'); await p.waitForSelector('#lp');
@@ -214,10 +215,12 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   ({ c, p, errs } = await mk()); await p.route(SUPA + '/auth/v1/**', authRoute);
   await p.goto(BASE + 'index.html'); await toLogin(p);
   ok(await p.$('#cd') !== null && await p.$('#lbtn') !== null, 'login screen: the access code form is shown first');
+  // the lock is checked with the email login switched off (the live setting is EMAIL_LOGIN: true in config.js)
+  await p.evaluate(() => { CBT_CONFIG.EMAIL_LOGIN = false; login(); }); await p.waitForSelector('#au3lock');
   ok(await p.evaluate(() => [...document.querySelectorAll('#au3lock input, #au3lock button')].every(e => e.disabled)), 'email + Google block: locked (every field and button disabled)');
   await p.evaluate(() => authPass()); await p.waitForTimeout(300);
   ok(!(await p.evaluate(() => localStorage.getItem('cbt_auth'))), 'locked: the email sign-in cannot be used');
-  // email + Google are switched on only for these checks (EMAIL_LOGIN in config.js is false)
+  // email + Google are switched on for these checks
   await p.evaluate(() => { CBT_CONFIG.EMAIL_LOGIN = true; login(); }); await p.waitForSelector('#em');
   ok(!!(await p.$('.lgo')) && /Continue with Google/.test(await p.textContent('.lgo')), 'login screen: Google button shown (switched on)');
   await p.fill('#em', 'e2e@example.com'); await p.fill('#pw', 'Wrong1234'); await p.click('#abtn'); await p.waitForTimeout(800);

@@ -178,7 +178,7 @@ function authScreen(card,mode,err){
   card.innerHTML=`<div class="au3-pane">${AU3NOTE&&!mode?`<div class="au3-note" id="afterNote">${esc(AU3NOTE)}</div>`:''}${h}</div>`;
   if(!emailOn()){
     const lk=card.querySelector('#au3lock');
-    if(lk){lk.setAttribute('aria-disabled','true');lk.querySelectorAll('input,button').forEach(e=>{e.disabled=true;e.tabIndex=-1})}
+    if(lk){lk.setAttribute('aria-disabled','true');lk.querySelectorAll('input,button').forEach(e=>{if(e.classList.contains('lgo'))return;e.disabled=true;e.tabIndex=-1})}
   }
   if(emailOn()){const lk=card.querySelector('#au3lock');if(lk){lk.querySelectorAll('.au3-lockbadge').forEach(b=>b.remove())}}
   card.querySelectorAll('input').forEach(i=>i.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const b=i.closest('.lsec')?$('#rbtn'):$('#abtn')||$('#lbtn')||$('#rbtn');b&&b.click()}));
