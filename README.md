@@ -264,6 +264,10 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Safety note:** the store has no sign-in yet — the wallet belongs to the mobile number typed on the store. An order paid with the wallet always needs your approval; approve it only when the student messages you from that number (the order card says so). The planned email / password sign-in for the store closes this.
 - **Setup:** run `supabase_v52_coupons_refer.sql` once (after v48 or later), then `supabase_v35_admin_team.sql` again. Until then the store hides the coupon box, the Refer & earn pages say “coming soon” and the admin section asks for the setup. A mobile number changed later (v44) does not move its wallet / referral code — add the money to the new number by hand (Refer & earn → Wallet).
 
+## Question bank: no live answers before the result (`supabase_v75_qbank_live_guard.sql`)
+- The questions of a test can go into the Question bank only after its result time; the panel says how many were held back. Questions of a live test already in the bank stay hidden from practice and students' own tests (and their answers are not given) until the result time, then appear by themselves.
+- **Setup:** run `supabase_v75_qbank_live_guard.sql` (after v74), then `supabase_v35_admin_team.sql` again.
+
 ## Email / Google login: the access code once (`supabase_v74_login_code_once.sql`)
 - A student who asked for access with email / Google (a request) types the access code **once** after you approve (you send it to that number on WhatsApp, as always). From then on the email / Google login alone is enough. This stops anyone from claiming someone else's new number with their own Google account.
 - **Setup:** run `supabase_v74_login_code_once.sql` (after v73). Logins joined before it also type the code once.

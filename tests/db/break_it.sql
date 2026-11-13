@@ -1199,6 +1199,35 @@ update cbt_private.admin_users set perms = perms - 'contacts' where username = '
 select pg_temp.chk('38h contacts: running v73 again does not give the permission back after the owner removed it',
   (select perms->>'contacts' from cbt_private.admin_users where username = 'oldstore1') is null);
 
+-- ===== 39. question bank never gives a live test's answers before its result (review A1, supabase_v75) =====
+select set_config('request.headers', '{"x-real-ip":"198.51.100.175"}', false);
+delete from cbt_private.settings where key = 'admin_gate'; delete from cbt_private.admin_fails;
+delete from cbt_private.admin_totp where acct = 'owner';
+select public.cbt_admin_login('','OwnerPass2026x','A1')->>'token' as owa1 \gset
+insert into cbt_private.tests(id,series_id,title,duration,data,question_count,active,practice,closes_at,result_at) values
+  ('aaaaaaaa-0000-0000-0000-0000000000a1','22222222-2222-2222-2222-222222222222','Live for bank',60,
+   '[{"q":"BANKQ","options":["a","b","c","d"],"answer":2,"explanation":"BANKKEY"}]',1,true,false,
+   (extract(epoch from now())*1000)::bigint+3600000,(extract(epoch from now())*1000)::bigint+7200000) on conflict (id) do nothing;
+select public.cbt_admin_qbank(:'owa1','add',jsonb_build_object('items',jsonb_build_array(jsonb_build_object('subject','bio','q','BANKQ',
+  'options',jsonb_build_array('a','b','c','d'),'answer',2,'explanation','BANKKEY','src','test:aaaaaaaa-0000-0000-0000-0000000000a1:0')))) as a1add \gset
+select pg_temp.chk('39a the admin cannot add a live test''s questions to the bank before its result',
+  (:'a1add'::jsonb->>'held')::int = 1 and not exists (select 1 from cbt_private.qbank where src = 'test:aaaaaaaa-0000-0000-0000-0000000000a1:0'));
+-- one that got in before this fix (put in directly): hidden from students until the result time
+insert into cbt_private.qbank (subject, q, options, answer, explanation, src)
+values ('bio', 'BANKQ', '["a","b","c","d"]', 2, 'BANKKEY', 'test:aaaaaaaa-0000-0000-0000-0000000000a1:0') on conflict (src) do nothing;
+select id as a1q from cbt_private.qbank where src = 'test:aaaaaaaa-0000-0000-0000-0000000000a1:0' \gset
+set role anon;
+select pg_temp.chk('39b a live test''s question already in the bank is not given for practice, and its answer is not told',
+  not (public.cbt_qb_next('9000000002','BBBB2222','dev-bbbbbbbb','{}')::text ~ 'BANKQ')
+  and coalesce(public.cbt_qb_check('9000000002','BBBB2222','dev-bbbbbbbb',:'a1q'::uuid,0)::text, '') !~ 'BANKKEY');
+reset role;
+update cbt_private.tests set closes_at = (extract(epoch from now())*1000)::bigint - 7200000, result_at = (extract(epoch from now())*1000)::bigint - 1000
+ where id = 'aaaaaaaa-0000-0000-0000-0000000000a1';
+set role anon;
+select pg_temp.chk('39c after the result time the question opens for practice by itself',
+  public.cbt_qb_check('9000000002','BBBB2222','dev-bbbbbbbb',:'a1q'::uuid,2)->>'explanation' = 'BANKKEY');
+reset role;
+
 -- ===== report =====
 \t off
 \a

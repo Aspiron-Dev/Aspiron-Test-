@@ -125,13 +125,15 @@ function preview(ctx) {
     cancel() { B.rows = null; AX.set(box, ''); },
     async save(btn) {
       const items = B.rows.map(r => ({ subject: r.subject, chapter: r.chapter, topic: r.topic, level: r.level, qtype: r.qtype, source: B.src, q: r.q, options: r.options, answer: r.answer, explanation: r.explanation, img: r.img, oimg: r.oimg, src: 'test:' + B.test + ':' + r.i }));
-      let n = 0, u = 0; btn.disabled = true;
+      let n = 0, u = 0, held = 0; btn.disabled = true;
       for (let i = 0; i < items.length; i += 50) {
         btn.textContent = 'Saving… ' + Math.min(i + 50, items.length) + '/' + items.length;
         const r = await call('add', { items: items.slice(i, i + 50) });
         if (!r.ok) { btn.disabled = false; btn.textContent = 'Try again'; return UI.toast('Could not save — ' + AX.errText(r), { tone: 'bad' }); }
-        n += r.added || 0; u += r.updated || 0;
+        n += r.added || 0; u += r.updated || 0; held += r.held || 0;
       }
+      // v75: a live test's questions are refused until its result time (they would give away the answer key)
+      if (held) { btn.disabled = false; btn.textContent = 'Save'; return UI.toast(held + ' questions not added: this test\'s result is not out yet. Add them after the result time.', { tone: 'bad', ms: 7000 }); }
       UI.toast(n + ' added' + (u ? ', ' + u + ' updated' : '')); B.rows = null; ctx.reload();
     }
   });
