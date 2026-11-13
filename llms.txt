@@ -1,0 +1,32 @@
+# Aspiron Education
+
+> Aspiron Education (aspironeducation.com) is an Indian online platform for NEET (UG) and JEE Main preparation. Students take exam-style computer-based (CBT) mock tests and test series on any phone or computer and get an instant result, rank among Aspiron students, solutions and a subject-wise and chapter-wise analysis. Tests are offered in English and Hindi (हिंदी) medium where a series includes both. Test series are bought on the Store with UPI.
+
+Key facts:
+- Brand name: Aspiron Education (short: Aspiron). Website: https://aspironeducation.com/
+- Exams: NEET (UG) and JEE Main.
+- Features: full-length and chapter-wise CBT mock tests, instant result, rank, solutions, mistakes list, previous year questions (PYQ), question bank, installable web app with notifications.
+- Languages: English and Hindi.
+- Support: WhatsApp and Telegram (see the Contact page). Social: Instagram @aspironeducation, WhatsApp channel, Telegram.
+- Prices and the tests inside each series change over time; the Store shows the current details.
+
+## Test series
+- [NEET Test Series](https://aspironeducation.com/neet-test-series): NEET (UG) online CBT mock tests in the NTA pattern (180 questions, 720 marks, +4/−1).
+- [NEET टेस्ट सीरीज़ (हिंदी)](https://aspironeducation.com/hi/neet-test-series): the NEET page in Hindi.
+- [JEE Main Test Series](https://aspironeducation.com/jee-test-series): JEE Main CBT mock tests (75 questions, 300 marks, +4/−1).
+- [Store](https://aspironeducation.com/store): all current test series with price, and buying with UPI.
+
+## Help
+- [FAQ](https://aspironeducation.com/faq): common questions about tests, Hindi medium, payment, refunds, devices and support.
+- [FAQ in Hindi](https://aspironeducation.com/hi/faq)
+- [Contact](https://aspironeducation.com/contact)
+
+## Guides
+- [NEET exam pattern and marking scheme](https://aspironeducation.com/blog/neet-exam-pattern)
+- [How to use NEET mock tests](https://aspironeducation.com/blog/how-to-use-neet-mock-tests)
+- [NEET PYQ strategy](https://aspironeducation.com/blog/neet-pyq-strategy)
+
+## Policies
+- [Privacy Policy](https://aspironeducation.com/privacy)
+- [Terms & Conditions](https://aspironeducation.com/terms)
+- [Refund & Delivery Policy](https://aspironeducation.com/refund)
