@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=51;
+const V3VER=52;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -370,8 +370,8 @@ function tick(first){let c=null;try{c=cdGet()}catch(e){}if(!c||!$('#cdBox'))retu
 function upList(){const cs=curSeries(),ok=new Set(cs?[cs.id]:[]),t0=nowMs();return (C().tests||[]).filter(t=>ok.has(t.series_id)).map(t=>({t,st:stOf(t)}))
   .filter(x=>['live','prog'].includes(x.st)||x.st==='wait').sort((a,b)=>(['live','prog'].includes(b.st)-['live','prog'].includes(a.st))||((a.t.opens_at||0)-(b.t.opens_at||0)))}
 function evRow(x){const t=x.t,live=['live','prog'].includes(x.st),when=t.opens_at||nowMs(),s=sOf(t.series_id);
-  return `<button class="evr" data-a="${x.st==='wait'?'openSD':'test'}" data-id="${esc3(x.st==='wait'?t.series_id:t.id)}"><span class="when${live?' now':''}"><b>${new Date(when).getDate()}</b><small>${fD(when,{month:'short'})}</small></span>
-   <span style="min-width:0"><b>${esc3(t.title)}</b><small>${live?(x.st==='prog'?'You started this test':'Open now'):dayWord(when)+', '+fT(when)}, ${dur(t.duration||0)}</small></span>${stBadge(t)}</button>`}
+  return `<button class="evr" data-a="${x.st==='wait'?'openSD':'test'}" data-id="${esc3(x.st==='wait'?t.series_id:t.id)}">${live?`<span class="when lv3" role="img" aria-label="Live now"><i class="lv3-r"></i><i class="lv3-r"></i><span class="lv3-d"></span><b>LIVE</b></span>`:`<span class="when"><b>${new Date(when).getDate()}</b><small>${fD(when,{month:'short'})}</small></span>`}
+   <span style="min-width:0"><b>${esc3(t.title)}</b><small>${live?(x.st==='prog'?'You started this test':'Open now'):dayWord(when)+', '+fT(when)}, ${dur(t.duration||0)}</small></span>${live?'':stBadge(t)}</button>`}
 // v78: only ONE test on Home: the one live now, else the next one; the one after it shows once this one is over
 function upcoming(){const cs=curSeries(),all=upList(),L=all.slice(0,1),done=(C().tests||[]).some(t=>cs&&t.series_id===cs.id&&t.closes_at&&day0(t.closes_at)===day0(nowMs())&&t.closes_at<nowMs());
   return `<section class="sec"><div class="sh"><h2>${L.length&&['live','prog'].includes(L[0].st)?'Live now':'Upcoming test'}</h2>${all.length>1?`<span class="aside">${all.length-1} more in the schedule</span>`:''}</div>
