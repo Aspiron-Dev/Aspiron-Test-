@@ -10,7 +10,7 @@ Static website on GitHub Pages + Supabase (database functions). No build step: u
 | `index.html` | Student app (test series store + My tests, results, mistakes, tracker, PYQ, reviews, Refer & earn) | `config.js`, `app1.js` … `app28.js`, `pyq-syllabus.js`, `v3.js` + `v3.css` (new design, beta, off by default) |
 | `cp-dt764twzf54s5m.html` | Admin panel (needs the private access key + admin password) | `config.js`, `parser.js`, `qrcode.js`, `cx/core.js`, `cx/ui.js`, `cx/amsg.js`, `cx/lang.js`, `cx/m-*.js` (incl. `cx/m-ops.js`: Storage + Billing & costs, needs `supabase_v70_ops.sql`), `cx/shell.js` |
 | `store.html` | Public store, in the admin console's design (menu on the left on computers, menu bar at the bottom on phones): name + mobile + course (NEET / JEE) once; pages Home (the student's course in rows by section — Full syllabus, Subject-wise …, arranged in Store setup), Search, Reviews, Help and Profile (details, course, theme, the last order); NEET / JEE switch at the top, Explore page (description, schedule, demo tests, reviews), Coming soon · Notify me, UPI payment, verify on Telegram / WhatsApp (message + payment screenshot), light / dark / auto theme | `store-theme.js`, `store.css`, `config.js`, `qrcode.js`, `store.js` `store.html?ref=CODE` is a promotion link: the visit and the orders made after it are counted in Admin → Store → Promotions. Links: `#/search`, `#/reviews`, `#/help`, `#/me` open a page, `#x=<id>` a series' Explore page |
-| `admin.html` | Decoy "404" page (the real admin page has a hidden name) | – |
+| `admin.html` | Decoy "404" page (the real admin page has a hidden name); looks exactly like `404.html` | – |
 
 Scripts load in number order; a later file adds to or replaces functions of earlier ones.
 After changing a script, raise its `?v=` number in the page that loads it so phones get the new copy — **always**: the service worker keeps a file with the same number on the phone and never asks for it again. A file loaded by several pages (e.g. `config.js`) must have the same number on all of them.
@@ -20,6 +20,20 @@ Other files: `sw.js` (installable app, always loads the newest pages), `manifest
 `lib/` (exact copies of pdf.js 3.11.174, JSZip 3.10.1 and Tesseract.js 5.1.1 from npm, so the admin page runs no script from a third-party CDN;
 the OCR worker and language data still load from jsDelivr / tessdata as before),
 `supabase/functions/send-push` (phone notifications and 🔔 test-live alerts).
+
+## SEO pages (`scripts/build_seo_pages.py`, `seo.css`)
+- **Public, pre-rendered pages** (plain HTML, readable without JavaScript): `/neet-test-series`, `/jee-test-series`, `/faq`,
+  `/blog/` with 3 guides, and Hindi pages `/hi/neet-test-series`, `/hi/faq` (linked both ways with `hreflang`).
+  Each has one h1, a 2–3 line direct answer at the top, "Last updated", breadcrumbs, FAQ, Open Graph / Twitter tags and
+  JSON-LD (Organization, WebSite, BreadcrumbList, Course / Article / FAQPage).
+- **To change the text:** edit `scripts/build_seo_pages.py`, set `UPDATED`, run `python3 scripts/build_seo_pages.py`.
+  It rewrites those pages and `sitemap.xml`, and stops if a title is not 50–60 or a description not 140–160 characters.
+  Add YouTube / Facebook links to `SAME_AS` there once the profiles exist.
+- `robots.txt` lets search engines and AI crawlers (GPTBot, OAI-SearchBot, PerplexityBot, ClaudeBot, Google-Extended …)
+  read every public page; `llms.txt` is a short summary for AI assistants. `og-image.jpg` / `.webp` (1200×630) is the share picture.
+- `404.html` is the branded "Page not found". `admin.html` and the admin page's no-key screen show the **same** page, so the
+  decoy still cannot be told apart from a real missing page. Change all three together.
+- The student app (`/`) stays as it is: login, dashboard and tests are `#` addresses on one page, so they are not separate pages for Google.
 
 ## Brand: name, logo, start-up animation (`index.html`, `config.js`, `manifest.webmanifest`)
 - **Name:** "Aspiron Education" everywhere (`SITE_NAME` in `config.js`, page titles, app name on the home screen, store, messages). Under ASPIRON it is always **EDUCATION** (never "Study Hub").

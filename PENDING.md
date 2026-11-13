@@ -73,13 +73,14 @@ Live database Claude ko nahi dikhta. Jo kaam pehle hi ho chuka ho, use seedha ti
 - [ ] **3.4 🤖 Homepage banana:** hero, courses, results, faculty, reviews, FAQ, contact, aur footer me legal links. "Login" (app) aur
   "Buy test series" (store) ke buttons. Student app kis address par khulega, ye isi task me decide karenge, taaki phone me
   installed app, notifications aur purane links na tootein. *Check:* phone aur computer dono par sahi dikhe, PageSpeed 85 ya usse zyada.
-- [ ] **3.5 🤖 SEO:**
-  - Har public page par title + description
-  - Open Graph tags, taaki WhatsApp par link ka preview aaye
-  - `robots.txt` aur `sitemap.xml`
-  - Admin aur andar ke app pages search me na aayein (noindex)
+- [x] **3.5 🤖 SEO:** ✅ Public pages (home, store, NEET / JEE test series, FAQ, blog, Hindi pages, policies): title 50–60,
+  description 140–160, canonical, Open Graph + Twitter (1200×630 `og-image.jpg`), JSON-LD, sitemap with hreflang, robots.txt
+  (AI crawlers allowed), llms.txt, branded 404. Details: README → *SEO pages*.
+  👤 Baaki aapke kaam:
+  - GitHub → repo Settings → Pages → **Enforce HTTPS** ✔. DNS me `www` ka CNAME `<github-user>.github.io` hona chahiye, tab www → bina-www apne aap redirect hota hai.
+  - YouTube / Facebook page bane to link do, `SAME_AS` me jod denge (Google aur AI ko pata chalega ye aapka brand hai).
+  - Instagram, YouTube, Facebook, WhatsApp channel ke bio me `https://aspironeducation.com` daalo, aur sab jagah naam same rakho: **Aspiron Education**.
 
-  👤 Preview image, 1200×630 (Canva). *Check:* WhatsApp par link bhejne par photo + title dikhe.
 - [ ] **3.6 👤 Google Search Console:** URL-prefix property `https://aspironeducation.com/` → "HTML file" se verify karo (file 🤖 repo me daal dega;
   isse DNS nahi chhedna padta aur Cloudflare par shift karne ke baad bhi verify bana rehta hai) → sitemap submit karo.
   Bing Webmaster Tools → "Import from Google Search Console". Agar coaching ka physical centre hai to Google Business Profile bhi banao.

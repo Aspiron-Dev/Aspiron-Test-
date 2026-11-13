@@ -1,4 +1,39 @@
+# Aspiron Education – aspironeducation.com
+# Search engines and AI assistants are welcome to read every public page.
+# The student app (login, dashboard, tests) lives on "/" with #-addresses, which crawlers treat as one page.
+# Private pages are kept out of search with a "noindex" tag, not listed here.
+
 User-agent: *
 Allow: /
+Disallow: /cx/
+Disallow: /lib/
+Disallow: /pyq-data/
+Disallow: /supabase/
+Disallow: /tests/
+Disallow: /scripts/
+
+# AI search and assistant crawlers (OpenAI / ChatGPT, Perplexity, Anthropic / Claude, Google Gemini, Apple, Meta, Common Crawl)
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: anthropic-ai
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: meta-externalagent
+User-agent: CCBot
+User-agent: DuckAssistBot
+User-agent: YouBot
+Allow: /
+Disallow: /cx/
+Disallow: /lib/
+Disallow: /pyq-data/
+Disallow: /supabase/
+Disallow: /tests/
+Disallow: /scripts/
 
 Sitemap: https://aspironeducation.com/sitemap.xml
