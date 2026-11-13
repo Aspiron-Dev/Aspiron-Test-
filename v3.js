@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=50;
+const V3VER=51;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -368,12 +368,13 @@ function tick(first){let c=null;try{c=cdGet()}catch(e){}if(!c||!$('#cdBox'))retu
   $('#cdBox').setAttribute('aria-label',`${D} days, ${H} hours, ${M} minutes until ${c.name}`)}
 /* upcoming and live tests from the student's own series */
 function upList(){const cs=curSeries(),ok=new Set(cs?[cs.id]:[]),t0=nowMs();return (C().tests||[]).filter(t=>ok.has(t.series_id)).map(t=>({t,st:stOf(t)}))
-  .filter(x=>['live','prog'].includes(x.st)||(x.st==='wait'&&x.t.opens_at-t0<14*DAY)).sort((a,b)=>(['live','prog'].includes(b.st)-['live','prog'].includes(a.st))||((a.t.opens_at||0)-(b.t.opens_at||0)))}
+  .filter(x=>['live','prog'].includes(x.st)||x.st==='wait').sort((a,b)=>(['live','prog'].includes(b.st)-['live','prog'].includes(a.st))||((a.t.opens_at||0)-(b.t.opens_at||0)))}
 function evRow(x){const t=x.t,live=['live','prog'].includes(x.st),when=t.opens_at||nowMs(),s=sOf(t.series_id);
   return `<button class="evr" data-a="${x.st==='wait'?'openSD':'test'}" data-id="${esc3(x.st==='wait'?t.series_id:t.id)}"><span class="when${live?' now':''}"><b>${new Date(when).getDate()}</b><small>${fD(when,{month:'short'})}</small></span>
    <span style="min-width:0"><b>${esc3(t.title)}</b><small>${live?(x.st==='prog'?'You started this test':'Open now'):dayWord(when)+', '+fT(when)}, ${dur(t.duration||0)}</small></span>${stBadge(t)}</button>`}
-function upcoming(){const cs=curSeries(),all=upList(),L=all.slice(0,4),done=(C().tests||[]).some(t=>cs&&t.series_id===cs.id&&t.closes_at&&day0(t.closes_at)===day0(nowMs())&&t.closes_at<nowMs());
-  return `<section class="sec"><div class="sh"><h2>Upcoming Events (${all.length})</h2></div>
+// v78: only ONE test on Home: the one live now, else the next one; the one after it shows once this one is over
+function upcoming(){const cs=curSeries(),all=upList(),L=all.slice(0,1),done=(C().tests||[]).some(t=>cs&&t.series_id===cs.id&&t.closes_at&&day0(t.closes_at)===day0(nowMs())&&t.closes_at<nowMs());
+  return `<section class="sec"><div class="sh"><h2>${L.length&&['live','prog'].includes(L[0].st)?'Live now':'Upcoming test'}</h2>${all.length>1?`<span class="aside">${all.length-1} more in the schedule</span>`:''}</div>
   ${L.length?`<div class="card"><div class="ev">${L.map(evRow).join('')}</div></div>`:`<div class="evnone"><span class="ti">${ic('cal',20)}</span><span>${done?'Today’s live tests have ended':'No live or upcoming tests right now'}</span></div>`}
   ${cs?'<button class="obtn" data-a="week">View Weekly Schedule</button>':''}</section>`}
 /* study zone: one calm tone for every tile, two-tone line icons */
@@ -422,19 +423,27 @@ const TI=()=>(new Date(nowMs()).getDay()+6)%7;
 const addDays=(t,n)=>{const d=new Date(t);d.setDate(d.getDate()+n);return d.getTime()};
 let wkMon=0,wkSel=0;
 const wkTests=()=>{const cs=curSeries();return cs?testsOf(cs.id).filter(t=>t.opens_at):[]};
+/* v78: what was added to the series and when (files, announcements, answer-key PDFs), from cbt_series_feed */
+const FEED3={};
+function feedOf(sid){if(FEED3[sid]===undefined){FEED3[sid]=null;rpc('cbt_series_feed',{p_series:sid}).then(r=>{FEED3[sid]=r&&r.ok?(r.items||[]).filter(x=>x&&+x.at>0):[];if(top()&&top().key==='week')redraw()}).catch(()=>{FEED3[sid]=[]})}return FEED3[sid]||[]}
+function dayFeed(a){const cs=curSeries();if(!cs)return [];const b=addDays(a,1);return feedOf(cs.id).filter(x=>x.at>=a&&x.at<b).sort((x,y)=>x.at-y.at)}
+const FDL={file:'New file',post:'Announcement',pdf:'Answer key PDF'};
+function feedRow(x,sid){const lk=!!x.locked,ico=x.k==='post'?'mega':x.k==='file'&&x.kind==='schedule'?'cal':'file',
+  act=x.k==='file'?(lk?'data-a="resLocked"':`data-a="fileOpen" data-id="${esc3(x.id)}" data-t="${esc3(x.title)}"`):`data-a="openSD" data-id="${esc3(sid)}" data-t="${x.k==='post'?'a':'r'}"`;
+  return `<button class="it test${lk?' dim':''}" ${act} style="width:100%;text-align:left"><time>${fT(x.at)}</time><div><b>${esc3(x.title||FDL[x.k])}</b><small><em>${FDL[x.k]||'Update'}</em>${x.k==='file'?`, ${({schedule:'Schedule',syllabus:'Syllabus',notes:'Notes'})[x.kind]||'File'}`:''}${lk?', buy to open':''}</small></div>${ic(lk?'lock':'right',16)}</button>`}
 function dayItems(a){const b=addDays(a,1);return wkTests().filter(t=>t.opens_at>=a&&t.opens_at<b).sort((x,y)=>x.opens_at-y.opens_at)}
 const weekItems=i=>dayItems(addDays(MON(),i));
 const mKey=t=>{const d=new Date(t);return d.getFullYear()*12+d.getMonth()};
 function weekView(){const cs=curSeries();return {t:'Weekly schedule',s:cs?cs.title:'',key:'week',right:()=>`<button class="ib" data-a="wkMonth" aria-label="Choose a month">${ic('cal',19)}</button>`,
-  html:()=>{const d=addDays(wkMon,wkSel),it=dayItems(d),today=day0(nowMs());
+  html:()=>{const d=addDays(wkMon,wkSel),it=dayItems(d),fe=dayFeed(d),today=day0(nowMs());
   return `<div class="wkbar"><button class="mbtn" data-a="wkMonth" aria-label="Choose a month">${fD(d,{month:'long',year:'numeric'})}${ic('down',18)}</button>
     <span><button class="ib sm" data-a="wkStep" data-v="-1" aria-label="Previous week">${ic('back',18)}</button><button class="ib sm" data-a="wkStep" data-v="1" aria-label="Next week">${ic('right',18)}</button></span></div>
-  <div class="card wk" role="tablist">${[0,1,2,3,4,5,6].map(i=>{const dd=addDays(wkMon,i);return `<button class="wd${i===wkSel?' on':''}${dd===today?' today':''}" role="tab" aria-selected="${i===wkSel}" data-a="wkDay" data-i="${i}"><small>${fD(dd,{weekday:'narrow'})}</small><b>${new Date(dd).getDate()}</b><i style="${dayItems(dd).length?'':'opacity:0'}"></i></button>`}).join('')}</div>
-  <div class="sh"><h2>${d===today?'Today':fD(d,{weekday:'long',day:'numeric',month:'long'})}</h2><span class="aside">${it.length} ${it.length===1?'test':'tests'}</span></div>
+  <div class="card wk" role="tablist">${[0,1,2,3,4,5,6].map(i=>{const dd=addDays(wkMon,i);return `<button class="wd${i===wkSel?' on':''}${dd===today?' today':''}" role="tab" aria-selected="${i===wkSel}" data-a="wkDay" data-i="${i}"><small>${fD(dd,{weekday:'narrow'})}</small><b>${new Date(dd).getDate()}</b><i style="${dayItems(dd).length||dayFeed(dd).length?'':'opacity:0'}"></i></button>`}).join('')}</div>
+  <div class="sh"><h2>${d===today?'Today':fD(d,{weekday:'long',day:'numeric',month:'long'})}</h2><span class="aside">${it.length} ${it.length===1?'test':'tests'}${fe.length?`, ${fe.length} new`:''}</span></div>
   ${it.length?`<div class="card rows">${it.map(t=>`<button class="it test" data-a="openSD" data-id="${esc3(t.series_id)}" style="width:100%;text-align:left"><time>${fT(t.opens_at)}</time><div><b>${esc3(t.title)}</b><small><em>Test</em>, ${dur(t.duration||0)}, ${t.questions||0} questions</small></div>${ic('right',16)}</button>`).join('')}</div>`
-   :`<div class="card empty"><span class="ti">${ic('cal',22)}</span><b>No tests scheduled for this day</b><p>Pick another day or month to see what is coming in ${esc3(cs?cs.title:'your test series')}.</p></div>`}`}}}
+   :''}${fe.length?`<p class="gh">Added this day</p><div class="card rows">${fe.map(x=>feedRow(x,cs.id)).join('')}</div>`:''}${it.length||fe.length?'':`<div class="card empty"><span class="ti">${ic('cal',22)}</span><b>Nothing on this day</b><p>Pick another day or month to see what is coming in ${esc3(cs?cs.title:'your test series')}.</p></div>`}`}}}
 function wkGo(t){wkMon=monOf(t);wkSel=Math.round((day0(t)-wkMon)/DAY);if(wkSel<0||wkSel>6)wkSel=0}
-A.week=()=>{if(!curSeries())return;wkGo(nowMs());push(weekView())};
+A.week=()=>{if(!curSeries())return;delete FEED3[curSeries().id];wkGo(nowMs());push(weekView())};
 A.wkDay=el=>{wkSel=+el.dataset.i;redraw()};
 A.wkStep=el=>{wkMon=addDays(wkMon,7*+el.dataset.v);wkSel=monOf(nowMs())===wkMon?TI():0;redraw()};
 A.wkMonth=()=>{const T=wkTests(),now=mKey(nowMs()),ks=T.map(t=>mKey(t.opens_at)),lo=Math.min(now-2,...ks),hi=Math.max(now+6,...ks),cur=mKey(addDays(wkMon,wkSel)),L=[];

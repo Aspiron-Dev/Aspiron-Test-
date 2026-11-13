@@ -131,6 +131,15 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
   chapter list covers.
 - Read only: no table is created or changed. A student sees only their own numbers.
 
+## Weekly schedule shows what was added (`supabase_v78_series_feed.sql`)
+
+- **Setup:** run `supabase_v78_series_feed.sql` once (after v77). Nothing else.
+- Weekly schedule (Home → View Weekly Schedule): each day shows its tests (by the time they go live) and, under
+  *Added this day*, the files, announcements and answer-key PDFs added to the series that day (`cbt_series_feed`;
+  announcements and answer keys only for students who have the series, files open by the v77 rules).
+- Home shows only ONE test of the chosen series: the one live now, else the next one. The one after it shows once
+  this one is over ("N more in the schedule").
+
 ## Free vs paid inside a test series (`supabase_v77_free_vs_paid.sql`)
 
 - **Setup:** run `supabase_v77_free_vs_paid.sql` once (after v76), then `supabase_v35_admin_team.sql` again.
