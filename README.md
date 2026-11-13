@@ -138,8 +138,8 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
   **Schedule** files, the **first test** (first in the admin's order), and Reviews to read. Everything else is locked:
   other files, other tests, answer-key PDFs, the new **Announcements** tab, and writing a review. The database checks
   every one of these (`cbt_catalog`, `cbt_start`, `cbt_file_part`, `cbt_test_pdfs`, `cbt_series_posts`, `cbt_review_save`).
-- **Admin:** Test studio → series ⋯ → *Cover & files*: ↑ ↓ to order files, *Folder* to group them (students see gold
-  folder cards). Series ⋯ → *Announcements (buyers only)*: post, pin, delete.
+- **Admin:** Test studio → series ⋯ → *Cover & files*: *New folder*, ↑ ↓ to order folders and the files inside, *Folder…* to move a file (students see gold
+  folder tiles that open with an animation). Series ⋯ → *Announcements (buyers only)*: post, pin, delete.
 - Files open with one **View** button (no Save button). A PDF viewer can still let people save what they view.
 
 ## Re-attempt, cheating alerts, answer-key PDF (`supabase_v68_reattempt_cheat_pdf.sql`)
