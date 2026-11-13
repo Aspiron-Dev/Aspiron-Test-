@@ -264,6 +264,12 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Safety note:** the store has no sign-in yet — the wallet belongs to the mobile number typed on the store. An order paid with the wallet always needs your approval; approve it only when the student messages you from that number (the order card says so). The planned email / password sign-in for the store closes this.
 - **Setup:** run `supabase_v52_coupons_refer.sql` once (after v48 or later), then `supabase_v35_admin_team.sql` again. Until then the store hides the coupon box, the Refer & earn pages say “coming soon” and the admin section asks for the setup. A mobile number changed later (v44) does not move its wallet / referral code — add the money to the new number by hand (Refer & earn → Wallet).
 
+## Push renewal, code guessing, sign-out (`supabase_v76_low_fixes.sql`, review A3–A5)
+- **Notifications:** when a phone's browser renews its notification link, the old link's secret key must come with it; nobody else can move a student's notifications to their own device.
+- **Access codes:** 100 wrong codes (or unknown numbers) in an hour from one address stop code sign-ins from it for that hour, and you get an alert. Students already signed in are not affected.
+- **Sign out:** the sign-in ends on the server at once (even if the app is closed right away), and an email / Google session is ended too.
+- **Setup:** run `supabase_v76_low_fixes.sql` (after v75).
+
 ## Question bank: no live answers before the result (`supabase_v75_qbank_live_guard.sql`)
 - The questions of a test can go into the Question bank only after its result time; the panel says how many were held back. Questions of a live test already in the bank stay hidden from practice and students' own tests (and their answers are not given) until the result time, then appear by themselves.
 - **Setup:** run `supabase_v75_qbank_live_guard.sql` (after v74), then `supabase_v35_admin_team.sql` again.

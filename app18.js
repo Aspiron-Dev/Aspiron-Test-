@@ -93,9 +93,10 @@ pushSync=async function(force){
 {const _al=annLoad;annLoad=async function(f){const r=await _al(f);if(AUTH&&PUSHMOB!==AUTH.mobile){PUSHMOB=AUTH.mobile;pushSync()}return r}}
 {const _so=doSignOut;doSignOut=function(){
   const a=AUTH;
+  window.__pushOff=null;
   if(a&&typeof npSup==='function'&&npSup()&&'PushManager' in window)
-    navigator.serviceWorker.ready.then(reg=>reg.pushManager.getSubscription())
-      .then(sub=>{if(sub)rpc('cbt_push_save',{p_mobile:a.mobile,p_code:a.code,p_device:DEV,p_sub:sub.toJSON(),p_on:false},true)}).catch(()=>{});
+    window.__pushOff=navigator.serviceWorker.ready.then(reg=>reg.pushManager.getSubscription())
+      .then(sub=>{if(sub)return rpc('cbt_push_save',{p_mobile:a.mobile,p_code:a.code,p_device:DEV,p_sub:sub.toJSON(),p_on:false},true)}).catch(()=>{});   // v76: sign-out waits for this
   LS.del('cbt_push_ok');PUSHMOB=null;
   return _so.apply(this,arguments);
 }}

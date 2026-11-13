@@ -1228,6 +1228,36 @@ select pg_temp.chk('39c after the result time the question opens for practice by
   public.cbt_qb_check('9000000002','BBBB2222','dev-bbbbbbbb',:'a1q'::uuid,2)->>'explanation' = 'BANKKEY');
 reset role;
 
+-- ===== 40. push renewal and access-code guessing (review A3 + A5, supabase_v76) =====
+select set_config('request.headers', '{"x-real-ip":"198.51.100.180"}', false);
+insert into public.cbt_push_subs(endpoint, mobile, p256dh, auth) values ('https://fcm.googleapis.com/fcm/send/victim40','9000000002','p40','SecretAuth40') on conflict do nothing;
+set role anon;
+select pg_temp.chk('40a knowing a phone''s old push link alone does not move its notifications',
+  public.cbt_push_rotate('https://fcm.googleapis.com/fcm/send/victim40','{"endpoint":"https://fcm.googleapis.com/fcm/send/attacker40","keys":{"p256dh":"x","auth":"y"}}')->>'ok' = 'false'
+  and public.cbt_push_rotate('https://fcm.googleapis.com/fcm/send/victim40','{"endpoint":"https://fcm.googleapis.com/fcm/send/attacker40","keys":{"p256dh":"x","auth":"y"}}','WrongKey')->>'ok' = 'false');
+select pg_temp.chk('40b the phone itself (with the old secret key) can renew its subscription',
+  public.cbt_push_rotate('https://fcm.googleapis.com/fcm/send/victim40','{"endpoint":"https://fcm.googleapis.com/fcm/send/renewed40","keys":{"p256dh":"x","auth":"y"}}','SecretAuth40')->>'ok' = 'true');
+reset role;
+select pg_temp.chk('40c only the renewed subscription is on the list',
+  exists (select 1 from public.cbt_push_subs where endpoint like '%renewed40' and mobile = '9000000002')
+  and not exists (select 1 from public.cbt_push_subs where endpoint like '%attacker40' or endpoint like '%victim40'));
+-- one address tries 100 wrong codes on many numbers
+select set_config('request.headers', '{"x-real-ip":"198.51.100.181"}', false);
+update cbt_private.students set fail_count = 0, locked_until = 0 where mobile in ('9000000001','9000000002');
+set role anon;
+select public.cbt_login('9000000002','BBBB2222','dev-bbbbbbbb')->>'token' as tk40 \gset
+select public.cbt_catalog('9' || lpad(g::text, 9, '0'), 'GUESS' || g, 'dev-guess000') from generate_series(1, 100) g;
+select pg_temp.chk('40d after 100 wrong codes from one address, codes from it are stopped (even the right one)',
+  public.cbt_catalog('9000000001','AAAA1111','dev-aaaaaaaa')->>'error' = 'busy');
+select pg_temp.chk('40e a student already signed in from that address keeps working (token)',
+  left(:'tk40', 4) = 'st1.' and public.cbt_catalog('9000000002',:'tk40','dev-bbbbbbbb')->>'ok' = 'true');
+reset role;
+select pg_temp.chk('40f the owner is alerted', exists (select 1 from cbt_private.security_events where kind = 'many:code_guessing'));
+select set_config('request.headers', '{"x-real-ip":"198.51.100.182"}', false);
+set role anon;
+select pg_temp.chk('40g another address still signs in with its code', public.cbt_catalog('9000000001','AAAA1111','dev-aaaaaaaa')->>'ok' = 'true');
+reset role;
+
 -- ===== report =====
 \t off
 \a
