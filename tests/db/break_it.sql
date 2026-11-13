@@ -931,9 +931,17 @@ select pg_temp.chk('30k a new number is joined, waits for approval, then signs i
   :'rq65' = 'true'
   and public.student_signin('dev-login0004')->>'error' = 'pending'
   and (select status from cbt_private.students where mobile = '9000000067') = 'pending');
-update cbt_private.students set status = 'approved' where mobile = '9000000067';
-select pg_temp.chk('30l after approval the login gives a working token',
-  public.cbt_catalog('9000000067', public.student_signin('dev-login0004')->>'token', 'dev-login0004')->>'ok' = 'true');
+-- the admin approves: a new access code is made and sent to that number (as student_approve does)
+update cbt_private.students set status = 'approved', salt = 'sl67', code_hash = cbt_private.hash_code('sl67', 'NEWL6767') where mobile = '9000000067';
+-- v74 (review A2): a login that came by a request must show the access code once (it proves the number)
+select pg_temp.chk('30l after approval a login from a request still needs the access code once',
+  public.student_signin('dev-login0004')->>'error' = 'need_code'
+  and public.student_link('9000000067','WRONG777','dev-login0004')->>'error' = 'invalid'
+  and public.student_link('9000000065','LOGN6565','dev-login0004')->>'error' = 'taken');
+select public.student_link('9000000067','NEWL6767','dev-login0004')->>'token' as lt67 \gset
+select pg_temp.chk('30l2 with the access code once it gets a working token, then the login alone is enough',
+  public.cbt_catalog('9000000067', :'lt67', 'dev-login0004')->>'ok' = 'true'
+  and left(public.student_signin('dev-login0004')->>'token', 4) = 'st1.');
 select set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000002"}', false);
 update cbt_private.students set auth_uid = null where mobile = '9000000066';
 do $$ begin for i in 1..10 loop perform public.student_link('9000000001','NOPE'||i,'dev-login0002'); end loop; end $$;
