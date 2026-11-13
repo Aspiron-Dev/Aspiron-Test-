@@ -7,7 +7,7 @@ Static website on GitHub Pages + Supabase (database functions). No build step: u
 ## Pages
 | Page | What it is | Scripts |
 |---|---|---|
-| `index.html` | Student app (test series store + My tests, results, mistakes, tracker, PYQ, reviews, Refer & earn) | `config.js`, `app1.js` … `app28.js`, `pyq-syllabus.js`, `v3.js` + `v3.css` (new design, beta, off by default) |
+| `index.html` | Student app (test series store + My tests, results, mistakes, tracker, PYQ, reviews, Refer & earn) | `config.js`, `app1.js` … `app29.js` (+ `login.css`, `landing.css`), `pyq-syllabus.js`, `v3.js` + `v3.css` (new design, beta, off by default) |
 | `cp-dt764twzf54s5m.html` | Admin panel (needs the private access key + admin password) | `config.js`, `parser.js`, `qrcode.js`, `cx/core.js`, `cx/ui.js`, `cx/amsg.js`, `cx/lang.js`, `cx/m-*.js` (incl. `cx/m-ops.js`: Storage + Billing & costs, needs `supabase_v70_ops.sql`), `cx/shell.js` |
 | `store.html` | Public store, in the admin console's design (menu on the left on computers, menu bar at the bottom on phones): name + mobile + course (NEET / JEE) once; pages Home (the student's course in rows by section — Full syllabus, Subject-wise …, arranged in Store setup), Search, Reviews, Help and Profile (details, course, theme, the last order); NEET / JEE switch at the top, Explore page (description, schedule, demo tests, reviews), Coming soon · Notify me, UPI payment, verify on Telegram / WhatsApp (message + payment screenshot), light / dark / auto theme | `store-theme.js`, `store.css`, `config.js`, `qrcode.js`, `store.js` `store.html?ref=CODE` is a promotion link: the visit and the orders made after it are counted in Admin → Store → Promotions. Links: `#/search`, `#/reviews`, `#/help`, `#/me` open a page, `#x=<id>` a series' Explore page |
 | `admin.html` | Decoy "404" page (the real admin page has a hidden name); looks exactly like `404.html` | – |
@@ -67,6 +67,23 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - **Not built yet** (shown as *Coming soon* in the Library): books reader, handwritten notes and DPPs, mindmaps and flashcards,
   download manager. XP, syllabus progress and overall leaderboards need new data and are not shown.
 - **To remove it:** delete `v3.js`, `v3.css` and the `<script src="v3.js?v=…">` line in `index.html`.
+
+## Landing page before sign-in (`app29.js`, `landing.css`)
+- Anyone not signed in first sees the landing page (not the sign-in form): top bar (☰ menu · logo · **Login / Register**), banners
+  (Admin → Banners; built-in slides when there are none), hero with Get Started / Buy a Test Series, why Aspiron, exam categories
+  (NEET, JEE, CBSE pages), **Test Store** (the live list from `cbt_store`, each card opens that series in the store), *How to start*,
+  features, **Get the App**, social links (Admin → Social media), footer links and a support button. Same graphite + gold theme as the
+  sign-in (light / dark, a Light / Dark mode switch in the menu).
+- The menu slides in from the left and closes with ✕. Login / Register opens the usual sign-in; the ✕ on the sign-in screen and the
+  phone's Back button come back to the landing page.
+- **Get the app pop-up**: once per visit in a browser tab (never in the installed app): *Install App* (Chrome's install prompt; on
+  iPhone or when the browser offers none, short steps: Share → Add to Home Screen / menu ⋮ → Install app) or *Continue on Web*.
+- Skipped (sign-in shows at once) when the student comes back from Google / an email link, has a link to open after sign-in, or
+  after a "please sign in again" message.
+- **No access requests any more**: "New student?" and every old "Request access" link open *New here? Get your access code*:
+  1 buy a test series in the Store → 2 verify the payment on Telegram / WhatsApp → 3 get the access code → 4 sign in with mobile + code.
+- **Continue with Google** is shown. While `EMAIL_LOGIN` is `false` it opens the same steps with "Google sign-in is coming soon";
+  once it is `true` (PENDING.md 4.3) it signs in with Google as before. Email + password stays locked ("Coming soon").
 
 ## Student login: email + password or Google (`app28.js`, `supabase_v65_auth.sql`)
 - New-design look (`login.css`): graphite hero with the gold Aspiron mark (slow gold ring, drifting glow, rising sparks, shine on the name), the form on a sheet that rises; side by side on a computer. Loops stop in lite mode and with reduce motion. Every login screen (also access code and request) uses it.

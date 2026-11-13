@@ -159,7 +159,7 @@ if(!AUTH&&DEEP.test(location.hash||''))LS.set('cbt_after',location.hash);
 {const _lg=login;login=function(mode){
   const r=_lg(mode);
   const w=LS.get('cbt_after',null),c=document.querySelector('#app .card');
-  if(w&&c&&!mode&&!document.getElementById('afterNote'))c.insertAdjacentHTML('afterbegin',`<div id="afterNote" class="sm" style="background:var(--priSoft);color:var(--pri);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-weight:600">Sign in to open the link you were sent. New here? Tap “Request access”.</div>`);
+  if(w&&c&&!mode&&!document.getElementById('afterNote'))c.insertAdjacentHTML('afterbegin',`<div id="afterNote" class="sm" style="background:var(--priSoft);color:var(--pri);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-weight:600">Sign in to open the link you were sent. New here? Buy a test series first, then sign in with your access code.</div>`);
   return r;
 }}
 if(!AUTH&&LS.get('cbt_after',null)&&document.querySelector('#app .card'))login();
