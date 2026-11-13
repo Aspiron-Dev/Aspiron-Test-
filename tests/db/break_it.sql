@@ -59,11 +59,15 @@ end $$;
 delete from cbt_private.admin_fails; delete from cbt_private.admin_fail_log; delete from cbt_private.settings where key = 'admin_locked_until';
 
 -- ===== 3. answer key never sent at the start of a non-practice test; paid test locked =====
+-- v77: the first test of a paid series is free, so the series gets a second (locked) test
+insert into cbt_private.tests (id, series_id, title, duration, data, question_count, sort_order)
+select 'aaaaaaaa-0000-0000-0000-000000000077', series_id, 'Paid second', duration, data, question_count, 5
+  from cbt_private.tests where id = 'aaaaaaaa-0000-0000-0000-000000000001';
 set role anon;
 select pg_temp.chk('3a start: no answer / explanation in the questions',
   not ((public.cbt_start('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-000000000002')->'test'->'questions')::text ~ '"(answer|explanation)"'));
 select pg_temp.chk('3b start: a paid test is locked for a free student',
-  public.cbt_start('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000001')->>'error' = 'locked');
+  public.cbt_start('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000077')->>'error' = 'locked');
 select pg_temp.chk('3c files: a paid series file is locked for a free student',
   public.cbt_file_part('9000000001','AAAA1111','dev-aaaaaaaa','ffffffff-0000-0000-0000-000000000001',0)->>'error' = 'locked');
 select pg_temp.chk('3d files: the student of the series gets the file',
@@ -1256,6 +1260,50 @@ select pg_temp.chk('40f the owner is alerted', exists (select 1 from cbt_private
 select set_config('request.headers', '{"x-real-ip":"198.51.100.182"}', false);
 set role anon;
 select pg_temp.chk('40g another address still signs in with its code', public.cbt_catalog('9000000001','AAAA1111','dev-aaaaaaaa')->>'ok' = 'true');
+reset role;
+
+-- ===== 34. v77: free vs paid inside a series =====
+delete from cbt_private.series_access where series_id = '11111111-1111-1111-1111-111111111111'
+  and student_id = (select id from cbt_private.students where mobile = '9000000001');
+insert into cbt_private.series_files (id, series_id, title, kind, file_name, mime, size, parts, ready)
+values ('ffffffff-0000-0000-0000-000000000077','11111111-1111-1111-1111-111111111111','Paid Schedule','schedule','s.pdf','application/pdf',10,1,true)
+on conflict do nothing;
+insert into cbt_private.file_parts (file_id, n, data) values ('ffffffff-0000-0000-0000-000000000077',0,'SCHEDULE') on conflict do nothing;
+insert into cbt_private.series_posts (series_id, title, body) values ('11111111-1111-1111-1111-111111111111','Paid news','Only for buyers');
+insert into cbt_private.test_pdfs (test_id, url) values ('aaaaaaaa-0000-0000-0000-000000000001','https://drive.google.com/file/d/paid/view')
+  on conflict (test_id) do update set url = excluded.url;
+set role anon;
+select public.cbt_catalog('9000000001','AAAA1111','dev-aaaaaaaa') as c77 \gset
+select pg_temp.chk('34a free student: the first test of a paid series is free, the next one locked (catalog and start)',
+  (select not (x->>'locked')::boolean from jsonb_array_elements(:'c77'::jsonb->'tests') x where x->>'id' = 'aaaaaaaa-0000-0000-0000-000000000001')
+  and (select (x->>'locked')::boolean from jsonb_array_elements(:'c77'::jsonb->'tests') x where x->>'id' = 'aaaaaaaa-0000-0000-0000-000000000077')
+  and (public.cbt_start('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000001')->>'ok')::boolean);
+select pg_temp.chk('34b free student: the schedule opens, notes stay locked (catalog says which)',
+  (public.cbt_file_part('9000000001','AAAA1111','dev-aaaaaaaa','ffffffff-0000-0000-0000-000000000077',0)->>'data') = 'SCHEDULE'
+  and public.cbt_file_part('9000000001','AAAA1111','dev-aaaaaaaa','ffffffff-0000-0000-0000-000000000001',0)->>'error' = 'locked'
+  and (select bool_and(case when f->>'kind' = 'schedule' then not (f->>'locked')::boolean else (f->>'locked')::boolean end)
+         from jsonb_array_elements(:'c77'::jsonb->'series') s, jsonb_array_elements(s->'files') f where s->>'id' = '11111111-1111-1111-1111-111111111111'));
+select pg_temp.chk('34c free student: no announcements and no answer-key PDF, even for the free first test',
+  public.cbt_series_posts('9000000001','AAAA1111','dev-aaaaaaaa','11111111-1111-1111-1111-111111111111')->>'error' = 'locked'
+  and not (public.cbt_test_pdfs('9000000001','AAAA1111','dev-aaaaaaaa')->'items' ? 'aaaaaaaa-0000-0000-0000-000000000001')
+  and public.cbt_series_posts('9000000001','AAAA1111','dev-aaaaaaaa','not-a-uuid')->>'error' = 'not_found'
+  and public.cbt_review_save('9000000001','AAAA1111','dev-aaaaaaaa','11111111-1111-1111-1111-111111111111',5,'Nice series')->>'error' = 'not_unlocked');
+reset role;
+insert into cbt_private.series_access (student_id, series_id)
+select id, '11111111-1111-1111-1111-111111111111' from cbt_private.students where mobile = '9000000001' on conflict do nothing;
+update cbt_private.tests set result_at = cbt_private.now_ms() - 1000 where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+set role anon;
+select pg_temp.chk('34d paid student: every test, file, announcement and answer-key PDF opens',
+  (public.cbt_start('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000077')->>'ok')::boolean
+  and (public.cbt_file_part('9000000001','AAAA1111','dev-aaaaaaaa','ffffffff-0000-0000-0000-000000000001',0)->>'ok')::boolean
+  and public.cbt_series_posts('9000000001','AAAA1111','dev-aaaaaaaa','11111111-1111-1111-1111-111111111111')->'items'->0->>'title' = 'Paid news'
+  and public.cbt_test_pdfs('9000000001','AAAA1111','dev-aaaaaaaa')->'items' ? 'aaaaaaaa-0000-0000-0000-000000000001');
+select pg_temp.chk('34e admin: announcements and file folders / order; wrong password refused',
+  (public.cbt_admin_series_posts(:'ow5','save','{"series_id":"11111111-1111-1111-1111-111111111111","title":"<b>Hi</b>","body":"x"}')->>'ok')::boolean
+  and exists (select 1 from jsonb_array_elements(public.cbt_admin_series_posts(:'ow5','get','{"series_id":"11111111-1111-1111-1111-111111111111"}')->'items') i where i->>'title' = 'bHi/b')
+  and (public.cbt_admin_files(:'ow5','arrange','{"series_id":"11111111-1111-1111-1111-111111111111","items":[{"id":"ffffffff-0000-0000-0000-000000000001","folder":"Premium <notes>","sort":2}]}')->>'n')::int = 1
+  and public.cbt_admin_files(:'ow5','get','{"series_id":"11111111-1111-1111-1111-111111111111"}')->'layout'->'ffffffff-0000-0000-0000-000000000001'->>'folder' = 'Premium notes'
+  and coalesce((public.cbt_admin_series_posts('wrong-password','get','{}')->>'ok')::boolean, false) is false);
 reset role;
 
 -- ===== report =====

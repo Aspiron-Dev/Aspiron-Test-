@@ -385,6 +385,7 @@ create or replace function cbt_private.admin_need(p_fn text, p_act text) returns
     when 'cbt_admin_store_look'     then case when p_act = 'get' then 'store:view' else 'store:manage' end   -- v61
     when 'cbt_admin_series_meta'    then case when p_act = 'get' then 'store:view' else 'store:manage' end   -- v64
     when 'cbt_admin_test_reviews'   then case when p_act = 'get' then 'reviews:view' else 'reviews:manage' end   -- v67
+    when 'cbt_admin_series_posts'   then case when p_act = 'get' then 'content:view' else 'content:manage' end   -- v77
     when 'cbt_admin_suspects'       then case when p_act = 'ok' then 'integrity:manage' else 'integrity:view' end   -- v68
     when 'cbt_admin_test_pdf'       then case when p_act = 'get' then 'owner_read' else 'owner' end   -- v51: owner only, changes are logged
     when 'cbt_admin_profile'        then case when p_act = 'get' then 'owner_read' else 'owner' end   -- v72: owner only, changes are logged

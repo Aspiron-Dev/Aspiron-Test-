@@ -120,7 +120,7 @@ async function openFile(id){
 function showFile(id){
   const f=FILEURL[id];
   modal(`<div class="logo" style="background:var(--ok)">${ic('check',24)}</div><h2>File ready</h2><p class="mut" style="margin:6px 0 14px">${esc(f.name)}</p>
-   <div class="row">${f.view?`<a class="btn" style="flex:1;text-decoration:none" href="${f.url}" target="_blank" rel="noopener">${ic('eye')} View</a>`:''}<a class="btn soft" style="flex:1;text-decoration:none" href="${f.url}" download="${esc(f.name)}">${ic('download')} Save</a></div>
+   <div class="row">${f.view?`<a class="btn" style="flex:1;text-decoration:none" href="${f.url}" target="_blank" rel="noopener">${ic('eye')} View</a>`:'<p class="mut">This file cannot be shown.</p>'}</div>
    <button class="btn ghost block" style="margin-top:10px" onclick="closeModal()">Close</button>`);
 }
 function viewSeries(id){

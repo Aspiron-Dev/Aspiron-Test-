@@ -131,6 +131,17 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
   chapter list covers.
 - Read only: no table is created or changed. A student sees only their own numbers.
 
+## Free vs paid inside a test series (`supabase_v77_free_vs_paid.sql`)
+
+- **Setup:** run `supabase_v77_free_vs_paid.sql` once (after v76), then `supabase_v35_admin_team.sql` again.
+- A student who has not bought a series can open it in *explore* mode (new design): Description in full, the
+  **Schedule** files, the **first test** (first in the admin's order), and Reviews to read. Everything else is locked:
+  other files, other tests, answer-key PDFs, the new **Announcements** tab, and writing a review. The database checks
+  every one of these (`cbt_catalog`, `cbt_start`, `cbt_file_part`, `cbt_test_pdfs`, `cbt_series_posts`, `cbt_review_save`).
+- **Admin:** Test studio → series ⋯ → *Cover & files*: ↑ ↓ to order files, *Folder* to group them (students see gold
+  folder cards). Series ⋯ → *Announcements (buyers only)*: post, pin, delete.
+- Files open with one **View** button (no Save button). A PDF viewer can still let people save what they view.
+
 ## Re-attempt, cheating alerts, answer-key PDF (`supabase_v68_reattempt_cheat_pdf.sql`)
 
 - **Setup:** run `supabase_v68_reattempt_cheat_pdf.sql` once (after v67), then `supabase_v35_admin_team.sql` again.

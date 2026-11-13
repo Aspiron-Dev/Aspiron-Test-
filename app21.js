@@ -101,7 +101,7 @@ async function viewNotes(){
   const by=new Map();for(const t of T){const k=t.series_id;if(!by.has(k))by.set(k,[]);by.get(k).push(t)}
   const sname=id=>{const s=(CAT.series||[]).find(x=>x.id===id);return s?s.title:'Tests'};
   setApp(`<div class="wrap lib"><div class="crumb"><a href="#/lib">${ic('left',16)} Library</a></div>${pageHead('Material','Notes & PDFs','Result & answer key PDFs. Open or download from Google Drive.')}
-   ${T.length?[...by].map(([sid,ts])=>lgroup(esc(sname(sid)),ts.map(t=>{const i=esc(String(t.id));return `<div class="lgr"><span class="lgi">${ic('pdf',20)}</span><span class="grow"><b>${esc(o[t.id].label||t.title)}</b><small>${esc(t.title)}</small></span><button class="btn soft sm" onclick="openPdf('${i}')">Open</button> <button class="btn sm" onclick="dlPdf('${i}')">Download</button></div>`}))).join('')
+   ${T.length?[...by].map(([sid,ts])=>lgroup(esc(sname(sid)),ts.map(t=>{const i=esc(String(t.id));return `<div class="lgr"><span class="lgi">${ic('pdf',20)}</span><span class="grow"><b>${esc(o[t.id].label||t.title)}</b><small>${esc(t.title)}</small></span><button class="btn sm" onclick="openPdf('${i}')">${ic('eye')} View</button></div>`}))).join('')
    :`<div class="card empty">${ic('pdf',30)}<h3 style="margin:10px 0 4px">No notes yet</h3><p class="sm mut">When your teacher adds a PDF to a test, it shows here and next to the test.</p></div>`}
   </div>`);
 }

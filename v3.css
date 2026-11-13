@@ -1861,3 +1861,18 @@ button:focus:not(:focus-visible){outline:none}
 .scrim::after{display:block;content:"";position:absolute;inset:0;-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);opacity:0;transition:opacity .16s ease}
 .scrim.open::after{opacity:1;transition:opacity .3s ease .1s}
 @media (prefers-reduced-motion:reduce){.scrim::after,.scrim.open::after{transition:none}}
+/* v77: premium resource folders, explore-mode note, announcements */
+.fold3{grid-template-columns:auto 1fr auto;position:relative;overflow:hidden;background:linear-gradient(135deg,color-mix(in srgb,#d4a017 10%,var(--surface)),var(--surface) 60%);border:1px solid color-mix(in srgb,#d4a017 28%,var(--line))}
+.fold3 .fold3-i{grid-column:1;grid-row:1/4;align-self:center;display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#f5c542,#c98a0b);color:#fff;box-shadow:0 8px 18px -10px rgba(201,138,11,.8)}
+.fold3 .rsc-n,.fold3 b,.fold3 small{grid-column:2}
+.fold3 .rsc-n{background:color-mix(in srgb,#d4a017 16%,transparent);color:#a26f00}
+.fold3>svg:last-child{grid-column:3;grid-row:1/4}
+.fold3.lk{background:var(--surface);border-color:var(--line)}
+.fold3.lk .fold3-i{background:var(--surface2);color:var(--mut);box-shadow:none}
+.fold3.lk .rsc-n{background:var(--surface2);color:var(--mut)}
+.lockn{display:flex;gap:12px;align-items:center}
+.lockn small{display:block;color:var(--mut);font-size:13px;margin-top:2px}
+.ann3 a{color:var(--acc);word-break:break-all}
+.row.dim{opacity:.6}
+.utabs button{padding:14px 10px 13px;font-size:14.5px}
+p.hint>svg{display:inline-block;vertical-align:-2px;margin-right:4px}
