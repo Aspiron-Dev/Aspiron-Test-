@@ -25,8 +25,9 @@ const server = http.createServer((req, res) => {
 });
 
 const calls = [];
-// the email / Google login screen (app28.js) comes first: open the access-code screen
-const codeScreen = async pg => { await pg.waitForSelector('#em'); await pg.evaluate(() => login('code')); await pg.waitForSelector('#ph'); };
+// the landing page (app29.js) comes first, then Login / Register opens the email / Google screen (app28.js): open the access-code screen
+const toLogin = async pg => { await pg.waitForSelector('#lp .lp-login'); await pg.evaluate(() => lpLogin()); await pg.waitForSelector('#em'); };
+const codeScreen = async pg => { await toLogin(pg); await pg.evaluate(() => login('code')); await pg.waitForSelector('#ph'); };
 // a Supabase login (test only: an unsigned JWT; its "sub" goes to request.jwt.claims like PostgREST does)
 const fakeJwt = (sub, email) => ['e30', Buffer.from(JSON.stringify({ sub, email, role: 'authenticated' })).toString('base64url'), 'x'].join('.');
 const jwtClaims = h => { const m = /^Bearer\s+([^.]+)\.([^.]+)\.[^.]*$/.exec(h || ''); if (!m) return ''; try { return Buffer.from(m[2], 'base64url').toString(); } catch (e) { return ''; } };
@@ -159,12 +160,25 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   ({ c, p, errs } = await mk());
   await p.goto(BASE + 'index.html'); await codeScreen(p);
   await p.evaluate(() => login('request')); await p.waitForTimeout(500);
-  const inputs = await p.$$eval('#rq input', a => a.map(x => x.id));
-  await p.fill('#' + inputs[0], 'Some One'); await p.fill('#' + inputs[1], '9000000001');
-  await p.click('#rbtn'); await p.waitForTimeout(1500);
-  const rqTxt = await p.textContent('#rq');
-  ok(/Request received/.test(rqTxt) && !/already approved/i.test(rqTxt), 'access request: same message for an existing number');
+  ok(await p.$('#rq') === null && (await p.$$('.au3-steps li')).length === 4 && !!(await p.$('a.au3-btn[href="store"]')), 'no access request any more: buy → verify → code → sign in, with a link to the store');
+  await p.click('.au3-btn.sec'); await p.waitForSelector('#cd');
+  ok(true, 'buy screen: "I have my access code" opens the code sign-in');
   await c.close();
+  // landing page: before sign-in, with the menu and the app pop-up; ✕ on the sign-in screen comes back
+  ({ c, p, errs } = await mk());
+  await p.goto(BASE + 'index.html'); await p.waitForSelector('#lp'); await p.waitForTimeout(2000);
+  ok(!!(await p.$('#lpApp')), 'landing: "Get the app" pop-up shows in a browser tab');
+  await p.click('#lpApp .lp-btn.txt'); await p.waitForTimeout(400);
+  ok(await p.$('#lpApp') === null, 'landing: Continue on Web closes the pop-up');
+  await p.click('.lp-top .lp-ib'); await p.waitForSelector('#lpMenu');
+  await p.click('#lpMenu .lp-mh .lp-ib'); await p.waitForTimeout(400);
+  ok(await p.$('#lpMenu') === null, 'landing: the menu opens and ✕ closes it');
+  await p.click('.lp-login'); await p.waitForSelector('#em');
+  await p.click('.au3-btn.g'); await p.waitForTimeout(300);
+  ok((await p.$$('.au3-steps li')).length === 4 && /coming soon/i.test(await p.textContent('.au3-note')), 'Google (switched off): shows how to get an access code');
+  await p.click('.au3-x'); await p.waitForSelector('#lp');
+  ok(true, 'sign-in ✕: back to the landing page');
+  ok(!errs.length, 'no page errors (landing) ' + errs.join(' | ')); await c.close();
   // 7. profile + exam countdown kept on the account (v56): a fresh browser gets them back, a removed countdown stays removed
   await q(`update cbt_private.students set keep='{}', devices='{}', fail_count=0, locked_until=0 where mobile='9000000002'`);
   const signIn = async pg => { await pg.goto(BASE + 'index.html'); await codeScreen(pg); await pg.fill('#ph', '9000000002'); await pg.fill('#cd', 'BBBB2222'); await pg.click('#lbtn'); await pg.waitForTimeout(3000); };
@@ -198,7 +212,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
   };
   ({ c, p, errs } = await mk()); await p.route(SUPA + '/auth/v1/**', authRoute);
-  await p.goto(BASE + 'index.html'); await p.waitForSelector('#ph');
+  await p.goto(BASE + 'index.html'); await toLogin(p);
   ok(await p.$('#cd') !== null && await p.$('#lbtn') !== null, 'login screen: the access code form is shown first');
   ok(await p.evaluate(() => [...document.querySelectorAll('#au3lock input, #au3lock button')].every(e => e.disabled)), 'email + Google block: locked (every field and button disabled)');
   await p.evaluate(() => authPass()); await p.waitForTimeout(300);
@@ -219,7 +233,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   ok((await q(`select auth_uid from cbt_private.students where mobile='9000000001'`))[0].auth_uid === 'e2e00000-0000-0000-0000-000000000001', 'join: the login is joined to the student');
   ok(!errs.length, 'no page errors (email login) ' + errs.join(' | ')); await c.close();
   ({ c, p, errs } = await mk()); await p.route(SUPA + '/auth/v1/**', authRoute);
-  await p.goto(BASE + 'index.html'); await p.waitForSelector('#ph');
+  await p.goto(BASE + 'index.html'); await toLogin(p);
   await p.evaluate(() => { CBT_CONFIG.EMAIL_LOGIN = true; login(); }); await p.waitForSelector('#em');
   await p.fill('#em', 'e2e@example.com'); await p.fill('#pw', 'Right1234'); await p.click('#abtn'); await p.waitForTimeout(3000);
   au = await p.evaluate(() => JSON.parse(localStorage.getItem('cbt_auth')));

@@ -58,8 +58,8 @@ async function rpcRoute(route) {
     p.on('pageerror', e => errs.push(e.message));
     await p.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort());
     await p.route(SUPA + '/rest/v1/rpc/**', rpcRoute);
-    await p.goto(BASE + 'index.html'); await p.waitForSelector('#em');
-    await p.evaluate(() => login('code')); await p.waitForSelector('#ph');
+    await p.goto(BASE + 'index.html'); await p.waitForSelector('#lp');
+    await p.evaluate(() => { lpLogin(); login('code'); }); await p.waitForSelector('#ph');
     await p.fill('#ph', '9000000002'); await p.fill('#cd', 'BBBB2222'); await p.click('#lbtn'); await p.waitForTimeout(3500);
     for (const h of ['#/', '#/x/test', '#/x/tools', '#/x/lib', '#/x/stats', '#/notices', '#/x/test']) {
       await p.evaluate(h2 => { location.hash = h2; }, h); await p.waitForTimeout(1300);

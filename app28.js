@@ -112,6 +112,7 @@ function au3Shell(){
 let AU3NOTE='';
 function authScreen(card,mode,err){
   if(!emailOn()&&['signup','forgot','mail','newpw','link','wait'].includes(mode))mode='';
+  if(mode==='request')mode='buy';   // app29: no access requests any more: buy a test series first, then sign in with the code
   const sb=sbGet();
   if(!mode&&sb){
     if(sb.err){sbSet(null);err=/expired|invalid/i.test(sb.err+sb.errc)?'This link has expired or was already used. Please try again.':sb.err}
@@ -148,21 +149,32 @@ function authScreen(card,mode,err){
      <button class="au3-btn pri" onclick="login()">Back to sign in ${ic('right')}</button>`;
   else if(mode==='code')h=`${top('Sign in with access code','Enter your mobile number and the access code given to you.',"login()")}
      ${F.ph()}${F.cd()}${erBox}<button class="au3-btn pri" id="lbtn" onclick="doLogin()">Sign in ${ic('right')}</button>
-     <div class="au3-row c">New student?<button class="au3-link" onclick="login('request')">Request access</button></div>`;
-  else if(mode==='request')h=`<div id="rq">${top('Request access','Send your details. Once the admin approves you, you will get a personal access code.',"login('code')")}
-     ${F.nm()}${F.ph('rp')}${erBox}<button class="au3-btn pri" id="rbtn" onclick="doRequest()">Send request ${ic('right')}</button></div>`;
+     <div class="au3-row c">New student?<button class="au3-link" onclick="login('buy')">Buy a test series first</button></div>`;
+  else if(mode==='buy')h=`${top('New here? Get your access code','You sign in with a personal access code. You get it after you buy a test series.',"login()")}
+     ${AU3BUY?`<div class="au3-note">${esc(AU3BUY)}</div>`:''}
+     <ol class="au3-steps">
+      <li><i>1</i><div><b>Buy a test series</b><span>Pick your series in the Test Store and pay by UPI.</span></div></li>
+      <li><i>2</i><div><b>Verify your payment</b><span>Send the payment screenshot on Telegram or WhatsApp. The Store shows you how.</span></div></li>
+      <li><i>3</i><div><b>Get your access code</b><span>Our team checks the payment and sends your personal code.</span></div></li>
+      <li><i>4</i><div><b>Sign in</b><span>Enter your mobile number and the access code here.</span></div></li>
+     </ol>
+     <a class="au3-btn pri" href="store">${ic('bag')} Go to Test Store ${ic('right')}</a>
+     <button class="au3-btn sec" onclick="login('code')">${ic('key')} I have my access code</button>
+     ${typeof supportSheet==='function'?`<button class="au3-btn soft" onclick="supportSheet('Hi, I want to buy a test series.')">${ic('msg')} Ask our team</button>`:''}`;
   else h=`${top('Student sign in','Enter your mobile number and the access code given to you.')}
      ${F.ph()}${F.cd()}${erBox}<button class="au3-btn pri" id="lbtn" onclick="doLogin()">Sign in ${ic('right')}</button>
-     <div class="au3-row c">New student?<button class="au3-link" onclick="login('request')">Request access</button></div>
-     <div class="au3-or">Email &amp; Google sign-in</div>
+     <div class="au3-row c">New student?<button class="au3-link" onclick="login('buy')">Buy a test series first</button></div>
+     <div class="au3-or">or</div>
+     <button class="au3-btn g lgo" onclick="authGoogleTap()">${gIcon} Continue with Google</button>
+     <div class="au3-or">Email sign-in</div>
      <div class="au3-lock" id="au3lock">
       <div class="au3-lockbadge">${ic('lock')}<span>Coming soon</span></div>
-      <button class="au3-btn g lgo" tabindex="-1" onclick="authGoogle()">${gIcon} Continue with Google</button>
       ${F.em('username')}${F.pw('Password','current-password')}
       <div class="au3-row"><span></span><button class="au3-link" tabindex="-1" onclick="login('forgot')">Forgot password?</button></div>
       <button class="au3-btn pri" tabindex="-1" id="abtn" style="margin-top:6px" onclick="authPass()">Sign in ${ic('right')}</button>
       <div class="au3-row c">New here?<button class="au3-link" tabindex="-1" onclick="login('signup')">Create account</button></div>
      </div>`;
+  AU3BUY='';
   card.innerHTML=`<div class="au3-pane">${AU3NOTE&&!mode?`<div class="au3-note" id="afterNote">${esc(AU3NOTE)}</div>`:''}${h}</div>`;
   if(!emailOn()){
     const lk=card.querySelector('#au3lock');
@@ -172,7 +184,13 @@ function authScreen(card,mode,err){
   card.querySelectorAll('input').forEach(i=>i.addEventListener('keydown',e=>{if(e.key!=='Enter')return;const b=i.closest('.lsec')?$('#rbtn'):$('#abtn')||$('#lbtn')||$('#rbtn');b&&b.click()}));
   if(mode==='go')authGo();
 }
-let AUTHMSG='',AUTHMAIL='';
+let AUTHMSG='',AUTHMAIL='',AU3BUY='';
+// Google: while email / Google sign-in is off, the button shows the steps to get an access code (buy → verify → code)
+function authGoogleTap(){
+  if(emailOn())return authGoogle();
+  AU3BUY='Google sign-in is coming soon. For now: buy a test series, verify your payment, then sign in with your access code.';
+  login('buy');
+}
 function authGoogle(){if(!emailOn())return;location.href=API+'/auth/v1/authorize?provider=google&redirect_to='+encodeURIComponent(sbBack())}
 async function authPass(){
   if(!emailOn())return;

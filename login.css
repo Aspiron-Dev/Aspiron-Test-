@@ -180,3 +180,13 @@ html[data-lite="1"] .au3-orb{filter:blur(30px)}
   .au3 *,.au3 *::before,.au3 *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
   .au3-spk{display:none}
 }
+
+/* app29: "New here? Get your access code": buy → verify → code → sign in */
+.au3-steps{list-style:none;margin:18px 0 4px;padding:0}
+.au3-steps li{position:relative;display:flex;gap:12px;padding:0 0 16px}
+.au3-steps li:not(:last-child)::before{content:"";position:absolute;left:15px;top:34px;bottom:2px;width:2px;background:linear-gradient(var(--acc2),var(--line))}
+.au3-steps li>i{flex:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:14px;background:var(--ink);color:var(--onInk);box-shadow:0 0 0 4px var(--accSoft)}
+html[data-theme="dark"] .au3-steps li>i{background:linear-gradient(135deg,var(--acc1),var(--acc2));color:#1a1408}
+.au3-steps b{display:block;font-size:15px;font-weight:600;margin-top:4px}
+.au3-steps span{display:block;color:var(--mut);font-size:13.5px;margin-top:1px}
+a.au3-btn{color:var(--onInk)}
