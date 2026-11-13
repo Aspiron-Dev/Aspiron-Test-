@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=52;
+const V3VER=53;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -374,7 +374,7 @@ function evRow(x){const t=x.t,live=['live','prog'].includes(x.st),when=t.opens_a
    <span style="min-width:0"><b>${esc3(t.title)}</b><small>${live?(x.st==='prog'?'You started this test':'Open now'):dayWord(when)+', '+fT(when)}, ${dur(t.duration||0)}</small></span>${live?'':stBadge(t)}</button>`}
 // v78: only ONE test on Home: the one live now, else the next one; the one after it shows once this one is over
 function upcoming(){const cs=curSeries(),all=upList(),L=all.slice(0,1),done=(C().tests||[]).some(t=>cs&&t.series_id===cs.id&&t.closes_at&&day0(t.closes_at)===day0(nowMs())&&t.closes_at<nowMs());
-  return `<section class="sec"><div class="sh"><h2>${L.length&&['live','prog'].includes(L[0].st)?'Live now':'Upcoming test'}</h2>${all.length>1?`<span class="aside">${all.length-1} more in the schedule</span>`:''}</div>
+  return `<section class="sec"><div class="sh"><h2>Upcoming Events</h2>${all.length>1?`<span class="aside">${all.length-1} more in the schedule</span>`:''}</div>
   ${L.length?`<div class="card"><div class="ev">${L.map(evRow).join('')}</div></div>`:`<div class="evnone"><span class="ti">${ic('cal',20)}</span><span>${done?'Today’s live tests have ended':'No live or upcoming tests right now'}</span></div>`}
   ${cs?'<button class="obtn" data-a="week">View Weekly Schedule</button>':''}</section>`}
 /* study zone: one calm tone for every tile, two-tone line icons */

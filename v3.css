@@ -1929,4 +1929,5 @@ p.hint>svg{display:inline-block;vertical-align:-2px;margin-right:4px}
 @keyframes lvRing{0%{transform:scale(1);opacity:.9}100%{transform:scale(4.2);opacity:0}}
 @keyframes lvSweep{0%,55%{left:-60%}100%{left:130%}}
 @media (prefers-reduced-motion:reduce){.when.lv3::after,.lv3-d,.lv3-r{animation:none}.lv3-r{display:none}}
-.evr:has(.lv3){grid-template-columns:64px 1fr auto}.when.lv3{height:64px;border-radius:18px;gap:5px}.when.lv3 b{font-size:12.5px}.when.lv3 .lv3-d{width:13px;height:13px}.when.lv3 .lv3-r{width:13px;height:13px;margin-left:-6.5px;top:calc(50% - 10px)}
+/* v79: same size as the date box */
+.when.lv3{gap:4px}.when.lv3 b{font-size:10.5px;letter-spacing:.12em}.lv3-d{width:9px;height:9px}.lv3-r{width:9px;height:9px;margin-left:-4.5px;top:calc(50% - 8px)}
