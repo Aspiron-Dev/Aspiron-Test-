@@ -140,6 +140,7 @@ html[data-theme="dark"] .au3-btn.pri{background:var(--grad);color:#ffffff;box-sh
 .au3-legal a{color:var(--mut);text-underline-offset:2px}
 .au3-lock{position:relative;margin-top:14px;padding-top:4px}
 .au3-lock[aria-disabled="true"]{opacity:.5;filter:grayscale(.6);pointer-events:none;user-select:none}
+.au3-lock[aria-disabled="true"] .lgo{pointer-events:auto;opacity:1;filter:none;cursor:pointer}
 .au3-lock[aria-disabled="true"] input{cursor:not-allowed;background:var(--surface2)!important}
 .au3-lockbadge{position:absolute;top:-2px;right:0;z-index:2;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:99px;
   background:var(--accSoft);color:var(--acc);font-size:12px;font-weight:600;filter:none}
