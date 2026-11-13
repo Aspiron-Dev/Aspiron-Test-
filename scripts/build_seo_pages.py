@@ -3,8 +3,8 @@
 
     python3 scripts/build_seo_pages.py        (run from anywhere; writes into the repository)
 
-Writes: neet-test-series.html, jee-test-series.html, faq.html, blog/index.html, blog/*.html,
-hi/neet-test-series.html, hi/faq.html, 404.html and sitemap.xml. Edit the text below and run it again;
+Writes: about.html, neet.html, jee.html, cbse.html, cbt.html, test-series.html, cbt-test-store.html, faq.html, blog/index.html, blog/*.html,
+hi/neet.html, hi/faq.html, 404.html and sitemap.xml. Edit the text below and run it again;
 the date in UPDATED becomes "Last updated" and <lastmod>. Every title must be 50-60 characters and every
 description 140-160 characters; the script stops if one is not.
 Nothing here is loaded by the student app or the admin page.
@@ -30,17 +30,18 @@ e = html.escape
 
 
 def org():
-    return {"@type": "EducationalOrganization", "@id": SITE + "/#org", "name": BRAND, "url": SITE + "/",
+    return {"@type": "EducationalOrganization", "@id": SITE + "/#org", "name": BRAND, "alternateName": ["Aspiron", "Aspiron Edu"],
+            "url": SITE + "/",
             "logo": {"@type": "ImageObject", "url": SITE + "/icon-512.png", "width": 512, "height": 512},
             "image": OG_IMG, "sameAs": SAME_AS,
-            "description": "Online CBT mock tests, test series and previous year questions (PYQ) for NEET and JEE, "
+            "description": "Online CBT test series platform for NEET, JEE and CBSE students: mock tests and previous year questions (PYQ), "
                            "with instant results, rank and analysis, in English and Hindi medium.",
             "contactPoint": [{"@type": "ContactPoint", "contactType": "customer support", "url": SITE + "/contact",
                               "availableLanguage": ["English", "Hindi"]}]}
 
 
 def website():
-    return {"@type": "WebSite", "@id": SITE + "/#site", "name": BRAND, "alternateName": "Aspiron",
+    return {"@type": "WebSite", "@id": SITE + "/#site", "name": BRAND, "alternateName": ["Aspiron", "Aspiron Edu"],
             "url": SITE + "/", "publisher": {"@id": SITE + "/#org"}, "inLanguage": ["en-IN", "hi-IN"]}
 
 
@@ -99,14 +100,16 @@ def page(path, url, title, desc, h1, answer, body, crumbs, ld_extra, lang="en", 
         other = alt["en"] if hi else alt["hi"]
         sw = '<a class="langsw" href="%s" hreflang="%s" lang="%s">%s</a>' % (
             other, "en" if hi else "hi", "en" if hi else "hi", "English" if hi else "हिंदी")
-    nav = ("स्टोर", "सवाल-जवाब", "ब्लॉग", "लॉगिन") if hi else ("Store", "FAQ", "Blog", "Login")
-    faq_url = "/hi/faq" if hi else "/faq"
+    nav = (("/hi/neet", "NEET"), ("/jee", "JEE"), ("/cbse", "CBSE"), ("/test-series", "टेस्ट सीरीज़"), ("/store", "स्टोर"), ("/", "लॉगिन")) if hi else \
+          (("/neet", "NEET"), ("/jee", "JEE"), ("/cbse", "CBSE"), ("/test-series", "Test Series"), ("/store", "Store"), ("/", "Login"))
+    nav_html = "".join('<a class="lk" href="%s">%s</a>' % x for x in nav)
     crumb_html = "".join(
         ('<li><a href="%s">%s</a></li>' % (u, e(n))) if i < len(crumbs) - 1 else '<li aria-current="page">%s</li>' % e(n)
         for i, (n, u) in enumerate(crumbs))
     upd = ("अंतिम अपडेट: " + UPDATED_HI) if hi else ("Last updated: " + UPDATED_EN)
-    foot_links = [("/neet-test-series", "NEET Test Series"), ("/jee-test-series", "JEE Test Series"), ("/faq", "FAQ"),
-                  ("/blog/", "Blog"), ("/hi/neet-test-series", "NEET टेस्ट सीरीज़ (हिंदी)"), ("/store", "Store"),
+    foot_links = [("/about", "About Aspiron"), ("/neet", "Aspiron NEET"), ("/jee", "Aspiron JEE"), ("/cbse", "Aspiron CBSE"),
+                  ("/cbt", "Aspiron CBT"), ("/test-series", "Test Series"), ("/cbt-test-store", "CBT Test Store"),
+                  ("/faq", "FAQ"), ("/blog/", "Blog"), ("/hi/neet", "NEET टेस्ट सीरीज़ (हिंदी)"), ("/store", "Store"),
                   ("/privacy", "Privacy"), ("/terms", "Terms"), ("/refund", "Refund &amp; Delivery"), ("/contact", "Contact"),
                   (IG, "Instagram"), (WA_CH, "WhatsApp channel"), (TG, "Telegram")]
     foot = "".join(('<a href="%s"%s>%s</a>' % (u, ' rel="noopener" target="_blank"' if u.startswith("http") else "", n))
@@ -153,7 +156,7 @@ def page(path, url, title, desc, h1, answer, body, crumbs, ld_extra, lang="en", 
 <body>
 <header class="top"><div class="top-in">
   <a class="brand" href="/"><img src="/icon-64.webp" width="28" height="28" alt="">{BRAND}</a><span class="sp"></span>
-  <a class="lk" href="/store">{nav[0]}</a><a class="lk" href="{faq_url}">{nav[1]}</a><a class="lk" href="/blog/">{nav[2]}</a><a class="lk" href="/">{nav[3]}</a>{sw}
+  {nav_html}{sw}
 </div></header>
 <main>
 <ol class="crumbs" aria-label="Breadcrumb">{crumb_html}</ol>
@@ -271,7 +274,7 @@ FAQ_EN = [
 ]
 faq_body = f"""<div class="card">
 <h2>Start here</h2>
-<p>New to Aspiron? See the <a href="/neet-test-series">NEET test series</a> or the <a href="/jee-test-series">JEE test series</a>, then open the <a href="/store">Store</a> to see what each series contains and its price. Policies: <a href="/refund">Refund &amp; Delivery</a>, <a href="/privacy">Privacy</a>, <a href="/terms">Terms</a>.</p>
+<p>New to Aspiron? See <a href="/about">About Aspiron Education</a>, the <a href="/neet">NEET test series</a>, the <a href="/jee">JEE test series</a> or <a href="/test-series">all test series</a>, then open the <a href="/store">Store</a> to see what each series contains and its price. Policies: <a href="/refund">Refund &amp; Delivery</a>, <a href="/privacy">Privacy</a>, <a href="/terms">Terms</a>.</p>
 </div>"""
 
 # ---------------------------------------------------------------- Blog articles
@@ -290,7 +293,7 @@ POSTS = [
 <p>A wrong answer costs 1 mark, so blind guessing adds risk. A guess is worth taking when you can rule out at least one or two options with confidence. Biology is half the paper (360 marks), so it decides most ranks; Physics usually takes the most time per question.</p>
 <h2>Plan your 180 minutes</h2>
 <ul><li>Biology first (about 60–70 minutes), then Chemistry, then Physics.</li><li>Do one quick round of every question you are sure of, then return to the rest.</li><li>Keep the last 10 minutes to check the OMR bubbles.</li></ul>
-<p>Practise this plan in a full-length <a href="/neet-test-series">NEET mock test</a> before the exam, not on exam day.</p>
+<p>Practise this plan in a full-length <a href="/neet">NEET mock test</a> before the exam, not on exam day.</p>
 </div>""",
          faqs=[("How many questions are there in NEET?", "180 questions, all compulsory: 45 each from Physics, Chemistry, Botany and Zoology."),
                ("What is the total mark of NEET?", "720 marks: 180 questions × 4 marks."),
@@ -310,7 +313,7 @@ POSTS = [
 <ul><li>Sort mistakes into three groups: did not know, silly error, ran out of time.</li><li>Read the solution for every wrong and guessed question.</li><li>Look at the chapter-wise analysis and pick the two weakest chapters for the week.</li></ul>
 <h2>4. Track progress, not one score</h2>
 <p>Scores go up and down with paper difficulty. Your rank among other students and your accuracy over five or six tests show the real trend.</p>
-<p>Aspiron's <a href="/neet-test-series">NEET test series</a> gives an instant result, rank, solutions and a mistakes list after every test, so this method takes less effort.</p>
+<p>Aspiron's <a href="/neet">NEET test series</a> gives an instant result, rank, solutions and a mistakes list after every test, so this method takes less effort.</p>
 </div>""",
          faqs=[("How many mock tests should I take before NEET?", "One full test a week for most of the year and two or three a week in the last two months is a common plan; the analysis matters more than the number."),
                ("Are online mock tests useful if NEET is on paper?", "Yes. They train speed, time management and accuracy under a timer; practise filling an OMR sheet separately before the exam."),
@@ -326,7 +329,7 @@ POSTS = [
 <h2>A simple PYQ plan</h2>
 <ul><li><b>During the syllabus:</b> after each chapter, solve its PYQ from the last 10 years.</li><li><b>Mark NCERT:</b> highlight each line a question came from.</li><li><b>Last 2–3 months:</b> attempt the most recent papers as full 3-hour tests.</li><li><b>Re-solve wrong ones</b> after two weeks without looking at the answer.</li></ul>
 <h2>Where to practise</h2>
-<p>The Aspiron student app has PYQ and a question bank by chapter, with solutions, alongside the <a href="/neet-test-series">NEET test series</a>.</p>
+<p>The Aspiron student app has PYQ and a question bank by chapter, with solutions, alongside the <a href="/neet">NEET test series</a>.</p>
 </div>""",
          faqs=[("How many years of NEET PYQ should I solve?", "At least the last 10 years chapter-wise; more if time allows. Solve the most recent 3–5 papers as full timed tests."),
                ("Are PYQ enough for NEET?", "No. PYQ show the pattern and important topics, but you also need NCERT reading and regular full-length mock tests.")]),
@@ -389,27 +392,28 @@ FAQ_HI = [
 urls = []
 H = ("Home", "/")
 H_HI = ("होम", "/")
+TS = ("Test Series", "/test-series")
 
-urls.append(page("neet-test-series.html", "/neet-test-series",
-    "NEET Test Series 2027 – Online CBT Mock Tests | Aspiron",
+urls.append(page("neet.html", "/neet",
+    "Aspiron NEET Test Series 2027 – Online CBT Mock Tests",
     "Aspiron NEET test series: full-length CBT mock tests in the NTA pattern, instant result with rank and analysis, PYQ, and English or Hindi medium on any phone.",
-    "NEET Test Series: online CBT mock tests",
+    "Aspiron NEET test series: online CBT mock tests",
     "Aspiron's NEET test series gives you <b>full-length and chapter-wise online mock tests in the NTA pattern</b> (180 questions, 720 marks, +4/−1), with an <b>instant result, all-India rank among Aspiron students and a detailed analysis</b>. Tests work on any phone, in English or हिंदी medium.",
-    neet_body, [H, ("NEET Test Series", "/neet-test-series")],
+    neet_body, [H, TS, ("Aspiron NEET", "/neet")],
     [course_ld("NEET Test Series – Online CBT Mock Tests",
                "Full-length and chapter-wise NEET (UG) mock tests in the NTA pattern with instant result, rank, solutions and analysis.",
-               "/neet-test-series", "NEET (UG)", ["en", "hi"])],
-    alt={"en": "/neet-test-series", "hi": "/hi/neet-test-series"}, faqs=NEET_FAQ))
+               "/neet", "NEET (UG)", ["en", "hi"])],
+    alt={"en": "/neet", "hi": "/hi/neet"}, faqs=NEET_FAQ))
 
-urls.append(page("jee-test-series.html", "/jee-test-series",
-    "JEE Main Test Series – Online CBT Mock Tests | Aspiron",
+urls.append(page("jee.html", "/jee",
+    "Aspiron JEE Main Test Series – Online CBT Mock Tests",
     "Aspiron JEE Main test series: computer-based mock tests in the NTA pattern, 75 questions and 300 marks, instant score, rank, solutions and chapter analysis.",
-    "JEE Main Test Series: online CBT mock tests",
+    "Aspiron JEE Main test series: online CBT mock tests",
     "Aspiron's JEE test series gives you <b>computer-based mock tests in the JEE Main pattern</b> (75 questions, 300 marks, +4/−1) on an exam-style screen, with an <b>instant score, rank, solutions and a chapter-wise analysis</b> after every test.",
-    jee_body, [H, ("JEE Test Series", "/jee-test-series")],
+    jee_body, [H, TS, ("Aspiron JEE", "/jee")],
     [course_ld("JEE Main Test Series – Online CBT Mock Tests",
                "Full-length and chapter-wise JEE Main mock tests on an exam-style CBT screen with instant score, rank, solutions and analysis.",
-               "/jee-test-series", "JEE Main", ["en"])], faqs=JEE_FAQ))
+               "/jee", "JEE Main", ["en"])], faqs=JEE_FAQ))
 
 urls.append(page("faq.html", "/faq",
     "FAQ – NEET & JEE Mock Tests, Payment, Hindi | Aspiron",
@@ -439,27 +443,212 @@ for p in POSTS:
                      [H, ("Blog", "/blog/"), (p["h1"], url)], [article_ld(p["title"], p["desc"], url, "en-IN")],
                      faqs=p["faqs"], og_type="article"))
 
-urls.append(page("hi/neet-test-series.html", "/hi/neet-test-series",
+urls.append(page("hi/neet.html", "/hi/neet",
     "NEET टेस्ट सीरीज़ 2027 हिंदी में – ऑनलाइन मॉक टेस्ट Aspiron",
     "Aspiron की NEET टेस्ट सीरीज़: NTA पैटर्न पर ऑनलाइन CBT मॉक टेस्ट, हिंदी माध्यम, तुरंत रिज़ल्ट, रैंक, हर सवाल का हल और विश्लेषण, किसी भी मोबाइल पर, PYQ के साथ।",
     "NEET टेस्ट सीरीज़: हिंदी माध्यम में ऑनलाइन मॉक टेस्ट",
     "Aspiron की NEET टेस्ट सीरीज़ में <b>NTA पैटर्न पर फुल और अध्याय-वार ऑनलाइन मॉक टेस्ट</b> हैं (180 सवाल, 720 अंक, +4/−1)। टेस्ट <b>हिंदी या English माध्यम</b> में, किसी भी फ़ोन पर, और सबमिट करते ही <b>रिज़ल्ट, रैंक और विश्लेषण</b> मिलता है।",
-    neet_body_hi, [H_HI, ("NEET टेस्ट सीरीज़", "/hi/neet-test-series")],
+    neet_body_hi, [H_HI, ("NEET टेस्ट सीरीज़", "/hi/neet")],
     [course_ld("NEET टेस्ट सीरीज़ – हिंदी माध्यम ऑनलाइन मॉक टेस्ट",
                "NTA पैटर्न पर NEET (UG) के फुल और अध्याय-वार ऑनलाइन मॉक टेस्ट, हिंदी माध्यम में, तुरंत रिज़ल्ट और रैंक के साथ।",
-               "/hi/neet-test-series", "NEET (UG)", ["hi", "en"])],
-    lang="hi", alt={"en": "/neet-test-series", "hi": "/hi/neet-test-series"}, faqs=NEET_FAQ_HI))
+               "/hi/neet", "NEET (UG)", ["hi", "en"])],
+    lang="hi", alt={"en": "/neet", "hi": "/hi/neet"}, faqs=NEET_FAQ_HI))
 
 urls.append(page("hi/faq.html", "/hi/faq",
     "अक्सर पूछे जाने वाले सवाल – NEET, JEE मॉक टेस्ट | Aspiron",
     "Aspiron Education के बारे में आम सवालों के जवाब: CBT मॉक टेस्ट, NEET और JEE टेस्ट सीरीज़, हिंदी माध्यम, UPI भुगतान, रिफंड नियम और सपोर्ट से संपर्क कैसे करें।",
     "अक्सर पूछे जाने वाले सवाल",
     "Aspiron Education <b>NEET और JEE के ऑनलाइन मॉक टेस्ट</b> का प्लेटफ़ॉर्म है। स्टोर पर UPI से टेस्ट सीरीज़ खरीदें, किसी भी फ़ोन या कंप्यूटर पर परीक्षा जैसे टेस्ट दें, और तुरंत <b>रिज़ल्ट, रैंक और विश्लेषण</b> पाएँ।",
-    '<div class="card"><p>शुरुआत करें: <a href="/hi/neet-test-series">NEET टेस्ट सीरीज़ (हिंदी)</a> देखें, फिर <a href="/store">स्टोर</a> में हर सीरीज़ और उसकी कीमत देखें।</p></div>',
+    '<div class="card"><p>शुरुआत करें: <a href="/hi/neet">NEET टेस्ट सीरीज़ (हिंदी)</a> देखें, फिर <a href="/store">स्टोर</a> में हर सीरीज़ और उसकी कीमत देखें।</p></div>',
     [H_HI, ("सवाल-जवाब", "/hi/faq")], [], lang="hi", alt={"en": "/faq", "hi": "/hi/faq"}, faqs=FAQ_HI))
 
+# ---------------------------------------------------------------- brand pages: about, CBSE, CBT, test series, store guide
+MEDIUM = "Tests are for both English medium and हिंदी medium students: where a series offers both, you pick your medium once and every test opens in it."
+
+CBSE_FAQ = [
+    ("Does Aspiron Education have tests for CBSE students?",
+     "Aspiron's chapter-wise tests are NCERT-based, so CBSE Class 11 and 12 Physics, Chemistry, Biology and Maths students can use them for practice. The Store shows which series are open right now."),
+    ("Are Aspiron tests based on NCERT?",
+     "Yes. Questions are tagged as NCERT based, previous year (PYQ) or extra, and tests follow the Class 11 and 12 chapters of the NCERT books that CBSE uses."),
+    ("Is Aspiron linked to CBSE?",
+     "No. Aspiron Education is an independent platform and is not linked to CBSE, NCERT or NTA. Board names are used only to describe the syllabus."),
+    ("Can I take the tests in Hindi medium?",
+     "Yes, in series marked English + हिंदी medium. You choose your medium once and every test opens in that language."),
+]
+urls.append(page("cbse.html", "/cbse",
+    "Aspiron CBSE Tests – Class 11 & 12 NCERT Chapter Tests",
+    "Aspiron Education for CBSE Class 11 and 12: NCERT-based chapter-wise online tests in Physics, Chemistry, Biology and Maths with instant result and solutions.",
+    "Aspiron CBSE: NCERT chapter tests for Class 11 and 12",
+    "Aspiron Education's online tests are <b>NCERT-based and chapter-wise</b>, so <b>CBSE Class 11 and 12</b> science students can practise Physics, Chemistry, Biology and Maths on an exam-style screen and get an <b>instant result with solutions</b>. " + MEDIUM,
+    f"""<div class="card">
+<h2>How CBSE students use Aspiron</h2>
+<ul>
+<li><b>Chapter-wise tests</b> after you finish each NCERT chapter in school or coaching.</li>
+<li><b>Instant result</b> with solutions, so you see which NCERT topics to read again.</li>
+<li><b>One preparation for boards and entrance exams:</b> the same NCERT chapters are the base of NEET and JEE.</li>
+<li><b>English and हिंदी medium</b> in series that offer both.</li>
+</ul>
+<p>The series that are open right now, and what each one contains, are listed on the <a href="/store">Store</a>. For entrance exams see <a href="/neet">Aspiron NEET</a> and <a href="/jee">Aspiron JEE</a>.</p>
+{CTA_EN}
+</div>""", [H, TS, ("Aspiron CBSE", "/cbse")],
+    [course_ld("Aspiron CBSE Class 11 & 12 NCERT Chapter Tests",
+               "NCERT-based chapter-wise online tests for CBSE Class 11 and 12 Physics, Chemistry, Biology and Maths with instant result and solutions.",
+               "/cbse", "CBSE Class 11 and 12 (NCERT)", ["en", "hi"])], faqs=CBSE_FAQ))
+
+CBT_FAQ = [
+    ("What is Aspiron CBT?",
+     "Aspiron CBT is the computer-based test platform of Aspiron Education. Students take timed NEET, JEE and NCERT chapter tests on a real exam-style screen and get an instant result, rank and analysis."),
+    ("What does CBT mean?",
+     "CBT means computer-based test: an exam taken on a screen with a timer, a question palette and mark for review, instead of on paper."),
+    ("Does Aspiron CBT work on a mobile phone?",
+     "Yes. It runs in the browser on any Android phone, iPhone or computer, and can be installed on the home screen like an app."),
+    ("Is Aspiron CBT in Hindi and English?",
+     "Yes. Series marked English + हिंदी medium show every test in the medium the student chooses."),
+    ("NEET is on paper. Why practise on CBT?",
+     "A CBT mock gives you a strict timer, an instant result, your rank and a chapter-wise analysis, which paper practice at home cannot. Practise OMR filling separately."),
+]
+urls.append(page("cbt.html", "/cbt",
+    "Aspiron CBT – Online Computer-Based Test Platform, India",
+    "Aspiron CBT is Aspiron Education's online computer-based test platform for NEET and JEE: exam-style screen, timer, instant result, rank and full analysis.",
+    "Aspiron CBT: online computer-based test platform",
+    "<b>Aspiron CBT</b> is the online computer-based test platform of Aspiron Education. You take <b>timed NEET, JEE and NCERT chapter tests on a real exam-style screen</b> and get an <b>instant result, rank and analysis</b>. " + MEDIUM,
+    f"""<div class="card">
+<h2>What the Aspiron CBT screen has</h2>
+<ul>
+<li><b>Timer and question palette</b> showing answered, not answered and marked-for-review questions.</li>
+<li><b>Section switching</b> between subjects, like the real exam.</li>
+<li><b>Live tests</b> at a fixed time with a phone notification, and practice tests any time.</li>
+<li><b>Result in seconds:</b> score, accuracy, rank, time spent per question and solutions.</li>
+<li><b>After the test:</b> mistakes list, saved questions, PYQ and question bank.</li>
+</ul>
+{CTA_EN}
+</div>
+<div class="card">
+<h2>Tests on the platform</h2>
+<p><a href="/neet">Aspiron NEET test series</a> · <a href="/jee">Aspiron JEE test series</a> · <a href="/cbse">Aspiron CBSE / NCERT chapter tests</a> · <a href="/test-series">all test series</a> · <a href="/cbt-test-store">CBT test store</a></p>
+</div>""", [H, ("Aspiron CBT", "/cbt")],
+    [{"@type": "WebApplication", "@id": SITE + "/cbt#app", "name": "Aspiron CBT", "url": SITE + "/",
+      "applicationCategory": "EducationalApplication", "operatingSystem": "Android, iOS, Windows, macOS (web browser)",
+      "inLanguage": ["en", "hi"], "publisher": {"@id": SITE + "/#org"},
+      "description": "Computer-based test platform for NEET and JEE mock tests with instant result, rank and analysis."}],
+    faqs=CBT_FAQ))
+
+TS_FAQ = [
+    ("Which test series does Aspiron Education offer?",
+     "Aspiron offers online CBT test series for NEET (UG) and JEE Main, with NCERT-based chapter tests that CBSE Class 11 and 12 students can also use. The Store lists the series open right now."),
+    ("Is the Aspiron test series online or offline?",
+     "Online. Every test is taken on the Aspiron CBT screen on a phone or computer, and the result comes instantly."),
+    ("Is the Aspiron test series for Hindi medium students too?",
+     "Yes. Aspiron is for both English medium and Hindi medium students; series marked English + हिंदी medium give each student the tests in their own medium."),
+    ("How do I join an Aspiron test series?",
+     "Open the Store, enter your name and mobile number, choose NEET or JEE, pick a series and pay with UPI. The series is then added to your student account."),
+]
+urls.append(page("test-series.html", "/test-series",
+    "Aspiron Test Series Platform – NEET, JEE & CBSE Tests",
+    "Aspiron Education test series platform: online CBT test series for NEET and JEE, NCERT chapter tests for CBSE, instant result, rank, English and Hindi medium.",
+    "Aspiron test series platform: NEET, JEE and CBSE",
+    "The <b>Aspiron test series platform</b> gives <b>online CBT test series for NEET and JEE</b> and NCERT-based chapter tests for CBSE Class 11 and 12, with an <b>instant result, rank and analysis</b> after every test. " + MEDIUM,
+    f"""<ul class="posts">
+<li><a href="/neet"><b>Aspiron NEET test series</b><span>Full-length and chapter-wise mock tests in the NTA pattern: 180 questions, 720 marks.</span></a></li>
+<li><a href="/jee"><b>Aspiron JEE Main test series</b><span>Computer-based mock tests in the JEE Main pattern: 75 questions, 300 marks.</span></a></li>
+<li><a href="/cbse"><b>Aspiron CBSE / NCERT chapter tests</b><span>NCERT-based chapter-wise practice for Class 11 and 12 science students.</span></a></li>
+<li><a href="/cbt"><b>Aspiron CBT platform</b><span>The exam-style test screen: timer, palette, instant result, rank and analysis.</span></a></li>
+<li><a href="/cbt-test-store"><b>Aspiron CBT test store</b><span>How to see what is inside each series, its price, and buy with UPI.</span></a></li>
+</ul>
+<div class="card"><h2>Every Aspiron test series includes</h2>
+{FEATURES_EN}
+{CTA_EN}
+</div>""", [H, TS],
+    [{"@type": "ItemList", "@id": SITE + "/test-series#list", "name": "Aspiron Education test series",
+      "itemListElement": [{"@type": "ListItem", "position": i + 1, "name": n, "url": SITE + u} for i, (n, u) in enumerate(
+          [("Aspiron NEET test series", "/neet"), ("Aspiron JEE Main test series", "/jee"), ("Aspiron CBSE / NCERT chapter tests", "/cbse")])]}],
+    faqs=TS_FAQ))
+
+STORE_FAQ = [
+    ("What is the Aspiron CBT test store?",
+     "It is the online store of Aspiron Education at aspironeducation.com/store, where students see every NEET and JEE test series, the tests inside it, its medium and price, and buy it with UPI."),
+    ("How do I buy a test series on the Aspiron store?",
+     "Open the Store, enter your name and mobile number once, choose NEET or JEE, open a series and pay with UPI. Then enter the payer name and UTR number so the payment can be checked."),
+    ("When do I get access after paying?",
+     "After the payment is checked, the series is unlocked on your mobile number and you get a message. The Refund & Delivery policy gives the details."),
+    ("Is payment on the Aspiron store safe?",
+     "You pay by UPI from your own UPI app; Aspiron never asks for your UPI PIN, card number or OTP."),
+    ("Can I get a refund?",
+     "Test series are digital products and are not refundable. If you bought the wrong series by mistake, contact support to ask for it to be moved."),
+]
+urls.append(page("cbt-test-store.html", "/cbt-test-store",
+    "Aspiron CBT Test Store – Buy NEET & JEE Test Series",
+    "Aspiron CBT test store: see every Aspiron Education NEET and JEE test series, the tests inside, English or Hindi medium and price, then buy safely with UPI.",
+    "Aspiron CBT test store: buy NEET and JEE test series",
+    "The <b>Aspiron CBT test store</b> is where you <b>see every Aspiron NEET and JEE test series</b>, what is inside it and its price, and <b>buy it with UPI</b>. After the payment is checked, the series is unlocked on your mobile number. " + MEDIUM,
+    """<div class="card">
+<h2>How buying works</h2>
+<ul>
+<li><b>1.</b> Open the <a href="/store">Store</a> and enter your name, mobile number and course (NEET or JEE) once.</li>
+<li><b>2.</b> Open a series to see its tests, schedule, medium, reviews and price.</li>
+<li><b>3.</b> Pay with any UPI app, then enter the payer name and UTR number.</li>
+<li><b>4.</b> When the payment is checked, the series opens in the student app on your number.</li>
+</ul>
+<div class="cta"><a class="btn pri" href="/store">Open the store</a><a class="btn sec" href="/refund">Refund &amp; Delivery policy</a></div>
+</div>
+<div class="card"><h2>What you can buy</h2>
+<p><a href="/neet">Aspiron NEET test series</a> · <a href="/jee">Aspiron JEE test series</a> · <a href="/test-series">all test series</a>. Coupons, the wallet and Refer &amp; earn are applied on the Store at checkout.</p>
+</div>""", [H, TS, ("CBT Test Store", "/cbt-test-store")],
+    [{"@type": "WebPage", "@id": SITE + "/cbt-test-store#page", "name": "Aspiron CBT test store", "url": SITE + "/cbt-test-store",
+      "isPartOf": {"@id": SITE + "/#site"}, "about": {"@id": SITE + "/#org"}, "significantLink": SITE + "/store"}],
+    faqs=STORE_FAQ))
+
+ABOUT_FAQ = [
+    ("What is Aspiron Education?",
+     "Aspiron Education is an Indian online test series platform for NEET, JEE and CBSE students. Students take exam-style CBT mock tests and get an instant result, rank and analysis."),
+    ("Is Aspiron Edu the same as Aspiron Education?",
+     "Yes. Aspiron, Aspiron Edu and Aspiron Education are the same platform. The official website is aspironeducation.com."),
+    ("What is the official website of Aspiron Education?",
+     "https://aspironeducation.com is the only official website. The student app opens on the home page and the store is at aspironeducation.com/store."),
+    ("Is Aspiron Education for Hindi medium or English medium?",
+     "Both. Series marked English + हिंदी medium give every student the tests in the medium they choose."),
+    ("How can I contact Aspiron Education?",
+     "On WhatsApp or Telegram from the Contact page. Aspiron also posts updates on its WhatsApp channel, Telegram and Instagram."),
+]
+urls.insert(0, page("about.html", "/about",
+    "About Aspiron Education (Aspiron Edu) – NEET, JEE, CBSE",
+    "Aspiron Education (Aspiron Edu) is an online CBT test series platform for NEET, JEE and CBSE students in English and Hindi medium. Official site and contacts.",
+    "About Aspiron Education",
+    "<b>Aspiron Education</b> (also called Aspiron or Aspiron Edu) is an <b>online CBT test series platform for NEET, JEE and CBSE students</b> in India. Its official website is <b>aspironeducation.com</b>. " + MEDIUM,
+    f"""<div class="card">
+<h2>What Aspiron Education does</h2>
+<p>Aspiron helps students practise the way the exam is taken: timed tests on an exam-style screen, then an instant result, rank among other students, solutions and a chapter-wise analysis that shows what to revise.</p>
+<ul>
+<li><a href="/neet">Aspiron NEET test series</a></li>
+<li><a href="/jee">Aspiron JEE Main test series</a></li>
+<li><a href="/cbse">Aspiron CBSE / NCERT chapter tests</a></li>
+<li><a href="/cbt">Aspiron CBT platform</a> and the <a href="/cbt-test-store">Aspiron CBT test store</a></li>
+</ul>
+<h2>Official links</h2>
+<ul>
+<li>Website and student app: <a href="/">aspironeducation.com</a></li>
+<li>Store: <a href="/store">aspironeducation.com/store</a></li>
+<li>WhatsApp channel: <a href="{WA_CH}" rel="noopener" target="_blank">Aspiron Education on WhatsApp</a></li>
+<li>Telegram: <a href="{TG}" rel="noopener" target="_blank">Aspiron student support</a></li>
+<li>Instagram: <a href="{IG}" rel="noopener" target="_blank">@aspironeducation</a></li>
+<li>Support: <a href="/contact">Contact page</a></li>
+</ul>
+<p class="small">Aspiron Education is an independent platform. It is not linked to NTA, NCERT, CBSE or any exam authority.</p>
+{CTA_EN}
+</div>""", [H, ("About", "/about")],
+    [{"@type": "AboutPage", "@id": SITE + "/about#page", "name": "About Aspiron Education", "url": SITE + "/about",
+      "isPartOf": {"@id": SITE + "/#site"}, "mainEntity": {"@id": SITE + "/#org"}}],
+    faqs=ABOUT_FAQ))
+
+# ---------------------------------------------------------------- old addresses (published for a short time) point to the new ones
+for old, new in (("neet-test-series", "/neet"), ("jee-test-series", "/jee"), ("hi/neet-test-series", "/hi/neet")):
+    with open(os.path.join(ROOT, old + ".html"), "w", encoding="utf-8") as f:
+        f.write('<!doctype html>\n<html lang="en"><head><meta charset="utf-8">\n<meta name="robots" content="noindex,follow">\n'
+                '<link rel="canonical" href="%s%s">\n<meta http-equiv="refresh" content="0; url=%s">\n<title>Moved</title></head>\n'
+                '<body><p><a href="%s">This page has moved.</a></p></body></html>\n' % (SITE, new, new, new))
+
 # ---------------------------------------------------------------- sitemap (all indexable public pages)
-ALTS = {"/neet-test-series": "/hi/neet-test-series", "/faq": "/hi/faq"}
+ALTS = {"/neet": "/hi/neet", "/faq": "/hi/faq"}
 ALTS.update({v: k for k, v in list(ALTS.items())})
 pages = [("/", "1.0", "weekly"), ("/store", "0.9", "weekly")] + [(u, "0.8", "monthly") for u in urls] + \
         [("/contact", "0.5", "monthly"), ("/privacy", "0.3", "yearly"), ("/terms", "0.3", "yearly"), ("/refund", "0.3", "yearly")]
