@@ -243,6 +243,8 @@ async function authGo(){
   const r=await sbRpc('student_signin',{p_device:DEV});
   if(r.ok&&isTok(r.token))return authDone(r);
   if(r.error==='not_linked')return login('link');
+  // v74: approved after a request: the access code once (sent to your number on WhatsApp), then the login alone is enough
+  if(r.error==='need_code'){LOGINERR='Your account is approved. Enter your mobile number and the access code we sent you once — after that, your email / Google login alone is enough.';return login('link')}
   if(r.error==='pending')return login('wait');
   if(r.error==='auth'){sbSet(null);LOGINERR='Please sign in again. If you just signed up, confirm your email first.';return login()}
   authFail(r);
