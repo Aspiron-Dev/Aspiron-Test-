@@ -22,8 +22,8 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 `supabase/functions/send-push` (phone notifications and 🔔 test-live alerts).
 
 ## SEO pages (`scripts/build_seo_pages.py`, `seo.css`)
-- **Public, pre-rendered pages** (plain HTML, readable without JavaScript): `/neet-test-series`, `/jee-test-series`, `/faq`,
-  `/blog/` with 3 guides, and Hindi pages `/hi/neet-test-series`, `/hi/faq` (linked both ways with `hreflang`).
+- **Public, pre-rendered pages** (plain HTML, readable without JavaScript): `/about`, `/neet`, `/jee`, `/cbse`, `/cbt`, `/test-series`, `/cbt-test-store`, `/faq`,
+  `/blog/` with 3 guides, and Hindi pages `/hi/neet`, `/hi/faq` (linked both ways with `hreflang`).
   Each has one h1, a 2–3 line direct answer at the top, "Last updated", breadcrumbs, FAQ, Open Graph / Twitter tags and
   JSON-LD (Organization, WebSite, BreadcrumbList, Course / Article / FAQPage).
 - **To change the text:** edit `scripts/build_seo_pages.py`, set `UPDATED`, run `python3 scripts/build_seo_pages.py`.
@@ -33,6 +33,8 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
   read every public page; `llms.txt` is a short summary for AI assistants. `og-image.jpg` / `.webp` (1200×630) is the share picture.
 - `404.html` is the branded "Page not found". `admin.html` and the admin page's no-key screen show the **same** page, so the
   decoy still cannot be told apart from a real missing page. Change all three together.
+- The first addresses `/neet-test-series`, `/jee-test-series`, `/hi/neet-test-series` are small "moved" pages (noindex + canonical) that send visitors to the new ones.
+- The home page has a `<noscript>` block (h1, summary, links) for crawlers that do not run JavaScript; students never see it.
 - The student app (`/`) stays as it is: login, dashboard and tests are `#` addresses on one page, so they are not separate pages for Google.
 
 ## Brand: name, logo, start-up animation (`index.html`, `config.js`, `manifest.webmanifest`)
