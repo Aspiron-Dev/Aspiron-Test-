@@ -21,8 +21,10 @@ from (values
   (16, 'supabase_v68_reattempt_cheat_pdf.sql', 'public.cbt_admin_suspects'),
   (17, 'supabase_v69_test_chapters.sql',       'public.cbt_test_chapters'),
   (18, 'supabase_v70_ops.sql',                 'public.cbt_admin_ops'),
-  (19, 'supabase_v72_owner_profile.sql',       'public.cbt_admin_profile'),
-  (20, 'supabase_v73_contacts.sql',            'public.cbt_admin_contacts')
+  (19, 'supabase_v72_owner_profile.sql',       'public.cbt_admin_profile')
 ) as f(n, file, fn) order by f.n;
 -- v71 changes an existing function: 'ok' when its text has the new code
 select 'supabase_v71_refer_code.sql' as file, case when pg_get_functiondef('cbt_private.refer_code_for(text,text,text)'::regprocedure) like '%''asp''%' then 'ok' else 'MISSING — run this file' end as status;
+
+-- v73 makes no function: 'ok' when its one-time step has run
+select 'supabase_v73_contacts.sql' as file, case when exists (select 1 from cbt_private.settings where key = 'contacts_perm_seeded') then 'ok' else 'MISSING — run supabase_v35_admin_team.sql, then this file' end as status;

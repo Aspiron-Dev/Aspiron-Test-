@@ -17,7 +17,7 @@ const ROLES = [
 ];
 // readable names for the activity log
 const ACT = {
-  'cbt_admin_contacts:reveal': 'Showed phone numbers and e-mails', 'cbt_admin_profile:save': 'Changed the owner profile', 'cbt_admin_ops:budget_set': 'Changed a budget', 'cbt_admin_ops:cost_add': 'Added a bill', 'cbt_admin_ops:cost_delete': 'Deleted a bill', 'cbt_admin_ops:cost_paid': 'Marked a bill paid / unpaid',
+  'cbt_admin_profile:save': 'Changed the owner profile', 'cbt_admin_ops:budget_set': 'Changed a budget', 'cbt_admin_ops:cost_add': 'Added a bill', 'cbt_admin_ops:cost_delete': 'Deleted a bill', 'cbt_admin_ops:cost_paid': 'Marked a bill paid / unpaid',
   'session:sign_in': 'Signed in', 'session:sign_out': 'Signed out', 'cbt_admin_security:seen': 'Marked security alerts as seen', 'cbt_admin_security:block': 'Blocked an address', 'cbt_admin_security:unblock': 'Unblocked an address', 'cbt_admin_team:team_login': 'Switched team sign-in', 'cbt_admin_refer_min:set': 'Changed the referral minimum payment',
   'cbt_admin:student_add': 'Added a student', 'cbt_admin:student_approve': 'Approved an access request', 'cbt_admin:student_code': 'Made a new access code',
   'cbt_admin:student_block': 'Blocked / unblocked a student', 'cbt_admin:student_devices_reset': 'Reset devices', 'cbt_admin:student_update': 'Edited a student',

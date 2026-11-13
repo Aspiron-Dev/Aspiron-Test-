@@ -1167,18 +1167,9 @@ select pg_temp.chk('38a contacts: without the permission no full phone number le
   and public.cbt_admin_payments(:'nct','get','{}')::text !~ '"mobile": "[0-9]{10}"');
 select pg_temp.chk('38b contacts: with the permission, and for the owner, the numbers are complete',
   :'wc1' = 'true' and :'st_yes' ~ '"mobile": "[0-9]{10}"' and :'st_yes' !~ '•' and :'st_ow' ~ '"mobile": "[0-9]{10}"' and :'st_ow' !~ '•');
-select pg_temp.chk('38c contacts: "show numbers" is refused without the permission and allowed with it',
-  public.cbt_admin_contacts(:'nct','reveal','{}')->>'error' = 'forbidden'
-  and (public.cbt_admin_contacts(:'wct','reveal','{"name":"Free Student"}')->>'ok')::boolean
-  and (public.cbt_admin_contacts(:'ow9','reveal','{}')->>'ok')::boolean
-  and public.cbt_admin_contacts('wrong-password','reveal','{}')->>'ok' is distinct from 'true');
 select pg_temp.chk('38d contacts: a member cannot give the permission to themselves',
   public.cbt_admin_team(:'nct','user_save','{"name":"No Contacts","username":"nocon1","perms":{"contacts":"view"}}')->>'error' = 'forbidden');
 reset role;
-select pg_temp.chk('38e contacts: every "show numbers" and every refused try is in the activity log, with the student''s name',
-  exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_contacts' and act = 'reveal' and who = 'With Contacts' and result = '' and detail = 'Free Student')
-  and exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_contacts' and who = 'Owner' and result = '')
-  and exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_contacts' and who = 'No Contacts' and result in ('refused', 'forbidden')));
 select pg_temp.chk('38f contacts: e-mails are cut too, and text that only looks like a number field is left alone',
   cbt_private.mask_contacts('{"email":"sanjay.j@gmail.com","note":"call \"mobile\": \"9000000009\"","mobile_left":2}'::jsonb)
     = '{"email":"sa•••@gmail.com","note":"call \"mobile\": \"9000000009\"","mobile_left":2}'::jsonb);
@@ -1190,9 +1181,9 @@ delete from cbt_private.settings where key = 'contacts_perm_seeded';
 \o /dev/null
 \i supabase_v73_contacts.sql
 \o
-select pg_temp.chk('38g contacts: when v73 is installed, members who work with students or orders keep their numbers; view-only members do not get them',
+select pg_temp.chk('38g contacts: when v73 is installed, every member that exists gets the permission (nothing changes for the team)',
   (select perms->>'contacts' from cbt_private.admin_users where username = 'oldstore1') = 'view'
-  and (select perms->>'contacts' from cbt_private.admin_users where username = 'oldview1') is null);
+  and (select perms->>'contacts' from cbt_private.admin_users where username = 'oldview1') = 'view');
 update cbt_private.admin_users set perms = perms - 'contacts' where username = 'oldstore1';
 \o /dev/null
 \i supabase_v73_contacts.sql

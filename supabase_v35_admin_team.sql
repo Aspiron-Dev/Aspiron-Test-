@@ -388,7 +388,6 @@ create or replace function cbt_private.admin_need(p_fn text, p_act text) returns
     when 'cbt_admin_suspects'       then case when p_act = 'ok' then 'integrity:manage' else 'integrity:view' end   -- v68
     when 'cbt_admin_test_pdf'       then case when p_act = 'get' then 'owner_read' else 'owner' end   -- v51: owner only, changes are logged
     when 'cbt_admin_profile'        then case when p_act = 'get' then 'owner_read' else 'owner' end   -- v72: owner only, changes are logged
-    when 'cbt_admin_contacts'       then 'any_write'   -- v73: "show phone numbers" is written to the activity log
     when 'cbt_admin_ops'            then case when p_act in ('storage', 'costs') then 'owner_read' else 'owner' end   -- v70: owner only, changes are logged
   end
 $$;

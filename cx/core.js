@@ -90,7 +90,7 @@ AX.MOD_INFO = {
   promotions: { t: 'Promotions',          d: 'Promotion links, commissions and payouts' },
   messaging:  { t: 'Messaging',           d: 'Banners, notices and phone notifications' },
   reviews:    { t: 'Reviews',             d: 'Ratings and reviews on the store' },
-  contacts:   { t: 'Contact details',     d: 'Full phone numbers and e-mails of students. Without this the database sends them cut (98•••••210), so calling and WhatsApp buttons do not work' }
+  contacts:   { t: 'Contact details',     d: 'Full phone numbers and e-mails of students. Without this the database sends them cut (98•••••210) and the call / WhatsApp buttons do not work. Take it away from accounts that do not need it' }
 };
 // AX.can('students') → may view; AX.can('students','manage') → may change. The owner can do everything.
 AX.can = (mod, lvl = 'view') => {
@@ -102,11 +102,6 @@ AX.can = (mod, lvl = 'view') => {
   return p === 'manage' || (p === 'view' && lvl === 'view');
 };
 AX.isOwner = () => !!(S.me && S.me.owner);
-// "Show phone numbers": on for 15 minutes in this tab, then cut again. Turning it on is written to the activity log (shell.js).
-AX.reveal = {
-  on: () => Date.now() < (AX.ss.get('cx_rv', 0) || 0),
-  set(v) { if (v) AX.ss.set('cx_rv', Date.now() + 15 * 60000); else AX.ss.del('cx_rv'); }
-};
 
 /* ---------- API ---------- */
 const AUTH_ERR = ['invalid', 'signed_out', 'expired', 'disabled', 'not_set', 'need_2fa'];
@@ -282,10 +277,7 @@ AX.fmt = {
   dur: sec => { sec = Math.round(Number(sec) || 0); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60; return h ? h + 'h ' + m + 'm' : m ? m + 'm ' + (s ? s + 's' : '') : s + 's'; },
   bytes: b => { b = Number(b) || 0; return b >= 1073741824 ? (b / 1073741824).toFixed(2) + ' GB' : b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : b >= 1024 ? Math.round(b / 1024) + ' KB' : b + ' B'; },
   plural: (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's')),
-  // v73: phone numbers and e-mails are shown cut until "Show phone numbers" is pressed (AX.reveal); mobileFull = never cut
-  mobileFull: m => { m = String(m || ''); return m.length === 10 ? m.slice(0, 5) + ' ' + m.slice(5) : m; },
-  mobile: m => { m = String(m || ''); return AX.fmt.mobileFull(/^\d{10}$/.test(m) && !AX.reveal.on() ? m.slice(0, 2) + '•••••' + m.slice(7) : m); },
-  email: e => { e = String(e || ''); const i = e.indexOf('@'); return i > 0 && !AX.reveal.on() && !e.includes('•') ? e.slice(0, Math.min(2, i)) + '•••' + e.slice(i) : e; }
+  mobile: m => { m = String(m || ''); return m.length === 10 ? m.slice(0, 5) + ' ' + m.slice(5) : m; }
 };
 
 /* ---------- utilities ---------- */

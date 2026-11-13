@@ -17,8 +17,7 @@ No build step, no framework. Each module is one classic script wrapped in an IIF
 - **Permissions:** the server enforces them (supabase_v35). The UI must also hide/disable what the user cannot do:
   `AX.can('students')` (view) / `AX.can('students','manage')` (change). Show `AX.ui.noAccess()` instead of a broken page.
   Module keys: students, payments, content, results, integrity, store, promotions, messaging, reviews (owner can do all).
-  `contacts` (v73) is not a page: without it the server sends phone numbers / e-mails cut. Always show a number with
-  `AX.fmt.mobile()` and an e-mail with `AX.fmt.email()` (cut until "Show phone numbers"); never print `x.mobile` raw.
+  `contacts` (v73) is not a page: without it the server sends phone numbers / e-mails cut (98•••••210).
 - **Every server call** returns `{ok:false, error}` on failure; show it with `AX.ui.err(r)` (toast) or `AX.ui.errorBox(r)`
   (with a `data-act="retry"` button). `error:'forbidden'` = no permission; `'missing'` = SQL not installed.
 - **Loading / empty / error states** everywhere: `AX.ui.skeleton(n)`, `AX.ui.empty({icon,title,text,action})`, `AX.ui.errorBox(r)`.
