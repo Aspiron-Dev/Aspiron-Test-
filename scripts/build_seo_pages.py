@@ -34,6 +34,7 @@ def org():
             "url": SITE + "/",
             "logo": {"@type": "ImageObject", "url": SITE + "/icon-512.png", "width": 512, "height": 512},
             "image": OG_IMG, "sameAs": SAME_AS,
+            "founder": {"@type": "Person", "name": "Sanjay Joshi", "jobTitle": "Founder", "worksFor": {"@id": SITE + "/#org"}},
             "description": "Online CBT test series platform for NEET, JEE and CBSE students: mock tests and previous year questions (PYQ), "
                            "with instant results, rank and analysis, in English and Hindi medium.",
             "contactPoint": [{"@type": "ContactPoint", "contactType": "customer support", "url": SITE + "/contact",
@@ -607,6 +608,8 @@ ABOUT_FAQ = [
      "https://aspironeducation.com is the only official website. The student app opens on the home page and the store is at aspironeducation.com/store."),
     ("Is Aspiron Education for Hindi medium or English medium?",
      "Both. Series marked English + हिंदी medium give every student the tests in the medium they choose."),
+    ("Who is the founder of Aspiron Education?",
+     "Aspiron Education was founded by Sanjay Joshi."),
     ("How can I contact Aspiron Education?",
      "On WhatsApp or Telegram from the Contact page. Aspiron also posts updates on its WhatsApp channel, Telegram and Instagram."),
 ]
@@ -616,6 +619,8 @@ urls.insert(0, page("about.html", "/about",
     "About Aspiron Education",
     "<b>Aspiron Education</b> (also called Aspiron or Aspiron Edu) is an <b>online CBT test series platform for NEET, JEE and CBSE students</b> in India. Its official website is <b>aspironeducation.com</b>. " + MEDIUM,
     f"""<div class="card">
+<h2>Founder</h2>
+<p>Aspiron Education was founded by <b>Sanjay Joshi</b>.</p>
 <h2>What Aspiron Education does</h2>
 <p>Aspiron helps students practise the way the exam is taken: timed tests on an exam-style screen, then an instant result, rank among other students, solutions and a chapter-wise analysis that shows what to revise.</p>
 <ul>

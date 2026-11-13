@@ -72,7 +72,8 @@ function lpShow(){
   if(typeof webSync==='function')webSync();
   const sc=$('#lp');
   if(sc){sc.addEventListener('scroll',lpScroll,{passive:true});lpScroll()}
-  lpBanners();lpStore();
+  if(!$('#v3font')){const f=document.createElement('link');f.id='v3font';f.rel='stylesheet';f.href='https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap';document.head.appendChild(f)}
+  lpBanners();lpStore().then(lpReviews);
   if(typeof socialLoad==='function')socialLoad();
   lpAppMaybe();
 }
@@ -153,6 +154,16 @@ function lpHtml(){
     </div>
   </section>
 
+  <section class="lp-sec lp-rev" id="lp-rev" hidden><h2 class="lp-h">What students say</h2><p class="lp-p">Reviews from students who took our test series.</p>
+    <div class="lp-rsum" id="lpRsum"></div><div class="lp-revs" id="lpRevs"></div>
+    <a class="lp-more" href="store#/reviews">Read all reviews ${ic('right',16)}</a>
+  </section>
+
+  <section class="lp-sec lp-fd" id="lp-founder"><div class="lp-fdc">
+    <span class="lp-fda" aria-hidden="true">SJ</span>
+    <div><p class="lp-fdk">Founder</p><h2>Sanjay Joshi</h2><p class="lp-fdt">Founder, Aspiron Education</p></div>
+  </div></section>
+
   <section class="lp-sec lp-join"><h2 class="lp-h">Join the Aspiron family today</h2><p class="lp-p">Follow us for free tips, test alerts and updates.</p>
     <div class="lp-soc" data-lpsoc>${typeof socialLinksHTML==='function'?socialLinksHTML():''}</div>
     <button class="lp-btn pri" onclick="lpLogin()">Get Started ${ic('right',18)}</button>
@@ -166,7 +177,7 @@ function lpHtml(){
       ${fl('Quick links',[['Test Store','store'],['All Test Series','test-series'],['हिंदी: NEET','hi/neet'],['CBT Test Store','cbt-test-store']])}
       ${fl('Policies',[['Terms &amp; Conditions','terms'],['Privacy Policy','privacy'],['Refund Policy','refund']])}
     </div>
-    <div class="lp-copy">© ${year} Aspiron Education. All rights reserved.</div>
+    <div class="lp-copy">© ${year} Aspiron Education · Founded by Sanjay Joshi. All rights reserved.</div>
   </footer>
   <button class="lp-fab" onclick="lpHelp()" aria-label="Chat with support">${ic('headset',26)}</button>
   </div>`;
@@ -256,7 +267,7 @@ function lpBanGo(i){const t=$('#lpBt');if(!t)return;const n=t.children.length;LP
 function lpDots(){document.querySelectorAll('#lpDots button').forEach((b,j)=>b.classList.toggle('on',j===LPI))}
 
 /* ---------- Test Store (public list) ---------- */
-function lpItemsSkel(){return Array.from({length:3},()=>`<div class="lp-item sk"><i></i><b></b><span></span></div>`).join('')}
+function lpItemsSkel(){return Array.from({length:2},()=>`<div class="lp-item sk"><i></i><b></b><span></span></div>`).join('')}
 async function lpStore(){
   if(!LPST){
     try{const r=await rpc('cbt_store',{},true);LPST=r&&r.ok?(r.items||[]):[]}catch(e){LPST=[]}
@@ -321,4 +332,34 @@ async function lpInstall(btn){
     :`Open your browser menu <b>⋮</b>, then tap <b>Install app</b> or <b>Add to Home screen</b>.`;
 }
 
-;(window.__p=window.__p||{})['app29']=1;
+/* ---------- reviews (public cbt_store_reviews): shown on the page and given to Google as structured data ---------- */
+async function lpReviews(){
+  let r;try{r=await rpc('cbt_store_reviews',{},true)}catch(e){return}
+  if(!r||!r.ok||!Array.isArray(r.items))return;
+  const byId={};(LPST||[]).forEach(x=>byId[x.id]=x);
+  const items=r.items.filter(x=>x&&x.count>0&&byId[x.id]);
+  let n=0,sum=0;const all=[];
+  items.forEach(x=>{n+=+x.count;sum+=(+x.avg||0)*x.count;(x.list||[]).forEach(v=>all.push(Object.assign({series:byId[x.id].title},v)))});
+  const sec=$('#lp-rev');if(!sec||!n||!all.length)return;
+  const avg=Math.round(sum/n*10)/10;
+  const star=k=>`<span class="lp-stars" aria-label="${k} out of 5">${[1,2,3,4,5].map(i=>`<i class="${i<=Math.round(k)?'on':''}">★</i>`).join('')}</span>`;
+  $('#lpRsum').innerHTML=`<b>${avg.toFixed(1)}</b><div>${star(avg)}<span>Based on ${n} review${n>1?'s':''}</span></div>`;
+  const pick=all.filter(v=>String(v.body||'').trim()).sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||b.rating-a.rating||b.at-a.at).slice(0,6);
+  $('#lpRevs').innerHTML=pick.map(v=>{const nm=String(v.name||'Student').trim()||'Student',b=String(v.body||'').trim();
+    return `<article class="lp-rv"><div class="lp-rvh"><span class="lp-rva">${/^data:image\//.test(v.photo||'')?`<img src="${esc(v.photo)}" alt="">`:esc(nm[0].toUpperCase())}</span><div><b>${esc(nm)}</b><span>${esc(v.series||'')}</span></div>${star(+v.rating||0)}</div>
+     <p>${esc(b.length>260?b.slice(0,257)+'…':b)}</p></article>`}).join('');
+  sec.hidden=false;
+  // structured data: each series with reviews as a Course with its rating
+  try{
+    const ld={'@context':'https://schema.org','@graph':items.map(x=>{const it=byId[x.id];return {'@type':'Course',name:String(it.title||'Test series'),
+      description:String(it.subtitle||it.title||'Online CBT test series'),url:location.origin+'/store#x='+x.id,
+      provider:{'@type':'EducationalOrganization',name:'Aspiron Education',url:location.origin+'/',founder:{'@type':'Person',name:'Sanjay Joshi'}},
+      aggregateRating:{'@type':'AggregateRating',ratingValue:+x.avg,reviewCount:+x.count,bestRating:5,worstRating:1},
+      review:(x.list||[]).filter(v=>String(v.body||'').trim()).slice(0,3).map(v=>({'@type':'Review',reviewRating:{'@type':'Rating',ratingValue:+v.rating,bestRating:5},
+        author:{'@type':'Person',name:String(v.name||'Student').slice(0,60)},reviewBody:String(v.body).slice(0,500)}))}})};
+    let el=document.getElementById('lpLd');if(!el){el=document.createElement('script');el.type='application/ld+json';el.id='lpLd';document.head.appendChild(el)}
+    el.textContent=JSON.stringify(ld).replace(/</g,'\\u003c');
+  }catch(e){}
+}
+
+;(window.__p=window.__p||{})['app29']=2;
