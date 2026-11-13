@@ -1,7 +1,7 @@
 /* Service worker: lets the site be installed like an app.
    Pages always come from the network first, so new uploads show up at once; files with ?v= come from the phone.
    It never touches the database (Supabase) calls. */
-const CACHE='cbt-shell-v6';
+const CACHE='cbt-shell-v7';
 const SHELL=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).catch(()=>{}));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
@@ -51,7 +51,8 @@ self.addEventListener('pushsubscriptionchange',e=>{
       sub=await self.registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:Uint8Array.from(r,c=>c.charCodeAt(0))});
     }
     await fetch(C.SUPABASE_URL+'/rest/v1/rpc/cbt_push_rotate',{method:'POST',headers:{apikey:C.SUPABASE_KEY,Authorization:'Bearer '+C.SUPABASE_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({p_old:old.endpoint,p_sub:sub.toJSON()})});
+      // v76: the old subscription's secret 'auth' key proves it is this phone (base64url, like toJSON)
+      body:JSON.stringify({p_old:old.endpoint,p_sub:sub.toJSON(),p_old_auth:(()=>{try{const b=new Uint8Array(old.getKey('auth'));let s='';b.forEach(c=>s+=String.fromCharCode(c));return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}catch(e){return ''}})()})});
   })().catch(()=>{}));
 });
 // Ready for server push (Web Push / FCM) later: shows whatever the server sends.

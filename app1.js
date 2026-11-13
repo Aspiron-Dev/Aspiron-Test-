@@ -240,7 +240,12 @@ function signOut(){
 }
 function doSignOut(){
   // the token stops working on the server a few seconds later (the phone first turns its notifications off with it)
-  if(AUTH&&isTok(AUTH.code)){const a={p_mobile:AUTH.mobile,p_code:AUTH.code,p_device:DEV};setTimeout(()=>rpc('cbt_logout',a,true),5000)}
+  // v76 (review A4): the token is ended on the server at once (right after notifications are turned off, at most
+  // 2.5 s); keepalive lets the request finish even when the app is closed straight away
+  if(AUTH&&isTok(AUTH.code)){const a={p_mobile:AUTH.mobile,p_code:AUTH.code,p_device:DEV};
+    const out=()=>{try{fetch(API+'/rest/v1/rpc/cbt_logout',{method:'POST',keepalive:true,headers:{apikey:CFG.SUPABASE_KEY,Authorization:'Bearer '+CFG.SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(a)}).catch(()=>{})}catch(e){}};
+    Promise.race([Promise.resolve(window.__pushOff),new Promise(r=>setTimeout(r,2500))]).catch(()=>{}).then(out)}
+  try{if(typeof sbOut==='function')sbOut()}catch(e){}   // an email / Google session is ended too
   closeModal();MKC=null;BMC=null;PREF=0;AUTH=null;ANN=null;LS.del('cbt_auth');CAT=null;login()}
 
 /* ---------- catalog / routing ---------- */
