@@ -9,14 +9,15 @@ const { h, raw, icon, join, ui: UI, fmt } = AX;
 const T = { users: [], sessions: [], audit: [], current: null, at: 0 };
 const LEVELS = [{ value: '', label: 'No access' }, { value: 'view', label: 'View' }, { value: 'manage', label: 'Full' }];
 const ROLES = [
-  { id: 'support', t: 'Student support', d: 'Students, orders and payments', p: { students: 'manage', store: 'manage', payments: 'view', results: 'view' } },
+  { id: 'support', t: 'Student support', d: 'Students, orders and payments', p: { students: 'manage', store: 'manage', payments: 'view', results: 'view', contacts: 'view' } },
   { id: 'academic', t: 'Test creator', d: 'Tests, questions, results', p: { content: 'manage', results: 'view', integrity: 'view' } },
-  { id: 'commerce', t: 'Store manager', d: 'Store, orders, payments, promotions', p: { store: 'manage', payments: 'manage', promotions: 'manage', students: 'view' } },
+  { id: 'commerce', t: 'Store manager', d: 'Store, orders, payments, promotions', p: { store: 'manage', payments: 'manage', promotions: 'manage', students: 'view', contacts: 'view' } },
   { id: 'marketing', t: 'Marketing', d: 'Banners, notices, reviews, promotions', p: { messaging: 'manage', reviews: 'manage', promotions: 'view' } },
-  { id: 'viewer', t: 'Viewer', d: 'Can see everything, change nothing', p: Object.fromEntries(AX.MODS.map(m => [m, 'view'])) }
+  { id: 'viewer', t: 'Viewer', d: 'Can see everything except full phone numbers, change nothing', p: Object.fromEntries(AX.MODS.filter(m => m !== 'contacts').map(m => [m, 'view'])) }
 ];
 // readable names for the activity log
 const ACT = {
+  'cbt_admin_profile:save': 'Changed the owner profile', 'cbt_admin_ops:budget_set': 'Changed a budget', 'cbt_admin_ops:cost_add': 'Added a bill', 'cbt_admin_ops:cost_delete': 'Deleted a bill', 'cbt_admin_ops:cost_paid': 'Marked a bill paid / unpaid',
   'session:sign_in': 'Signed in', 'session:sign_out': 'Signed out', 'cbt_admin_security:seen': 'Marked security alerts as seen', 'cbt_admin_security:block': 'Blocked an address', 'cbt_admin_security:unblock': 'Unblocked an address', 'cbt_admin_team:team_login': 'Switched team sign-in', 'cbt_admin_refer_min:set': 'Changed the referral minimum payment',
   'cbt_admin:student_add': 'Added a student', 'cbt_admin:student_approve': 'Approved an access request', 'cbt_admin:student_code': 'Made a new access code',
   'cbt_admin:student_block': 'Blocked / unblocked a student', 'cbt_admin:student_devices_reset': 'Reset devices', 'cbt_admin:student_update': 'Edited a student',

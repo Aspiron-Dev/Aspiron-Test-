@@ -79,7 +79,7 @@ const S = AX.session = {
   },
   clear() { S.token = ''; S.legacy = false; S.me = null; S.id = null; AX.ls.del('cx_tok'); AX.ss.del('cx_tok'); AX.cache.clear(); }
 };
-AX.MODS = ['students', 'payments', 'content', 'results', 'integrity', 'store', 'promotions', 'messaging', 'reviews'];
+AX.MODS = ['students', 'payments', 'content', 'results', 'integrity', 'store', 'promotions', 'messaging', 'reviews', 'contacts'];
 AX.MOD_INFO = {
   students:   { t: 'Students',            d: 'Student list, profiles, access codes, devices, series unlocks, access requests' },
   payments:   { t: 'Payments',            d: 'Money received, adding old payments, payment history' },
@@ -89,7 +89,8 @@ AX.MOD_INFO = {
   store:      { t: 'Store & orders',      d: 'Orders, payment verification, store items, layout and settings' },
   promotions: { t: 'Promotions',          d: 'Promotion links, commissions and payouts' },
   messaging:  { t: 'Messaging',           d: 'Banners, notices and phone notifications' },
-  reviews:    { t: 'Reviews',             d: 'Ratings and reviews on the store' }
+  reviews:    { t: 'Reviews',             d: 'Ratings and reviews on the store' },
+  contacts:   { t: 'Contact details',     d: 'Full phone numbers and e-mails of students. Without this the database sends them cut (98•••••210) and the call / WhatsApp buttons do not work. Take it away from accounts that do not need it' }
 };
 // AX.can('students') → may view; AX.can('students','manage') → may change. The owner can do everything.
 AX.can = (mod, lvl = 'view') => {
@@ -375,10 +376,10 @@ AX.u = {
     return br + ' · ' + os + app;
   },
   // links for messaging a student (mobile = 10 digits)
-  wa: (mobile, text) => 'https://wa.me/91' + String(mobile || '').replace(/\D/g, '').slice(-10) + (text ? '?text=' + encodeURIComponent(text) : ''),
-  tg: mobile => 'https://t.me/+91' + String(mobile || '').replace(/\D/g, '').slice(-10),
-  sms: (mobile, text) => 'sms:+91' + String(mobile || '').replace(/\D/g, '').slice(-10) + (text ? '?body=' + encodeURIComponent(text) : ''),
-  tel: mobile => 'tel:+91' + String(mobile || '').replace(/\D/g, '').slice(-10),
+  wa: (mobile, text) => /•/.test(mobile) ? '#' : 'https://wa.me/91' + String(mobile || '').replace(/\D/g, '').slice(-10) + (text ? '?text=' + encodeURIComponent(text) : ''),
+  tg: mobile => /•/.test(mobile) ? '#' : 'https://t.me/+91' + String(mobile || '').replace(/\D/g, '').slice(-10),
+  sms: (mobile, text) => /•/.test(mobile) ? '#' : 'sms:+91' + String(mobile || '').replace(/\D/g, '').slice(-10) + (text ? '?body=' + encodeURIComponent(text) : ''),
+  tel: mobile => /•/.test(mobile) ? '#' : 'tel:+91' + String(mobile || '').replace(/\D/g, '').slice(-10),
   site: () => String(CFG.SHORT_URL || '').replace(/\/?$/, '/'),
   storeUrl: () => AX.u.site() + 'store'
 };

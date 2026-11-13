@@ -1152,6 +1152,45 @@ select pg_temp.chk('37d owner profile: the change and the refused try are in the
   exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_profile' and act = 'save' and who = 'Owner' and result = '')
   and exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_profile' and result = 'refused'));
 
+-- ===== 38. v73 contact details: cut in the database for members without the "contacts" permission =====
+set role anon;
+select public.cbt_admin_team(:'ow9','user_save','{"name":"No Contacts","username":"nocon1","password":"Tr7k-9mQz-pLc1","perms":{"students":"view","store":"view","payments":"view"}}')->>'ok' as nc1 \gset
+select public.cbt_admin_team(:'ow9','user_save','{"name":"With Contacts","username":"wcon1","password":"Tr7k-9mQz-pLc2","perms":{"students":"view","contacts":"view"}}')->>'ok' as wc1 \gset
+select public.cbt_admin_login('nocon1','Tr7k-9mQz-pLc1','N')->>'token' as nct \gset
+select public.cbt_admin_login('wcon1','Tr7k-9mQz-pLc2','W')->>'token' as wct \gset
+select public.cbt_admin(:'nct','students','{}')::text as st_no \gset
+select public.cbt_admin(:'wct','students','{}')::text as st_yes \gset
+select public.cbt_admin(:'ow9','students','{}')::text as st_ow \gset
+select pg_temp.chk('38a contacts: without the permission no full phone number leaves the database (students, store orders, payments)',
+  :'nc1' = 'true' and :'st_no' ~ '"mobile": "[0-9]{2}•••••[0-9]{3}"' and :'st_no' !~ '"mobile": "[0-9]{10}"'
+  and public.cbt_admin_store(:'nct','get','{}')::text !~ '"mobile": "[0-9]{10}"'
+  and public.cbt_admin_payments(:'nct','get','{}')::text !~ '"mobile": "[0-9]{10}"');
+select pg_temp.chk('38b contacts: with the permission, and for the owner, the numbers are complete',
+  :'wc1' = 'true' and :'st_yes' ~ '"mobile": "[0-9]{10}"' and :'st_yes' !~ '•' and :'st_ow' ~ '"mobile": "[0-9]{10}"' and :'st_ow' !~ '•');
+select pg_temp.chk('38d contacts: a member cannot give the permission to themselves',
+  public.cbt_admin_team(:'nct','user_save','{"name":"No Contacts","username":"nocon1","perms":{"contacts":"view"}}')->>'error' = 'forbidden');
+reset role;
+select pg_temp.chk('38f contacts: e-mails are cut too, and text that only looks like a number field is left alone',
+  cbt_private.mask_contacts('{"email":"sanjay.j@gmail.com","note":"call \"mobile\": \"9000000009\"","mobile_left":2}'::jsonb)
+    = '{"email":"sa•••@gmail.com","note":"call \"mobile\": \"9000000009\"","mobile_left":2}'::jsonb);
+-- the one-time grant: as on the live database, where members exist before v73 is run
+insert into cbt_private.admin_users (name, username, salt, pw_hash, perms) values
+  ('Old Store', 'oldstore1', 'x', 'x', '{"store":"manage"}'), ('Old Viewer', 'oldview1', 'x', 'x', '{"students":"view"}');
+delete from cbt_private.settings where key = 'contacts_perm_seeded';
+\set QUIET on
+\o /dev/null
+\i supabase_v73_contacts.sql
+\o
+select pg_temp.chk('38g contacts: when v73 is installed, every member that exists gets the permission (nothing changes for the team)',
+  (select perms->>'contacts' from cbt_private.admin_users where username = 'oldstore1') = 'view'
+  and (select perms->>'contacts' from cbt_private.admin_users where username = 'oldview1') = 'view');
+update cbt_private.admin_users set perms = perms - 'contacts' where username = 'oldstore1';
+\o /dev/null
+\i supabase_v73_contacts.sql
+\o
+select pg_temp.chk('38h contacts: running v73 again does not give the permission back after the owner removed it',
+  (select perms->>'contacts' from cbt_private.admin_users where username = 'oldstore1') is null);
+
 -- ===== report =====
 \t off
 \a
