@@ -603,6 +603,25 @@ function mediaDrawer(sid) {
   // v77: folders and order of the files (supabase_v77_free_vs_paid.sql); students see them in this order, grouped by folder
   const ordered = () => { const L = (S_(sid) || {}).files || []; return L.map((f, i) => [f, i]).sort((a, b) => ((LAY && LAY[a[0].id] ? LAY[a[0].id].sort : 0) - (LAY && LAY[b[0].id] ? LAY[b[0].id].sort : 0)) || a[1] - b[1]).map(x => x[0]); };
   const folderOf = f => (LAY && LAY[f.id] && LAY[f.id].folder) || '';
+  let NEWF = [];   // folders made here that have no file yet
+  // sections in the order students see them: [{name, files}] ('' = no folder: shown under Schedule / Syllabus / Notes)
+  const sections = () => { const M = new Map(); ordered().forEach(f => { const k = folderOf(f); if (!M.has(k)) M.set(k, []); M.get(k).push(f); });
+    NEWF = NEWF.filter(n => !M.has(n)); NEWF.forEach(n => M.set(n, [])); return [...M].map(([name, files]) => ({ name, files })); };
+  const kindName = k => ({ schedule: 'Schedule', syllabus: 'Syllabus', notes: 'Notes' })[k] || 'Notes';
+  const fileRow = (f, sec) => { const S = sec ? sections() : null, me = sec ? sec.files : null, i = me ? me.indexOf(f) : -1;
+    return h`<div class="ts-file"><span class="ts-ic ${f.kind === 'schedule' ? 'info' : f.kind === 'notes' ? 'vio' : 'gold'}">${icon(/\.pdf$/i.test(f.name || '') ? 'pdf' : 'image', 18)}</span><div class="grow"><b class="ell" style="display:block">${f.title}</b><div class="xs mut">${kindName(f.kind)}${f.kind === 'schedule' ? ' · free for everyone' : ''} · ${Math.round((f.size || 0) / 1024)} KB</div>${OPENS[f.id] ? h`<div class="xs mt4">${UI.pill((OPENS[f.id] > Date.now() ? 'Opens ' : 'Opened ') + fmt.dt(OPENS[f.id]), OPENS[f.id] > Date.now() ? 'warn' : 'ok')}</div>` : ''}
+      ${sec ? h`<div class="row gap6 mt8" style="flex-wrap:nowrap;align-items:center"><button class="btn xs ghost" data-act="mvU" data-id="${f.id}" ${i === 0 ? raw('disabled') : ''} title="Move up" aria-label="Move up">↑</button><button class="btn xs ghost" data-act="mvD" data-id="${f.id}" ${i === me.length - 1 ? raw('disabled') : ''} title="Move down" aria-label="Move down">↓</button>
+        <select class="inp xs fmv" data-id="${f.id}" aria-label="Move to folder" style="flex:1;min-width:0;height:30px;padding:0 8px"><option value="" disabled selected>Folder…</option>${join(S.filter(x => x.name !== sec.name), x => h`<option value="${x.name || '#none#'}">${x.name ? '📁 ' + x.name : 'No folder'}</option>`)}<option value="#new#">+ New folder…</option></select>
+        <button class="btn xs ghost" data-act="fOpen" data-id="${f.id}" title="Students can open it only from this time" aria-label="Opens at">${icon('clock', 14)}</button><button class="btn xs danger" data-act="fDel" data-id="${f.id}" aria-label="Delete">${icon('trash', 13)}</button></div>` : ''}</div>
+      ${sec ? '' : h`<button class="btn xs" data-act="fOpen" data-id="${f.id}" title="Students can open it only from this time">${icon('clock', 13)} ${OPENS[f.id] ? 'Change' : 'Opens at'}</button><button class="btn xs danger" data-act="fDel" data-id="${f.id}">${icon('trash', 13)}</button>`}</div>`; };
+  const folderBox = () => { const S = sections();
+    return h`<div class="callout info mb12">${icon('info')}<div class="sm">Students see the folders in this order, then the files inside in this order. Use <b>↑ ↓</b> to change the order and <b>Folder…</b> to put a file in a folder. Files with no folder are grouped by type. Students who have not bought the series can open only <b>Schedule</b> files.</div></div>
+      <div class="row wrap gap8 mb12"><button class="btn sm soft" data-act="fNew">${icon('folder', 15)} New folder</button></div>
+      <div class="col gap12">${join(S, (sec, k) => h`<div class="card flat tight fdsec"><div class="row" style="gap:8px;padding:4px 0 8px;border-bottom:1px solid var(--line)"><span class="ts-ic gold">${icon('folder', 18)}</span>
+          <div class="grow"><b>${sec.name || 'No folder'}</b><div class="xs mut">${sec.name ? sec.files.length + ' file' + (sec.files.length === 1 ? '' : 's') : 'Shown under Schedule / Syllabus / Notes'}</div></div>
+          <button class="btn xs ghost" data-act="sU" data-k="${k}" ${k === 0 ? raw('disabled') : ''} title="Move folder up">↑</button><button class="btn xs ghost" data-act="sD" data-k="${k}" ${k === S.length - 1 ? raw('disabled') : ''} title="Move folder down">↓</button>
+          ${sec.name ? h`<button class="btn xs" data-act="sRen" data-k="${k}">${icon('edit', 13)} Rename</button>` : ''}</div>
+        ${sec.files.length ? join(sec.files, f => fileRow(f, sec)) : h`<div class="xs mut" style="padding:10px 2px">Empty folder: use <b>Folder…</b> on a file to put it here. Students do not see empty folders.</div>`}</div>`)}</div>`; };
   const body = () => {
     const s = S_(sid); if (!s) return UI.empty({ icon: 'layers', title: 'Series not found' });
     const cv = COV.get(sid);
@@ -611,7 +630,7 @@ function mediaDrawer(sid) {
       <p class="xs mut mt8">Shown on the series card for students and in the store. Use a 16 : 9 photo (1280 × 720 px). Other shapes are fitted into 16 : 9 without cutting, and compressed automatically.</p>
       <div class="row wrap mt12"><button class="btn soft" data-act="cvUp">${icon('upload', 16)} ${s.has_cover ? 'Change photo' : 'Upload photo'}</button>${s.has_cover ? h`<button class="btn ghost danger" data-act="cvRm">${icon('trash', 15)} Remove</button>${cv === undefined ? '' : UI.pill('Cover set', 'ok')}` : ''}</div>
       <div class="section-t">Syllabus, schedule & notes</div>
-      ${LAY ? h`<div class="xs mut mb8">Use ↑ ↓ to change the order and <b>Folder</b> to group files. Students who have not bought the series can open only <b>Schedule</b> files.</div>` : ''}<div class="card flat tight">${(s.files || []).length ? join(ordered(), (f, i) => h`<div class="ts-file"><span class="ts-ic ${f.kind === 'schedule' ? 'info' : f.kind === 'notes' ? 'vio' : 'gold'}">${icon(/\.pdf$/i.test(f.name || '') ? 'pdf' : 'image', 18)}</span><div class="grow"><b class="ell" style="display:block">${f.title}</b><div class="xs mut">${f.kind} · ${Math.round((f.size || 0) / 1024)} KB${f.name ? ' · ' + f.name : ''}</div>${OPENS[f.id] ? h`<div class="xs mt4">${UI.pill((OPENS[f.id] > Date.now() ? 'Opens ' : 'Opened ') + fmt.dt(OPENS[f.id]), OPENS[f.id] > Date.now() ? 'warn' : 'ok')}</div>` : ''}${folderOf(f) ? h`<div class="xs mt4">${UI.pill('📁 ' + folderOf(f), 'info')}</div>` : ''}</div>${LAY ? h`<button class="btn xs ghost" data-act="mvU" data-id="${f.id}" ${i === 0 ? raw('disabled') : ''} title="Move up">↑</button><button class="btn xs ghost" data-act="mvD" data-id="${f.id}" ${i === ordered().length - 1 ? raw('disabled') : ''} title="Move down">↓</button><button class="btn xs" data-act="fFold" data-id="${f.id}">${icon('folder', 13)} Folder</button>` : ''}<button class="btn xs" data-act="fOpen" data-id="${f.id}" title="Students can open it only from this time">${icon('clock', 13)} ${OPENS[f.id] ? 'Change' : 'Opens at'}</button><button class="btn xs danger" data-act="fDel" data-id="${f.id}">${icon('trash', 13)} Delete</button></div>`) : h`<div class="xs mut">No files yet. Students can open these from the series page.</div>`}</div>
+      ${(s.files || []).length ? (LAY ? folderBox() : h`<div class="card flat tight">${join(ordered(), f => fileRow(f, null))}</div>`) : h`<div class="card flat tight"><div class="xs mut">No files yet. Students can open these from the series page.</div></div>`}
       <div class="card flat mt12"><div class="card-h">${icon('upload')}<h3>Upload a file</h3></div><div class="col gap16">
         <div class="fld"><label for="mf-t">Name shown to students</label><input class="inp" id="mf-t" maxlength="80" placeholder="e.g. Full syllabus"></div>
         <div class="fld"><label>Type</label><div class="seg" id="mf-k">${join([['syllabus', 'Syllabus'], ['schedule', 'Schedule'], ['notes', 'Notes']], ([v, l]) => h`<button type="button" class="${kind === v ? 'on' : ''}" data-v="${v}">${l}</button>`)}</div></div>
@@ -634,20 +653,27 @@ function mediaDrawer(sid) {
         if (!r.ok) { UI.toast(r.error === 'action' ? 'Run supabase_v77_free_vs_paid.sql in Supabase first' : AX.errText(r), { tone: 'bad' }); return false; }
         items.forEach(x => { LAY[x.id] = { folder: x.folder, sort: x.sort }; }); redraw(); AX.cache.drop('catalog'); return true;
       };
-      const move = async (id, d) => { const L = ordered(), i = L.findIndex(f => f.id === id), j = i + d; if (i < 0 || j < 0 || j >= L.length) return; [L[i], L[j]] = [L[j], L[i]]; await arrange(L); };
+      // save sections in order: every file gets its folder and a running number
+      const save = async (S) => { const L = []; S.forEach(sec => sec.files.forEach(f => { LAY[f.id] = { folder: sec.name, sort: 0 }; L.push(f); })); return arrange(L); };
+      const move = async (id, d) => { const S = sections(), sec = S.find(x => x.files.some(f => f.id === id)); if (!sec) return; const i = sec.files.findIndex(f => f.id === id), j = i + d; if (j < 0 || j >= sec.files.length) return; [sec.files[i], sec.files[j]] = [sec.files[j], sec.files[i]]; await save(S); };
+      const moveSec = async (k, d) => { const S = sections(), j = k + d; if (j < 0 || j >= S.length) return; [S[k], S[j]] = [S[j], S[k]];
+        NEWF = S.filter(x => !x.files.length).map(x => x.name); await save(S); };
+      const askName = async (title, value) => { const v = await UI.prompt({ title, label: 'Folder name', value: value || '', max: 60, placeholder: 'e.g. Premium notes' }); return v == null ? null : v.replace(/[<>\\]/g, '').trim().slice(0, 60) || null; };
+      const toFolder = async (id, name) => { const S = sections(); let src = null, f = null; S.forEach(x => { const i = x.files.findIndex(y => y.id === id); if (i >= 0) { src = x; f = x.files.splice(i, 1)[0]; } });
+        if (!f) return; let dst = S.find(x => x.name === name); if (!dst) { dst = { name, files: [] }; S.push(dst); } dst.files.push(f);
+        if (await save(S)) UI.toast(name ? 'Moved to ' + name : 'Removed from the folder'); };
+      el.addEventListener('change', async e => { const sel = e.target.closest('select.fmv'); if (!sel) return; let v = sel.value; if (v === '') return;
+        if (v === '#new#') { v = await askName('New folder'); if (!v) { sel.value = ''; return; } } else if (v === '#none#') v = '';
+        await toFolder(sel.dataset.id, v); });
       el.addEventListener('click', e => { const b = e.target.closest('#mf-k button'); if (!b) return; kind = b.dataset.v; el.querySelectorAll('#mf-k button').forEach(x => x.classList.toggle('on', x === b)); });
       AX.act(el, {
         mvU: b => move(b.dataset.id, -1),
         mvD: b => move(b.dataset.id, 1),
-        async fFold(b) {
-          const f = ordered().find(x => x.id === b.dataset.id); if (!f) return;
-          const names = [...new Set(ordered().map(folderOf).filter(Boolean))];
-          const v = await UI.prompt({ title: 'Folder', label: 'Folder name', value: folderOf(f), required: false, max: 60, placeholder: 'e.g. Premium notes',
-            hint: (names.length ? 'Folders in this series: ' + names.join(', ') + '. ' : '') + 'Files with the same folder name are shown together. Leave empty for no folder.' });
-          if (v == null) return;
-          LAY[f.id] = { folder: v.trim(), sort: LAY[f.id] ? LAY[f.id].sort : 0 };
-          if (await arrange(ordered())) UI.toast(v.trim() ? 'Moved to ' + v.trim() : 'Removed from the folder');
-        },
+        sU: b => moveSec(+b.dataset.k, -1),
+        sD: b => moveSec(+b.dataset.k, 1),
+        async fNew() { const v = await askName('New folder'); if (!v) return; if (!sections().some(x => x.name === v)) NEWF.push(v); redraw(); UI.toast('Folder made. Use "Folder…" on a file to put it in.'); },
+        async sRen(b) { const S = sections(), sec = S[+b.dataset.k]; if (!sec || !sec.name) return; const v = await askName('Rename folder', sec.name); if (!v || v === sec.name) return;
+          if (!sec.files.length) { NEWF = NEWF.map(n => n === sec.name ? v : n); redraw(); return; } sec.name = v; if (await save(S)) UI.toast('Folder renamed'); },
         async cvUp(b) {
           const f = await AX.u.pickFile('image/*'); if (!f) return;
           await UI.busy(b, async () => {
