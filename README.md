@@ -82,6 +82,14 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
   after a "please sign in again" message.
 - **No access requests any more**: "New student?" and every old "Request access" link open *New here? Get your access code*:
   1 buy a test series in the Store → 2 verify the payment on Telegram / WhatsApp → 3 get the access code → 4 sign in with mobile + code.
+- **Reviews**: *What students say* shows the average rating and up to 6 reviews from `cbt_store_reviews` (Admin → Reviews), and
+  adds them to the page as structured data (each reviewed series as a `Course` with its `aggregateRating`) so Google can read them.
+  The section stays hidden while there are no reviews.
+- **Founder**: Sanjay Joshi — on the landing page, in the footer, on `/about` (and its FAQ) and as `founder` in the Organization
+  JSON-LD of every page (`index.html`, `scripts/build_seo_pages.py`).
+- Colours: indigo / violet accent (`--acc`, `--grad` in `landing.css` and `login.css`); the logo keeps its own gold. Banners are 16:9.
+  The store list and reviews are vertical cards (no sideways scrolling except the banners).
+- On a computer (or "Desktop site" on a phone) the sign-in is one column: logo on top, the form below (no split screen).
 - **Continue with Google** is shown. While `EMAIL_LOGIN` is `false` it opens the same steps with "Google sign-in is coming soon";
   once it is `true` (PENDING.md 4.3) it signs in with Google as before. Email + password stays locked ("Coming soon").
 
