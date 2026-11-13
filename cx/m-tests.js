@@ -305,6 +305,7 @@ function sMenu(el, s) {
     m && { label: 'New folder', icon: 'folder', fn: () => folderModal(s.id, null) },
     m && { label: 'Edit series', icon: 'edit', fn: () => seriesModal(s) },
     m && { label: 'Cover & files', icon: 'image', fn: () => mediaDrawer(s.id) },
+    { label: 'Announcements (buyers only)', icon: 'bell', fn: () => annDrawer(s) },
     m && { label: 'Medium (English / हिंदी)', icon: 'globe', fn: () => mediumModal(s) },
     { label: 'Approval message & Telegram', icon: 'msg', fn: () => AX.amsg.edit(s.id) },
     AX.can('messaging', 'manage') && { label: 'Notice to this series', icon: 'bell', fn: () => AX.newNotice({ series: [s.id] }) },
@@ -557,10 +558,51 @@ AX.shareTest = async id => {
   share(t.title, url, `📝 ${t.title}\n${s.title || ''}\n${fmt.plural(t.questions || 0, 'question')} · ${t.duration} min${when ? '\n' + when : ''}\n\nOpen: ${url}`, path);
 };
 
+/* ---------- v77: announcements of a series, shown only to students who bought it (cbt_admin_series_posts) ---------- */
+function annDrawer(s) {
+  const m = canM(); let L = null, err = '';
+  const body = () => h`<div class="callout info mb16">${icon('info')}<div class="sm">Only students who have this series see these, in its <b>Announcements</b> tab. Students who have not bought it see the tab locked.</div></div>
+    ${m ? h`<div class="card flat"><div class="col gap16">
+      <div class="fld"><label for="an-t">Title</label><input class="inp" id="an-t" maxlength="120" placeholder="e.g. Test 05 moved to Sunday"></div>
+      <div class="fld"><label for="an-b">Message</label><textarea class="inp" id="an-b" rows="5" maxlength="3000" placeholder="Write the announcement. Links starting with https:// can be tapped."></textarea></div>
+      <label class="row gap8 sm"><input type="checkbox" id="an-p"> Pin to the top</label>
+      <button class="btn pri" data-act="add">${icon('send', 15)} Post announcement</button></div></div>` : ''}
+    <div class="section-t">Posted · ${L ? L.length : '…'}</div>
+    ${err ? h`<div class="callout warn">${icon('info')}<div class="sm">${err}</div></div>` : !L ? UI.skeleton(2)
+      : L.length ? h`<div class="col gap12">${join(L, a => h`<div class="card flat"><div class="row top"><div class="grow">${a.pinned ? UI.pill('Pinned', 'warn') : ''} <span class="xs mut">${fmt.dt(a.at)}</span>${a.title ? h`<div><b>${a.title}</b></div>` : ''}<p class="sm mt4" style="white-space:pre-wrap">${a.body}</p></div>
+          ${m ? h`<div class="col gap6"><button class="btn xs" data-act="pin" data-id="${a.id}">${a.pinned ? 'Unpin' : 'Pin'}</button><button class="btn xs danger" data-act="del" data-id="${a.id}">${icon('trash', 13)} Delete</button></div>` : ''}</div></div>`)}</div>`
+      : UI.empty({ icon: 'bell', title: 'No announcements yet' })}`;
+  UI.drawer({
+    title: 'Announcements', sub: s.title, body: body(),
+    onOpen(el, close, api) {
+      const redraw = () => api.set(body());
+      const load = async () => { const r = await AX.api.call('cbt_admin_series_posts', 'get', { series_id: s.id });
+        if (r.ok) { L = r.items || []; err = ''; } else err = r.error === 'missing' ? 'Run supabase_v77_free_vs_paid.sql and then supabase_v35_admin_team.sql in Supabase first.' : AX.errText(r);
+        if (el.isConnected) redraw(); };
+      load();
+      const save = async (d) => { const r = await AX.api.call('cbt_admin_series_posts', 'save', d); if (!r.ok) { UI.toast(r.error === 'empty' ? 'Write a title or a message' : AX.errText(r), { tone: 'bad' }); return false; } await load(); return true; };
+      AX.act(el, {
+        async add(b) {
+          const t = el.querySelector('#an-t').value.trim(), m2 = el.querySelector('#an-b').value.trim(), p = el.querySelector('#an-p').checked;
+          await UI.busy(b, async () => { if (await save({ series_id: s.id, title: t, body: m2, pinned: p })) UI.toast('Announcement posted'); });
+        },
+        async pin(b) { const a = L.find(x => x.id === b.dataset.id); if (a) await save({ id: a.id, series_id: s.id, title: a.title, body: a.body, pinned: !a.pinned }); },
+        async del(b) {
+          if (!(await UI.confirm({ title: 'Delete this announcement?', yes: 'Delete', tone: 'danger' }))) return;
+          const r = await AX.api.call('cbt_admin_series_posts', 'delete', { id: b.dataset.id }); if (!r.ok) return UI.err(r); UI.toast('Deleted'); await load();
+        }
+      });
+    }
+  });
+}
+
 /* ---------- cover & files ---------- */
 function mediaDrawer(sid) {
   if (!canM()) return;
-  let kind = 'syllabus', file = null, busy = false, OPENS = {};
+  let kind = 'syllabus', file = null, busy = false, OPENS = {}, LAY = null;
+  // v77: folders and order of the files (supabase_v77_free_vs_paid.sql); students see them in this order, grouped by folder
+  const ordered = () => { const L = (S_(sid) || {}).files || []; return L.map((f, i) => [f, i]).sort((a, b) => ((LAY && LAY[a[0].id] ? LAY[a[0].id].sort : 0) - (LAY && LAY[b[0].id] ? LAY[b[0].id].sort : 0)) || a[1] - b[1]).map(x => x[0]); };
+  const folderOf = f => (LAY && LAY[f.id] && LAY[f.id].folder) || '';
   const body = () => {
     const s = S_(sid); if (!s) return UI.empty({ icon: 'layers', title: 'Series not found' });
     const cv = COV.get(sid);
@@ -569,7 +611,7 @@ function mediaDrawer(sid) {
       <p class="xs mut mt8">Shown on the series card for students and in the store. Use a 16 : 9 photo (1280 × 720 px). Other shapes are fitted into 16 : 9 without cutting, and compressed automatically.</p>
       <div class="row wrap mt12"><button class="btn soft" data-act="cvUp">${icon('upload', 16)} ${s.has_cover ? 'Change photo' : 'Upload photo'}</button>${s.has_cover ? h`<button class="btn ghost danger" data-act="cvRm">${icon('trash', 15)} Remove</button>${cv === undefined ? '' : UI.pill('Cover set', 'ok')}` : ''}</div>
       <div class="section-t">Syllabus, schedule & notes</div>
-      <div class="card flat tight">${(s.files || []).length ? join(s.files, f => h`<div class="ts-file"><span class="ts-ic ${f.kind === 'schedule' ? 'info' : f.kind === 'notes' ? 'vio' : 'gold'}">${icon(/\.pdf$/i.test(f.name || '') ? 'pdf' : 'image', 18)}</span><div class="grow"><b class="ell" style="display:block">${f.title}</b><div class="xs mut">${f.kind} · ${Math.round((f.size || 0) / 1024)} KB${f.name ? ' · ' + f.name : ''}</div>${OPENS[f.id] ? h`<div class="xs mt4">${UI.pill((OPENS[f.id] > Date.now() ? 'Opens ' : 'Opened ') + fmt.dt(OPENS[f.id]), OPENS[f.id] > Date.now() ? 'warn' : 'ok')}</div>` : ''}</div><button class="btn xs" data-act="fOpen" data-id="${f.id}" title="Students can open it only from this time">${icon('clock', 13)} ${OPENS[f.id] ? 'Change' : 'Opens at'}</button><button class="btn xs danger" data-act="fDel" data-id="${f.id}">${icon('trash', 13)} Delete</button></div>`) : h`<div class="xs mut">No files yet. Students can open these from the series page.</div>`}</div>
+      ${LAY ? h`<div class="xs mut mb8">Use ↑ ↓ to change the order and <b>Folder</b> to group files. Students who have not bought the series can open only <b>Schedule</b> files.</div>` : ''}<div class="card flat tight">${(s.files || []).length ? join(ordered(), (f, i) => h`<div class="ts-file"><span class="ts-ic ${f.kind === 'schedule' ? 'info' : f.kind === 'notes' ? 'vio' : 'gold'}">${icon(/\.pdf$/i.test(f.name || '') ? 'pdf' : 'image', 18)}</span><div class="grow"><b class="ell" style="display:block">${f.title}</b><div class="xs mut">${f.kind} · ${Math.round((f.size || 0) / 1024)} KB${f.name ? ' · ' + f.name : ''}</div>${OPENS[f.id] ? h`<div class="xs mt4">${UI.pill((OPENS[f.id] > Date.now() ? 'Opens ' : 'Opened ') + fmt.dt(OPENS[f.id]), OPENS[f.id] > Date.now() ? 'warn' : 'ok')}</div>` : ''}${folderOf(f) ? h`<div class="xs mt4">${UI.pill('📁 ' + folderOf(f), 'info')}</div>` : ''}</div>${LAY ? h`<button class="btn xs ghost" data-act="mvU" data-id="${f.id}" ${i === 0 ? raw('disabled') : ''} title="Move up">↑</button><button class="btn xs ghost" data-act="mvD" data-id="${f.id}" ${i === ordered().length - 1 ? raw('disabled') : ''} title="Move down">↓</button><button class="btn xs" data-act="fFold" data-id="${f.id}">${icon('folder', 13)} Folder</button>` : ''}<button class="btn xs" data-act="fOpen" data-id="${f.id}" title="Students can open it only from this time">${icon('clock', 13)} ${OPENS[f.id] ? 'Change' : 'Opens at'}</button><button class="btn xs danger" data-act="fDel" data-id="${f.id}">${icon('trash', 13)} Delete</button></div>`) : h`<div class="xs mut">No files yet. Students can open these from the series page.</div>`}</div>
       <div class="card flat mt12"><div class="card-h">${icon('upload')}<h3>Upload a file</h3></div><div class="col gap16">
         <div class="fld"><label for="mf-t">Name shown to students</label><input class="inp" id="mf-t" maxlength="80" placeholder="e.g. Full syllabus"></div>
         <div class="fld"><label>Type</label><div class="seg" id="mf-k">${join([['syllabus', 'Syllabus'], ['schedule', 'Schedule'], ['notes', 'Notes']], ([v, l]) => h`<button type="button" class="${kind === v ? 'on' : ''}" data-v="${v}">${l}</button>`)}</div></div>
@@ -585,9 +627,27 @@ function mediaDrawer(sid) {
       const refresh = async () => { AX.cache.drop('catalog'); const c = await AX.data.catalog(true); if (c && c.ok) C = c; redraw(); AX.emit('data:changed'); AX.emit('tests:changed'); };
       if (S_(sid) && S_(sid).has_cover && !COV.has(sid)) loadCovers().then(() => { if (el.isConnected) redraw(); });
       // v43: when each file opens for students (e.g. solutions only after the test)
-      AX.api.call('cbt_admin_files', 'get', { series_id: sid }).then(r => { if (r && r.ok) { OPENS = r.files || {}; if (el.isConnected) redraw(); } });
+      AX.api.call('cbt_admin_files', 'get', { series_id: sid }).then(r => { if (r && r.ok) { OPENS = r.files || {}; if (r.layout) LAY = r.layout; if (el.isConnected) redraw(); } });
+      const arrange = async (list) => {
+        const items = list.map((f, i) => ({ id: f.id, folder: folderOf(f), sort: i }));
+        const r = await AX.api.call('cbt_admin_files', 'arrange', { series_id: sid, items });
+        if (!r.ok) { UI.toast(r.error === 'action' ? 'Run supabase_v77_free_vs_paid.sql in Supabase first' : AX.errText(r), { tone: 'bad' }); return false; }
+        items.forEach(x => { LAY[x.id] = { folder: x.folder, sort: x.sort }; }); redraw(); AX.cache.drop('catalog'); return true;
+      };
+      const move = async (id, d) => { const L = ordered(), i = L.findIndex(f => f.id === id), j = i + d; if (i < 0 || j < 0 || j >= L.length) return; [L[i], L[j]] = [L[j], L[i]]; await arrange(L); };
       el.addEventListener('click', e => { const b = e.target.closest('#mf-k button'); if (!b) return; kind = b.dataset.v; el.querySelectorAll('#mf-k button').forEach(x => x.classList.toggle('on', x === b)); });
       AX.act(el, {
+        mvU: b => move(b.dataset.id, -1),
+        mvD: b => move(b.dataset.id, 1),
+        async fFold(b) {
+          const f = ordered().find(x => x.id === b.dataset.id); if (!f) return;
+          const names = [...new Set(ordered().map(folderOf).filter(Boolean))];
+          const v = await UI.prompt({ title: 'Folder', label: 'Folder name', value: folderOf(f), required: false, max: 60, placeholder: 'e.g. Premium notes',
+            hint: (names.length ? 'Folders in this series: ' + names.join(', ') + '. ' : '') + 'Files with the same folder name are shown together. Leave empty for no folder.' });
+          if (v == null) return;
+          LAY[f.id] = { folder: v.trim(), sort: LAY[f.id] ? LAY[f.id].sort : 0 };
+          if (await arrange(ordered())) UI.toast(v.trim() ? 'Moved to ' + v.trim() : 'Removed from the folder');
+        },
         async cvUp(b) {
           const f = await AX.u.pickFile('image/*'); if (!f) return;
           await UI.busy(b, async () => {
