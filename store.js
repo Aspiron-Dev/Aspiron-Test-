@@ -853,17 +853,18 @@ function meDraw(){
    </div>
    ${soon.length?`<div class="card"><div class="card-h"><span class="hic gold">${I('bell')}</span><div class="grow"><h3>We will message you</h3><p class="sub">When these test series are live</p></div></div><div class="list">${soon.map(x=>`<button class="li" data-view="${esc(x.id)}">${thumb(x)}<span class="grow"><b>${esc(x.title)}</b><small>Coming soon</small></span>${I('cr')}</button>`).join('')}</div></div>`:''}
    <p class="sm faint center mt16">${I('lock')} Your details are saved only on this phone and used for your orders.</p>
-   <div class="center mt16"><button class="btn line" id="meout">${I('x')}Sign out</button></div>`;
+   <div class="center mt16"><button class="btn line" data-meout>${I('x')}Sign out</button></div>`;
 }
 function meSignOut(){
   LSd('store_me');MEM=null;CRS='';
   document.documentElement.classList.remove('has-me');
   document.body.classList.remove('boot');
-  go('home');
+  $$('[data-meini]').forEach(e=>e.textContent='');$$('[data-mename]').forEach(e=>e.textContent='');
+  const s=$('#mesub');if(s)s.textContent='';
+  show('home');
   setTimeout(()=>{
-    const g=$('#gate');if(g)g.classList.remove('out');
+    const g=$('#gate');if(g){g.classList.remove('out');g.scrollIntoView({behavior:'smooth'})}
     $$('.app,.dock').forEach(e=>e.inert=true);
-    $('#gate').scrollIntoView({behavior:'smooth'});
   },300);
 }
 
