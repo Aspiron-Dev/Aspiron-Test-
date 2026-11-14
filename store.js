@@ -852,7 +852,19 @@ function meDraw(){
      <div class="seg tseg" role="radiogroup" aria-labelledby="ptl">${T.map(([k,ic,l])=>`<button type="button" role="radio" class="${k===s?'on':''}" aria-checked="${k===s}" data-theme-set="${k}">${I(ic)}${l}</button>`).join('')}</div></div>
    </div>
    ${soon.length?`<div class="card"><div class="card-h"><span class="hic gold">${I('bell')}</span><div class="grow"><h3>We will message you</h3><p class="sub">When these test series are live</p></div></div><div class="list">${soon.map(x=>`<button class="li" data-view="${esc(x.id)}">${thumb(x)}<span class="grow"><b>${esc(x.title)}</b><small>Coming soon</small></span>${I('cr')}</button>`).join('')}</div></div>`:''}
-   <p class="sm faint center mt16">${I('lock')} Your details are saved only on this phone and used for your orders.</p>`;
+   <p class="sm faint center mt16">${I('lock')} Your details are saved only on this phone and used for your orders.</p>
+   <div class="center mt16"><button class="btn line" id="meout">${I('x')}Sign out</button></div>`;
+}
+function meSignOut(){
+  LSd('store_me');MEM=null;CRS='';
+  document.documentElement.classList.remove('has-me');
+  document.body.classList.remove('boot');
+  go('home');
+  setTimeout(()=>{
+    const g=$('#gate');if(g)g.classList.remove('out');
+    $$('.app,.dock').forEach(e=>e.inert=true);
+    $('#gate').scrollIntoView({behavior:'smooth'});
+  },300);
 }
 
 /* ---------- schedule and demo tests (PDF / photo) ---------- */
@@ -977,6 +989,7 @@ document.addEventListener('click',e=>{
   else if(d.rl){const r=t.closest('.sec').querySelector('.rail');r.scrollBy({left:(+d.rl)*r.clientWidth*.85,behavior:RM?'auto':'smooth'})}
   else if('gate' in d)gateGo();
   else if('me' in d)meSheet();
+  else if('meout' in d)meSignOut();
   else if('mesave' in d)meSaveGo();
   else if(d.buy){closeSheet();buy(d.buy)}
   else if(d.lang&&d.lid){closeSheet();buy(d.lid,d.lang)}
