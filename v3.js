@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=53;
+const V3VER=54;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -835,8 +835,8 @@ function focusView(){return {t:'Focus timer',s:'Study without breaks, then rest'
 const TOOLS={
  study:[['focus','timer','Focus timer','Timed study sessions'],['planner','cal','Study tracker','Your weekly plan and tasks'],['cd','target','Exam countdown','Days to your exam']],
  exam:[['marks','calc','Marks calculator','+4 / −1 scoring'],['rank','medal','NEET rank estimator','Marks to an expected rank'],['pct','percent','JEE percentile to rank','Estimate your JEE Main rank']],
- sci:[['ptable','atom','Periodic table','All 118 elements'],['sci','sigma','Scientific calculator','sin, log, powers'],['conv','ruler','Unit converter','SI and common units'],['const','list','Physical constants','Values for numericals']]};
-function toolTile(t){const v={planner:`<b>${weekItems(TI()).length}</b>tests today`,cd:`<b>${cdDays()}</b>${typeof cdDays()==='number'?'days left':'your exam date'}`,marks:`<b>${MK.c*4-MK.w}</b>last score`,rank:'Sample curve',pct:'Simple formula',ptable:'Tap any element',sci:'Degrees or radians',conv:'6 categories',const:'16 constants'}[t[0]]||'';
+ sci:[['ptable','atom','Periodic table','Full chapter, trends, 3D'],['sci','sigma','Scientific calculator','sin, log, powers'],['conv','ruler','Unit converter','SI and common units'],['const','list','Physical constants','Values for numericals']]};
+function toolTile(t){const v={planner:`<b>${weekItems(TI()).length}</b>tests today`,cd:`<b>${cdDays()}</b>${typeof cdDays()==='number'?'days left':'your exam date'}`,marks:`<b>${MK.c*4-MK.w}</b>last score`,rank:'Sample curve',pct:'Simple formula',ptable:'118 elements',sci:'Degrees or radians',conv:'6 categories',const:'16 constants'}[t[0]]||'';
   return `<button class="card tl" data-a="tool" data-k="${t[0]}"><span class="ti g">${ic(t[1],21)}</span><span><b>${t[2]}</b><small>${t[3]}</small></span><span class="v">${v}</span></button>`}
 VIEW.tools=()=>`<div class="pt"><div><h1>Tools</h1><p>Helpers for study, exams and numericals</p></div></div>
   <button class="hero ftile tap" data-a="tool" data-k="focus"><span class="mini"><svg viewBox="0 0 62 62"><circle class="tr" cx="31" cy="31" r="28"/><circle class="pg" id="ftMini" cx="31" cy="31" r="28" stroke-dasharray="${FM.toFixed(1)}"/></svg><span data-ft="t"></span></span>
@@ -875,25 +875,18 @@ function pctView(){return {t:'JEE percentile to rank',s:'Estimate your JEE Main 
   <p class="hint">Change the number of candidates when NTA publishes it. The default is a round sample figure.</p></div>`},
   after:()=>{const p=$('#pcP'),n=$('#pcN');const up=()=>{PC.p=Math.max(0,Math.min(100,+p.value||0));PC.n=Math.max(1000,+n.value||1000);const b=document.querySelector('#scrB .big');b.querySelector('b').textContent=fmtN(Math.max(1,Math.round((100-PC.p)*PC.n/100)));b.querySelector('span').textContent=`at ${PC.p} percentile`};p.oninput=up;n.oninput=up}}}
 
-/* periodic table */
-const PSYM='H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og'.split(' ');
-const PNAME='Hydrogen Helium Lithium Beryllium Boron Carbon Nitrogen Oxygen Fluorine Neon Sodium Magnesium Aluminium Silicon Phosphorus Sulfur Chlorine Argon Potassium Calcium Scandium Titanium Vanadium Chromium Manganese Iron Cobalt Nickel Copper Zinc Gallium Germanium Arsenic Selenium Bromine Krypton Rubidium Strontium Yttrium Zirconium Niobium Molybdenum Technetium Ruthenium Rhodium Palladium Silver Cadmium Indium Tin Antimony Tellurium Iodine Xenon Caesium Barium Lanthanum Cerium Praseodymium Neodymium Promethium Samarium Europium Gadolinium Terbium Dysprosium Holmium Erbium Thulium Ytterbium Lutetium Hafnium Tantalum Tungsten Rhenium Osmium Iridium Platinum Gold Mercury Thallium Lead Bismuth Polonium Astatine Radon Francium Radium Actinium Thorium Protactinium Uranium Neptunium Plutonium Americium Curium Berkelium Californium Einsteinium Fermium Mendelevium Nobelium Lawrencium Rutherfordium Dubnium Seaborgium Bohrium Hassium Meitnerium Darmstadtium Roentgenium Copernicium Nihonium Flerovium Moscovium Livermorium Tennessine Oganesson'.split(' ');
-const PMASS='1.008 4.0026 6.94 9.0122 10.81 12.011 14.007 15.999 18.998 20.180 22.990 24.305 26.982 28.085 30.974 32.06 35.45 39.95 39.098 40.078 44.956 47.867 50.942 51.996 54.938 55.845 58.933 58.693 63.546 65.38 69.723 72.630 74.922 78.971 79.904 83.798 85.468 87.62 88.906 91.224 92.906 95.95 [98] 101.07 102.91 106.42 107.87 112.41 114.82 118.71 121.76 127.60 126.90 131.29 132.91 137.33 138.91 140.12 140.91 144.24 [145] 150.36 151.96 157.25 158.93 162.50 164.93 167.26 168.93 173.05 174.97 178.49 180.95 183.84 186.21 190.23 192.22 195.08 196.97 200.59 204.38 207.2 208.98 [209] [210] [222] [223] [226] [227] 232.04 231.04 238.03 [237] [244] [243] [247] [247] [251] [252] [257] [258] [259] [262] [267] [268] [269] [270] [269] [278] [281] [282] [285] [286] [289] [290] [293] [294] [294]'.split(' ');
-function epos(z){const P=[[1,2,1],[3,10,2],[11,18,3],[19,36,4],[37,54,5],[55,86,6],[87,118,7]];const [s,,p]=P.find(x=>z>=x[0]&&z<=x[1]),i=z-s;
-  if(p===1)return {r:1,c:z===1?1:18,p,b:z===1?'s':'s'};
-  if(p<=3)return {r:p,c:i<2?i+1:i+11,p,b:i<2?'s':'p'};
-  if(p<=5)return {r:p,c:i+1,p,b:i<2?'s':i<12?'d':'p'};
-  if(i<2)return {r:p,c:i+1,p,b:'s'};if(i<=16)return {r:p+3,c:i+1,p,b:'f'};return {r:p,c:i-13,p,b:i<26?'d':'p'}}
-let PTQ='';
-const BLK={s:'s-block',p:'p-block',d:'d-block (transition)',f:'f-block (lanthanoids, actinoids)'};
-function ptView(){return {t:'Periodic table',s:'Tap an element for details',html:()=>`<label class="sbox">${ic('search',18)}<input id="ptq" type="search" placeholder="Search by name, symbol or number" value="${esc3(PTQ)}" aria-label="Search elements"></label>
-  <div class="lg"><span><i style="background:color-mix(in srgb,var(--c1) 40%,var(--surface))"></i>s-block</span><span><i style="background:color-mix(in srgb,var(--c3) 40%,var(--surface))"></i>p-block</span><span><i style="background:color-mix(in srgb,var(--c2) 40%,var(--surface))"></i>d-block</span><span><i style="background:var(--acc1)"></i>f-block</span></div>
-  <div class="ptable"><div class="pgrid" id="pgrid">${PSYM.map((s,i)=>{const z=i+1,q=epos(z);return `<button class="el b${q.b}" style="grid-row:${q.r};grid-column:${q.c}" data-a="el" data-z="${z}" aria-label="${PNAME[i]}, ${z}"><small>${z}</small>${s}</button>`}).join('')}
-   <span style="grid-row:6;grid-column:3;display:grid;place-items:center;font-size:9px;color:var(--faint)">57–71</span><span style="grid-row:7;grid-column:3;display:grid;place-items:center;font-size:9px;color:var(--faint)">89–103</span><span style="grid-row:8;height:10px"></span></div></div>
-  <p class="hint">Swipe sideways to see the full table.</p>`,after:()=>{const i=$('#ptq');const f=()=>{PTQ=i.value.trim().toLowerCase();$$('#pgrid .el').forEach(b=>{const z=+b.dataset.z,m=!PTQ||String(z)===PTQ||PSYM[z-1].toLowerCase()===PTQ||PNAME[z-1].toLowerCase().includes(PTQ);b.classList.toggle('dim',!m);b.classList.toggle('hit',!!PTQ&&m)});const h=$('#pgrid .el.hit');h&&h.scrollIntoView({block:'nearest',inline:'center',behavior:RM?'auto':'smooth'})};i.oninput=f;f()}}}
-A.el=el=>{const z=+el.dataset.z,q=epos(z),g=q.b==='f'?'3 (f-block)':q.c;openSheet(`<div style="display:flex;gap:16px;align-items:center"><span class="ti k" style="width:72px;height:72px;border-radius:20px;font-size:26px;font-weight:600;flex-direction:column;gap:0"><small style="font-size:11px;color:var(--heroMut)">${z}</small>${PSYM[z-1]}</span><div><h2 id="sheetT">${PNAME[z-1]}</h2><p class="sub" style="margin:2px 0 0">${BLK[q.b]}</p></div></div>
-  <div class="kv two" style="margin-top:18px"><div><small>Atomic number</small><b>${z}</b></div><div><small>Atomic mass (u)</small><b>${PMASS[z-1]}</b></div><div><small>Period</small><b>${q.p}</b></div><div><small>Group</small><b>${g}</b></div></div>
-  <p class="hint" style="margin-top:14px">Masses in brackets are for the most stable isotope.</p>`)};
+/* periodic table: a full study tool in its own files (ptable-data.js, ptable-notes.js, ptable.js), fetched the first
+   time it is opened so the app itself stays light. ?v= lets the service worker keep them for offline use. */
+const PTV=1;let ptLoad=null;
+const PTAPI={A,push,redraw,openSheet,ic,toast3,RM,lsGet,lsSet,back,get $(){return $},get $$(){return $$},get esc3(){return esc3},get root(){return root},
+  replaceTop(v){if(!STK.length)return;const o=STK[STK.length-1];o&&o.leave&&o.leave();STK[STK.length-1]=v;drawScr('');$('#scrB').scrollTop=0}};
+function ptFiles(){return ptLoad||(ptLoad=['ptable-data.js','ptable-notes.js','ptable.js'].reduce((p,f)=>p.then(()=>new Promise((ok,no)=>{const s=document.createElement('script');s.src=f+'?v='+PTV;s.onload=ok;s.onerror=()=>{s.parentNode&&s.parentNode.removeChild(s);no()};document.head.appendChild(s)})),Promise.resolve()).then(()=>{if(!window.__ptView)throw 0}).catch(e=>{ptLoad=null;throw e}))}
+function ptView(){if(window.__ptView)return window.__ptView(PTAPI);
+  const v={t:'Periodic table',s:'Loading',html:()=>'<div class="card sk" style="height:340px"></div>'};
+  ptFiles().then(()=>{const i=STK.indexOf(v);if(i<0)return;STK[i]=window.__ptView(PTAPI);if(i===STK.length-1)redraw()},
+    ()=>{const i=STK.indexOf(v);if(i<0)return;v.s='';v.html=()=>`<div class="card empty"><span class="ti">${ic('wifiOff',26)}</span><b>Could not load the periodic table</b><p>Check your internet connection and try again.</p><button class="btn" data-a="ptRetry">Try again</button></div>`;if(i===STK.length-1)redraw()});
+  return v}
+A.ptRetry=()=>{if(!STK.length)return;STK[STK.length-1]=ptView();redraw()};
 
 /* scientific calculator */
 const CAL={ex:'',res:'0',deg:true};
