@@ -26,6 +26,15 @@ const server = http.createServer((req, res) => {
 });
 
 const calls = [];
+let LIVE = [];   // rows of live_tests, built in the set-up below
+const stubLive = id => {   // the shape the panel reads from cbt_admin3 live: counts differ per test
+  const k = Math.max(0, LIVE.findIndex(t => t.id === id)), t0 = Date.now(), P = i => ({ id: 'st' + k + '-' + i, name: 'Student ' + k + '-' + i, mobile: '9876' + String(500000 + k * 1000 + i) });
+  const row = LIVE.find(t => t.id === id) || { title: 'Old test' };
+  return { ok: true, now: t0, eligible: 240, test: { title: row.title, questions: 45, duration: 45, max: 180, active: true, opens_at: t0 - 3600e3 },
+    writing: Array.from({ length: 3 + k }, (_, i) => Object.assign(P(i), { started: t0 - 600e3, ends: t0 + 2100e3 })),
+    done: Array.from({ length: 12 + k * 7 }, (_, i) => Object.assign(P(100 + i), { score: 100 - i, max: 180, correct: 30, wrong: 5, skipped: 10, used: 1800, at: t0 - 300e3, late: false })),
+    waiting: Array.from({ length: 20 }, (_, i) => Object.assign(P(200 + i), { seen: t0 - 86400e3, devices: 1, max_devices: 2 })), expired: [] };
+};
 async function rpcRoute(route) {
   const req = route.request(), fn = req.url().split('/rpc/')[1].split('?')[0];
   if (!/^[a-z0-9_]+$/.test(fn)) return route.fulfill({ status: 400, body: '{}' });
@@ -33,6 +42,10 @@ async function rpcRoute(route) {
   const keys = Object.keys(body).filter(k => /^p_[a-z0-9_]+$/.test(k));
   const vals = keys.map(k => body[k] === null || body[k] === undefined ? null : typeof body[k] === 'object' ? JSON.stringify(body[k]) : String(body[k]));
   calls.push(fn);
+  if (fn === 'cbt_admin3' && (body.p_action === 'live_tests' || body.p_action === 'live')) {
+    const out = body.p_action === 'live_tests' ? { ok: true, tests: LIVE } : stubLive((body.p_data || {}).id);
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(out) });
+  }
   try {
     const r = await q(`select public.${fn}(${keys.map((k, i) => `${k} => $${i + 1}`).join(', ')}) as r`, vals);
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(r[0].r) });
@@ -55,6 +68,9 @@ async function rpcRoute(route) {
   await q(`update public.cbt_store_items set title = 'NEET ASPIRON TEST SERIES ( Coming soon ) 2027' where id = 'cccccccc-0000-0000-0000-000000000001'`);
   await q(`insert into public.cbt_store_orders (code, item_id, item_title, amount, name, mobile, status, payer, utr, paid_at, lang) values ('ASP-TOUR1', 'cccccccc-0000-0000-0000-000000000001', 'PHYSICS PRO TEST SERIES', 299, 'Tour Student', '9877700001', 'pending', 'Tour Student', '875931003890', now(), 'hi') on conflict do nothing`);
   await q(`insert into cbt_private.store_coupons (item_id, code, kind, value, active, starts_at, ends_at) select 'cccccccc-0000-0000-0000-000000000001', 'TOURLONG', 'flat', 100, true, now(), now() + interval '9 days' where not exists (select 1 from cbt_private.store_coupons where code = 'TOURLONG')`);
+  await q(`update cbt_private.tests set opens_at = (extract(epoch from now() - interval '1 hour') * 1000)::bigint, closes_at = (extract(epoch from now() + interval '2 hours') * 1000)::bigint where id in ('aaaaaaaa-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004')`);
+  await q(`insert into cbt_private.tests select (jsonb_populate_record(null::cbt_private.tests, to_jsonb(t) || jsonb_build_object('id', gen_random_uuid(), 'title', 'Old mock ' || g, 'opens_at', (extract(epoch from now() - (g || ' days')::interval) * 1000)::bigint, 'closes_at', (extract(epoch from now() - (g || ' days')::interval + interval '3 hours') * 1000)::bigint, 'result_at', null))).* from cbt_private.tests t, generate_series(1, 40) g where t.id = 'aaaaaaaa-0000-0000-0000-000000000001'`);
+  LIVE = (await q(`select t.id, t.title, s.title as series, case when t.title in ('Paid Live', 'Free Live', 'Open mock') then 1 else 0 end as open_now from cbt_private.tests t join cbt_private.series s on s.id = t.series_id order by s.created_at, t.opens_at desc nulls last limit 12`)).map(r => ({ id: r.id, title: r.title, series: r.series, open_now: r.open_now }));
   await new Promise(r => server.listen(PORT, '127.0.0.1', r));
   fs.mkdirSync(path.join(__dirname, 'shots'), { recursive: true });
   const br = await chromium.launch();
@@ -94,6 +110,39 @@ async function rpcRoute(route) {
       }
       if (id === 'home') { await page.click('#ax-prof'); await page.waitForTimeout(500); ok(/Sign out/.test(await page.textContent('.modal')), tag + ' profile sheet opens'); await page.screenshot({ path: path.join(__dirname, 'shots', `profile_${vw.width}_${theme}.png`) }); await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
       if (['home', 'storage', 'billing', 'students', 'orders', 'offers', 'tests', 'team'].includes(id)) await page.screenshot({ path: path.join(__dirname, 'shots', `${id}_${vw.width}_${theme}.png`), fullPage: vw.width > 500 });
+    }
+    if (theme === 'light') {   // live monitor + Home: series boards, swipe, history, search
+      const U = x => BASE + 'cp-dt764twzf54s5m.html#/' + x, phone = vw.width < 500, sh = n => page.screenshot({ path: path.join(__dirname, 'shots', n + '_' + vw.width + '.png') });
+      await page.goto(U('live')); await page.waitForSelector('.lv-pane .lv-board .k-v'); await page.waitForTimeout(1200);
+      const titles = await page.$$eval('.lv-pane h3', a => a.map(x => x.textContent.trim()));
+      ok(titles.length === 3 && ['Paid Live', 'Free Live', 'Open mock'].every(t => titles.includes(t)), tag + ' live: one board per live test ' + titles.join('|'));
+      const sers = (await page.$$eval('.lv-ser', a => a.map(x => x.textContent.trim()))).join('|');
+      ok(/PAID Series/.test(sers) && /FREE Series/.test(sers), tag + ' live: every board names its series: ' + sers);
+      ok((await page.isVisible('.lv-dots')) === phone, tag + ' live: dots only when boards do not all fit (' + phone + ')');
+      ok(/\d/.test(await page.textContent('.lv-pane .k-v')) && !/Loading/.test(await page.textContent('.lv-pane')), tag + ' live: numbers are filled in');
+      await sh('live');
+      if (phone) await page.evaluate(() => { const r = document.getElementById('lv-row'), p = document.querySelectorAll('.lv-pane')[1]; r.scrollTo({ left: p.offsetLeft }); });
+      else await page.click('.lv-pane:nth-child(2) .lv-bh');
+      await page.waitForTimeout(700);
+      ok(new RegExp(titles[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(await page.textContent('#lv-for')) && (await page.$$eval('.lv-pane', a => a.findIndex(x => x.classList.contains('on')))) === 1, tag + ' live: ' + (phone ? 'swiping' : 'tapping') + ' to the 2nd board opens its student list');
+      if (phone) { await page.click('.lv-dot:nth-child(3)'); await page.waitForTimeout(700); ok((await page.$$eval('.lv-dot', a => a.findIndex(x => x.classList.contains('on')))) === 2 && (await page.$$eval('.lv-pane', a => a.findIndex(x => x.classList.contains('on')))) === 2, tag + ' live: a dot jumps to that board'); }
+      await page.goto(U('live/history')); await page.waitForSelector('.lv-sc-card'); await page.waitForTimeout(300);
+      const cards = await page.$$eval('.lv-sc-card', a => a.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
+      ok(cards.length >= 2 && cards.some(c => /PAID Series/.test(c) && /1 live/.test(c)) && cards.some(c => /FREE Series/.test(c) && /2 live/.test(c)), tag + ' history: series first, with how many are live: ' + cards.join(' / '));
+      await sh('history');
+      await page.click('.lv-sc-card:has-text("PAID Series")'); await page.waitForSelector('#lv-hl .li'); await page.waitForTimeout(300);
+      ok(/Paid Live/.test(await page.textContent('#lv-hl .li .t')) && (await page.$$eval('#lv-hl .li', a => a.length)) === 30, tag + ' history: live test first, 30 at a time');
+      await page.click('[data-act=more]'); await page.waitForTimeout(300);
+      ok((await page.$$eval('#lv-hl .li', a => a.length)) === 41, tag + ' history: "show more" lists all 41 tests of the series');
+      await page.fill('[data-act=hq]', 'Old mock 7'); await page.waitForTimeout(500);
+      ok((await page.$$eval('#lv-hl .li', a => a.length)) === 1, tag + ' history: search finds one test among many');
+      await sh('series');
+      await page.click('#lv-hl .li'); await page.waitForSelector('.lv-pane .lv-board .k-v'); await page.waitForTimeout(900);
+      ok((await page.$$eval('.lv-pane', a => a.length)) === 1 && /Old mock 7/.test(await page.textContent('.lv-pane h3')) && /PAID Series/.test(await page.textContent('.btn.ghost[href*="history"]')), tag + ' history: an older test opens as one board, with a way back to its series');
+      await page.goto(U('home')); await page.waitForSelector('.hm-lc'); await page.waitForTimeout(1500);
+      const hc = await page.$$eval('.hm-lc', a => a.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
+      ok(hc.length === 3 && (await page.$$eval('[data-lcn=writing]', a => a.every(x => /\d/.test(x.textContent)))), tag + ' home: all live tests at once, with numbers: ' + hc.map(x => x.slice(0, 40)).join(' / '));
+      await sh('homelive');
     }
     await ctx.close();
   }

@@ -90,6 +90,12 @@ Same family as the student app (`v3.css`): warm paper, graphite, champagne-gold,
 - Files: `cx/cx2.css` (looks), `cx/shell.js` (rail, strip, motion). `cx/cx.css` stays the base layer. Routes, data
   and permissions did not change. Light is the default; dark is one tap away.
 
+### Live monitor and Home (series first)
+- **Live now:** one board per test that is open now, each naming its series. Computer: all side by side (up to 3 in a row, then scroll). Phone: one screen per test, swipe left / right (or the arrows / dots). The student list below belongs to the open board.
+- **Series & history:** every series (with how many tests are live) → its tests, live first then newest first, with search, filters and "show more" (so thousands of tests stay findable) → one test. Links: `#/live`, `#/live/history`, `#/live/history/<series>`, `#/live/<testId>`.
+- **Home:** a "Live now" row with one card per live test (series, test, ends at, writing / submitted / not started).
+- Egress: the open board refreshes every 15 s, the other live boards at most once a minute, Home reads once (nothing polled). No SQL change. Series names come from the catalog; `cbt_admin3` (base setup) is not in this repository, so the tour stubs it.
+
 ## 4. What next, and which model
 | Phase | Work | Model |
 |---|---|---|
