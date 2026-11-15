@@ -27,7 +27,7 @@ begin
   with
   ser as (select id, title, sort_order from series where coalesce(is_free, false) = false),
   acc as (select a.student_id, a.series_id from series_access a join ser on ser.id = a.series_id),
-  -- every number a student has had: the current one (always) and earlier ones (only for orders made before the change).
+  -- every number a student has had: the current one (always) and earlier ones (only for orders placed before the change).
   -- Numbers that are not 10 digits (empty, no mobile) never match anything.
   nums as (select id as student_id, right(regexp_replace(mobile, '[^0-9]', '', 'g'), 10) as m, 'infinity'::timestamptz as until from students
            union all
@@ -35,18 +35,18 @@ begin
   items as (select id, case when series_id ~ '^[0-9a-fA-F-]{36}$' then series_id::uuid end as series_id from public.cbt_store_items),
   orders as (
     select right(regexp_replace(o.mobile, '[^0-9]', '', 'g'), 10) as m, i.series_id, o.code, coalesce(o.amount, 0) as amount,
-           coalesce(o.paid_at, o.created_at) as ts, false as trashed
+           coalesce(o.paid_at, o.created_at) as ts, o.created_at as placed, false as trashed
       from public.cbt_store_orders o left join items i on i.id = o.item_id where o.status = 'paid'
     union all
     select right(regexp_replace(coalesce(t.data->>'mobile', ''), '[^0-9]', '', 'g'), 10), i.series_id, t.code, coalesce(nullif(t.data->>'amount', '')::numeric, 0)::int,
-           coalesce(nullif(t.data->>'paid_at', '')::timestamptz, t.at), true
+           coalesce(nullif(t.data->>'paid_at', '')::timestamptz, t.at), coalesce(nullif(t.data->>'created_at', '')::timestamptz, t.at), true
       from (select distinct on (code) * from order_trash order by code, id desc) t
       left join items i on i.id::text = t.data->>'item_id'
      where t.data->>'status' = 'paid' and not exists (select 1 from public.cbt_store_orders o2 where o2.code = t.code)
   ),
   -- each paid order once per student it belongs to (one join, then totals)
   mo as (select distinct on (n.student_id, o.code) n.student_id, o.series_id, o.code, o.amount, o.ts, o.trashed
-           from orders o join nums n on n.m = o.m and length(n.m) = 10 and o.ts <= n.until
+           from orders o join nums n on n.m = o.m and length(n.m) = 10 and o.placed <= n.until
           order by n.student_id, o.code),
   od as (select student_id, series_id, count(*) as n, sum(amount) as amt, max(ts) as ts, (array_agg(code order by ts desc))[1] as code, bool_or(trashed) as trashed
            from mo group by student_id, series_id),
@@ -54,8 +54,8 @@ begin
   pm as (select student_id, count(*) as n, sum(amount) as amt, max(paid_on) as on_ from public.cbt_payments group by student_id),
   rws as (
     select ac.series_id, ac.student_id, s.name, s.mobile, s.created_at as joined,
-           od.n as orders, od.amt as order_amt, od.ts as order_at, od.code as order_code, od.trashed as order_trashed,
-           coalesce(ot.n, 0) - coalesce(od.n, 0) as other_orders, pm.n as manual_n, pm.amt as manual_amt, pm.on_ as manual_on,
+           coalesce(od.n, 0) as orders, coalesce(od.amt, 0) as order_amt, od.ts as order_at, od.code as order_code, coalesce(od.trashed, false) as order_trashed,
+           coalesce(ot.n, 0) - coalesce(od.n, 0) as other_orders, coalesce(pm.n, 0) as manual_n, coalesce(pm.amt, 0) as manual_amt, pm.on_ as manual_on,
            case when od.n > 0 then 'order' when pm.n > 0 or coalesce(ot.n, 0) - coalesce(od.n, 0) > 0 then 'other' else 'none' end as b
       from acc ac
       join students s on s.id = ac.student_id

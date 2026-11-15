@@ -1427,14 +1427,23 @@ insert into cbt_private.students (id, name, mobile, status, salt, code_hash) val
 insert into cbt_private.series_access (student_id, series_id) values ('ffffffff-0000-0000-0000-0000000000c7', '33333333-3333-3333-3333-333333333333');
 insert into public.cbt_store_orders (code, item_id, item_title, amount, name, mobile, status) values
   ('ASP-C7', 'cccccccc-0000-0000-0000-0000000000a1', 'Chem item', 299, 'Nobody', '', 'paid');
-insert into public.cbt_store_orders (code, item_id, item_title, amount, name, mobile, status, paid_at) values
-  ('ASP-C8', 'cccccccc-0000-0000-0000-0000000000a1', 'Chem item', 299, 'New owner of old number', '9100000094', 'paid', now() + interval '2 days');
+insert into public.cbt_store_orders (code, item_id, item_title, amount, name, mobile, status, created_at, paid_at) values
+  ('ASP-C8', 'cccccccc-0000-0000-0000-0000000000a1', 'Chem item', 299, 'New owner of old number', '9100000094', 'paid', now() + interval '2 days', now() + interval '2 days');
+-- placed with the old number BEFORE the change, approved AFTER it: still the student's order
+insert into cbt_private.students (id, name, mobile, status, salt, code_hash) values ('ffffffff-0000-0000-0000-0000000000c8', 'Late Approval', '9100000008', 'approved', 'x', 'x');
+insert into cbt_private.series_access (student_id, series_id) values ('ffffffff-0000-0000-0000-0000000000c8', '33333333-3333-3333-3333-333333333333');
+insert into cbt_private.mobile_changes (student_id, old_mobile, new_mobile, at) values ('ffffffff-0000-0000-0000-0000000000c8', '9100000098', '9100000008', now() - interval '1 day');
+insert into public.cbt_store_orders (code, item_id, item_title, amount, name, mobile, status, created_at, paid_at) values
+  ('ASP-C9', 'cccccccc-0000-0000-0000-0000000000a1', 'Chem item', 299, 'Late Approval', '9100000098', 'paid', now() - interval '2 days', now());
 set role anon;
 select public.cbt_admin_access_check(:'ow9','get','{}') as ac2 \gset
 reset role;
-select pg_temp.chk('AC6 access check: a student with no mobile is not credited with an order that has no mobile, and an order made after a number change does not go to its earlier owner',
+select pg_temp.chk('AC6 access check: no-mobile never matches; an old number counts only for orders placed before the change (even if approved later); empty rows show 0, not null',
   (with r as (select y->>'name' n, y->>'b' b, (y->>'orders')::int o from jsonb_array_elements(:'ac2'::jsonb->'series') x, jsonb_array_elements(x->'rows') y where x->>'title' = 'CHEM Series')
-   select (select b from r where n = 'No Mobile') = 'none' and (select o from r where n = 'Old Number') = 1));
+   select (select b from r where n = 'No Mobile') = 'none' and (select o from r where n = 'Old Number') = 1
+      and (select b from r where n = 'Late Approval') = 'order'
+      and exists (select 1 from jsonb_array_elements(:'ac2'::jsonb->'series') x, jsonb_array_elements(x->'rows') y
+                   where y->>'name' = 'Nothing' and (y->>'orders')::int = 0 and (y->>'amt')::int = 0 and (y->>'manual')::int = 0 and (y->>'trashed')::boolean = false)));
 
 -- ===== report =====
 \t off
