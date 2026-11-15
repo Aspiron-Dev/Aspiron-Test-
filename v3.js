@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=62;
+const V3VER=63;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -368,7 +368,8 @@ function tick(first){let c=null;try{c=cdGet()}catch(e){}if(!c||!$('#cdBox'))retu
   $('#cdBox').setAttribute('aria-label',`${D} days, ${H} hours, ${M} minutes until ${c.name}`)}
 /* upcoming and live tests from the student's own series */
 function upList(){const cs=curSeries(),ok=new Set(cs?[cs.id]:[]),t0=nowMs();return (C().tests||[]).filter(t=>ok.has(t.series_id)).map(t=>({t,st:stOf(t)}))
-  .filter(x=>['live','prog'].includes(x.st)||x.st==='wait').sort((a,b)=>(['live','prog'].includes(b.st)-['live','prog'].includes(a.st))||((a.t.opens_at||0)-(b.t.opens_at||0)))}
+  .filter(x=>['live','prog','held'].includes(x.st)||x.st==='wait')   // v86: 'held' = a live test already attempted: it stays on Home until its result time
+  .sort((a,b)=>{const r=x=>['live','prog'].includes(x.st)?0:x.st==='held'?1:2;return (r(a)-r(b))||((a.t.opens_at||0)-(b.t.opens_at||0))})}
 function evRow(x){const t=x.t,live=['live','prog'].includes(x.st),when=t.opens_at||nowMs(),s=sOf(t.series_id);
   return `<button class="evr" data-a="${x.st==='wait'?'openSD':'test'}" data-id="${esc3(x.st==='wait'?t.series_id:t.id)}">${live?`<span class="when lv3" role="img" aria-label="Live now"><i class="lv3-r"></i><i class="lv3-r"></i><span class="lv3-d"></span><b>LIVE</b></span>`:`<span class="when"><b>${new Date(when).getDate()}</b><small>${fD(when,{month:'short'})}</small></span>`}
    <span style="min-width:0"><b>${esc3(t.title)}</b><small>${live?(x.st==='prog'?'You started this test':'Open now'):dayWord(when)+', '+fT(when)}, ${dur(t.duration||0)}</small></span>${live?'':stBadge(t)}</button>`}
@@ -391,7 +392,19 @@ A.evBell=()=>{try{if(typeof npSup==='function'&&(!npSup()||npInApp())){npHelp('a
   if(typeof npOn==='function'&&npOn()){toast3('Notifications are on. You will get test alerts and results.');return}
   const pm=window.Notification&&window.Notification.permission;if(pm==='denied'){npHelp('blocked');return}
   if(typeof npEnable==='function')npEnable()}catch(e){toast3('Could not open notification settings')}};
-function evCard(x){if(['live','prog'].includes(x.st))return evLive(x);
+/* a live test the student has already submitted: no Start; Result instead; tapping the test explains the re-attempt */
+function evHeld(x){const t=x.t,s=sOf(t.series_id)||{},ra=liveTill(t)||t.result_at||t.closes_at,when=ra?(day0(ra)===day0(nowMs())?fT(ra):dayWord(ra)+', '+fT(ra)):'';
+  return `<article class="evD evD-held"><i class="evD-glow" aria-hidden="true"></i>
+   <div class="evD-top"><span class="evD-live ok">${ic('check',14)}ATTEMPTED</span></div>
+   <button class="evD-b" data-a="heldInfo" data-id="${esc3(t.id)}"><b>${esc3(t.title)}</b><small>${esc3(s.title||'')}</small></button>
+   ${when?`<p class="evD-hn">${ic('clock',15)}<span>Result &amp; answer key after <b>${when}</b></span></p>`:''}
+   <button class="evD-go" data-a="hist"><span>${ic('chart',18)}Result</span></button>
+   <small class="evD-t">You can re-attempt after the result.</small></article>`}
+A.heldInfo=el=>{const t=tOf(el.dataset.id),ra=t&&(liveTill(t)||t.result_at||t.closes_at);
+  openSheet(`<div class="lk3"><span class="lk3i">${ic('check',26)}</span><h2 id="sheetT">Already attempted</h2>
+   <p class="sub">You have submitted <b>${esc3(t?t.title:'this test')}</b>. You can <b>re-attempt it as many times as you like after the result${ra?' at '+esc3(dayWord(ra)+', '+fT(ra)):' is out'}</b>.</p>
+   <p class="hint">Your live result and rank stay as they are. Re-attempts are only for practice.</p></div><div class="sheet-ft"><button class="btn lg" style="width:100%" data-a="close">OK</button></div>`)};
+function evCard(x){if(x.st==='held')return evHeld(x);if(['live','prog'].includes(x.st))return evLive(x);
   const t=x.t,t0=nowMs(),op=t.opens_at||t0,today=day0(op)===day0(t0),s=sOf(t.series_id)||{},id=esc3(t.id),st=today?'today':'up';
   const pill=today?'<span class="evp today"><i></i>LIVE TODAY</span>':'<span class="evp up"><i></i>UPCOMING</span>';
   const when=today?`Today, ${fT(op)}`:`${dayWord(op)}, ${fT(op)}`;
@@ -402,7 +415,7 @@ function evCard(x){if(['live','prog'].includes(x.st))return evLive(x);
    <div class="evcd"><span>Starts in</span><b data-cd="${op}">${cdTxt(op-t0)}</b></div></article>`}
 function evTick(){const n1=nowMs();const L=root.querySelectorAll('[data-cd]');if(!L.length)return;let due=false;L.forEach(e=>{const ms=+e.dataset.cd-n1;if(ms<=0)due=true;e.textContent=cdTxt(ms)});if(due)softRender()}
 // v80: the heading follows the day: Upcoming Events before the test's day, Live Today on its day, Live Now while it runs
-const evHead=x=>{if(!x)return 'Upcoming Events';const live=['live','prog'].includes(x.st),today=x.t.opens_at&&day0(x.t.opens_at)===day0(nowMs());
+const evHead=x=>{if(!x)return 'Upcoming Events';if(x.st==='held')return '<span class="evh ok"><i></i>Attempted</span>';const live=['live','prog'].includes(x.st),today=x.t.opens_at&&day0(x.t.opens_at)===day0(nowMs());
   return live?'<span class="evh"><i></i>Live Now</span>':today?'<span class="evh"><i></i>Live Today</span>':'Upcoming Events'};
 // v78: only ONE test on Home: the one live now, else the next one; the one after it shows once this one is over
 function upcoming(){const cs=curSeries(),all=upList(),L=all.slice(0,1),done=(C().tests||[]).some(t=>cs&&t.series_id===cs.id&&t.closes_at&&day0(t.closes_at)===day0(nowMs())&&t.closes_at<nowMs());

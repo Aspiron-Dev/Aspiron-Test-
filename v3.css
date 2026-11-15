@@ -1987,3 +1987,9 @@ p.hint>svg{display:inline-block;vertical-align:-2px;margin-right:4px}
 .evD-go::after{content:"";position:absolute;top:0;bottom:0;left:-40%;width:35%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.3),transparent);transform:skewX(-20deg);animation:evShine 3.2s ease-in-out infinite}
 @keyframes evShine{0%,60%{left:-40%}100%{left:130%}}
 @media (prefers-reduced-motion:reduce){.evD-go::after,.evD-glow,.evD-live i::after{animation:none}}
+
+/* v86: Home, an attempted live test */
+.evD-live.ok{gap:6px;padding:0 12px 0 10px;color:#17703c;background:color-mix(in srgb,#1f8a4c 12%,var(--surface));border-color:color-mix(in srgb,#1f8a4c 36%,var(--line))}
+.evD-hn{display:flex;gap:8px;align-items:flex-start;margin:8px 0 4px;padding:10px 12px;border-radius:12px;font-size:13px;line-height:1.45;color:var(--mut);background:var(--surface2)}
+.evD-hn svg{flex:none;margin-top:2px}.evD-hn b{color:var(--tx)}
+.evh.ok i{background:#1f8a4c;box-shadow:0 0 0 3px color-mix(in srgb,#1f8a4c 18%,transparent)}.evh.ok i::after{display:none}
