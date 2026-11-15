@@ -1993,3 +1993,39 @@ p.hint>svg{display:inline-block;vertical-align:-2px;margin-right:4px}
 .evD-hn{display:flex;gap:8px;align-items:flex-start;margin:8px 0 4px;padding:10px 12px;border-radius:12px;font-size:13px;line-height:1.45;color:var(--mut);background:var(--surface2)}
 .evD-hn svg{flex:none;margin-top:2px}.evD-hn b{color:var(--tx)}
 .evh.ok i{background:#1f8a4c;box-shadow:0 0 0 3px color-mix(in srgb,#1f8a4c 18%,transparent)}.evh.ok i::after{display:none}
+/* v87: Test history: one card per test, attempts chart, waiting-for-result countdown */
+.hs3-g{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;padding:14px 14px 14px 16px;text-align:left;color:var(--tx);width:100%}
+.hs3-gb{min-width:0;display:flex;flex-direction:column;gap:3px}
+.hs3-gb b{font-size:15.5px;font-weight:700;letter-spacing:-.01em;line-height:1.3}
+.hs3-gb small{color:var(--mut);font-size:12.5px}
+.hs3-gs{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:6px;font-size:12.5px;color:var(--mut)}
+.hs3-gs b{color:var(--tx);font-weight:700}
+.hs3-c{padding:2px 9px;border-radius:999px;font-weight:700;color:var(--acc);background:var(--accSoft)}
+.hs3-sp{width:64px;height:26px}
+.hs3-sp .a{fill:var(--acc2)}.hs3-sp .b{fill:color-mix(in srgb,var(--acc2) 40%,var(--surface2))}
+.hs3-g>svg:last-child{color:var(--faint)}
+.hs3-w{display:flex;flex-direction:column;gap:8px;padding:16px;border:1px solid color-mix(in srgb,var(--acc2) 30%,var(--line));background:linear-gradient(160deg,color-mix(in srgb,var(--acc1) 24%,var(--surface)),var(--surface) 62%)}
+.hs3-wp{display:inline-flex;align-items:center;gap:7px;height:26px;padding:0 11px;border-radius:999px;font-size:11.5px;font-weight:800;letter-spacing:.1em;color:var(--acc);background:var(--accSoft)}
+.hs3-wn{font-size:17px;font-weight:700;letter-spacing:-.015em;line-height:1.3}
+.hs3-w small{color:var(--mut);font-size:12.5px}
+.hs3-cd{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 14px;border-radius:14px;background:var(--surface2)}
+.hs3-cd span{font-size:13.5px;font-weight:600;color:var(--mut)}.hs3-cd b{font-size:22px;font-weight:700;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.hs3-h{position:relative;isolation:isolate;overflow:hidden;padding:18px;border-radius:24px;background:linear-gradient(160deg,color-mix(in srgb,var(--acc1) 28%,var(--surface)),var(--surface) 64%);border:1px solid color-mix(in srgb,var(--acc2) 30%,var(--line));box-shadow:0 22px 44px -30px color-mix(in srgb,var(--acc2) 70%,transparent)}
+.hs3-h .ig-glow{position:absolute;z-index:-1;width:240px;height:240px;right:-90px;top:-110px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--acc1) 75%,transparent),transparent 66%)}
+.hs3-h .im-s{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);font-weight:600}
+.hs3-h h1{font-size:21px;margin:4px 0 0;line-height:1.25;letter-spacing:-.02em}
+.hs3-h .ig-st{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 0}
+.hs3-h .ig-st div{display:flex;flex-direction:column;align-items:center;gap:1px;padding:10px 4px;border-radius:14px;background:color-mix(in srgb,var(--surface) 70%,transparent)}
+.hs3-h .ig-st b{font-size:20px;font-weight:700}.hs3-h .ig-st span{font-size:11.5px;color:var(--mut)}
+.hs3-ch{width:100%;height:auto;display:block;touch-action:manipulation}
+.hs3-ch .gr{stroke:var(--line);stroke-width:1}.hs3-ch .gr.z{stroke:var(--faint)}
+.hs3-ch .t,.hs3-ch .x{font-size:10.5px;fill:var(--mut)}
+.hs3-ch .v{font-size:10.5px;font-weight:700;fill:var(--tx)}
+.hs3-b{cursor:pointer;outline:none}
+.hs3-b path{fill:color-mix(in srgb,var(--acc2) 42%,var(--surface2));transition:fill .2s}
+.hs3-b.a path{fill:var(--acc2)}
+.hs3-b.sel path,.hs3-b:hover path{fill:var(--acc)}
+.hs3-b.sel .x{font-weight:800;fill:var(--tx)}
+.hs3-rd{display:flex;flex-direction:column;gap:2px;margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--surface2)}
+.hs3-rd b{font-size:13.5px}.hs3-rd span{font-size:12.5px;color:var(--mut);line-height:1.45}
+.hs3-n.a{background:var(--acc2);color:var(--onAcc)}
