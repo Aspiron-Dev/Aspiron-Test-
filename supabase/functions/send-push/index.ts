@@ -19,7 +19,7 @@
 //   sends "test is LIVE now" to students who tapped 🔔 on that test, once, when it opens, and (v79) "Result is out" to
 //   students who tapped 🔔 on a submitted test waiting for its result, once, when the result time comes.
 //   No password needed: it only sends alerts that are already due and marks each one sent.
-// Body: { mode: "info", vapid? } → { v: 3, vapid: secrets set?, key_ok: does `vapid` match VAPID_PUBLIC? } (no password; no secrets returned)
+// Body: { mode: "info", vapid? } → { v: 2, result_alerts: true (v79 version), vapid: secrets set?, key_ok: does `vapid` match VAPID_PUBLIC? } (no password; no secrets returned)
 
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
@@ -52,7 +52,7 @@ async function handle(req: Request): Promise<Response> {
   try { b = await req.json(); } catch { return json({ ok: false, error: "body" }, 400); }
 
   const pub = Deno.env.get("VAPID_PUBLIC") || "", priv = Deno.env.get("VAPID_PRIVATE") || "";
-  if (b.mode === "info") return json({ ok: true, v: 3, vapid: !!(pub && priv), key_ok: typeof b.vapid === "string" ? b.vapid === pub : null,
+  if (b.mode === "info") return json({ ok: true, v: 2, result_alerts: true, vapid: !!(pub && priv),   // v stays 2: the admin panel refuses any other value key_ok: typeof b.vapid === "string" ? b.vapid === pub : null,
     secrets: { VAPID_PUBLIC: !!pub, VAPID_PRIVATE: !!priv, VAPID_SUBJECT: !!Deno.env.get("VAPID_SUBJECT") },
     secret_key: (Deno.env.get("SB_SECRET_KEY") || "").startsWith("sb_secret_") });
 

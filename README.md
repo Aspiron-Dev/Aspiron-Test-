@@ -140,13 +140,13 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - Home shows only ONE test of the chosen series: the one live now, else the next one. The one after it shows once
   this one is over ("N more in the schedule").
 
-## "Result is out" notification (`supabase_v79_result_alerts.sql` + `send-push` v3)
+## "Result is out" notification (`supabase_v79_result_alerts.sql` + `send-push` with `result_alerts`)
 
 - A student who submitted a live test sees it under **Test history → Waiting for result** (and on the Home *Attempted* card)
   with a **Notify me** bell. When the result time comes the phone gets "Result is out: <test>" even if the app is closed;
   tapping it opens Test history (`#/h`).
 - **Owner steps, in this order:** (1) run `supabase_v79_result_alerts.sql` once; (2) redeploy the `send-push` Edge Function
-  (Verify JWT off) and check that mode `info` returns `v: 3`; (3) test: submit a live test whose result time is ~5 minutes away,
+  (Verify JWT off). Check that mode `info` returns `result_alerts: true` (`v` stays 2: the admin panel needs exactly 2); (3) test: submit a live test whose result time is ~5 minutes away,
   tap the bell, wait. The bell hides itself until step 1 is done, and the "LIVE now" alerts work as before without step 2.
 - Its own table and claim: the "LIVE now" alerts are not touched. The result time is read from the test when the alert goes out,
   so moving "Result & answer key at" later never sends an early notification. Sent by the same minute job: no new cost.
