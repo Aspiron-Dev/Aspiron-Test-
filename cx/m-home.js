@@ -65,6 +65,13 @@ AX.mod({
     const actText = it => it.k === 'result' ? h`<b>${it.name}</b> finished <b>${it.title}</b> · ${it.score}/${it.max}${it.late ? ' (late)' : ''}`
       : it.k === 'start' ? h`<b>${it.name}</b> started <b>${it.title}</b>` : it.k === 'request' ? h`<b>${it.name}</b> asked for access`
       : it.k === 'join' ? h`<b>${it.name}</b> joined` : it.k === 'report' ? h`<b>${it.name}</b> reported Q${it.q} in <b>${it.title}</b>` : h`<b>${it.name || ''}</b> ${it.k}`;
+    const serT = id => { const x = ((cat && cat.ok && cat.series) || []).find(y => y.id === id); return x ? x.title : ''; };
+    const liveCard = t => h`<a class="card hm-lc" style="color:var(--tx)" href="${canRes ? '#/live/' + encodeURIComponent(t.id) : '#/tests'}" data-lc="${t.id}">
+      <div class="hm-lser ell">${icon('layers', 13)} <span class="ell">${serT(t.series_id) || 'Test'}</span></div>
+      <div class="hm-lt"><span class="live-dot"></span><b class="ell" title="${t.title}">${t.title}</b></div>
+      <div class="xs mut">${t.closes_at ? 'Ends ' + fmt.time(t.closes_at) : 'Open now'}${t.duration ? ' · ' + t.duration + ' min' : ''}</div>
+      ${canRes ? h`<div class="hm-lnums"><span><b data-lcn="writing">–</b><em>Writing</em></span><span><b data-lcn="done">–</b><em>Submitted</em></span><span><b data-lcn="waiting">–</b><em>Not started</em></span></div><div class="hm-lbar"><i class="done" data-lcb="done"></i><i class="writing" data-lcb="writing"></i></div>` : ''}</a>`;
+    const liveBox = liveNow.length ? h`<div class="hm-livebox"><div class="hm-lhead"><span class="live-dot"></span><b class="hm-ln">Live now</b><span class="mut sm hm-lc2">${fmt.plural(liveNow.length, 'test')}<span class="hm-lsr"> · ${fmt.plural(new Set(liveNow.map(t => t.series_id)).size, 'series', 'series')}</span></span><span class="grow"></span>${canRes ? h`<button class="btn xs ghost" data-act="lvref" title="Refresh the numbers" aria-label="Refresh the live numbers">${icon('refresh', 13)}</button><a class="btn xs ghost" href="#/live">Live monitor ${icon('chevR', 13)}</a>` : ''}</div><div class="hm-lg" data-c="${liveNow.length}">${join(liveNow.slice(0, 6), liveCard)}</div>${liveNow.length > 6 ? h`<div class="row center mt8"><a class="btn xs" href="#/live">+${liveNow.length - 6} more in Live monitor ${icon('chevR', 13)}</a></div>` : ''}</div>` : '';
     const testRow = (t, kind) => h`<a class="li click" href="#/tests" style="color:var(--tx);text-decoration:none" data-act="test" data-id="${t.id}">
       <span class="av sm" style="--c:${kind === 'live' ? '#10b981' : kind === 'res' ? '#c9a45c' : '#6366f1'}">${icon(kind === 'live' ? 'live' : kind === 'res' ? 'clock' : 'calendar', 15)}</span>
       <div class="grow"><div class="t ell">${t.title}</div><div class="s">${kind === 'live' ? 'Live now' + (t.closes_at ? ' · ends ' + fmt.time(t.closes_at) : '') : kind === 'res' ? 'Result & answer key ' + fmt.dt(t.result_at) : fmt.dt(t.opens_at)}</div></div>
@@ -72,6 +79,7 @@ AX.mod({
 
     AX.set(ctx.el, h`
       ${a ? h`<div class="card glass row wrap" style="margin-bottom:16px;gap:18px"><span class="row gap6"><span class="live-dot"></span><b>${fmt.num(a.writing || 0)}</b><span class="mut sm">writing a test now</span></span><span class="row gap6"><b>${fmt.num(a.online || 0)}</b><span class="mut sm">online in the last 10 min</span></span>${liveNow.length ? h`<span class="row gap6"><b>${liveNow.length}</b><span class="mut sm">${liveNow.length === 1 ? 'test' : 'tests'} live</span></span>` : ''}<span class="grow"></span>${canRes ? h`<a class="btn sm" href="#/live">${icon('live', 15)} Live monitor</a>` : ''}</div>` : ''}
+      ${liveBox}
       ${kpis.length ? h`<div class="kpis">${kpis}</div>` : ''}
       <div class="grid g2 mt16" style="align-items:start">
         <div class="col gap16">
@@ -84,13 +92,24 @@ AX.mod({
         </div>
         <div class="col gap16">
           <div class="card pad0"><div class="card-h" style="padding:16px 16px 4px">${icon('calendar')}<h3>Tests: live & coming up</h3><span class="grow"></span>${AX.can('content') ? h`<a class="btn xs ghost" href="#/tests">Studio ${icon('chevR', 13)}</a>` : ''}</div>
-            <div class="list">${liveNow.length + soon.length + resWait.length ? h`${join(liveNow, t => testRow(t, 'live'))}${join(resWait.slice(0, 4), t => testRow(t, 'res'))}${join(soon.slice(0, 6), t => testRow(t, 'soon'))}` : UI.empty({ icon: 'calendar', title: 'Nothing scheduled this week', text: 'Scheduled and live tests show up here.' })}</div></div>
+            <div class="list">${soon.length + resWait.length ? h`${join(resWait.slice(0, 4), t => testRow(t, 'res'))}${join(soon.slice(0, 6), t => testRow(t, 'soon'))}` : UI.empty({ icon: 'calendar', title: 'Nothing scheduled this week', text: 'Scheduled and live tests show up here.' })}</div></div>
           ${o ? h`<div class="card"><div class="card-h">${icon('bars')}<h3>Test attempts · last 7 days</h3><span class="grow"></span><b class="num">${fmt.num((o.days || []).reduce((s, d) => s + (d.n || 0), 0))}</b></div><div class="day-read" id="hm-ar"><span class="mut sm">${(o.days || []).length ? o.days[o.days.length - 1].d : ''}</span><b>${fmt.num(((o.days || [])[(o.days || []).length - 1] || {}).n || 0)}</b><span class="mut sm">attempts · tap a day</span></div>${UI.chart.bars((o.days || []).map(d => ({ label: d.d, value: d.n })), { pick: true, sel: (o.days || []).length - 1, label: 'Attempts per day' })}</div>` : ''}
           ${a ? h`<div class="card pad0"><div class="card-h" style="padding:16px 16px 4px">${icon('activity')}<h3>Recent student activity</h3></div><div class="list">${(a.items || []).length ? join(a.items.slice(0, 8), it => h`<div class="li"><span class="av sm" style="--c:${AX.u.hue(it.k)}">${icon(actIcon[it.k] || 'activity', 15)}</span><div class="grow sm">${actText(it)}</div><span class="xs mut" style="white-space:nowrap">${fmt.ago(it.at)}</span></div>`) : UI.empty({ icon: 'activity', title: 'Quiet for now' })}</div></div>` : ''}
         </div>
       </div>
       ${!o && !a && !kpis.length ? h`<div class="card mt16">${UI.empty({ icon: 'lock', tone: 'lock', title: 'Welcome', text: 'Your access is limited. Use the menu to open the parts you can work on.' })}</div>` : ''}`);
+    // live numbers: each live test once, from the cache the Live monitor uses (nothing is polled on Home)
+    const fillLive = (t) => {
+      const c = AX.live && AX.live.get(t.id), el = ctx.el.querySelector('[data-lc="' + t.id + '"]'); if (!c || !el) return;
+      const n = AX.live.counts(c.x), set = (k, v) => { const b = el.querySelector('[data-lcn=' + k + ']'); if (b) b.textContent = fmt.num(v); };
+      set('writing', n.writing); set('done', n.done); set('waiting', n.waiting);
+      const bd = el.querySelector('[data-lcb=done]'), bw = el.querySelector('[data-lcb=writing]');
+      if (bd) bd.style.width = (n.el ? n.done * 100 / n.el : 0) + '%'; if (bw) bw.style.width = (n.el ? n.writing * 100 / n.el : 0) + '%';
+    };
+    const loadLive = (force) => { if (canRes && AX.live) liveNow.slice(0, 6).forEach(t => { fillLive(t); if (force || !AX.live.fresh(t.id, 30000)) AX.live.pull(t.id).then(() => { if (ctx.alive()) fillLive(t); }); }); };
+    loadLive(false);
     AX.act(ctx.el, {
+      lvref(b) { loadLive(true); },
       async ref(b) { await UI.busy(b, () => AX.refreshAttention()); },
       // tap a bar: show that day's number above the chart
       pick(el) {
@@ -109,4 +128,26 @@ function attHtml(att) {
   return att && att.length ? join(att, x => h`<a class="li click" href="${x.go}" style="color:var(--tx);text-decoration:none"><span class="av sm" style="--c:${x.tone === 'bad' ? '#ef4444' : x.tone === 'gold' ? '#c9a45c' : '#14b8a6'}">${icon(x.icon || 'bell', 15)}</span><div class="grow"><div class="t">${x.title}</div>${x.sub ? h`<div class="s">${x.sub}</div>` : ''}</div><span class="pill ${x.tone || 'pri'}">${x.count}</span>${icon('chevR', 16)}</a>`)
     : UI.empty({ icon: 'checkCircle', title: 'All clear', text: 'Payments to verify, access requests and reports will appear here.' });
 }
+
+AX.css('home-live', `
+.hm-livebox{margin-bottom:16px}
+.hm-lhead{display:flex;align-items:center;gap:10px;margin-bottom:10px;white-space:nowrap}
+.hm-lhead .btn{flex:none}
+@media (max-width:759px){.hm-lsr{display:none}}
+.hm-lg{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:760px){.hm-lg:not([data-c="1"]){grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (min-width:1100px){.hm-lg:not([data-c="1"]):not([data-c="2"]){grid-template-columns:repeat(3,minmax(0,1fr))}}
+.hm-lc{display:flex;flex-direction:column;gap:4px;padding:14px 16px;color:var(--tx);text-decoration:none!important;min-width:0;transition:transform .15s,border-color .15s}
+.hm-lc:hover{border-color:var(--pri-line);transform:translateY(-2px)}
+.hm-lser{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--pri);min-width:0}
+.hm-lser .ax-ic{flex:none}
+.hm-lt{display:flex;align-items:center;gap:8px;min-width:0;font-size:16px}
+.hm-lnums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}
+.hm-lnums span{display:flex;flex-direction:column;align-items:flex-start;min-width:0}
+.hm-lnums b{font-family:var(--font-display);font-size:22px;font-weight:600;line-height:1.1;font-variant-numeric:lining-nums tabular-nums}
+.hm-lnums em{font-style:normal;font-size:11.5px;color:var(--mut);font-weight:600}
+.hm-lbar{display:flex;height:6px;border-radius:4px;background:var(--hover);overflow:hidden;margin-top:8px;border:1px solid var(--line)}
+.hm-lbar i{display:block;height:100%;width:0;transition:width .6s var(--ease)}
+.hm-lbar .done{background:var(--ok)}.hm-lbar .writing{background:var(--grad-pri)}
+`);
 })();
