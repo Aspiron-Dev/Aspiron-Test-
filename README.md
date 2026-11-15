@@ -315,6 +315,12 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - A team member changing wallets, the reward or coupons shows on the owner's bell (Security alerts).
 - **Setup:** run `supabase_v53_refer_fixes.sql` (after v52), then `supabase_v35_admin_team.sql` again.
 
+## Store: Settings, Sign out, Delete account (`store.js`, `store.html`, `store.css`)
+- The top bar has the **theme** button and a **Settings** (sliders) button that opens **Profile & settings**: details (Edit), the NEET / JEE course, the theme, and the **Account** card. The NEET / JEE switch is no longer in the top bar — the student picks the course once on the welcome screen and can change it in Settings.
+- **Sign out** (asks first) removes the name, mobile, course and open order from this phone and returns to the welcome screen. **Delete account** (asks first) also removes the “Notify me” list and the referral link saved on the phone. Nothing is sent to the server: the store has no real login (only a typed mobile number), so a delete call on the server could be abused to erase someone else's data. Paid orders and payment records stay (Privacy page, section 4); the delete screen has a button that opens a prefilled message to support to remove server-side data.
+- The student app's own sign-in (`cbt_auth`) is separate and is not touched.
+- No SQL to run.
+
 ## Pre-booking (`supabase_v54_prebook.sql`, `store.js`, `cx/m-store.js`, `cx/m-orders.js`)
 - **Admin → Store → Edit → Pre-booking:** for a series with Buy now off (Coming soon). On = the store shows **“Pre-book · ₹price”** instead of “Notify me”; the student pays the full price now with the same checkout as Buy now (UPI → payment details → verify on Telegram / WhatsApp).
 - The orders come to **Orders** tagged **Pre-booking** (and “(Pre-booking)” in the student's verify message). Verify the payment as usual and *Approve & unlock* when the series launches. Turning Pre-booking off stops new pre-bookings at once (checked in the database too); when you turn Buy now on, the series is simply live.

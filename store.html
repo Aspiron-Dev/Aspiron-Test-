@@ -32,7 +32,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="store.css?v=8">
+<link rel="stylesheet" href="store.css?v=9">
 </head>
 <body>
 <!-- icons: the admin console's line icons (24 grid, 1.8 stroke), plus the WhatsApp / Telegram logos -->
@@ -73,6 +73,9 @@
 <symbol id="i-next" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
 <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></symbol>
 <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.6"/><circle cx="8" cy="17" r="2.6"/></symbol>
+<symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3M16 17l5-5-5-5M21 12H9"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12.2a1.6 1.6 0 0 0 1.6 1.8h6.8a1.6 1.6 0 0 0 1.6-1.8L18 7M9 7V4.5h6V7"/></symbol>
 <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
 <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
 <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
@@ -101,7 +104,7 @@
     <div class="lg-card">
       <img class="lg-mark" src="icon-192.png" alt="">
       <h2 class="lg-t" id="gt">Welcome to <span data-sname>Aspiron Education</span></h2>
-      <p class="lg-s">Tell us who you are to open the store. You won't be asked again.</p>
+      <p class="lg-s">Tell us who you are to open the store. You won't be asked again — change anything later in Settings.</p>
       <div class="fld"><label for="gn">Full name</label><div class="inp-wrap"><svg class="i" aria-hidden="true"><use href="#i-user"/></svg><input class="inp" id="gn" autocomplete="name" maxlength="60" placeholder="e.g. Rahul Sharma"></div></div>
       <div class="fld"><label for="gm">Mobile number</label><div class="inp-wrap"><svg class="i" aria-hidden="true"><use href="#i-phone"/></svg><input class="inp" id="gm" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="10-digit mobile number"></div></div>
       <div class="fld"><span class="lbl" id="gcl">Your course</span>
@@ -140,8 +143,8 @@
       <div class="crumb"><span class="cb-s">Store</span><svg class="i cb-c" aria-hidden="true"><use href="#i-cr"/></svg><b id="crumb">Home</b></div>
       <b class="tb-name" data-sname>Aspiron Education</b>
       <button class="sbtn" data-go="search" data-focus><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span>Search test series…</span><kbd class="kbd">/</kbd></button>
-      <div class="cseg" role="radiogroup" aria-label="Your course"><span class="thumb" aria-hidden="true"></span><button type="button" role="radio" aria-checked="true" data-course="neet">NEET</button><button type="button" role="radio" aria-checked="false" data-course="jee">JEE</button></div>
       <button class="ibtn line" data-theme-toggle aria-label="Switch light / dark theme"><svg class="i sun" aria-hidden="true"><use href="#i-sun"/></svg><svg class="i moon" aria-hidden="true"><use href="#i-moon"/></svg></button>
+      <button class="ibtn line" data-go="me" aria-label="Settings and profile" title="Settings"><svg class="i" aria-hidden="true"><use href="#i-gear"/></svg></button>
     </header>
 
     <main class="page">
@@ -242,6 +245,6 @@
 <div id="tst" aria-live="polite"></div>
 <script src="config.js?v=14"></script>
 <script src="qrcode.js"></script>
-<script src="store.js?v=38"></script>
+<script src="store.js?v=39"></script>
 </body>
 </html>
