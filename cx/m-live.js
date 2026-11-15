@@ -11,7 +11,7 @@
 (function () {
 'use strict';
 const { h, icon, join, ui: UI, fmt } = AX;
-const LV = { id: null, seg: 'writing', q: '', skew: 0, cache: new Map(), err: new Map(), tests: [], cat: null, timers: [], panes: [], hq: '', hn: 30, hf: 'all' };
+const LV = { stu: null, id: null, seg: 'writing', q: '', skew: 0, cache: new Map(), err: new Map(), tests: [], cat: null, timers: [], panes: [], hq: '', hn: 30, hf: 'all' };
 const flight = new Map();
 const now = () => Date.now() + LV.skew;
 const ms = t => fmt.ms(t) || 0;
@@ -32,8 +32,31 @@ const SEGS = [
 const EMPTY = { writing: 'Nobody is writing this test right now.', done: 'No submissions yet.', waiting: 'Everyone has started 🎉', expired: 'None.' };
 const stop = () => { LV.timers.forEach(t => clearInterval(t)); LV.timers = []; };
 
+/* ---------- who belongs to a test: the students who have its series (like the Students page) ---------- */
+const aud = new Map();
+async function loadStu() {
+  if (!AX.can('students')) return;   // without it the base function's own count is used
+  const r = await AX.data.students();   // cached for 30 s
+  if (r && r.ok && r.students !== LV.stu) { LV.stu = r.students || []; LV.known = new Set(LV.stu.map(x => x.id)); aud.clear(); }
+}
+// a Set of student ids, or null = not known / free series (then the base function's own count is used)
+function audienceOf(id) {
+  const sid = serId(id), ser = CS().find(x => x.id === sid);
+  if (!LV.stu || !sid || !ser || ser.is_free) return null;
+  if (!aud.has(sid)) aud.set(sid, new Set(LV.stu.filter(x => (x.access || []).includes(sid)).map(x => x.id)));
+  return aud.get(sid);
+}
+
 /* ---------- one test's numbers: cached, shared with Home ---------- */
-const cnt = x => { const n = { writing: ((x && x.writing) || []).length, done: ((x && x.done) || []).length, waiting: ((x && x.waiting) || []).length, expired: ((x && x.expired) || []).length }; n.el = Math.max(Number(x && x.eligible) || 0, n.writing + n.done + n.waiting + n.expired); return n; };
+const cnt = (x, id) => {
+  const w = (x && x.waiting) || [];
+  // if none of the 'not started' ids is a known student id, the ids are of another kind: then the base count is used, never a false 0
+  const A = id && (!w.length || (LV.known && w.some(r => LV.known.has(r.id)))) ? audienceOf(id) : null, wl = A ? w.filter(r => A.has(r.id)) : w;
+  const n = { writing: ((x && x.writing) || []).length, done: ((x && x.done) || []).length, waiting: wl.length, expired: ((x && x.expired) || []).length, wl, aud: !!A };
+  const sum = n.writing + n.done + n.waiting + n.expired;
+  n.el = A ? Math.max(A.size, sum) : Math.max(Number(x && x.eligible) || 0, sum);
+  return n;
+};
 function pull(id) {
   if (flight.has(id)) return flight.get(id);
   const p = AX.api.call('cbt_admin3', 'live', { id }).then(x => {
@@ -44,7 +67,7 @@ function pull(id) {
   flight.set(id, p); return p;
 }
 const isLive = id => isOpen(rowOf(id)) || inWin(cTest(id));
-AX.live = { watchMs: 0, catEvery: 5, pull, get: id => LV.cache.get(id), counts: cnt, fresh: (id, age) => { const c = LV.cache.get(id); return c && Date.now() - c.at < age ? c : null; } };
+AX.live = { watchMs: 0, catEvery: 5, pull, get: id => LV.cache.get(id), counts: cnt, prep: async cat => { if (cat && cat.ok) { LV.cat = cat; aud.clear(); } await loadStu(); }, fresh: (id, age) => { const c = LV.cache.get(id); return c && Date.now() - c.at < age ? c : null; } };
 async function reread(withCat) {
   // live_tests every time; the catalog (can be big) only now and then, through its own cache
   const [r, cat] = await Promise.all([AX.api.call('cbt_admin3', 'live_tests'), withCat ? AX.data.catalog() : null]);
@@ -89,7 +112,7 @@ const stateOf = (id, live) => { if (live.has(id)) return 'live'; const m = metaO
 /* ---------- a board: one test's numbers ---------- */
 const board = (id, active) => {
   const c = LV.cache.get(id), x = c && c.x, d = x || {}, t = d.test || {}, ct = cTest(id) || {}, r = rowOf(id) || {}, e = LV.err.get(id);
-  const n = cnt(x), w = k => n.el ? n[k] * 100 / n.el : 0, ser = serName(id);
+  const n = cnt(x, id), w = k => n.el ? n[k] * 100 / n.el : 0, ser = serName(id);
   const opens = ms(t.opens_at) || ms(ct.opens_at), closes = ms(ct.closes_at) || ms(r.closes_at), live = isLive(id);
   const when = opens && opens > now() ? h`<span>Opens ${fmt.dt(opens)} · <b class="lv-cd" data-open="${opens}">in ${mmss((opens - now()) / 1000)}</b></span>`
     : closes && live ? (closes > now() ? h`<span>Ends ${fmt.dt(closes)} · <b class="lv-cd" data-end="${closes}">in ${mmss((closes - now()) / 1000)}</b></span>` : h`<span>Ended ${fmt.dt(closes)}</span>`)
@@ -101,7 +124,7 @@ const board = (id, active) => {
     ${e && !x ? h`<div class="lv-e mt12">${icon('alert', 15)} <span>${e.error === 'missing' ? 'Setup is missing for this test.' : 'Could not load the numbers.'}</span> <button class="btn xs" data-act="retry" data-id="${id}">${icon('refresh', 13)} Try again</button></div>`
       : h`<div class="lv-stats">${join(SEGS, s => h`<button type="button" class="lv-stat ${s.tone} ${active && LV.seg === s.k ? 'on' : ''}" data-act="seg" data-id="${id}" data-k="${s.k}"><span class="k-l">${icon(s.icon, 15)}<span>${s.short}</span></span><span class="k-v">${x ? fmt.num(n[s.k]) : '–'}</span><span class="k-f">${x && n.el ? Math.round(w(s.k)) + '% of ' + fmt.num(n.el) : ' '}</span></button>`)}</div>
       <div class="lv-bar" role="img" aria-label="${n.done} submitted, ${n.writing} writing, ${n.expired} time over, ${n.waiting} not started"><i class="done" style="width:${w('done')}%"></i><i class="writing" style="width:${w('writing')}%"></i><i class="expired" style="width:${w('expired')}%"></i></div>
-      <div class="xs mut lv-cap">${x ? h`${fmt.plural(n.el, 'student')} can take this test · updated ${new Date(c.at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', second: '2-digit' })}` : 'Loading…'}</div>`}</div>`;
+      <div class="xs mut lv-cap">${x ? h`${n.aud ? fmt.plural(n.el, 'student') + ' have this series' : fmt.plural(n.el, 'student') + ' can take this test'} · updated ${new Date(c.at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', second: '2-digit' })}` : 'Loading…'}</div>`}</div>`;
 };
 
 AX.mod({
@@ -113,7 +136,7 @@ AX.mod({
     ctx.head({ title: 'Live monitor', sub: 'Every test that is live now, by series. Older tests are in Series & history.', tabs: [{ id: 'now', title: 'Live now', icon: 'live', href: '#/live' }, { id: 'history', title: 'Series & history', icon: 'layers', href: '#/live/history' }], tab: p0 === 'history' ? 'history' : 'now',
       actions: h`<button class="btn sm" data-act="refresh">${icon('refresh', 15)} Refresh</button>` });
     AX.set(ctx.el, h`${UI.skeleton(1)}<div class="mt16">${UI.skeleton(4, 'kpi')}</div><div class="mt16">${UI.skeleton(5)}</div>`);
-    const [r, cat] = await Promise.all([AX.api.call('cbt_admin3', 'live_tests'), AX.data.catalog()]);
+    const [r, cat] = await Promise.all([AX.api.call('cbt_admin3', 'live_tests'), AX.data.catalog(), loadStu()]);
     if (!ctx.alive()) return;
     if (!r.ok) {
       AX.set(ctx.el, r.error === 'missing' ? h`<div class="card">${UI.empty({ tone: 'lock', icon: 'db', title: 'One-time setup needed', text: 'Run supabase_v8_update.sql in Supabase → SQL Editor once, then refresh this page.' })}</div>` : UI.errorBox(r));
@@ -159,7 +182,7 @@ function boards(ctx, ids, single) {
     <div id="lv-list" class="mt12"></div>`);
 
   const cur = () => { const c = LV.cache.get(LV.id); return c ? c.x : null; };
-  const list = k => (cur() && cur()[k]) || [];
+  const list = k => k === 'waiting' ? cnt(cur(), LV.id).wl : (cur() && cur()[k]) || [];
   const paneOf = id => document.getElementById('lv-p-' + id);
   const drawPane = id => { const el = paneOf(id); if (el) { AX.set(el, board(id, id === LV.id)); el.classList.toggle('on', id === LV.id); } };
   const drawDots = () => ctx.el.querySelectorAll('.lv-dot').forEach(b => b.classList.toggle('on', b.dataset.id === LV.id));
@@ -198,7 +221,7 @@ function boards(ctx, ids, single) {
     const d = cur();
     AX.set('#lv-for', ids.length > 1 || serName(LV.id) ? h`<span class="lv-fi">${icon('users', 15)}</span><span class="grow ell">Students of <b>${titleOf(LV.id)}</b>${serName(LV.id) ? h` <span class="mut">· ${serName(LV.id)}</span>` : ''}</span>` : '');
     if (!d) { AX.set('#lv-seg', ''); AX.set('#lv-csv', ''); const e = LV.err.get(LV.id); return AX.set('#lv-list', e ? UI.errorBox(e, 'supabase_v8_update.sql') : UI.skeleton(4)); }
-    const n = cnt(d);
+    const n = cnt(d, LV.id);
     AX.set('#lv-seg', h`<div class="seg" role="tablist">${join(SEGS, s => h`<button type="button" class="${LV.seg === s.k ? 'on' : ''}" data-act="seg" data-id="${LV.id}" data-k="${s.k}">${s.short} <b class="lv-sc">${n[s.k]}</b></button>`)}</div>`);
     AX.set('#lv-csv', LV.seg === 'done' && n.done ? h`<button class="btn sm" data-act="csv">${icon('download', 15)} Download CSV</button>` : '');
     rows();

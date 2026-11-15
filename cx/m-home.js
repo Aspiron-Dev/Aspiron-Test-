@@ -101,12 +101,12 @@ AX.mod({
     // live numbers: each live test once, from the cache the Live monitor uses (nothing is polled on Home)
     const fillLive = (t) => {
       const c = AX.live && AX.live.get(t.id), el = ctx.el.querySelector('[data-lc="' + t.id + '"]'); if (!c || !el) return;
-      const n = AX.live.counts(c.x), set = (k, v) => { const b = el.querySelector('[data-lcn=' + k + ']'); if (b) b.textContent = fmt.num(v); };
+      const n = AX.live.counts(c.x, t.id), set = (k, v) => { const b = el.querySelector('[data-lcn=' + k + ']'); if (b) b.textContent = fmt.num(v); };
       set('writing', n.writing); set('done', n.done); set('waiting', n.waiting);
       const bd = el.querySelector('[data-lcb=done]'), bw = el.querySelector('[data-lcb=writing]');
       if (bd) bd.style.width = (n.el ? n.done * 100 / n.el : 0) + '%'; if (bw) bw.style.width = (n.el ? n.writing * 100 / n.el : 0) + '%';
     };
-    const loadLive = (force) => { if (canRes && AX.live) liveNow.slice(0, 6).forEach(t => { fillLive(t); if (force || !AX.live.fresh(t.id, 30000)) AX.live.pull(t.id).then(() => { if (ctx.alive()) fillLive(t); }); }); };
+    const loadLive = async (force) => { if (canRes && AX.live) { await AX.live.prep(cat); if (!ctx.alive()) return; liveNow.slice(0, 6).forEach(t => { fillLive(t); if (force || !AX.live.fresh(t.id, 30000)) AX.live.pull(t.id).then(() => { if (ctx.alive()) fillLive(t); }); }); } };
     loadLive(false);
     AX.act(ctx.el, {
       lvref(b) { loadLive(true); },
