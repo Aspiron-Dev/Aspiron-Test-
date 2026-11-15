@@ -1948,46 +1948,45 @@ p.hint>svg{display:inline-block;vertical-align:-2px;margin-right:4px}
 .evh i{position:relative;width:10px;height:10px;border-radius:50%;background:#e5162b;box-shadow:0 0 0 3px color-mix(in srgb,#e5162b 18%,transparent)}
 .evh i::after{content:"";position:absolute;inset:-2px;border-radius:50%;border:2px solid #e5162b;animation:evPing 1.6s cubic-bezier(.2,.6,.3,1) infinite}
 @media (prefers-reduced-motion:reduce){.evh i::after{animation:none}}
-/* v81: the live test on Home (dk = dark premium, lt = light) */
-.evX{--lv:#ef2d3c;position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:18px;border-radius:24px}
-.evX.evx-dk{color:#fff;background:linear-gradient(155deg,#1c1e26,#0c0d11);box-shadow:0 26px 50px -30px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.08);--sub:rgba(255,255,255,.62);--box:rgba(255,255,255,.06);--bd:rgba(255,255,255,.09);--trk:rgba(255,255,255,.1)}
-.evX.evx-lt{color:var(--tx);background:linear-gradient(160deg,color-mix(in srgb,var(--lv) 7%,var(--surface)),var(--surface) 58%);border:1.5px solid color-mix(in srgb,var(--lv) 26%,var(--line));box-shadow:0 20px 40px -30px rgba(200,20,40,.5);--sub:var(--mut);--box:var(--surface2);--bd:var(--line);--trk:color-mix(in srgb,var(--lv) 14%,var(--surface2))}
-.evX-glow{position:absolute;z-index:-1;width:280px;height:280px;right:-110px;top:-130px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--lv) 55%,transparent),transparent 66%);animation:evDrift 8s ease-in-out infinite alternate}
-.evX.evx-lt .evX-glow{opacity:.35}
-@keyframes evDrift{from{transform:translate(0,0) scale(1)}to{transform:translate(-36px,26px) scale(1.12)}}
-.evX-top{display:flex;align-items:center;gap:8px;min-width:0}
-.evX-live{display:inline-flex;align-items:center;gap:8px;flex:none;height:28px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:.14em;color:#fff;background:linear-gradient(135deg,#ff4752,#d1122a);box-shadow:0 8px 18px -8px rgba(209,18,42,.9)}
-.evX-live i{position:relative;width:8px;height:8px;border-radius:50%;background:#fff}
-.evX-live i::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:1.5px solid rgba(255,255,255,.9);animation:evPing 1.6s cubic-bezier(.2,.6,.3,1) infinite}
-.evX-chip{min-width:0;height:28px;display:inline-flex;align-items:center;padding:0 11px;border-radius:999px;font-size:11.5px;font-weight:600;letter-spacing:.04em;color:var(--sub);background:var(--box);border:1px solid var(--bd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.evX-ttl{font-size:21px;font-weight:700;letter-spacing:-.02em;line-height:1.25}
-.evX-mid{display:flex;align-items:center;gap:16px;padding:12px;border-radius:18px;background:var(--box);border:1px solid var(--bd)}
-.evX-ring{position:relative;flex:none;width:92px;height:92px}
-.evX-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
-.evX-ring circle{fill:none;stroke-width:7;stroke-linecap:round}
-.evX-ring .tr{stroke:var(--trk)}
-.evX-ring .pg{stroke:var(--lv);transition:stroke-dashoffset 1s linear}
-.evX-ring span{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
-.evX-ring b{font-size:19px;font-weight:800;letter-spacing:.01em;font-variant-numeric:tabular-nums}
-.evX-ring small{margin-top:4px;font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--sub)}
-.evX-st{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;min-width:0}
-.evX-st li{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--sub)}
-.evX-st li svg{flex:none;opacity:.85}
-.evX-st b{color:var(--tx);font-weight:700;font-size:15px}
-.evX.evx-dk .evX-st b{color:#fff}
-.evX-n{display:flex;align-items:flex-start;gap:8px;margin:0;font-size:12.8px;line-height:1.5;color:var(--sub)}
-.evX-n svg{flex:none;margin-top:2px}
-.evX-n b{color:inherit;font-weight:700}
-.evX.evx-dk .evX-n b{color:#fff}
-.evX-n.warn{padding:10px 12px;border-radius:12px;color:#ffb4a8;background:rgba(239,45,60,.12);border:1px solid rgba(239,45,60,.35)}
-.evX.evx-lt .evX-n.warn{color:#a3121f;background:color-mix(in srgb,var(--lv) 9%,var(--surface))}
-.evX-go{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;width:100%;height:54px;padding:0 18px 0 20px;border-radius:16px;font-size:16px;font-weight:700}
-.evX-go span{display:inline-flex;align-items:center;gap:10px}
-.evX-go::after{content:"";position:absolute;top:0;bottom:0;left:-40%;width:35%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent);transform:skewX(-20deg);animation:evShine 3.4s ease-in-out infinite}
-@keyframes evShine{0%,60%{left:-40%}100%{left:130%}}
-.evX.evx-dk .evX-go{background:linear-gradient(135deg,var(--acc1),var(--acc2));color:var(--onAcc);box-shadow:0 14px 28px -14px var(--acc2)}
-.evX.evx-lt .evX-go{background:linear-gradient(135deg,#f0353f,#c40f22);color:#fff;box-shadow:0 14px 28px -14px rgba(196,15,34,.9)}
-.evX-go:active{transform:scale(.985)}
-.evX-more{align-self:center;margin-top:-2px;font-size:13px;font-weight:600;color:var(--sub);text-decoration:underline;text-underline-offset:3px}
-@media (prefers-reduced-motion:reduce){.evX-go::after,.evX-glow,.evX-live i::after{animation:none}}
-.evX-ring b.hr{font-size:16px}
+}
+
+
+/* v82: one card family (Upcoming / Live Today / Live): A refined classic, B ticket, C countdown boxes */
+.evp.today,.evp.live{color:#fff;background:linear-gradient(135deg,#f0353f,#d11226)}
+.evp.live i{background:#fff}
+.evgo{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;width:100%;height:52px;padding:0 18px 0 20px;border-radius:14px;font-size:16px;font-weight:700;background:var(--ink);color:var(--onInk)}
+.evgo span{display:inline-flex;align-items:center;gap:10px}
+.evgo:active{transform:scale(.985)}
+.evA{padding-left:22px}
+.evA::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:5px;border-radius:0 5px 5px 0;background:var(--acc)}
+.evA.st-today::before,.evA.st-live::before{background:#e5162b}
+/* B: ticket */
+.evT{display:grid;grid-template-columns:104px 0 1fr;align-items:stretch;padding:0;overflow:visible;position:relative}
+.evT-stub{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:16px 6px;border-radius:var(--r,22px) 0 0 var(--r,22px);background:var(--accSoft);color:var(--acc);text-align:center}
+.evT.st-today .evT-stub,.evT.st-live .evT-stub{background:linear-gradient(160deg,#f0353f,#c40f22);color:#fff}
+.evT-stub .big{font-size:23px;font-weight:800;letter-spacing:.02em;line-height:1.05}
+.evT-stub small{font-size:11px;font-weight:700;letter-spacing:.08em;opacity:.9}
+.evT-dot{position:absolute;top:10px;left:10px;width:8px;height:8px;border-radius:50%;background:#fff;opacity:0}
+.evT.st-live .evT-dot{opacity:1;animation:evBlink 1.6s ease-in-out infinite}
+.evT-perf{position:relative;width:0;border-left:2px dashed var(--line)}
+.evT-perf::before,.evT-perf::after{content:"";position:absolute;left:-9px;width:16px;height:16px;border-radius:50%;background:var(--bg)}
+.evT-perf::before{top:-8px}.evT-perf::after{bottom:-8px}
+.evT-body{display:flex;flex-direction:column;gap:12px;padding:14px 14px 14px 18px;min-width:0}
+.evT-body .evc-b b{font-size:16.5px}
+.evT-row{display:flex;align-items:center;gap:10px}
+.evT-row .evcd{flex:1;padding:9px 12px}
+.evT-row .evcd b{font-size:17px}
+.evT .evgo{height:46px;font-size:15px}
+/* C: countdown boxes, like the Exam countdown card */
+.evK{display:flex;flex-direction:column;gap:12px;padding:16px}
+.evk-top{display:flex;align-items:center;gap:10px;min-height:34px}
+.evK-lab{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-bottom:-4px}
+.evK-bx{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;padding:12px 8px;border-radius:16px;background:var(--surface2)}
+.evK-bx div{display:flex;flex-direction:column;align-items:center;gap:2px}
+.evK-bx b{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.evK-bx small{font-size:11px;color:var(--mut)}
+.evK-bx i{font-style:normal;font-size:22px;font-weight:600;color:var(--faint);padding-bottom:14px}
+.evK.st-live .evK-bx b,.evK.st-today .evK-bx b{color:#d11226}
+.evT-row .evcd span{font-size:12px;white-space:nowrap}.evT-row .evcd b{font-size:16px;white-space:nowrap}.evT-row .evcd{gap:8px;padding:9px 10px}
+.evp.up i{background:var(--acc)}
+.evw{white-space:normal;line-height:1.3}
