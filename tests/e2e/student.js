@@ -303,6 +303,45 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     ok(home >= 1, 'Home still lists the series in Trending (' + home + ')');
     ok(!e7.length, 'no page errors (Tests store filter) ' + e7.join(' | ')); await c7.close();
   }
+  // Tests tab: the list must not stay a skeleton when the store data arrives while a full-screen page is open
+  await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
+  { const c8 = await br.newContext({ viewport: { width: 390, height: 844 } }); const p8 = await c8.newPage(); const e8 = [];
+    p8.on('pageerror', e => e8.push(e.message));
+    await p8.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort());
+    await p8.route(SUPA + '/rest/v1/rpc/**', async r => { if (/cbt_store_(explore|reviews|schedules|langs|map)/.test(r.request().url())) await new Promise(z => setTimeout(z, 1500)); return rpcRoute(r); });
+    await p8.goto(BASE + 'index.html'); await codeScreen(p8); await p8.fill('#ph', '9000000002'); await p8.fill('#cd', 'BBBB2222'); await p8.click('#lbtn'); await p8.waitForTimeout(3500);
+    const ck8 = sel => p8.evaluate(x => { const e = document.getElementById('v3host').shadowRoot.querySelector(x); if (e) e.click(); return !!e; }, sel);
+    await ck8('[data-ob="skip"]'); await p8.waitForTimeout(2600); await ck8('#sheet.open [data-a="close"]'); await p8.waitForTimeout(600);
+    await p8.evaluate(() => { location.hash = '#/x/test'; }); await p8.waitForTimeout(300);
+    ok(await ck8('[data-a="mySeries"]'), 'My Test Series opens before the store data has arrived'); await p8.waitForTimeout(3200);
+    ok(await ck8('#scrBack'), 'Back closes it'); await p8.waitForTimeout(1200);
+    const sk = await p8.evaluate(() => { const b = document.getElementById('v3host').shadowRoot.querySelector('#tBody'); return [b.querySelectorAll('.sk').length, (b.querySelector('.empty b') || {}).textContent || '', (document.getElementById('v3host').shadowRoot.querySelector('.tt2 button small') || {}).textContent]; });
+    ok(sk[0] === 0 && sk[1] === 'You have every test series' && sk[2] === 'All bought', 'the store list is drawn after Back, not left as a skeleton (' + sk.join(' | ') + ')');
+    ok(!e8.length, 'no page errors (store data under an open page) ' + e8.join(' | ')); await c8.close(); }
+  // Big pictures (poster, store covers, banners) are shown through short blob: links and really draw
+  await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000001'`);
+  { const pg0 = await br.newPage(); await pg0.setContent('<canvas id="c" width="170" height="170"></canvas>');
+    const PNG = await pg0.evaluate(() => { const c = document.getElementById('c'), x = c.getContext('2d'), d = x.createImageData(170, 170); for (let i = 0; i < d.data.length; i += 4) { d.data[i] = Math.random() * 255; d.data[i + 1] = Math.random() * 255; d.data[i + 2] = Math.random() * 255; d.data[i + 3] = 255; } x.putImageData(d, 0, 0); return c.toDataURL('image/png'); }); await pg0.close();
+    const c9 = await br.newContext({ viewport: { width: 390, height: 844 } }); const p9 = await c9.newPage(); const e9 = [];
+    p9.on('pageerror', e => e9.push(e.message));
+    await p9.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort());
+    await p9.route(SUPA + '/rest/v1/rpc/**', async r => { const u = r.request().url(), J = o => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
+      if (/rpc\/cbt_store(\?|$)/.test(u)) { const rows = (await q('select public.cbt_store() as r'))[0].r; rows.items.forEach(x => { x.image = PNG; }); return J(rows); }
+      if (/rpc\/cbt_store_look/.test(u)) return J({ ok: true, poster: PNG, link: '', tags: {} });
+      if (/rpc\/cbt_banners/.test(u)) return J({ ok: true, items: [{ id: 'b1', title: 'Offer', img: PNG, link: '#/series' }] });
+      return rpcRoute(r); });
+    await p9.goto(BASE + 'index.html'); await codeScreen(p9); await p9.fill('#ph', '9000000001'); await p9.fill('#cd', 'AAAA1111'); await p9.click('#lbtn'); await p9.waitForTimeout(3500);
+    await p9.evaluate(() => { const r = document.getElementById('v3host').shadowRoot; const x = r.querySelector('[data-ob="skip"]'); if (x) x.click(); }); await p9.waitForTimeout(2600);
+    await p9.evaluate(() => { const r = document.getElementById('v3host').shadowRoot; const x = r.querySelector('#sheet.open [data-a="close"]'); if (x) x.click(); }); await p9.waitForTimeout(600);
+    await p9.evaluate(() => { location.hash = '#/x/test'; }); await p9.waitForTimeout(4500);
+    const im = sel => p9.evaluate(s => { const e = document.getElementById('v3host').shadowRoot.querySelector(s); return e ? [e.src.slice(0, 5), e.naturalWidth] : null; }, sel);
+    const [cv, ps, bn] = [await im('#tBody .ic2 .cv img'), await im('#pst img'), await im('#tbRail img')];
+    ok(cv && cv[0] === 'blob:' && cv[1] > 0, 'store cover: a blob: link that draws (' + JSON.stringify(cv) + ')');
+    ok(ps && ps[0] === 'blob:' && ps[1] > 0, 'poster: a blob: link that draws (' + JSON.stringify(ps) + ')');
+    ok(bn && bn[0] === 'blob:' && bn[1] > 0, 'banner: a blob: link that draws (' + JSON.stringify(bn) + ')');
+    await p9.evaluate(() => { location.hash = '#/'; }); await p9.waitForTimeout(2500);
+    const hm = await im('#main .trc .cv img'); ok(hm && hm[1] > 0, 'Home Trending cover draws (' + JSON.stringify(hm) + ')');
+    ok(!e9.length, 'no page errors (pictures) ' + e9.join(' | ')); await c9.close(); }
   // the phone's Back button closes an open sheet or the menu first, never the page behind it
   await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
   { const c5 = await br.newContext({ viewport: { width: 390, height: 844 } }); const p5 = await c5.newPage(); const e5 = []; p5.on('pageerror', e => e5.push(e.message));
