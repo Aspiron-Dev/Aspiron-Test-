@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=71;
+const V3VER=72;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -565,7 +565,7 @@ function actH(x){const sid=owned(x),soon=x.buy_on===false;
 const LOOK0={poster:'',link:'',exams:['NEET','JEE'],classes:['Class 11','Class 12','Dropper'],subjects:['Physics','Chemistry','Biology','Maths'],tags:{}};
 let LOOK=null,lookBusy=null;
 function loadLook(){if(LOOK||lookBusy)return lookBusy;lookBusy=rpc('cbt_store_look',{},true).then(r=>{LOOK=r&&r.ok?Object.assign({},LOOK0,r,{tags:r.tags||{}}):LOOK0}).catch(()=>{LOOK=LOOK0})
-  .finally(()=>{lookBusy=null;if(S.tab==='test')reposter()});return lookBusy}
+  .finally(()=>{lookBusy=null;if(S.tab==='test'&&!scrOpen())reposter()});return lookBusy}
 /* the poster came after the page was drawn: swap just that section. A full redraw re-decoded the poster and every cover
    and moved the page under the finger of a student who had already started to scroll. */
 function reposter(){const ps=$('#pst');if(!ps){scrOpen()||softRender();return}const t=document.createElement('div');t.innerHTML=poster();const np=t.querySelector('#pst');if(!np){scrOpen()||softRender();return}
