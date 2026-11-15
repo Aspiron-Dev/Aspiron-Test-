@@ -282,6 +282,27 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     ok(an.badges === 0 && an.rings === 0 && !/Badges|tests done/.test(an.text), 'Analytics: no badges and no ring charts');
     ok(an.wide <= 390, 'Analytics: no sideways scroll on a phone (' + an.wide + ' px)');
     ok(!e4.length, 'no page errors (analytics) ' + e4.join(' | ')); await c4.close(); }
+  // Tests tab: a series the student already bought is not offered again (store list, trending, offers, count); a student who
+  // bought nothing still sees it; Home keeps showing it; and the page is not rebuilt as the store data arrives
+  for (const who of [['9000000002', 'BBBB2222', true], ['9000000001', 'AAAA1111', false]]) {
+    await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = $1`, [who[0]]);
+    const c7 = await br.newContext({ viewport: { width: 390, height: 844 } }); const p7 = await c7.newPage(); const e7 = [];
+    p7.on('pageerror', e => e7.push(e.message));
+    await p7.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort()); await p7.route(SUPA + '/rest/v1/rpc/**', rpcRoute);
+    await p7.goto(BASE + 'index.html'); await codeScreen(p7); await p7.fill('#ph', who[0]); await p7.fill('#cd', who[1]); await p7.click('#lbtn'); await p7.waitForTimeout(3500);
+    await p7.evaluate(() => { const r = document.getElementById('v3host').shadowRoot; const x = r.querySelector('[data-ob="skip"]'); if (x) x.click(); }); await p7.waitForTimeout(2600);
+    await p7.evaluate(() => { const r = document.getElementById('v3host').shadowRoot; const x = r.querySelector('#sheet.open [data-a="close"]'); if (x) x.click(); }); await p7.waitForTimeout(600);
+    await p7.evaluate(() => { const r = document.getElementById('v3host').shadowRoot; window.__rb = 0; new MutationObserver(l => { l.forEach(x => { if (x.addedNodes.length > 1) window.__rb++; }); }).observe(r.querySelector('#main'), { childList: true }); });
+    await p7.evaluate(() => { location.hash = '#/x/test'; }); await p7.waitForTimeout(4000);
+    const st = await p7.evaluate(() => { const r = document.getElementById('v3host').shadowRoot, b = r.querySelector('#tBody'); return { cards: b.querySelectorAll('.ic2').length, trend: b.querySelectorAll('.trc').length, empty: (b.querySelector('.empty b') || {}).textContent || '', count: (r.querySelector('.tt2 button small') || {}).textContent || '', rebuilds: window.__rb }; });
+    if (who[2]) { ok(st.cards === 0 && st.trend === 0 && st.empty === 'You have every test series' && st.count === 'All bought', 'Tests: a bought series is not in the store, trending or the count (' + JSON.stringify(st) + ')'); }
+    else { ok(st.cards === 1 && st.empty === '' && st.count === '1 series', 'Tests: a student who bought nothing still sees the series (' + JSON.stringify(st) + ')'); }
+    ok(st.rebuilds <= 1, 'Tests: the whole page is built once, not again for each answer from the server (' + st.rebuilds + ' builds)');
+    await p7.evaluate(() => { location.hash = '#/'; }); await p7.waitForTimeout(2500);
+    const home = await p7.evaluate(() => document.getElementById('v3host').shadowRoot.querySelectorAll('#main .trc').length);
+    ok(home >= 1, 'Home still lists the series in Trending (' + home + ')');
+    ok(!e7.length, 'no page errors (Tests store filter) ' + e7.join(' | ')); await c7.close();
+  }
   // the phone's Back button closes an open sheet or the menu first, never the page behind it
   await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
   { const c5 = await br.newContext({ viewport: { width: 390, height: 844 } }); const p5 = await c5.newPage(); const e5 = []; p5.on('pageerror', e => e5.push(e.message));

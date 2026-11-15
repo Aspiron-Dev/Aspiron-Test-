@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=66;
+const V3VER=69;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -334,7 +334,7 @@ const avatar=(cls)=>{const o=stuProf();return o.photo&&/^data:image\//.test(o.ph
 const stuMeta=()=>{const o=stuProf();return [o.exam,o.cls].filter(Boolean).join(', ')||('+91 '+(typeof maskMob==='function'&&AUTH?maskMob(AUTH.mobile):''))};
 /* store items (public, the same call the store page makes) */
 let STORE=null,storeBusy=null;
-function loadStore(){if(STORE||storeBusy)return storeBusy;storeBusy=rpc('cbt_store',{},true).then(r=>{STORE=r&&r.ok?(r.items||[]):[];return STORE}).catch(()=>(STORE=[])).finally(()=>{storeBusy=null;if(S.tab==='test'||S.tab==='home')softRender()});return storeBusy}
+function loadStore(){if(STORE||storeBusy)return storeBusy;storeBusy=rpc('cbt_store',{},true).then(r=>{STORE=r&&r.ok?(r.items||[]):[];return STORE}).catch(()=>(STORE=[])).finally(()=>{storeBusy=null;if(S.tab==='test')drawT();else if(S.tab==='home')softRender()});return storeBusy}
 const storeUrl=x=>'store.html#p='+encodeURIComponent(x.id);
 const courseOf=x=>x.course==='jee'?'JEE':x.course==='neet'?'NEET':'';
 let NOTES=null;
@@ -437,7 +437,7 @@ function zone(){return `<section class="sec"><div class="sh"><h2>My study zone</
   ${ZONE.map((z,i)=>`<button class="qi zi" data-a="zone" data-k="${z[0]}" style="--zd:${i*35}ms"><span class="zt">${ic(z[1],24)}</span><span class="zl">${z[2]}</span></button>`).join('')}</div></section>`}
 function promoRail(id){let L=[];try{L=(typeof PROMO!=='undefined'&&PROMO)||[]}catch(e){}if(!L.length)return '';
   return `<section class="sec"><div class="rail" id="${id}">${L.slice(0,6).map(x=>{const u=/^https?:\/\/|^#\//i.test(x.link||'')?x.link:'',img=x.img&&/^data:image\/|^https:\/\//.test(x.img)?x.img:'';
-   const body=img?`<img src="${esc3(img)}" alt="${esc3(x.title||'Offer')}">`:`<span class="bn-tx"><small class="gold">${esc3(x.label||'Aspiron')}</small><b>${esc3(x.title||'')}</b>${x.text?`<em>${esc3(x.text)}</em>`:''}</span>`;
+   const body=img?`<img src="${esc3(bimg(img))}" alt="${esc3(x.title||'Offer')}">`:`<span class="bn-tx"><small class="gold">${esc3(x.label||'Aspiron')}</small><b>${esc3(x.title||'')}</b>${x.text?`<em>${esc3(x.text)}</em>`:''}</span>`;
    return `<a class="pbn${img?'':' hero'}" ${u?`href="${esc3(u)}"${/^https?:/i.test(u)?' target="_blank" rel="noopener noreferrer"':''}`:''}>${body}</a>`}).join('')}</div>
    ${L.length>1?`<div class="dots" id="${id}D" aria-hidden="true">${L.slice(0,6).map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('')}</div>`:''}</section>`}
 function storeCard(x,cls){const off=x.mrp&&x.mrp>x.price?Math.round((1-x.price/x.mrp)*100):0,soon=x.buy_on===false&&!x.prebook;
@@ -542,10 +542,19 @@ const itemOfSeries=sid=>(STORE||[]).find(x=>x.id===SMAP[sid]);
 const owned=x=>{const sid=seriesOfItem(x.id);return sid&&mine().some(s=>s.id===sid)?sid:null};
 // v77: a series this student has not bought, opened in explore mode (Description, Schedule, first test, Reviews to read)
 const preview=x=>{const sid=seriesOfItem(x.id);return sid&&(C().series||[]).some(s=>s.id===sid)?sid:null};
-const cats=()=>[...new Set((STORE||[]).map(x=>String(x.section||'').trim()).filter(Boolean))];
+/* "bought" = a paid series that is unlocked for this student and has not ended. A free series (price 0, everyone is in it)
+   and a series whose time is over stay in the store, so a student can still get it or buy it again. STORE itself is not
+   changed: explore, the locked sheet and Home read it as before. */
+const bought=x=>{const sid=seriesOfItem(x.id),s=sid&&(C().series||[]).find(v=>v.id===sid);return !!(s&&s.unlocked&&!s.is_free&&!expired(s))};
+const shop=()=>(STORE||[]).filter(x=>!bought(x));
+const cats=()=>[...new Set(shop().map(x=>String(x.section||'').trim()).filter(Boolean))];
 const rvOf=x=>SRV[x.id]&&SRV[x.id].count?SRV[x.id]:null;
 const starRow=r=>`<span class="stars" aria-label="${(+r.avg).toFixed(1)} out of 5">${ic('star',13).replace('class="i"','class="i fill"')}<b>${(+r.avg).toFixed(1)}</b> <span class="mut">(${fmtN(r.count)})</span></span>`;
-function coverOf(x,label){return okImg(x&&x.image)?`<img src="${esc3(x.image)}" alt="${esc3(x.title)}" loading="lazy">`:`<span class="cvph"><small>${esc3(label||courseOf(x||{})||'Aspiron')}</small><b>${esc3((x&&x.title)||'')}</b></span>`}
+const BLOBS=new Map();
+function bimg(u){if(typeof u!=='string'||u.length<30000||u.slice(0,11)!=='data:image/')return u;let b=BLOBS.get(u);if(b)return b;
+  try{const i=u.indexOf(','),h=u.slice(5,i);if(i<0||!/;base64$/i.test(h))return u;const bin=atob(u.slice(i+1)),a=new Uint8Array(bin.length);for(let k=0;k<bin.length;k++)a[k]=bin.charCodeAt(k);
+    b=URL.createObjectURL(new Blob([a],{type:h.split(';')[0]}));BLOBS.set(u,b);return b}catch(e){return u}}
+function coverOf(x,label){return okImg(x&&x.image)?`<img src="${esc3(bimg(x.image))}" alt="${esc3(x.title)}" loading="lazy">`:`<span class="cvph"><small>${esc3(label||courseOf(x||{})||'Aspiron')}</small><b>${esc3((x&&x.title)||'')}</b></span>`}
 const priceH=x=>x.price?`<span class="price"><b>₹${fmtN(x.price)}</b>${offPct(x)?`<s>₹${fmtN(x.mrp)}</s><span class="badge off">${offPct(x)}% off</span>`:''}</span>`:'<span class="price"><span class="free">Free</span></span>';
 const buyHref=x=>'store.html#b='+encodeURIComponent(x.id);
 function actH(x){const sid=owned(x),soon=x.buy_on===false;
@@ -557,7 +566,11 @@ function actH(x){const sid=owned(x),soon=x.buy_on===false;
 const LOOK0={poster:'',link:'',exams:['NEET','JEE'],classes:['Class 11','Class 12','Dropper'],subjects:['Physics','Chemistry','Biology','Maths'],tags:{}};
 let LOOK=null,lookBusy=null;
 function loadLook(){if(LOOK||lookBusy)return lookBusy;lookBusy=rpc('cbt_store_look',{},true).then(r=>{LOOK=r&&r.ok?Object.assign({},LOOK0,r,{tags:r.tags||{}}):LOOK0}).catch(()=>{LOOK=LOOK0})
-  .finally(()=>{lookBusy=null;if(S.tab==='test'&&!scrOpen())softRender()});return lookBusy}
+  .finally(()=>{lookBusy=null;if(S.tab==='test'&&!scrOpen())reposter()});return lookBusy}
+/* the poster came after the page was drawn: swap just that section. A full redraw re-decoded the poster and every cover
+   and moved the page under the finger of a student who had already started to scroll. */
+function reposter(){const ps=$('#pst');if(!ps){softRender();return}const t=document.createElement('div');t.innerHTML=poster();const np=t.querySelector('#pst');if(!np){softRender();return}
+  ps.replaceWith(np);loadPC();pstSync(true);const pi=$('#pst img');pi&&!pi.complete&&pi.addEventListener('load',()=>pstSync(true),{once:true})}
 const LK=()=>LOOK||LOOK0;
 /* which exams / classes / subjects a store series is for; not set in the admin yet = guessed from its course and name.
    An empty list means "all of them". */
@@ -570,13 +583,13 @@ const sorted=L=>L;
 const mpass=s=>{const w=TQ.q.toLowerCase().split(/\s+/).filter(Boolean),h=[s.title,s.description,testsOf(s.id).map(t=>t.title).join(' ')].join(' ').toLowerCase();return w.every(v=>h.includes(v))};
 
 /* ---------- top: the poster from Admin → Tests page, edge to edge, with the search on it and the two big buttons on its bottom ---------- */
-function tabs2(){const c=myCount(),n=(STORE||[]).filter(x=>x.buy_on!==false).length;
+function tabs2(){const c=myCount(),n=shop().filter(x=>x.buy_on!==false).length;
   return `<div class="tt2">
-   <button class="${TQ.tile==='store'?'on':''}" data-a="toList"><span class="ti">${ic('tests',22)}</span><b>Test Series Store</b><small>${STORE?n+' series':'Loading'}</small></button>
+   <button class="${TQ.tile==='store'?'on':''}" data-a="toList"><span class="ti">${ic('tests',22)}</span><b>Test Series Store</b><small>${STORE?(n||!STORE.some(x=>x.buy_on!==false)?n+' series':'All bought'):'Loading'}</small></button>
    <button class="${TQ.tile==='my'?'on':''}" data-a="mySeries"><span class="ti">${ic('layers',22)}</span><b>My Test Series</b><small>${c.all?c.all+' enrolled':'None yet'}</small></button></div>`}
 function posterImg(){const p=LK().poster||'';return /^data:image\/(jpeg|png|webp);base64,/.test(p)?p:''}
 function poster(){const L=LK(),img=posterImg(),u=/^(https:\/\/|#\/|store\.html#)[^\s"'<>\\]*$/.test(L.link||'')?L.link:'';
-  const art=img?`<img src="${esc3(img)}" alt="">`:`<span class="pst-ph"><small>ASPIRON EDUCATION</small><b>Test series</b><em>NEET and JEE, exam-style tests with All India rank</em></span>`;
+  const art=img?`<img src="${esc3(bimg(img))}" alt="">`:`<span class="pst-ph"><small>ASPIRON EDUCATION</small><b>Test series</b><em>NEET and JEE, exam-style tests with All India rank</em></span>`;
   return `<div class="pst-stick" id="pstStick">
    <div class="pst-top"><div class="search"><label class="sbox">${ic('search',19)}<input id="tq" type="search" autocomplete="off" placeholder="Search test series, test name or exam" value="${esc3(TQ.q)}" aria-label="Search test series, test name or exam"><button class="clr" data-a="tqClear" aria-label="Clear search"${TQ.q?'':' hidden'}>${ic('x',17)}</button></label>
    <button class="fb${tfCount()?' on':''}" data-a="tFilter" aria-label="Filter${tfCount()?`, ${tfCount()} on`:''}">${ic('filter',20)}${tfCount()?`<b>${tfCount()}</b>`:''}</button></div></div>
@@ -635,22 +648,27 @@ addEventListener('scroll',()=>{if(!root||!main||pstRaf)return;if(S.tab!=='test'&
 addEventListener('resize',()=>{if(root&&S.tab==='test')pstSync(true)},{passive:true});
 
 /* ---------- store view ---------- */
-function offer3(){const L=(STORE||[]).filter(x=>x.buy_on!==false&&x.price).sort((a,b)=>offPct(b)-offPct(a)).slice(0,3);if(L.length<2)return '';
+function offer3(){const L=shop().filter(x=>x.buy_on!==false&&x.price).sort((a,b)=>offPct(b)-offPct(a)).slice(0,3);if(L.length<2)return '';
   return `<section class="sec"><div class="off3">${L.map(x=>`<button class="o3" data-a="xp" data-id="${esc3(x.id)}"><span class="o3i">${ic('spark',20)}</span><b>${esc3(x.title)}</b><em>${offPct(x)?`${offPct(x)}% off, now ₹${fmtN(x.price)}`:`Now @ ₹${fmtN(x.price)}`}</em></button>`).join('')}</div></section>`}
 function iCard(x){const r=rvOf(x),soon=x.buy_on===false;
   return `<article class="card ic2"><button class="cv" data-a="xp" data-id="${esc3(x.id)}" aria-label="Explore ${esc3(x.title)}">${coverOf(x)}${offPct(x)?`<span class="badge off cvb">${offPct(x)}% off</span>`:''}${soon?'<span class="badge pro cvb">Coming soon</span>':x.badge?`<span class="badge pro cvb">${esc3(x.badge)}</span>`:''}</button>
   <div class="ic2b"><span class="tag">${[courseOf(x),esc3(x.section||'')].filter(Boolean).join(', ')||'Test series'}</span><h3>${esc3(x.title)}</h3>${x.subtitle?`<p class="mut">${esc3(x.subtitle)}</p>`:''}
    <div class="meta">${r?starRow(r):''}${LANGS.has(x.id)?`<span>${ic('book')}Hindi + English</span>`:''}${owned(x)?'<span class="st ok">Enrolled</span>':''}</div>
    <div class="ft">${priceH(x)}<div class="acts"><button class="btn sm ghost" data-a="xp" data-id="${esc3(x.id)}">Explore</button>${actH(x)}</div></div></div></article>`}
-function trendRail(home){const L=(STORE||[]).filter(x=>x.buy_on!==false).slice().sort((a,b)=>((rvOf(b)||{count:0}).count-(rvOf(a)||{count:0}).count)||(!!b.badge-!!a.badge)).slice(0,6);if(!L.length||(!home&&L.length<2))return '';
+function trendRail(home){const L=(home?STORE||[]:shop()).filter(x=>x.buy_on!==false).slice().sort((a,b)=>((rvOf(b)||{count:0}).count-(rvOf(a)||{count:0}).count)||(!!b.badge-!!a.badge)).slice(0,6);if(!L.length||(!home&&L.length<2))return '';
   return `<section class="sec"><div class="sh"><h2>Trending test series</h2>${home?`<button class="lnk" data-a="toStore">View all${ic('right')}</button>`:''}</div><div class="rail">${L.map(x=>`<button class="card trc" data-a="xp" data-id="${esc3(x.id)}"><span class="cv">${coverOf(x)}</span><span class="trb"><b>${esc3(x.title)}</b>${priceH(x)}</span></button>`).join('')}</div></section>`}
+/* what is bought comes from the store map (extras) and the validity dates (meta): the list waits for both, at most 2.5 s */
+let holdT0=0;
+function holding(){if(XD!==null&&META!==null){holdT0=0;return false}if(!holdT0){holdT0=Date.now();setTimeout(()=>{if(S.tab==='test'&&!scrOpen())drawT()},2600)}return Date.now()-holdT0<2500}
 function storeView(){
-  if(STORE===null){loadStore();return `<div class="list"><div class="card sk" style="height:120px"></div><div class="card sk" style="height:320px"></div></div>`}
-  if(TQ.q.trim()||tfCount()){const L=sorted(STORE.filter(spass)),M=TQ.q.trim()?mine().filter(mpass):[];
+  if(STORE===null||holding()){loadStore();loadExtras();loadMeta();return `<div class="list"><div class="card sk" style="height:120px"></div><div class="card sk" style="height:320px"></div></div>`}
+  if(TQ.q.trim()||tfCount()){const L=sorted(shop().filter(spass)),M=TQ.q.trim()?mine().filter(mpass):[];
    return `<section class="sec"><div class="sh"><h2>${L.length+M.length} ${L.length+M.length===1?'result':'results'}</h2><button class="lnk" data-a="tClear">Clear all</button></div>
     ${M.length?`<p class="gh">In your test series</p><div class="card rows">${M.map(s=>`<button class="row" data-a="openSD" data-id="${esc3(s.id)}"><span class="ti k">${ic('layers',19)}</span><span><b>${esc3(s.title)}</b><small>${seriesStats(s).n} tests</small></span>${ic('right',18)}</button>`).join('')}</div>`:''}
     ${L.length?`${M.length?'<p class="gh">In the store</p>':''}<div class="list">${L.map(iCard).join('')}</div>`:M.length?'':`<div class="card empty"><span class="ti">${ic('search',22)}</span><b>No test series match</b><p>Try another word, or remove a filter.</p><button class="btn sm ghost" data-a="tClear">Clear search and filters</button></div>`}</section>`}
-  const C2=cats(),all=STORE.filter(x=>x.buy_on!==false&&(TQ.cat==='all'||(TQ.cat==='NEET'||TQ.cat==='JEE'?courseOf(x)===TQ.cat:String(x.section||'').trim()===TQ.cat))),soon=STORE.filter(x=>x.buy_on===false);
+  const C2=cats(),SH=shop(),allBought=STORE.some(x=>x.buy_on!==false)&&!SH.some(x=>x.buy_on!==false);if(TQ.cat!=='all'&&!['NEET','JEE',...C2].includes(TQ.cat))TQ.cat='all';
+  const all=SH.filter(x=>x.buy_on!==false&&(TQ.cat==='all'||(TQ.cat==='NEET'||TQ.cat==='JEE'?courseOf(x)===TQ.cat:String(x.section||'').trim()===TQ.cat))),soon=SH.filter(x=>x.buy_on===false);
+  if(allBought)return promoRail('tbRail')+`<section class="sec" id="allSec"><div class="card empty"><span class="ti">${ic('check',22)}</span><b>You have every test series</b><p>New series will appear here when they are added.</p><button class="btn sm gold" data-a="mySeries">Open My Test Series</button></div></section>`+(soon.length?`<section class="sec"><div class="sh"><h2>Coming soon</h2><span class="aside">${soon.length}</span></div><div class="list">${soon.map(iCard).join('')}</div></section>`:'')+`<a class="btn lg ghost" href="store.html">${ic('right',16)}Open the full store</a>`;
   return offer3()+promoRail('tbRail')+`<section class="sec" id="allSec"><div class="sh"><h2>Test series</h2><span class="aside">${all.length} series</span></div>
    <div class="chips">${['all','NEET','JEE',...C2].map(q=>`<button class="${TQ.cat===q?'on':''}" aria-pressed="${TQ.cat===q}" data-a="cat" data-v="${esc3(q)}">${q==='all'?'All':esc3(q)}</button>`).join('')}</div>
    ${all.length?`<div class="list">${all.map(iCard).join('')}</div>`:`<div class="card empty"><span class="ti">${ic('layers',22)}</span><b>Nothing in this group yet</b><p>Pick another group above.</p></div>`}</section>`+
@@ -662,7 +680,7 @@ function drawT(){const b=$('#tBody');if(!b)return;b.innerHTML=storeView();const 
 AFTER.test=()=>{loadMeta();const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#tbRail','#tbRailD');loadExtras();loadLook();loadPC();pstSync(true);const pi=$('#pst img');pi&&!pi.complete&&pi.addEventListener('load',()=>pstSync(true),{once:true});
   /* at most one try a minute: with no banners (or no network) the redraw below used to start the next load at once,
      an endless loop of requests and redraws that made the Tests page stutter */
-  try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length)&&Date.now()-promoAt>6e4){promoAt=Date.now();promoLoad().then(()=>{if(S.tab==='test'&&!scrOpen()&&typeof PROMO!=='undefined'&&PROMO&&PROMO.length)softRender()})}}catch(e){}};
+  try{if(typeof promoLoad==='function'&&!(typeof PROMO!=='undefined'&&PROMO&&PROMO.length)&&Date.now()-promoAt>6e4){promoAt=Date.now();promoLoad().then(()=>{if(S.tab==='test'&&!scrOpen()&&typeof PROMO!=='undefined'&&PROMO&&PROMO.length)drawT()})}}catch(e){}};
 let promoAt=0;
 A.toList=()=>{TQ.tile='store';$$('.tt2 button').forEach(b=>b.classList.toggle('on',b.dataset.a==='toList'));const a=$('#allSec');a&&a.scrollIntoView({behavior:RM?'auto':'smooth',block:'start'})};
 A.tqClear=()=>{TQ.q='';$('#tq').value='';drawT();$('#tq').focus()};
@@ -747,7 +765,7 @@ A.toStore=()=>{closeLayer();unwind(()=>{if(S.tab==='test'){scrollTo({top:0,behav
    Without that SQL the page still works: no dates, no plans, no syllabus. */
 let META=null,metaBusy=null;
 function loadMeta(){if(META||metaBusy)return metaBusy;metaBusy=rpc('cbt_series_meta',{},true).then(r=>{META=r&&r.ok?r:{series:{},syl:{},promo:'',promo_link:''}}).catch(()=>{META={series:{},syl:{},promo:'',promo_link:''}})
-  .finally(()=>{metaBusy=null;if(scrOpen()&&top()&&(top().key==='my'||top().key==='sp'))redraw();if(S.tab==='test'&&!scrOpen()){const t=$('.tt2');t&&(t.outerHTML=tabs2())}});return metaBusy}
+  .finally(()=>{metaBusy=null;if(scrOpen()&&top()&&(top().key==='my'||top().key==='sp'))redraw();if(S.tab==='test'&&!scrOpen())drawT()});return metaBusy}
 const MT=sid=>((META||{}).series||{})[sid]||{};
 const expired=s=>{const e=MT(s.id).e;return !!(e&&e<nowMs())};
 const dLong=t=>fD(t,{day:'numeric',month:'short',year:'numeric'});
@@ -2132,7 +2150,7 @@ route=async function(){
   try{if(typeof keepPull==='function')setTimeout(keepPull,0)}catch(e){}
   if(!CAT||Date.now()-CATAT>30000){if(!CAT)main.innerHTML='<div class="card sk" style="height:220px;margin-top:8px"></div><div class="card sk" style="height:160px"></div><div class="card sk" style="height:200px"></div>';
     const ok=await loadCat(!!CAT);if(!ok){if(AUTH)netErr3();return}if(INTEST||!AUTH)return}
-  if(NOTES===null)loadNotes().then(()=>{if(S.tab==='test')softRender()});
+  if(NOTES===null)loadNotes();
   const tab=tabOf(h),changed=tab!==S.tab||!main.children.length||main.querySelector('.sk');S.tab=tab;syncDock();if(changed)scrollTo(0,0);render(changed);if(tab==='home'&&!goThen)setTimeout(maybeOnb,1100);if(tab==='home'&&!goThen)setTimeout(maybeSetup,1700);
   if(goThen){const f=goThen;goThen=null;setTimeout(f,0)}};
 if(typeof login==='function'){const _login=login;login=function(){document.body.classList.remove('v3on','v3old');return _login.apply(this,arguments)}}
