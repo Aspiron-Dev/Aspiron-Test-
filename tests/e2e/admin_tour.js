@@ -26,7 +26,7 @@ const server = http.createServer((req, res) => {
 });
 
 const calls = [];
-let LIVE = [];   // rows of live_tests, built in the set-up below
+let LIVE = [], liveCalls = 0;   // rows of live_tests, built in the set-up below
 const stubLive = id => {   // the shape the panel reads from cbt_admin3 live: counts differ per test
   const k = Math.max(0, LIVE.findIndex(t => t.id === id)), t0 = Date.now(), P = i => ({ id: 'st' + k + '-' + i, name: 'Student ' + k + '-' + i, mobile: '9876' + String(500000 + k * 1000 + i) });
   const row = LIVE.find(t => t.id === id) || { title: 'Old test' };
@@ -43,6 +43,7 @@ async function rpcRoute(route) {
   const vals = keys.map(k => body[k] === null || body[k] === undefined ? null : typeof body[k] === 'object' ? JSON.stringify(body[k]) : String(body[k]));
   calls.push(fn);
   if (fn === 'cbt_admin3' && (body.p_action === 'live_tests' || body.p_action === 'live')) {
+    if (body.p_action === 'live') liveCalls++;
     const out = body.p_action === 'live_tests' ? { ok: true, tests: LIVE } : stubLive((body.p_data || {}).id);
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(out) });
   }
@@ -70,7 +71,7 @@ async function rpcRoute(route) {
   await q(`insert into cbt_private.store_coupons (item_id, code, kind, value, active, starts_at, ends_at) select 'cccccccc-0000-0000-0000-000000000001', 'TOURLONG', 'flat', 100, true, now(), now() + interval '9 days' where not exists (select 1 from cbt_private.store_coupons where code = 'TOURLONG')`);
   await q(`update cbt_private.tests set opens_at = (extract(epoch from now() - interval '1 hour') * 1000)::bigint, closes_at = (extract(epoch from now() + interval '2 hours') * 1000)::bigint where id in ('aaaaaaaa-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004')`);
   await q(`insert into cbt_private.tests select (jsonb_populate_record(null::cbt_private.tests, to_jsonb(t) || jsonb_build_object('id', gen_random_uuid(), 'title', 'Old mock ' || g, 'opens_at', (extract(epoch from now() - (g || ' days')::interval) * 1000)::bigint, 'closes_at', (extract(epoch from now() - (g || ' days')::interval + interval '3 hours') * 1000)::bigint, 'result_at', null))).* from cbt_private.tests t, generate_series(1, 40) g where t.id = 'aaaaaaaa-0000-0000-0000-000000000001'`);
-  LIVE = (await q(`select t.id, t.title, s.title as series, case when t.title in ('Paid Live', 'Free Live', 'Open mock') then 1 else 0 end as open_now from cbt_private.tests t join cbt_private.series s on s.id = t.series_id order by s.created_at, t.opens_at desc nulls last limit 12`)).map(r => ({ id: r.id, title: r.title, series: r.series, open_now: r.open_now }));
+  LIVE = (await q(`select t.id, t.title, s.title as series, case when t.title in ('Paid Live', 'Free Live') then 1 else 0 end as open_now from cbt_private.tests t join cbt_private.series s on s.id = t.series_id order by s.created_at, t.opens_at desc nulls last limit 12`)).map(r => ({ id: r.id, title: r.title, series: r.series, open_now: r.open_now }));
   await new Promise(r => server.listen(PORT, '127.0.0.1', r));
   fs.mkdirSync(path.join(__dirname, 'shots'), { recursive: true });
   const br = await chromium.launch();
@@ -126,6 +127,14 @@ async function rpcRoute(route) {
       await page.waitForTimeout(700);
       ok(new RegExp(titles[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(await page.textContent('#lv-for')) && (await page.$$eval('.lv-pane', a => a.findIndex(x => x.classList.contains('on')))) === 1, tag + ' live: ' + (phone ? 'swiping' : 'tapping') + ' to the 2nd board opens its student list');
       if (phone) { await page.click('.lv-dot:nth-child(3)'); await page.waitForTimeout(700); ok((await page.$$eval('.lv-dot', a => a.findIndex(x => x.classList.contains('on')))) === 2 && (await page.$$eval('.lv-pane', a => a.findIndex(x => x.classList.contains('on')))) === 2, tag + ' live: a dot jumps to that board'); }
+      const c0 = liveCalls; await page.click('#ax-ph [data-act=refresh]'); await page.waitForTimeout(1200);
+      ok(liveCalls - c0 >= 3, tag + ' live: Refresh asks for new numbers for every board (' + (liveCalls - c0) + ' calls)');
+      // a test that opens while the page is open gets its board without a reload (the check runs every 1.5 s here, once a minute for real)
+      await page.evaluate(() => { AX.live.watchMs = 1500; AX.live.catEvery = 1; }); await page.goto(U('live')); await page.waitForSelector('.lv-pane .lv-board .k-v');
+      const nid = (await q(`insert into cbt_private.tests select (jsonb_populate_record(null::cbt_private.tests, to_jsonb(t) || jsonb_build_object('id', gen_random_uuid(), 'title', 'Late mock', 'opens_at', (extract(epoch from now() - interval '1 minute') * 1000)::bigint, 'closes_at', (extract(epoch from now() + interval '1 hour') * 1000)::bigint))).* from cbt_private.tests t where t.id = 'aaaaaaaa-0000-0000-0000-000000000002' returning id`))[0].id;
+      LIVE.push({ id: nid, title: 'Late mock', series: 'FREE Series', open_now: 0 }); await page.evaluate(() => { AX.cache.drop('catalog'); }); await page.waitForTimeout(4500);
+      ok((await page.$$eval('.lv-pane', a => a.length)) === 4 && (await page.$$eval('.lv-pane h3', a => a.map(x => x.textContent.trim()))).includes('Late mock'), tag + ' live: a test that opens later gets its board by itself');
+      await q(`delete from cbt_private.tests where id = $1`, [nid]); LIVE.pop(); await page.evaluate(() => { AX.live.watchMs = 0; AX.live.catEvery = 5; AX.cache.drop('catalog'); });
       await page.goto(U('live/history')); await page.waitForSelector('.lv-sc-card'); await page.waitForTimeout(300);
       const cards = await page.$$eval('.lv-sc-card', a => a.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
       ok(cards.length >= 2 && cards.some(c => /PAID Series/.test(c) && /1 live/.test(c)) && cards.some(c => /FREE Series/.test(c) && /2 live/.test(c)), tag + ' history: series first, with how many are live: ' + cards.join(' / '));

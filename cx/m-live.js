@@ -22,6 +22,7 @@ const siteUrl = () => location.href.replace(/[#?].*$/, '').replace(/[^/]*\.html$
 const stuLink = () => /^https:\/\//.test(AX.cfg.SHORT_URL || '') ? AX.cfg.SHORT_URL : siteUrl();
 const cq = v => { let s = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
 const isOpen = t => !!t && Number(t.open_now) > 0;
+const inWin = c => !!c && c.active !== false && ms(c.opens_at) > 0 && ms(c.opens_at) <= now() && ms(c.closes_at) > now();   // a definite window
 const SEGS = [
   { k: 'writing', t: 'Writing now', short: 'Writing', icon: 'pulse', tone: 'pri' },
   { k: 'done', t: 'Submitted', short: 'Submitted', icon: 'checkCircle', tone: 'ok' },
@@ -42,7 +43,22 @@ function pull(id) {
   });
   flight.set(id, p); return p;
 }
-AX.live = { pull, get: id => LV.cache.get(id), counts: cnt, fresh: (id, age) => { const c = LV.cache.get(id); return c && Date.now() - c.at < age ? c : null; } };
+const isLive = id => isOpen(rowOf(id)) || inWin(cTest(id));
+AX.live = { watchMs: 0, catEvery: 5, pull, get: id => LV.cache.get(id), counts: cnt, fresh: (id, age) => { const c = LV.cache.get(id); return c && Date.now() - c.at < age ? c : null; } };
+async function reread(withCat) {
+  // live_tests every time; the catalog (can be big) only now and then, through its own cache
+  const [r, cat] = await Promise.all([AX.api.call('cbt_admin3', 'live_tests'), withCat ? AX.data.catalog() : null]);
+  if (r && r.ok) LV.tests = r.tests || [];
+  if (cat && cat.ok) LV.cat = cat;
+  return liveIds();
+}
+const sameSet = (a, b) => a.slice().sort().join() === b.slice().sort().join();
+const watch = (ctx, ids) => { let k = 0; LV.timers.push(setInterval(async () => {
+  if (!ctx.alive()) return stop();
+  if (document.hidden) return;
+  const n = await reread(++k % (AX.live.catEvery || 5) === 0);
+  if (ctx.alive() && !sameSet(n, ids)) ctx.reload();
+}, AX.live.watchMs || 60000)); };
 AX.openLive = id => AX.go('live' + (id ? '/' + encodeURIComponent(id) : ''));
 
 /* ---------- series: the catalog knows which series a test belongs to; live_tests only has the series name ---------- */
@@ -55,8 +71,9 @@ const serName = id => { const s = CS().find(x => x.id === serId(id)); return s ?
 const serKey = id => serId(id) || ((rowOf(id) || {}).series ? 'n:' + rowOf(id).series : 'other');
 const titleOf = id => { const c = LV.cache.get(id); return (c && c.x.test && c.x.test.title) || (rowOf(id) || {}).title || (cTest(id) || {}).title || 'Test'; };
 const liveIds = () => {
-  const ord = new Map(CS().map((s, i) => [s.id, i])), at = id => ord.has(serId(id)) ? ord.get(serId(id)) : 99;
-  return LV.tests.filter(isOpen).map(t => t.id).sort((a, b) => at(a) - at(b) || ms((cTest(a) || {}).opens_at) - ms((cTest(b) || {}).opens_at));
+  const ord = new Map(CS().map((s, i) => [s.id, i])), at = id => ord.has(serId(id)) ? ord.get(serId(id)) : 99, set = new Set(LV.tests.filter(isOpen).map(t => t.id));
+  CT().forEach(t => { if (inWin(t)) set.add(t.id); });
+  return [...set].sort((a, b) => at(a) - at(b) || ms((cTest(a) || {}).opens_at) - ms((cTest(b) || {}).opens_at));
 };
 // series cards: catalog series first, then series names that only live_tests knows
 function groups() {
@@ -73,7 +90,7 @@ const stateOf = (id, live) => { if (live.has(id)) return 'live'; const m = metaO
 const board = (id, active) => {
   const c = LV.cache.get(id), x = c && c.x, d = x || {}, t = d.test || {}, ct = cTest(id) || {}, r = rowOf(id) || {}, e = LV.err.get(id);
   const n = cnt(x), w = k => n.el ? n[k] * 100 / n.el : 0, ser = serName(id);
-  const opens = ms(t.opens_at) || ms(ct.opens_at), closes = ms(ct.closes_at) || ms(r.closes_at), live = isOpen(r);
+  const opens = ms(t.opens_at) || ms(ct.opens_at), closes = ms(ct.closes_at) || ms(r.closes_at), live = isLive(id);
   const when = opens && opens > now() ? h`<span>Opens ${fmt.dt(opens)} · <b class="lv-cd" data-open="${opens}">in ${mmss((opens - now()) / 1000)}</b></span>`
     : closes && live ? (closes > now() ? h`<span>Ends ${fmt.dt(closes)} · <b class="lv-cd" data-end="${closes}">in ${mmss((closes - now()) / 1000)}</b></span>` : h`<span>Ended ${fmt.dt(closes)}</span>`)
     : opens ? h`<span>Opened ${fmt.dt(opens)}</span>` : h`<span>Open any time</span>`;
@@ -91,7 +108,7 @@ AX.mod({
   id: 'live', title: 'Live monitor', short: 'Live', icon: 'live', group: 'Tests & questions', order: 15, perm: 'results',
   sub: 'Every test that is live now, by series. Older tests are in Series & history.',
   async render(ctx) {
-    stop();
+    stop(); LV.refreshFn = null;
     const p0 = ctx.parts[0] || '', p1 = ctx.parts[1] ? decodeURIComponent(ctx.parts[1]) : '';
     ctx.head({ title: 'Live monitor', sub: 'Every test that is live now, by series. Older tests are in Series & history.', tabs: [{ id: 'now', title: 'Live now', icon: 'live', href: '#/live' }, { id: 'history', title: 'Series & history', icon: 'layers', href: '#/live/history' }], tab: p0 === 'history' ? 'history' : 'now',
       actions: h`<button class="btn sm" data-act="refresh">${icon('refresh', 15)} Refresh</button>` });
@@ -107,7 +124,7 @@ AX.mod({
     // fix the header count now that the live tests are known
     ctx.head({ title: 'Live monitor', sub: 'Every test that is live now, by series. Older tests are in Series & history.', tabs: [{ id: 'now', title: 'Live now', icon: 'live', href: '#/live', count: live.length || 0 }, { id: 'history', title: 'Series & history', icon: 'layers', href: '#/live/history' }], tab: p0 === 'history' ? 'history' : 'now',
       crumb: p0 && p0 !== 'history' && !live.includes(p0) ? titleOf(p0) : '', actions: h`<button class="btn sm" data-act="refresh">${icon('refresh', 15)} Refresh</button>` });
-    const ph = document.getElementById('ax-ph'); if (ph) AX.act(ph, { refresh: () => ctx.reload() });
+    const ph = document.getElementById('ax-ph'); if (ph) AX.act(ph, { refresh: () => (LV.refreshFn ? LV.refreshFn() : ctx.reload()) });
 
     if (p0 === 'history') return historyTab(ctx, p1);
     // a single test (older or not open now) or the live boards
@@ -123,6 +140,7 @@ AX.mod({
 
 /* ---------- nothing is live: say when the next test opens ---------- */
 function noneLive(ctx) {
+  watch(ctx, []);
   const next = CT().filter(t => t.active && ms(t.opens_at) > now()).sort((a, b) => ms(a.opens_at) - ms(b.opens_at)).slice(0, 4);
   AX.set(ctx.el, h`<div class="card">${UI.empty({ icon: 'live', title: 'No test is live right now', text: next.length ? 'The next ones are below. Finished tests are in Series & history.' : 'Live tests show here the moment they open. Finished tests are in Series & history.', action: h`<a class="btn sm pri" href="#/live/history">${icon('layers', 15)} Series & history</a>` })}</div>
     ${next.length ? h`<div class="section-t">Opening next</div><div class="card pad0 list">${join(next, t => h`<a class="li click" href="#/live/${encodeURIComponent(t.id)}" style="color:var(--tx);text-decoration:none"><span class="av sm" style="--c:#6366f1">${icon('calendar', 15)}</span><div class="grow"><div class="t ell">${t.title}</div><div class="s ell">${serName(t.id) || '—'} · opens ${fmt.dt(t.opens_at)}</div></div>${UI.pill(fmt.ago(t.opens_at), 'info')}</a>`)}</div>` : ''}`);
@@ -131,6 +149,7 @@ function noneLive(ctx) {
 /* ---------- the boards (live now, or one older test) + the student list of the open board ---------- */
 function boards(ctx, ids, single) {
   LV.panes = ids;
+  if (!single) watch(ctx, ids);
   const site = stuLink(), canReset = AX.can('students', 'manage');
   AX.set(ctx.el, h`${single ? h`<div class="row gap6 mb8"><a class="btn xs ghost" href="#/live/history/${encodeURIComponent(serKey(ids[0]))}">${icon('chevL', 14)} ${serName(ids[0]) || 'Series & history'}</a></div>` : ''}
     <div class="lv-rw"><div class="lv-row" id="lv-row" data-c="${ids.length}">${join(ids, id => h`<section class="lv-pane" id="lv-p-${id}" data-id="${id}"></section>`)}</div>
@@ -241,6 +260,11 @@ function boards(ctx, ids, single) {
     if (ids[i] !== LV.id) setActive(ids[i], false);
   }, 90), { passive: true });
 
+  // Refresh: new numbers for every board, and the list of live tests read again
+  LV.refreshFn = () => {
+    Promise.all(ids.map(id => load(id, id !== LV.id))).then(() => { if (ctx.alive()) UI.toast('Numbers updated'); });
+    if (!single) reread(true).then(n => { if (ctx.alive() && !sameSet(n, ids)) ctx.reload(); });
+  };
   // first paint: what is cached (if fresh), then the numbers; the open board right away, the others one after another
   drawAll(); drawList();
   const first = [LV.id, ...ids.filter(i => i !== LV.id)];
@@ -249,7 +273,7 @@ function boards(ctx, ids, single) {
   LV.timers.push(setInterval(() => {
     if (!ctx.alive()) return stop();
     if (document.hidden) return;
-    ids.forEach(id => { const c = LV.cache.get(id); if (id === LV.id || !c || Date.now() - c.at > 55000) load(id, true); });
+    ids.forEach(id => { const c = LV.cache.get(id); if (c && !isLive(id)) return; if (id === LV.id || !c || Date.now() - c.at > 55000) load(id, true); });
   }, 15000));
   LV.timers.push(setInterval(tick, 1000));
   const vis = () => { if (!ctx.alive()) return document.removeEventListener('visibilitychange', vis); const c = LV.cache.get(LV.id); if (!document.hidden && (!c || Date.now() - c.at > 15000)) load(LV.id, true); };
