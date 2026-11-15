@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=63;
+const V3VER=64;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -1132,7 +1132,55 @@ A.anCh=()=>{const grp=L=>{const G={};L.forEach(m=>{(G[m.s]=G[m.s]||[]).push(m)})
    :`<div class="card empty"><span class="ti">${ic('qb',22)}</span><b>No chapters yet</b><p>Take tests and practise from the question bank to see every chapter here.</p><button class="btn sm" data-a="anQb">Start practising</button></div>`})};
 A.oldGo=el=>{const f={'#/m':openMistakes,'#/b':openSaved,'#/t':openTracker,'#/notes':openNotes}[el.dataset.h];if(f)f();else oldHash(el.dataset.h)};
 A.focus=()=>push(focusView());
-function histView(){return {t:'Test history',s:`${allRes().length} tests`,html:()=>{const R=allRes().slice().reverse();return R.length?`<div class="card rows">${R.slice(0,60).map(r=>{const t=tOf(r.test_id),s=t&&sOf(t.series_id);return `<div class="item"><span class="ti g">${ic('trophy',18)}</span><div class="bd"><div class="tt"><b>${esc3(titleOf(r))}</b><span class="badge n">${pctOf(r)}%</span></div><small>${s?esc3(s.title)+', ':''}${dS(r.at)}</small><small>${r.score} / ${r.max} marks. ${r.correct} right, ${r.wrong} wrong. Accuracy ${accOf(r)}%${r.used?`, ${Math.round(r.used/60)} min`:''}</small><div class="acts"><button class="btn sm" data-a="review" data-r="${esc3(r.id)}">Result and solutions</button></div></div></div>`}).join('')}</div>${R.length>60?'<p class="hint">Showing your latest 60 tests.</p>':''}`:`<div class="card empty"><span class="ti">${ic('trophy',22)}</span><b>No tests yet</b><p>Your results show up here after your first test.</p></div>`}}}
+/* ---------- Test history (v87): one card per test (a playlist of its attempts); tap = chart, attempts, leaderboard.
+   Results still held back (a live test waits for its result time) are on top with a ticking countdown. ---------- */
+const HS3={tid:null,sel:-1};let histT=0;
+const rawPct=r=>r.max?Math.round(r.score*1000/r.max)/10:0;   // can be negative
+function histGroups(){const M=new Map();
+  allRes().forEach(r=>{const k=r.test_id||('t:'+(r.title||''));if(!M.has(k))M.set(k,{id:r.test_id,title:r.title||titleOf(r),att:[]});M.get(k).att.push(r)});
+  const G=[...M.values()];G.forEach(g=>{const t=tOf(g.id);g.t=t;g.title=(t&&t.title)||g.title||'Test';g.s=t&&sOf(t.series_id);
+    g.best=Math.max(...g.att.map(rawPct));g.last=g.att[g.att.length-1];g.first=g.att[0]});
+  return G.sort((a,b)=>(b.last.at||0)-(a.last.at||0))}
+const attLbl=(g,i)=>i===0?(g.t&&g.t.practice?'Practice':g.first.late?'Late attempt (no rank)':liveTill(g.t)!=null?'Live attempt · counts for rank':'First attempt · counts for rank'):'Re-attempt '+i;
+function spark(att){const n=att.length,P=att.map(rawPct),mx=Math.max(20,...P),W=64,H=26,bw=Math.min(9,(W-(n-1)*3)/n),x0=(W-(n*bw+(n-1)*3))/2;
+  return `<svg class="hs3-sp" viewBox="0 0 ${W} ${H}" aria-hidden="true">${P.map((p,i)=>{const h=Math.max(2,Math.abs(p)/mx*(H-2));return `<rect x="${(x0+i*(bw+3)).toFixed(1)}" y="${(H-h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" class="${i===0?'a':'b'}"/>`}).join('')}</svg>`}
+function waitCard(p){const t=tOf(p.test_id),s=t&&sOf(t.series_id),ra=p.result_at||0;
+  return `<article class="card hs3-w"><div class="hs3-wt"><span class="hs3-wp">${ic('clock',14)}WAITING FOR RESULT</span></div>
+   <b class="hs3-wn">${esc3(p.title||titleOf(p))}</b><small>${s?esc3(s.title)+' · ':''}Submitted ${dayWord(p.at)}, ${fT(p.at)}</small>
+   ${ra?`<div class="hs3-cd"><span>Result in</span><b data-cdw="${ra}">${cdTxt(ra-nowMs())}</b></div><p class="hint" style="margin:0">Result, rank and answer key at <b>${dayWord(ra)}, ${fT(ra)}</b>. You can re-attempt after that.</p>`:''}</article>`}
+function histTick(){const n=nowMs();let due=false;root.querySelectorAll('[data-cdw]').forEach(e=>{const ms=+e.dataset.cdw-n;if(ms<=0)due=true;e.textContent=cdTxt(ms)});
+  if(due){clearInterval(histT);histT=0;try{loadCat(true).then(()=>{if(top()&&(top().key==='hist'||top().key==='hist3'))redraw()})}catch(e){}}}
+function histAfter(){clearInterval(histT);histT=0;if(root.querySelector('[data-cdw]'))histT=setInterval(histTick,1000)}
+const histLeave=()=>{clearInterval(histT);histT=0};
+function histView(){return {t:'Test history',s:`${histGroups().length} tests`,key:'hist',after:histAfter,leave:histLeave,html:()=>{
+  const G=histGroups(),W=(C().pending||[]).filter(p=>!G.some(g=>g.id===p.test_id&&false)),n=allRes().length;
+  if(!G.length&&!W.length)return `<div class="card empty"><span class="ti">${ic('trophy',22)}</span><b>No tests yet</b><p>Your results appear here once you attempt a test.</p></div>`;
+  return `${W.length?`<section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>Waiting for result</h2><span class="aside">${W.length}</span></div>${W.map(waitCard).join('')}</section>`:''}
+   ${G.length?`<section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>Your tests</h2><span class="aside">${n} attempt${n===1?'':'s'}</span></div>
+   ${G.slice(0,80).map(g=>`<button class="card hs3-g" data-a="histOpen" data-id="${esc3(g.id||'')}" data-k="${esc3(g.id||('t:'+g.title))}"><div class="hs3-gb"><b>${esc3(g.title)}</b><small>${g.s?esc3(g.s.title)+' · ':''}${dS(g.last.at)}</small>
+     <div class="hs3-gs"><span class="hs3-c">${g.att.length} attempt${g.att.length===1?'':'s'}</span><span>Best <b>${Math.max(0,g.best)}%</b></span><span>Latest <b>${Math.max(0,rawPct(g.last))}%</b></span></div></div>${spark(g.att)}${ic('right',16)}</button>`).join('')}</section>`:''}`}}}
+/* one test: chart of its attempts, the attempts, the leaderboard */
+function histChart(g){const att=g.att.slice(-10),off=g.att.length-att.length,P=att.map(rawPct),n=att.length,W=340,H=176,L=34,R=8,T=18,B=30,pw=W-L-R,ph=H-T-B;
+  const mxp=Math.max(...P),hi=[20,40,60,80,100].find(v=>v>=mxp*1.08)||100,lo=Math.min(0,Math.floor(Math.min(...P)/20)*20);
+  const y=v=>T+(hi-v)/(hi-lo)*ph,y0=y(0),slot=pw/n,bw=Math.min(30,slot*.55),ticks=[...new Set([lo,0,hi/2,hi])].filter(v=>v>=lo&&v<=hi);
+  const bars=att.map((r,i)=>{const v=P[i],cx=L+slot*(i+.5),x=cx-bw/2,yy=y(v),top=Math.min(yy,y0),h=Math.max(2,Math.abs(yy-y0)),rr=4,sel=HS3.sel===i+off,gi=i+off,
+    d=v>=0?`M${x},${top+h}V${top+rr}Q${x},${top} ${x+rr},${top}H${x+bw-rr}Q${x+bw},${top} ${x+bw},${top+rr}V${top+h}Z`:`M${x},${top}V${top+h-rr}Q${x},${top+h} ${x+rr},${top+h}H${x+bw-rr}Q${x+bw},${top+h} ${x+bw},${top+h-rr}V${top}Z`;
+    return `<g class="hs3-b${gi===0?' a':''}${sel?' sel':''}" data-a="histAtt" data-i="${gi}" role="button" tabindex="0" aria-label="${attLbl(g,gi)}, ${v}%"><rect x="${(cx-slot/2).toFixed(1)}" y="${T}" width="${slot.toFixed(1)}" height="${ph}" fill="transparent"/><path d="${d}"/>
+     <text class="v" x="${cx.toFixed(1)}" y="${(v>=0?top-5:top+h+12).toFixed(1)}" text-anchor="middle">${v}%</text><text class="x" x="${cx.toFixed(1)}" y="${H-10}" text-anchor="middle">${gi===0?'1st':'#'+(gi+1)}</text></g>`}).join('');
+  return `<svg class="hs3-ch" viewBox="0 0 ${W} ${H}" role="img" aria-label="Score of each attempt of ${esc3(g.title)}">${ticks.map(v=>`<line class="gr${v===0?' z':''}" x1="${L}" x2="${W-R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text class="t" x="${L-6}" y="${(y(v)+4).toFixed(1)}" text-anchor="end">${v}%</text>`).join('')}${bars}</svg>${off?`<p class="hint" style="margin:2px 0 0;text-align:center">Showing your latest ${att.length} of ${g.att.length} attempts.</p>`:''}`}
+function histDetail(g){const t=g.t,pr=t&&t.practice,i=HS3.sel>=0&&HS3.sel<g.att.length?HS3.sel:g.att.length-1,a=g.att[i],imp=g.att.length>1?Math.round((rawPct(g.last)-rawPct(g.first))*10)/10:null,lb=g.id&&!pr?LBC[g.id]:null;
+  const lbHtml=pr||!g.id?'':lb===undefined||lb===null?'<div class="card sk" style="height:120px"></div>':lb.hidden?`<div class="card empty"><span class="ti">${ic('clock',22)}</span><b>Ranks come out later</b><p>Ranks will be shown after ${esc3(fmtWhen(lb.result_at))}.</p></div>`:(lb.ok&&lb.top&&lb.top.length?rsLb(lb):'');
+  return `<div class="ig hs3-h"><i class="ig-glow" aria-hidden="true"></i><span class="im-s">${g.s?esc3(g.s.title):'Test'}</span><h1>${esc3(g.title)}</h1>
+    <div class="ig-st"><div><b>${g.att.length}</b><span>Attempts</span></div><div><b>${Math.max(0,g.best)}%</b><span>Best</span></div><div><b>${imp==null?'–':(imp>0?'+':'')+imp+'%'}</b><span>${imp==null?'Change':'Since 1st'}</span></div></div></div>
+   <section class="card p hs3-cc"><b style="font-size:15px">Your attempts</b><small class="mut" style="display:block;margin:2px 0 8px">Score as % of full marks. Tap a bar for details.</small>${histChart(g)}
+    <div class="hs3-rd"><b>${attLbl(g,i)}</b><span>${dS(a.at)} · ${a.score} / ${a.max} marks · ${a.correct} right, ${a.wrong} wrong · Accuracy ${accOf(a)}%${a.used?' · '+Math.round(a.used/60)+' min':''}</span></div></section>
+   <section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>Attempts</h2></div><div class="card rows">${g.att.slice().reverse().map((r,j)=>{const k=g.att.length-1-j;return `<div class="item"><span class="ti g hs3-n${k===0?' a':''}">${k===0?'1':k+1}</span><div class="bd"><div class="tt"><b>${attLbl(g,k)}</b><span class="badge n">${Math.max(0,pctOf(r))}%</span></div><small>${dS(r.at)}${r.used?', '+Math.round(r.used/60)+' min':''}</small><small>${r.score} / ${r.max} marks · ${r.correct} right · ${r.wrong} wrong</small><div class="acts"><button class="btn sm" data-a="review" data-r="${esc3(r.id)}">Result and solutions</button></div></div></div>`}).join('')}</div></section>
+   ${lbHtml?`<section class="stack" style="gap:12px"><div class="sh" style="margin:0"><h2>Leaderboard</h2></div>${lbHtml}</section>`:''}
+   ${t&&!pr?`<p class="hint">Your live result and rank use your first attempt only. Re-attempts are for practice.</p>`:''}`}
+function histDetailView(g){return {t:'Result history',get s(){return g.title},key:'hist3',html:()=>histDetail(g),leave:()=>{HS3.sel=-1}}}
+A.histOpen=async el=>{const k=el.dataset.k,g=histGroups().find(x=>(x.id||('t:'+x.title))===k);if(!g)return;HS3.sel=-1;HS3.tid=g.id;push(histDetailView(g));
+  if(g.id&&!(g.t&&g.t.practice)){try{await rkLoad(g.t||{id:g.id})}catch(e){}if(top()&&top().key==='hist3')redraw()}};
+A.histAtt=el=>{HS3.sel=+el.dataset.i;if(top()&&top().key==='hist3')redraw()};
 A.hist=()=>push(histView());
 
 /* ================= MY STUDY ZONE in the new design: Notes & PDFs, Saved questions, Mistakes, Results =================
@@ -1401,7 +1449,7 @@ function rsHero(A){const r=A.rec,p=pct3(r.score,r.max),att=r.correct+r.wrong,acc
    <div class="rsh-st"><div><b class="c">${r.correct}</b><small>Correct</small></div><div><b class="w">${r.wrong}</b><small>Wrong</small></div><div><b>${r.skipped}</b><small>Skipped</small></div><div><b>${fdur(r.used)}</b><small>Time</small></div></div></section>`}
 const RST=[['ov','Overview'],['sub','Subjects'],['time','Time'],['sol','Solutions'],['his','Attempts']];
 function rsTabs(A){return `<div class="utabs rs-tabs" role="tablist">${RST.filter(t=>t[0]!=='sub'||A.hasSec).map(t=>`<button role="tab" aria-selected="${RS3.tab===t[0]}" class="${RS3.tab===t[0]?'on':''}" data-a="rsTab" data-v="${t[0]}">${t[1]}</button>`).join('')}</div>`}
-function rsLb(){const r=RS3.lb;if(r===null)return '<div class="card sk" style="height:150px"></div>';if(!r||!r.ok||!r.top||!r.top.length)return '';
+function rsLb(rr){const r=rr!==undefined?rr:RS3.lb;if(r===null)return '<div class="card sk" style="height:150px"></div>';if(!r||!r.ok||!r.top||!r.top.length)return '';
   const solo=r.total<2,mx=Math.max(1,...(r.dist||[0]));
   return `${r.my_rank?`<section class="card rk3"><div class="rk3-m"><small>Your rank</small><b>${fmtN(r.my_rank)}</b><span>of ${fmtN(r.total)}</span></div><div class="rk3-g">${solo?'':`<div><b>${r.percentile}</b><small>Percentile</small></div>`}<div><b>${r.my_score}</b><small>Your score</small></div><div><b>${r.avg}</b><small>Class average</small></div><div><b>${r.top_score}</b><small>Topper</small></div></div>${solo?'<p class="hint" style="margin:10px 0 0">You are the first to attempt this test. Your rank updates as others take it.</p>':''}</section>`:''}
    <section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>Top ${Math.min(10,r.top.length)}</h2><span class="aside">First attempt of each student</span></div><div class="card rows">${r.top.map(x=>`<div class="lb3${x.me?' me':''}"><span class="n${x.rank<=3?' m'+x.rank:''}">${x.rank}</span><span class="nm">${esc3(x.name)}${x.me?' (you)':''}</span><b>${x.score}</b></div>`).join('')}${r.my_rank&&r.my_rank>10?`<div class="lb3 me"><span class="n">${r.my_rank}</span><span class="nm">You</span><b>${r.my_score}</b></div>`:''}</div></section>
