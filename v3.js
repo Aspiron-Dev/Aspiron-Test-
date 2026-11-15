@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=54;
+const V3VER=60;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -372,10 +372,42 @@ function upList(){const cs=curSeries(),ok=new Set(cs?[cs.id]:[]),t0=nowMs();retu
 function evRow(x){const t=x.t,live=['live','prog'].includes(x.st),when=t.opens_at||nowMs(),s=sOf(t.series_id);
   return `<button class="evr" data-a="${x.st==='wait'?'openSD':'test'}" data-id="${esc3(x.st==='wait'?t.series_id:t.id)}">${live?`<span class="when lv3" role="img" aria-label="Live now"><i class="lv3-r"></i><i class="lv3-r"></i><span class="lv3-d"></span><b>LIVE</b></span>`:`<span class="when"><b>${new Date(when).getDate()}</b><small>${fD(when,{month:'short'})}</small></span>`}
    <span style="min-width:0"><b>${esc3(t.title)}</b><small>${live?(x.st==='prog'?'You started this test':'Open now'):dayWord(when)+', '+fT(when)}, ${dur(t.duration||0)}</small></span>${live?'':stBadge(t)}</button>`}
+/* v80: the one test on Home as a card: a status pill (LIVE / LIVE TODAY / UPCOMING) with its times,
+   the test's name and details, then Start now (live) or a ticking "Starts in" countdown with the alert bell */
+const cdTxt=ms=>{ms=Math.max(0,ms);const d=Math.floor(ms/DAY),h=Math.floor(ms%DAY/36e5),m=Math.floor(ms%36e5/6e4),sc=Math.floor(ms%6e4/1e3),p=n=>String(n).padStart(2,'0');return d?`${d}d ${p(h)}h ${p(m)}m`:`${p(h)}:${p(m)}:${p(sc)}`};
+/* v83: Home's Upcoming / Live card. Live = the dark card (LIVE pill, bell, "Ends in", title, progress bar, Start now);
+   Upcoming / Live Today = the light card with the "Starts in" countdown and the bell */
+function evLive(x){const t=x.t,t0=nowMs(),op=t.opens_at||t0,cl=t.closes_at||0,s=sOf(t.series_id)||{},prog=x.st==='prog',id=esc3(t.id);
+  const pct=cl>op?Math.min(100,Math.max(0,Math.round((t0-op)*100/(cl-op)))):0;
+  const bell=typeof alOn==='function'?`<button class="evD-bell" data-a="evBell" aria-label="Notifications">${ic('bell',18)}</button>`:'';
+  return `<article class="evD"><i class="evD-glow" aria-hidden="true"></i><i class="evD-grain" aria-hidden="true"></i>
+   <div class="evD-top"><span class="evD-live"><i></i>LIVE</span><span class="evD-r">${cl?`<span class="evD-end">Ends in <b data-cd="${cl}">${cdTxt(cl-t0)}</b></span>`:''}${bell}</span></div>
+   <button class="evD-b" data-a="openSD" data-id="${esc3(t.series_id)}" data-t="t"><b>${esc3(t.title)}</b><small>${esc3(s.title||'')}</small></button>
+   ${cl?`<div class="evD-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Live window used"><i style="width:${pct}%"></i></div>`:''}
+   <small class="evD-t">Started ${fT(op)}${cl?` · Live till ${fT(cl)}`:''}</small>
+   <button class="evD-go" data-a="test" data-id="${id}"><span>${ic('play',18)}${prog?'Resume test':'Start now'}</span></button></article>`}
+// the bell on the live card: turns phone notifications on (the test alert itself is for tests that have not started)
+A.evBell=()=>{try{if(typeof npSup==='function'&&(!npSup()||npInApp())){npHelp('app');return}
+  if(typeof npOn==='function'&&npOn()){toast3('Notifications are on. You will get test alerts and results.');return}
+  const pm=window.Notification&&window.Notification.permission;if(pm==='denied'){npHelp('blocked');return}
+  if(typeof npEnable==='function')npEnable()}catch(e){toast3('Could not open notification settings')}};
+function evCard(x){if(['live','prog'].includes(x.st))return evLive(x);
+  const t=x.t,t0=nowMs(),op=t.opens_at||t0,today=day0(op)===day0(t0),s=sOf(t.series_id)||{},id=esc3(t.id),st=today?'today':'up';
+  const pill=today?'<span class="evp today"><i></i>LIVE TODAY</span>':'<span class="evp up"><i></i>UPCOMING</span>';
+  const when=today?`Today, ${fT(op)}`:`${dayWord(op)}, ${fT(op)}`;
+  const meta=[esc3(s.title||''),t.questions?`${t.questions} questions`:'',dur(t.duration||0)].filter(Boolean).join(' · ');
+  const bell=typeof alOn==='function'?`<button class="evbell${alOn3(t.id)?' on':''}" data-a="alT" data-id="${id}" aria-label="${alOn3(t.id)?'Alert on':'Notify me'}" aria-pressed="${alOn3(t.id)}">${ic('bell',18)}</button>`:'';
+  return `<article class="card evc evA st-${st}"><div class="evc-top">${pill}<span class="evw">${when}</span>${bell}</div>
+   <button class="evc-b" data-a="openSD" data-id="${esc3(t.series_id)}" data-t="t"><b>${esc3(t.title)}</b><small>${meta}</small></button>
+   <div class="evcd"><span>Starts in</span><b data-cd="${op}">${cdTxt(op-t0)}</b></div></article>`}
+function evTick(){const n1=nowMs();const L=root.querySelectorAll('[data-cd]');if(!L.length)return;let due=false;L.forEach(e=>{const ms=+e.dataset.cd-n1;if(ms<=0)due=true;e.textContent=cdTxt(ms)});if(due)softRender()}
+// v80: the heading follows the day: Upcoming Events before the test's day, Live Today on its day, Live Now while it runs
+const evHead=x=>{if(!x)return 'Upcoming Events';const live=['live','prog'].includes(x.st),today=x.t.opens_at&&day0(x.t.opens_at)===day0(nowMs());
+  return live?'<span class="evh"><i></i>Live Now</span>':today?'<span class="evh"><i></i>Live Today</span>':'Upcoming Events'};
 // v78: only ONE test on Home: the one live now, else the next one; the one after it shows once this one is over
 function upcoming(){const cs=curSeries(),all=upList(),L=all.slice(0,1),done=(C().tests||[]).some(t=>cs&&t.series_id===cs.id&&t.closes_at&&day0(t.closes_at)===day0(nowMs())&&t.closes_at<nowMs());
-  return `<section class="sec"><div class="sh"><h2>Upcoming Events</h2>${all.length>1?`<span class="aside">${all.length-1} more in the schedule</span>`:''}</div>
-  ${L.length?`<div class="card"><div class="ev">${L.map(evRow).join('')}</div></div>`:`<div class="evnone"><span class="ti">${ic('cal',20)}</span><span>${done?'Today’s live tests have ended':'No live or upcoming tests right now'}</span></div>`}
+  return `<section class="sec"><div class="sh"><h2>${evHead(L[0])}</h2>${all.length>1?`<span class="aside">${all.length-1} more in the schedule</span>`:''}</div>
+  ${L.length?L.map(evCard).join(''):`<div class="evnone"><span class="ti">${ic('cal',20)}</span><span>${done?'Today’s live tests have ended':'No live or upcoming tests right now'}</span></div>`}
   ${cs?'<button class="obtn" data-a="week">View Weekly Schedule</button>':''}</section>`}
 /* study zone: one calm tone for every tile, two-tone line icons */
 Object.assign(P,{
@@ -400,7 +432,7 @@ function storeCard(x,cls){const off=x.mrp&&x.mrp>x.price?Math.round((1-x.price/x
    <div class="ft"><span class="price">${x.price?`<b>₹${fmtN(x.price)}</b>${off?`<s>₹${fmtN(x.mrp)}</s><span class="badge off">${off}% off</span>`:''}`:'<span class="free">Free</span>'}</span><a class="btn sm ${soon?'':'gold'}" href="${storeUrl(x)}">${soon?ic('bell',15)+'Notify me':x.prebook&&x.buy_on===false?'Pre-book':'Buy now'}</a></div></article>`}
 function trending(){if(!STORE){loadStore();return `<section class="sec"><div class="sh"><h2>Trending test series</h2></div><div class="card sk" style="height:190px"></div></section>`}loadExtras();return trendRail(true)}
 VIEW.home=()=>seriesHero()+cdCard3()+upcoming()+zone()+trending();
-AFTER.home=()=>{tick(true);every(()=>tick(false),1000);autoRail('#trRail','#trDots')};
+AFTER.home=()=>{tick(true);every(()=>{tick(false);evTick()},1000);autoRail('#trRail','#trDots')};
 function autoRail(rs,ds){const c=$(rs);if(!c||!c.children.length)return;const dots=[...root.querySelectorAll(ds+' i')];let i=0,touched=false;const st=()=>c.children[0].getBoundingClientRect().width+12;
   c.addEventListener('scroll',()=>{const k=Math.round(c.scrollLeft/st());if(k!==i){i=k;dots.forEach((d,j)=>d.classList.toggle('on',j===k))}},{passive:true});
   ['pointerdown','touchstart','wheel','focusin'].forEach(ev=>c.addEventListener(ev,()=>{touched=true},{passive:true}));
