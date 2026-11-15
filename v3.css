@@ -2029,3 +2029,10 @@ p.hint>svg{display:inline-block;vertical-align:-2px;margin-right:4px}
 .hs3-rd{display:flex;flex-direction:column;gap:2px;margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--surface2)}
 .hs3-rd b{font-size:13.5px}.hs3-rd span{font-size:12.5px;color:var(--mut);line-height:1.45}
 .hs3-n.a{background:var(--acc2);color:var(--onAcc)}
+
+/* v88: result alert bell */
+.hs3-wt{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.hs3-bell{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;font-size:12.5px;font-weight:700;color:var(--tx);background:var(--surface2);border:1px solid var(--line);transition:transform .2s}
+.hs3-bell:active{transform:scale(.95)}
+.hs3-bell.on{color:var(--onInk);background:var(--ink);border-color:var(--ink)}
+.evD-rb{display:flex;justify-content:center;margin-top:2px}
