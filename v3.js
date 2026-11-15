@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=70;
+const V3VER=71;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -542,9 +542,8 @@ const itemOfSeries=sid=>(STORE||[]).find(x=>x.id===SMAP[sid]);
 const owned=x=>{const sid=seriesOfItem(x.id);return sid&&mine().some(s=>s.id===sid)?sid:null};
 // v77: a series this student has not bought, opened in explore mode (Description, Schedule, first test, Reviews to read)
 const preview=x=>{const sid=seriesOfItem(x.id);return sid&&(C().series||[]).some(s=>s.id===sid)?sid:null};
-/* "bought" = a paid series that is unlocked for this student. A free series (price 0, everyone is in it)
-   and a series whose time is over stay in the store, so a student can still get it or buy it again. STORE itself is not
-   changed: explore, the locked sheet and Home read it as before. */
+/* "bought" = a paid series that is unlocked for this student, ended or not (the app has no renew path). A free series
+   (price 0, everyone is in it) stays in the store. STORE itself is not changed: explore, the locked sheet and Home read it as before. */
 const bought=x=>{const sid=seriesOfItem(x.id),s=sid&&(C().series||[]).find(v=>v.id===sid);return !!(s&&s.unlocked&&!s.is_free)};
 const shop=()=>(STORE||[]).filter(x=>!bought(x));
 const cats=()=>[...new Set(shop().map(x=>String(x.section||'').trim()).filter(Boolean))];
@@ -569,7 +568,7 @@ function loadLook(){if(LOOK||lookBusy)return lookBusy;lookBusy=rpc('cbt_store_lo
   .finally(()=>{lookBusy=null;if(S.tab==='test')reposter()});return lookBusy}
 /* the poster came after the page was drawn: swap just that section. A full redraw re-decoded the poster and every cover
    and moved the page under the finger of a student who had already started to scroll. */
-function reposter(){const ps=$('#pst');if(!ps){softRender();return}const t=document.createElement('div');t.innerHTML=poster();const np=t.querySelector('#pst');if(!np){softRender();return}
+function reposter(){const ps=$('#pst');if(!ps){scrOpen()||softRender();return}const t=document.createElement('div');t.innerHTML=poster();const np=t.querySelector('#pst');if(!np){scrOpen()||softRender();return}
   ps.replaceWith(np);loadPC();pstSync(true);const pi=$('#pst img');pi&&!pi.complete&&pi.addEventListener('load',()=>pstSync(true),{once:true})}
 const LK=()=>LOOK||LOOK0;
 /* which exams / classes / subjects a store series is for; not set in the admin yet = guessed from its course and name.
@@ -585,7 +584,7 @@ const mpass=s=>{const w=TQ.q.toLowerCase().split(/\s+/).filter(Boolean),h=[s.tit
 /* ---------- top: the poster from Admin → Tests page, edge to edge, with the search on it and the two big buttons on its bottom ---------- */
 function tabs2(){const c=myCount(),n=shop().filter(x=>x.buy_on!==false).length;
   return `<div class="tt2">
-   <button class="${TQ.tile==='store'?'on':''}" data-a="toList"><span class="ti">${ic('tests',22)}</span><b>Test Series Store</b><small>${STORE&&XD!==null?(n||!STORE.some(x=>x.buy_on!==false)?n+' series':'All bought'):'Loading'}</small></button>
+   <button class="${TQ.tile==='store'?'on':''}" data-a="toList"><span class="ti">${ic('tests',22)}</span><b>Test Series Store</b><small>${STORE&&known()?(n||!STORE.some(x=>x.buy_on!==false)?n+' series':'All bought'):'Loading'}</small></button>
    <button class="${TQ.tile==='my'?'on':''}" data-a="mySeries"><span class="ti">${ic('layers',22)}</span><b>My Test Series</b><small>${c.all?c.all+' enrolled':'None yet'}</small></button></div>`}
 function posterImg(){const p=LK().poster||'';return /^data:image\/(jpeg|png|webp);base64,/.test(p)?p:''}
 function poster(){const L=LK(),img=posterImg(),u=/^(https:\/\/|#\/|store\.html#)[^\s"'<>\\]*$/.test(L.link||'')?L.link:'';
@@ -659,6 +658,7 @@ function trendRail(home){const L=(home?STORE||[]:shop()).filter(x=>x.buy_on!==fa
   return `<section class="sec"><div class="sh"><h2>Trending test series</h2>${home?`<button class="lnk" data-a="toStore">View all${ic('right')}</button>`:''}</div><div class="rail">${L.map(x=>`<button class="card trc" data-a="xp" data-id="${esc3(x.id)}"><span class="cv">${coverOf(x)}</span><span class="trb"><b>${esc3(x.title)}</b>${priceH(x)}</span></button>`).join('')}</div></section>`}
 /* what is bought comes from the store map (extras): the list waits for it, at most 2.5 s */
 let holdT0=0;
+const known=()=>XD!==null||(holdT0>0&&Date.now()-holdT0>=2500);
 function holding(){if(XD!==null){holdT0=0;return false}if(!holdT0){holdT0=Date.now();setTimeout(()=>{if(S.tab==='test')drawT()},2600)}return Date.now()-holdT0<2500}
 function storeView(){
   if(STORE===null||holding()){loadStore();loadExtras();return `<div class="list"><div class="card sk" style="height:120px"></div><div class="card sk" style="height:320px"></div></div>`}
@@ -765,7 +765,7 @@ A.toStore=()=>{closeLayer();unwind(()=>{if(S.tab==='test'){scrollTo({top:0,behav
    Without that SQL the page still works: no dates, no plans, no syllabus. */
 let META=null,metaBusy=null;
 function loadMeta(){if(META||metaBusy)return metaBusy;metaBusy=rpc('cbt_series_meta',{},true).then(r=>{META=r&&r.ok?r:{series:{},syl:{},promo:'',promo_link:''}}).catch(()=>{META={series:{},syl:{},promo:'',promo_link:''}})
-  .finally(()=>{metaBusy=null;if(scrOpen()&&top()&&(top().key==='my'||top().key==='sp'))redraw();});return metaBusy}
+  .finally(()=>{metaBusy=null;if(scrOpen()&&top()&&(top().key==='my'||top().key==='sp'))redraw();if(S.tab==='test'&&!scrOpen()){const t=$('.tt2');t&&(t.outerHTML=tabs2())}});return metaBusy}
 const MT=sid=>((META||{}).series||{})[sid]||{};
 const expired=s=>{const e=MT(s.id).e;return !!(e&&e<nowMs())};
 const dLong=t=>fD(t,{day:'numeric',month:'short',year:'numeric'});
