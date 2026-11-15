@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=57;
+const V3VER=58;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -376,19 +376,22 @@ function evRow(x){const t=x.t,live=['live','prog'].includes(x.st),when=t.opens_a
    the test's name and details, then Start now (live) or a ticking "Starts in" countdown with the alert bell */
 const cdTxt=ms=>{ms=Math.max(0,ms);const d=Math.floor(ms/DAY),h=Math.floor(ms%DAY/36e5),m=Math.floor(ms%36e5/6e4),sc=Math.floor(ms%6e4/1e3),p=n=>String(n).padStart(2,'0');return d?`${d}d ${p(h)}h ${p(m)}m`:`${p(h)}:${p(m)}:${p(sc)}`};
 /* v81: the live test on Home, two looks to choose from (preview: localStorage cbt_ev_style = 'A' | 'B') */
-function evLive(x){const t=x.t,t0=nowMs(),op=t.opens_at||t0,cl=t.closes_at||0,s=sOf(t.series_id)||{},prog=x.st==='prog';
-  const pct=cl>op?Math.min(100,Math.max(0,Math.round((t0-op)*100/(cl-op)))):0,marks=(t.questions||0)*(t.correct||4),sty=lsGet('cbt_ev_style','A');
-  const go=`<button class="evL-go" data-a="test" data-id="${esc3(t.id)}"><span>${ic('play',18)}${prog?'Resume test':'Start now'}</span></button>`;
-  const times=`Started ${fT(op)}${cl?` · Live till ${fT(cl)}`:''}`;
-  if(sty==='B'){const R=30,C=2*Math.PI*R,left=cl?Math.max(0,cl-t0):0;
-    return `<article class="card evL evB"><div class="evB-row"><div class="evB-ring" aria-hidden="true"><svg viewBox="0 0 72 72"><circle cx="36" cy="36" r="${R}" class="tr"/><circle cx="36" cy="36" r="${R}" class="pg" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*pct/100).toFixed(1)}"/></svg><span>${cl?`<b data-cdm="${cl}">${Math.ceil(left/6e4)}</b><small>min left</small>`:'<b>LIVE</b>'}</span></div>
-      <div class="evB-tx"><span class="evB-tag"><i></i>LIVE NOW</span><b>${esc3(t.title)}</b><small>${esc3(s.title||'')}</small><small>${t.questions||0} Qs · ${fmtN(marks)} marks · ${t.duration||0} min</small></div></div>
-      <p class="evB-t">${ic('clock',14)}${times}</p>${go}</article>`}
-  return `<article class="evL evA"><i class="evA-glow" aria-hidden="true"></i><i class="evA-grain" aria-hidden="true"></i>
-    <div class="evA-top"><span class="evA-live"><i></i>LIVE</span>${cl?`<span class="evA-end">Ends in <b data-cd="${cl}">${cdTxt(cl-t0)}</b></span>`:''}</div>
-    <b class="evA-ttl">${esc3(t.title)}</b><small class="evA-ser">${esc3(s.title||'')}</small>
-    <div class="evA-st"><div><b>${t.questions||0}</b><small>Questions</small></div><div><b>${fmtN(marks)}</b><small>Marks</small></div><div><b>${t.duration||0}</b><small>Minutes</small></div></div>
-    ${cl?`<div class="evA-bar" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Live window used"><i style="width:${pct}%"></i></div>`:''}<small class="evA-t">${times}</small>${go}</article>`}
+function evLive(x){const t=x.t,t0=nowMs(),op=t.opens_at||t0,cl=t.closes_at||0,s=sOf(t.series_id)||{},prog=x.st==='prog',sty=lsGet('cbt_ev_style','A');
+  const left=cl?Math.max(0,cl-t0):0,span=cl>op?cl-op:1,frac=cl?Math.min(1,left/span):1,R=34,C=2*Math.PI*R,dm=(t.duration||0)*6e4,marks=(t.questions||0)*(t.correct||4);
+  const short=cl&&!prog&&left<dm,ra=t.result_at||cl;
+  const note=short?`<p class="evX-n warn">${ic('info',15)}<span>Only <b>${Math.ceil(left/6e4)} min</b> left in the live window. If you start now, the test submits by itself at <b>${fT(cl)}</b>.</span></p>`
+    :`<p class="evX-n">${ic('clock',15)}<span>Live till <b>${cl?fT(cl):'today'}</b>${ra?` · Result &amp; answer key at <b>${day0(ra)===day0(t0)?fT(ra):dayWord(ra)+', '+fT(ra)}</b>`:''}</span></p>`;
+  return `<article class="evX ${sty==='B'?'evx-lt':'evx-dk'}"><i class="evX-glow" aria-hidden="true"></i>
+   <div class="evX-top"><span class="evX-live"><i></i>LIVE</span>${s.title?`<span class="evX-chip">${esc3(s.title)}</span>`:''}</div>
+   <b class="evX-ttl">${esc3(t.title)}</b>
+   <div class="evX-mid">
+    <div class="evX-ring" role="timer" aria-label="Time left in the live window">${cl?`<svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="${R}" class="tr"/><circle cx="40" cy="40" r="${R}" class="pg" data-ring="${op},${cl}" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-frac)).toFixed(1)}"/></svg>`:''}<span><b class="${cl&&left>=36e5?'hr':''}" data-cd2="${cl}">${cl?cdShort(left):'LIVE'}</b><small>${cl?'left':'now'}</small></span></div>
+    <ul class="evX-st"><li>${ic('list',16)}<span><b>${t.questions||0}</b> questions</span></li><li>${ic('target',16)}<span><b>${fmtN(marks)}</b> marks${t.correct?` · +${t.correct}/−${t.wrong||0}`:''}</span></li><li>${ic('clock',16)}<span><b>${t.duration||0}</b> min test</span></li></ul>
+   </div>
+   ${note}
+   <button class="evX-go" data-a="test" data-id="${esc3(t.id)}"><span>${ic('play',18)}${prog?'Resume test':'Start now'}</span>${ic('right',18)}</button>
+   <button class="evX-more" data-a="openSD" data-id="${esc3(t.series_id)}" data-t="t">See all tests in this series</button></article>`}
+const cdShort=ms=>{ms=Math.max(0,ms);const h=Math.floor(ms/36e5),m=Math.floor(ms%36e5/6e4),sc=Math.floor(ms%6e4/1e3),p=n=>String(n).padStart(2,'0');return h?`${h}h ${p(m)}m`:`${p(m)}:${p(sc)}`};
 function evCard(x){if(['live','prog'].includes(x.st))return evLive(x);const t=x.t,live=false,t0=nowMs(),op=t.opens_at||t0,today=day0(op)===day0(t0),s=sOf(t.series_id)||{};
   const pill=live?'<span class="evp live"><i></i>LIVE</span>':today?'<span class="evp today"><i></i>LIVE TODAY</span>':'<span class="evp up">UPCOMING</span>';
   const when=live?`Started ${fT(op)}${t.closes_at?` · Live till ${fT(t.closes_at)}`:''}`:today?`Today, ${fT(op)}`:`${dayWord(op)}, ${fT(op)}`;
@@ -397,7 +400,7 @@ function evCard(x){if(['live','prog'].includes(x.st))return evLive(x);const t=x.
     :`<div class="evcd"><span>Starts in</span><b data-cd="${op}">${cdTxt(op-t0)}</b></div>`;
   return `<article class="card evc${live?' is-live':today?' is-today':''}"><div class="evc-top">${pill}<span class="evw">${when}</span>${!live&&typeof alOn==='function'?`<button class="evbell${alOn3(t.id)?' on':''}" data-a="alT" data-id="${esc3(t.id)}" aria-label="${alOn3(t.id)?'Alert on':'Notify me'}" aria-pressed="${alOn3(t.id)}">${ic('bell',18)}</button>`:''}</div>
    <button class="evc-b" data-a="openSD" data-id="${esc3(t.series_id)}" data-t="t"><b>${esc3(t.title)}</b><small>${meta}</small></button>${foot}</article>`}
-function evTick(){root.querySelectorAll('[data-cdm]').forEach(e=>{e.textContent=Math.max(0,Math.ceil((+e.dataset.cdm-nowMs())/6e4))});const L=root.querySelectorAll('[data-cd]');if(!L.length)return;const t0=nowMs();let due=false;L.forEach(e=>{const ms=+e.dataset.cd-t0;if(ms<=0)due=true;e.textContent=cdTxt(ms)});if(due)softRender()}
+function evTick(){const n0=nowMs();let end=false;root.querySelectorAll('[data-cd2]').forEach(e=>{const c=+e.dataset.cd2;if(c){e.textContent=cdShort(c-n0);if(c<=n0)end=true}});if(end){softRender();return}root.querySelectorAll('[data-ring]').forEach(e=>{const [o,c]=e.dataset.ring.split(',').map(Number),C=+e.getAttribute('stroke-dasharray');e.setAttribute('stroke-dashoffset',(C*(1-Math.min(1,Math.max(0,c-n0)/Math.max(1,c-o)))).toFixed(1))});const L=root.querySelectorAll('[data-cd]');if(!L.length)return;const t0=nowMs();let due=false;L.forEach(e=>{const ms=+e.dataset.cd-t0;if(ms<=0)due=true;e.textContent=cdTxt(ms)});if(due)softRender()}
 // v80: the heading follows the day: Upcoming Events before the test's day, Live Today on its day, Live Now while it runs
 const evHead=x=>{if(!x)return 'Upcoming Events';const live=['live','prog'].includes(x.st),today=x.t.opens_at&&day0(x.t.opens_at)===day0(nowMs());
   return live?'<span class="evh"><i></i>Live Now</span>':today?'<span class="evh"><i></i>Live Today</span>':'Upcoming Events'};
