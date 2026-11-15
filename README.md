@@ -140,6 +140,17 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - Home shows only ONE test of the chosen series: the one live now, else the next one. The one after it shows once
   this one is over ("N more in the schedule").
 
+## Live-test guard (`xguard.js`, no SQL)
+
+- A **live-window attempt** (not practice, and its result time, or "Live ends" when there is no result time, has not come
+  yet) is a closed-book screen. Practice tests and re-attempts after the result time are not restricted.
+- Leaving the page (another app, home, a call, the screen locking, a reload) **submits the test at once**; a window that loses
+  focus for 3 s (floating or split-screen app) submits it too, after a "come back" countdown. Back asks "Leave test?" first.
+- Copy, cut, paste, select, drag, long-press, print and the usual copy / save / print keys are blocked, and links do not open.
+  The screen is kept awake (Wake Lock) so it does not lock by itself. A faint watermark (name and masked number) is drawn over
+  the screen. **A web page or installed web app cannot block screenshots or screen recording**; the watermark makes a leaked one traceable.
+- It sends the same `cbt_submit` (safe to send twice: the client id returns the same result). Test: `tests/e2e/xguard.js`.
+
 ## Free vs paid inside a test series (`supabase_v77_free_vs_paid.sql`)
 
 - **Setup:** run `supabase_v77_free_vs_paid.sql` once (after v76), then `supabase_v35_admin_team.sql` again.
