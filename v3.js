@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=69;
+const V3VER=70;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -534,7 +534,7 @@ function loadExtras(){if(extrasBusy||XD)return extrasBusy;const q=(fn,auth)=>rpc
   extrasBusy=Promise.all([q('cbt_store_explore'),q('cbt_store_reviews'),q('cbt_store_schedules'),q('cbt_store_langs'),q('cbt_store_map',true)]).then(([x,r,s,l,m])=>{
    XD={};(x&&x.ok?x.items||[]:[]).forEach(i=>XD[i.id]=i);SRV={};(r&&r.ok?r.items||[]:[]).forEach(i=>SRV[i.id]=i);SCHD={};(s&&s.ok?s.items||[]:[]).forEach(i=>SCHD[i.id]=i);
    LANGS=new Set((l&&l.ok?l.items||[]:[]).map(String));SMAP=(m&&m.ok&&m.map)||{};
-   if(S.tab==='test'&&!scrOpen())drawT();if(scrOpen()&&top().store)redraw()}).finally(()=>{extrasBusy=null});return extrasBusy}
+   if(S.tab==='test')drawT();if(scrOpen()&&top().store)redraw()}).finally(()=>{extrasBusy=null});return extrasBusy}
 const okImg=u=>/^(data:image\/|https:\/\/)/.test(u||'');
 const offPct=x=>x.mrp&&x.mrp>x.price?Math.round((1-x.price/x.mrp)*100):0;
 const seriesOfItem=id=>Object.keys(SMAP).find(k=>SMAP[k]===id);
@@ -542,10 +542,10 @@ const itemOfSeries=sid=>(STORE||[]).find(x=>x.id===SMAP[sid]);
 const owned=x=>{const sid=seriesOfItem(x.id);return sid&&mine().some(s=>s.id===sid)?sid:null};
 // v77: a series this student has not bought, opened in explore mode (Description, Schedule, first test, Reviews to read)
 const preview=x=>{const sid=seriesOfItem(x.id);return sid&&(C().series||[]).some(s=>s.id===sid)?sid:null};
-/* "bought" = a paid series that is unlocked for this student and has not ended. A free series (price 0, everyone is in it)
+/* "bought" = a paid series that is unlocked for this student. A free series (price 0, everyone is in it)
    and a series whose time is over stay in the store, so a student can still get it or buy it again. STORE itself is not
    changed: explore, the locked sheet and Home read it as before. */
-const bought=x=>{const sid=seriesOfItem(x.id),s=sid&&(C().series||[]).find(v=>v.id===sid);return !!(s&&s.unlocked&&!s.is_free&&!expired(s))};
+const bought=x=>{const sid=seriesOfItem(x.id),s=sid&&(C().series||[]).find(v=>v.id===sid);return !!(s&&s.unlocked&&!s.is_free)};
 const shop=()=>(STORE||[]).filter(x=>!bought(x));
 const cats=()=>[...new Set(shop().map(x=>String(x.section||'').trim()).filter(Boolean))];
 const rvOf=x=>SRV[x.id]&&SRV[x.id].count?SRV[x.id]:null;
@@ -566,7 +566,7 @@ function actH(x){const sid=owned(x),soon=x.buy_on===false;
 const LOOK0={poster:'',link:'',exams:['NEET','JEE'],classes:['Class 11','Class 12','Dropper'],subjects:['Physics','Chemistry','Biology','Maths'],tags:{}};
 let LOOK=null,lookBusy=null;
 function loadLook(){if(LOOK||lookBusy)return lookBusy;lookBusy=rpc('cbt_store_look',{},true).then(r=>{LOOK=r&&r.ok?Object.assign({},LOOK0,r,{tags:r.tags||{}}):LOOK0}).catch(()=>{LOOK=LOOK0})
-  .finally(()=>{lookBusy=null;if(S.tab==='test'&&!scrOpen())reposter()});return lookBusy}
+  .finally(()=>{lookBusy=null;if(S.tab==='test')reposter()});return lookBusy}
 /* the poster came after the page was drawn: swap just that section. A full redraw re-decoded the poster and every cover
    and moved the page under the finger of a student who had already started to scroll. */
 function reposter(){const ps=$('#pst');if(!ps){softRender();return}const t=document.createElement('div');t.innerHTML=poster();const np=t.querySelector('#pst');if(!np){softRender();return}
@@ -585,7 +585,7 @@ const mpass=s=>{const w=TQ.q.toLowerCase().split(/\s+/).filter(Boolean),h=[s.tit
 /* ---------- top: the poster from Admin → Tests page, edge to edge, with the search on it and the two big buttons on its bottom ---------- */
 function tabs2(){const c=myCount(),n=shop().filter(x=>x.buy_on!==false).length;
   return `<div class="tt2">
-   <button class="${TQ.tile==='store'?'on':''}" data-a="toList"><span class="ti">${ic('tests',22)}</span><b>Test Series Store</b><small>${STORE?(n||!STORE.some(x=>x.buy_on!==false)?n+' series':'All bought'):'Loading'}</small></button>
+   <button class="${TQ.tile==='store'?'on':''}" data-a="toList"><span class="ti">${ic('tests',22)}</span><b>Test Series Store</b><small>${STORE&&XD!==null?(n||!STORE.some(x=>x.buy_on!==false)?n+' series':'All bought'):'Loading'}</small></button>
    <button class="${TQ.tile==='my'?'on':''}" data-a="mySeries"><span class="ti">${ic('layers',22)}</span><b>My Test Series</b><small>${c.all?c.all+' enrolled':'None yet'}</small></button></div>`}
 function posterImg(){const p=LK().poster||'';return /^data:image\/(jpeg|png|webp);base64,/.test(p)?p:''}
 function poster(){const L=LK(),img=posterImg(),u=/^(https:\/\/|#\/|store\.html#)[^\s"'<>\\]*$/.test(L.link||'')?L.link:'';
@@ -657,11 +657,11 @@ function iCard(x){const r=rvOf(x),soon=x.buy_on===false;
    <div class="ft">${priceH(x)}<div class="acts"><button class="btn sm ghost" data-a="xp" data-id="${esc3(x.id)}">Explore</button>${actH(x)}</div></div></div></article>`}
 function trendRail(home){const L=(home?STORE||[]:shop()).filter(x=>x.buy_on!==false).slice().sort((a,b)=>((rvOf(b)||{count:0}).count-(rvOf(a)||{count:0}).count)||(!!b.badge-!!a.badge)).slice(0,6);if(!L.length||(!home&&L.length<2))return '';
   return `<section class="sec"><div class="sh"><h2>Trending test series</h2>${home?`<button class="lnk" data-a="toStore">View all${ic('right')}</button>`:''}</div><div class="rail">${L.map(x=>`<button class="card trc" data-a="xp" data-id="${esc3(x.id)}"><span class="cv">${coverOf(x)}</span><span class="trb"><b>${esc3(x.title)}</b>${priceH(x)}</span></button>`).join('')}</div></section>`}
-/* what is bought comes from the store map (extras) and the validity dates (meta): the list waits for both, at most 2.5 s */
+/* what is bought comes from the store map (extras): the list waits for it, at most 2.5 s */
 let holdT0=0;
-function holding(){if(XD!==null&&META!==null){holdT0=0;return false}if(!holdT0){holdT0=Date.now();setTimeout(()=>{if(S.tab==='test'&&!scrOpen())drawT()},2600)}return Date.now()-holdT0<2500}
+function holding(){if(XD!==null){holdT0=0;return false}if(!holdT0){holdT0=Date.now();setTimeout(()=>{if(S.tab==='test')drawT()},2600)}return Date.now()-holdT0<2500}
 function storeView(){
-  if(STORE===null||holding()){loadStore();loadExtras();loadMeta();return `<div class="list"><div class="card sk" style="height:120px"></div><div class="card sk" style="height:320px"></div></div>`}
+  if(STORE===null||holding()){loadStore();loadExtras();return `<div class="list"><div class="card sk" style="height:120px"></div><div class="card sk" style="height:320px"></div></div>`}
   if(TQ.q.trim()||tfCount()){const L=sorted(shop().filter(spass)),M=TQ.q.trim()?mine().filter(mpass):[];
    return `<section class="sec"><div class="sh"><h2>${L.length+M.length} ${L.length+M.length===1?'result':'results'}</h2><button class="lnk" data-a="tClear">Clear all</button></div>
     ${M.length?`<p class="gh">In your test series</p><div class="card rows">${M.map(s=>`<button class="row" data-a="openSD" data-id="${esc3(s.id)}"><span class="ti k">${ic('layers',19)}</span><span><b>${esc3(s.title)}</b><small>${seriesStats(s).n} tests</small></span>${ic('right',18)}</button>`).join('')}</div>`:''}
@@ -765,7 +765,7 @@ A.toStore=()=>{closeLayer();unwind(()=>{if(S.tab==='test'){scrollTo({top:0,behav
    Without that SQL the page still works: no dates, no plans, no syllabus. */
 let META=null,metaBusy=null;
 function loadMeta(){if(META||metaBusy)return metaBusy;metaBusy=rpc('cbt_series_meta',{},true).then(r=>{META=r&&r.ok?r:{series:{},syl:{},promo:'',promo_link:''}}).catch(()=>{META={series:{},syl:{},promo:'',promo_link:''}})
-  .finally(()=>{metaBusy=null;if(scrOpen()&&top()&&(top().key==='my'||top().key==='sp'))redraw();if(S.tab==='test'&&!scrOpen())drawT()});return metaBusy}
+  .finally(()=>{metaBusy=null;if(scrOpen()&&top()&&(top().key==='my'||top().key==='sp'))redraw();});return metaBusy}
 const MT=sid=>((META||{}).series||{})[sid]||{};
 const expired=s=>{const e=MT(s.id).e;return !!(e&&e<nowMs())};
 const dLong=t=>fD(t,{day:'numeric',month:'short',year:'numeric'});
