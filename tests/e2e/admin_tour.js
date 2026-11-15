@@ -26,14 +26,14 @@ const server = http.createServer((req, res) => {
 });
 
 const calls = [];
-let LIVE = [], liveCalls = 0;   // rows of live_tests, built in the set-up below
+let LIVE = [], liveCalls = 0, STU = {};   // STU: ids of a student who has the PAID series and one who has not   // rows of live_tests, built in the set-up below
 const stubLive = id => {   // the shape the panel reads from cbt_admin3 live: counts differ per test
   const k = Math.max(0, LIVE.findIndex(t => t.id === id)), t0 = Date.now(), P = i => ({ id: 'st' + k + '-' + i, name: 'Student ' + k + '-' + i, mobile: '9876' + String(500000 + k * 1000 + i) });
   const row = LIVE.find(t => t.id === id) || { title: 'Old test' };
   return { ok: true, now: t0, eligible: 240, test: { title: row.title, questions: 45, duration: 45, max: 180, active: true, opens_at: t0 - 3600e3 },
     writing: Array.from({ length: 3 + k }, (_, i) => Object.assign(P(i), { started: t0 - 600e3, ends: t0 + 2100e3 })),
     done: Array.from({ length: 12 + k * 7 }, (_, i) => Object.assign(P(100 + i), { score: 100 - i, max: 180, correct: 30, wrong: 5, skipped: 10, used: 1800, at: t0 - 300e3, late: false })),
-    waiting: Array.from({ length: 20 }, (_, i) => Object.assign(P(200 + i), { seen: t0 - 86400e3, devices: 1, max_devices: 2 })), expired: [] };
+    waiting: Array.from({ length: 20 }, (_, i) => Object.assign(P(200 + i), i === 0 ? { id: STU.paid } : i === 1 ? { id: STU.free } : {}, { seen: t0 - 86400e3, devices: 1, max_devices: 2 })), expired: [] };
 };
 async function rpcRoute(route) {
   const req = route.request(), fn = req.url().split('/rpc/')[1].split('?')[0];
@@ -71,6 +71,8 @@ async function rpcRoute(route) {
   await q(`insert into cbt_private.store_coupons (item_id, code, kind, value, active, starts_at, ends_at) select 'cccccccc-0000-0000-0000-000000000001', 'TOURLONG', 'flat', 100, true, now(), now() + interval '9 days' where not exists (select 1 from cbt_private.store_coupons where code = 'TOURLONG')`);
   await q(`update cbt_private.tests set opens_at = (extract(epoch from now() - interval '1 hour') * 1000)::bigint, closes_at = (extract(epoch from now() + interval '2 hours') * 1000)::bigint where id in ('aaaaaaaa-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000004')`);
   await q(`insert into cbt_private.tests select (jsonb_populate_record(null::cbt_private.tests, to_jsonb(t) || jsonb_build_object('id', gen_random_uuid(), 'title', 'Old mock ' || g, 'opens_at', (extract(epoch from now() - (g || ' days')::interval) * 1000)::bigint, 'closes_at', (extract(epoch from now() - (g || ' days')::interval + interval '3 hours') * 1000)::bigint, 'result_at', null))).* from cbt_private.tests t, generate_series(1, 40) g where t.id = 'aaaaaaaa-0000-0000-0000-000000000001'`);
+  STU = { paid: (await q(`select s.id from cbt_private.students s join cbt_private.series_access a on a.student_id = s.id where a.series_id = '11111111-1111-1111-1111-111111111111' limit 1`))[0].id };
+  STU.free = (await q(`select id from cbt_private.students where id <> $1 limit 1`, [STU.paid]))[0].id;
   LIVE = (await q(`select t.id, t.title, s.title as series, case when t.title in ('Paid Live', 'Free Live') then 1 else 0 end as open_now from cbt_private.tests t join cbt_private.series s on s.id = t.series_id order by s.created_at, t.opens_at desc nulls last limit 12`)).map(r => ({ id: r.id, title: r.title, series: r.series, open_now: r.open_now }));
   await new Promise(r => server.listen(PORT, '127.0.0.1', r));
   fs.mkdirSync(path.join(__dirname, 'shots'), { recursive: true });
@@ -121,6 +123,8 @@ async function rpcRoute(route) {
       ok(/PAID Series/.test(sers) && /FREE Series/.test(sers), tag + ' live: every board names its series: ' + sers);
       ok((await page.isVisible('.lv-dots')) === phone, tag + ' live: dots only when boards do not all fit (' + phone + ')');
       ok(/\d/.test(await page.textContent('.lv-pane .k-v')) && !/Loading/.test(await page.textContent('.lv-pane')), tag + ' live: numbers are filled in');
+      const nots = await page.$$eval('.lv-pane', a => Object.fromEntries(a.map(p => [p.querySelector('h3').textContent.trim(), p.querySelector('.lv-stat.mut .k-v').textContent.trim()])));
+      ok(nots['Paid Live'] === '1' && nots['Free Live'] === '20' && nots['Open mock'] === '20' && /have this series/.test(await page.textContent('.lv-pane:first-child')), tag + ' live: "Not started" counts only the students who have the series (free series: everyone) ' + JSON.stringify(nots));
       await sh('live');
       if (phone) await page.evaluate(() => { const r = document.getElementById('lv-row'), p = document.querySelectorAll('.lv-pane')[1]; r.scrollTo({ left: p.offsetLeft }); });
       else await page.click('.lv-pane:nth-child(2) .lv-bh');
@@ -151,6 +155,7 @@ async function rpcRoute(route) {
       await page.goto(U('home')); await page.waitForSelector('.hm-lc'); await page.waitForTimeout(1500);
       const hc = await page.$$eval('.hm-lc', a => a.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
       ok(hc.length === 3 && (await page.$$eval('[data-lcn=writing]', a => a.every(x => /\d/.test(x.textContent)))), tag + ' home: all live tests at once, with numbers: ' + hc.map(x => x.slice(0, 40)).join(' / '));
+      ok((await page.textContent('[data-lc="aaaaaaaa-0000-0000-0000-000000000001"] [data-lcn=waiting]')) === '1', tag + ' home: the paid series card counts only the students who have the series');
       await sh('homelive');
     }
     await ctx.close();
