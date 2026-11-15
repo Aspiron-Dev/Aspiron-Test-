@@ -99,7 +99,7 @@ function appIn(){
   requestAnimationFrame(()=>{navUi();railsInit()});
   if(RM)return;document.body.classList.add('boot');setTimeout(()=>document.body.classList.remove('boot'),1200);
 }
-/* ---------- course: NEET or JEE (welcome screen, Profile, or the switch at the top). A series set to NEET or
+/* ---------- course: NEET or JEE (welcome screen, or Settings → Profile & settings). A series set to NEET or
    JEE in the admin panel shows only for that course; a series with no course shows for both. ---------- */
 const CN={neet:'NEET',jee:'JEE'},other=c=>c==='jee'?'neet':'jee';
 let CRS='';   // the course for this visit if the phone does not allow saving
@@ -123,7 +123,7 @@ function setCourse(c){
   courseGo(1);if(VW==='me'||VW==='help')toast(`Showing ${CN[c]} test series`,c==='jee'?'atom':'steth');
 }
 // the course changed: redraw the series, the search and the reviews for it
-// fade = the student tapped the switch: the old list fades out first
+// fade = the student changed the course: the old list fades out first
 function courseGo(fade){
   courseUi();
   const l=$('#list'),f=fade&&l&&ST.items.length&&!RM&&VW==='home',run=()=>{if(l)l.classList.remove('fade');draw(true);rvAllDraw();if(VW==='search')sDraw();if(VW==='me')meDraw()};
@@ -150,7 +150,7 @@ function meSaveGo(){
 
 /* ---------- pages: Home · Search · Reviews · Help · Profile. Home is the first history entry; another page goes on
    top of it (one entry), so the phone's Back button comes back to Home. ---------- */
-const VIEWS={home:'Home',search:'Search',reviews:'Reviews',help:'Help',me:'Profile',refer:'Refer & earn'},VK=Object.keys(VIEWS);
+const VIEWS={home:'Home',search:'Search',reviews:'Reviews',help:'Help',me:'Profile & settings',refer:'Refer & earn'},VK=Object.keys(VIEWS);
 let VW='',VH=false;const VS={};   // the page shown; VH = it has its own history entry; VS = where each page was scrolled to
 const vHash=()=>{const m=location.hash.match(/^#\/(\w+)/);return m&&VIEWS[m[1]]?m[1]:'home'};
 function go(v,focus){
@@ -942,20 +942,39 @@ function meDraw(){
      <div class="seg tseg" role="radiogroup" aria-labelledby="ptl">${T.map(([k,ic,l])=>`<button type="button" role="radio" class="${k===s?'on':''}" aria-checked="${k===s}" data-theme-set="${k}">${I(ic)}${l}</button>`).join('')}</div></div>
    </div>
    ${soon.length?`<div class="card"><div class="card-h"><span class="hic gold">${I('bell')}</span><div class="grow"><h3>We will message you</h3><p class="sub">When these test series are live</p></div></div><div class="list">${soon.map(x=>`<button class="li" data-view="${esc(x.id)}">${thumb(x)}<span class="grow"><b>${esc(x.title)}</b><small>Coming soon</small></span>${I('cr')}</button>`).join('')}</div></div>`:''}
-   <p class="sm faint center mt16">${I('lock')} Your details are saved only on this phone and used for your orders.</p>
-   <div class="center mt16"><button class="btn line" data-meout>${I('x')}Sign out</button></div>`;
+   <div class="card"><div class="card-h"><span class="hic">${I('user')}</span><div class="grow"><h3>Account</h3><p class="sub">Sign out of this phone, or delete your saved details.</p></div></div>
+    <div class="acts"><button class="btn line" data-signout>${I('logout')}Sign out</button><button class="btn dng" data-delacct>${I('trash')}Delete account</button></div></div>
+   <p class="sm faint center mt16">${I('lock')} Your details are saved only on this phone and used for your orders.</p>`;
 }
-function meSignOut(){
-  LSd('store_me');MEM=null;CRS='';
-  document.documentElement.classList.remove('has-me');
-  document.body.classList.remove('boot');
-  $$('[data-meini]').forEach(e=>e.textContent='');$$('[data-mename]').forEach(e=>e.textContent='');
-  const s=$('#mesub');if(s)s.textContent='';
-  show('home');
-  setTimeout(()=>{
-    const g=$('#gate');if(g){g.classList.remove('out');g.scrollIntoView({behavior:'smooth'})}
-    $$('.app,.dock').forEach(e=>e.inert=true);
-  },300);
+// sign out (everything of this person on this phone) or delete (also the "Notify me" list and referral link). The student
+// app's own sign-in (cbt_auth) is a separate thing and stays. Orders and payments live on the server and stay there.
+function acctSheet(del){
+  const m=ME();if(!m)return;
+  const who=`${esc(m.name)} · ${esc(m.mobile)}`,o=lastOrd(),
+   warn=o?`<div class="callout warn">${I('alert')}<span>You have an open order <b class="code">${esc(o.code)}</b>. Note the code first — after this you cannot continue it here. If you already paid, verify it on Telegram / WhatsApp before you go.</span></div>`:'';
+  ovSet(modal({t:del?'Delete account?':'Sign out?',s:who,cls:'narrow',
+   body:del?`<div class="soonbox">${bigI('trash','bad')}<b>Delete everything saved on this phone</b>
+    <p>Your name, mobile number, course, open order, “Notify me” list and referral link are removed. You will go back to the welcome screen.</p>${warn}
+    <p>Paid orders and payment records stay with ${esc(CFG.SITE_NAME||'us')} — they are needed to unlock your test series. To have your data removed from our server too, message support.</p>
+    ${tgUser()?`<a class="btn line block mt12" target="_blank" rel="noopener" href="${esc(tgLink(`Please delete my data. Name: ${m.name}, mobile: ${m.mobile}`))}">${I('tg')}Ask support to delete my data</a>`:''}</div>`
+     :`<div class="soonbox">${bigI('logout','info')}<b>Sign out of the store on this phone</b>
+    <p>Your name and mobile number are removed from this phone. Your orders and unlocked tests stay safe on your mobile number — enter it again any time to come back.</p>${warn}</div>`,
+   foot:`<button class="btn ${del?'dng':'pri'} lg block" ${del?'data-delgo':'data-signoutgo'}>${I(del?'trash':'logout')}${del?'Delete account':'Sign out'}</button><button class="btn line lg block" data-close>Cancel</button>`}));
+}
+function accountWipe(del){
+  ['store_me','store_ord'].forEach(k=>LSd(k));
+  if(del){['store_notify','store_ref','store_rc'].forEach(k=>LSd(k));try{Object.keys(sessionStorage).filter(k=>k.indexOf('ref_')===0).forEach(k=>sessionStorage.removeItem(k))}catch(_){}}
+  MEM=null;CRS='';ORD=null;IT=null;AFTER=null;WAL=null;OFFER=null;BUYN++;
+  document.documentElement.classList.remove('has-me');document.body.classList.remove('boot');
+  $$('.app,.dock').forEach(e=>e.inert=true);
+  closeSheet();courseUi();
+  const mb=$('#mebox');if(mb)mb.innerHTML='';
+  $$('[data-meini],[data-mename]').forEach(e=>e.textContent='');const sb=$('#mesub');if(sb)sb.textContent='';
+  ['#gn','#gm'].forEach(q=>{const e=$(q);if(e)e.value=''});const er=$('#ger');if(er)er.textContent='';
+  $$('#gate [data-gc]').forEach(b=>b.setAttribute('aria-checked','false'));
+  const g=$('#gate');if(g){g.classList.remove('out');g.scrollTop=0}
+  if(LOADED===1)draw(true);
+  setTimeout(()=>{go('home');if(matchMedia('(hover:hover)').matches){const n=$('#gn');if(n)n.focus()}},160);   // after the sheet has given its history entry back
 }
 
 /* ---------- schedule and demo tests (PDF / photo) ---------- */
@@ -1080,7 +1099,10 @@ document.addEventListener('click',e=>{
   else if(d.rl){const r=t.closest('.sec').querySelector('.rail');r.scrollBy({left:(+d.rl)*r.clientWidth*.85,behavior:RM?'auto':'smooth'})}
   else if('gate' in d)gateGo();
   else if('me' in d)meSheet();
-  else if('meout' in d)meSignOut();
+  else if('signout' in d)acctSheet(false);
+  else if('delacct' in d)acctSheet(true);
+  else if('signoutgo' in d)accountWipe(false);
+  else if('delgo' in d)accountWipe(true);
   else if('mesave' in d)meSaveGo();
   else if(d.buy){closeSheet();buy(d.buy)}
   else if(d.lang&&d.lid){closeSheet();buy(d.lid,d.lang)}

@@ -126,6 +126,10 @@ p{margin:0}
 @media (hover:hover){.btn.pri:hover::after,.btn.gold:hover::after{animation:sweep .85s var(--ease)}}
 .btn.goldl{background:var(--gold-soft);border-color:color-mix(in srgb,var(--gold) 40%,transparent);color:var(--gold)}
 .btn.goldl:hover{background:color-mix(in srgb,var(--gold) 20%,transparent)}
+.btn.dng{background:var(--bad-soft);border-color:color-mix(in srgb,var(--bad) 40%,transparent);color:var(--bad)}
+.btn.dng:hover{background:color-mix(in srgb,var(--bad) 20%,transparent)}
+.soonbox .callout{text-align:left;margin-top:14px}
+.acts{display:flex;gap:10px;flex-wrap:wrap}.acts .btn{flex:1 1 150px}
 .btn.okb{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 35%,transparent);color:var(--ok)}
 .btn.line{background:transparent;border-color:var(--line-2);color:var(--tx)}
 .btn.line:hover{background:var(--hover);border-color:var(--pri-line)}
@@ -256,12 +260,6 @@ html[data-theme=dark] .i.moon,html[data-theme=light] .i.sun{display:none}
 .sbtn .kbd{margin-left:auto}
 body[data-v=search] .sbtn{opacity:0;pointer-events:none}
 /* NEET | JEE: the coloured thumb slides to the chosen course */
-.cseg{position:relative;display:inline-grid;grid-template-columns:1fr 1fr;padding:3px;border-radius:12px;background:var(--solid-2);border:1px solid var(--line-2);flex:none}
-.cseg button{position:relative;z-index:1;height:32px;min-width:56px;padding:0 12px;border:0;border-radius:9px;background:transparent;color:var(--mut);font-weight:800;font-size:12.5px;letter-spacing:.04em;transition:color .3s var(--ease)}
-.cseg button:hover{color:var(--tx)}
-.cseg button[aria-checked=true]{color:var(--pri-ink)}
-.cseg .thumb{position:absolute;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);border-radius:9px;background:var(--grad-pri);box-shadow:0 4px 14px color-mix(in srgb,var(--pri-2) 40%,transparent);transition:transform .45s var(--spring)}
-html[data-course=jee] .cseg .thumb{transform:translateX(100%)}
 .page{width:100%;max-width:1240px;margin:0 auto;padding:28px 28px 40px;min-width:0;flex:1}
 .foot{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:48px;padding:20px 0 4px;border-top:1px solid var(--line);color:var(--mut);font-size:13px}
 .foot img{width:20px;height:20px;border-radius:6px}
@@ -298,7 +296,6 @@ html[data-course=jee] .cseg .thumb{transform:translateX(100%)}
   body[data-v=home] .crumb{display:none}
   body[data-v=home] .tb-name{display:block;flex:1;min-width:0}
   .sbtn{display:none}
-  .cseg button{min-width:50px;padding:0 10px}
   .page{padding:18px 16px calc(100px + env(safe-area-inset-bottom))}
   .foot{margin-top:36px}
   /* the floating menu bar; its highlight slides to the open page */
@@ -334,7 +331,7 @@ html[data-course=jee] .cseg .thumb{transform:translateX(100%)}
 }
 @media (max-width:420px){.qpill small{display:none}}
 @media (max-width:380px){.kpi .k-l .i{display:none}}
-@media (max-width:380px){.crumb b,body[data-v=home] .tb-name{font-size:17.5px}.cseg button{min-width:44px;padding:0 8px;font-size:12px}}
+@media (max-width:380px){.crumb b,body[data-v=home] .tb-name{font-size:17.5px}}
 .kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .kpi{position:relative;display:block;width:100%;text-align:left;border-radius:var(--r-lg);padding:16px 16px 14px;overflow:hidden;min-width:0;background:var(--glass);border:1px solid var(--glass-brd);box-shadow:var(--shadow);color:var(--tx);transition:transform var(--std) var(--ease),border-color var(--std)}
 button.kpi:hover{transform:translateY(-3px);border-color:var(--pri-line)}
