@@ -47,6 +47,8 @@ begin
   -- each paid order once per student it belongs to (one join, then totals)
   mo as (select distinct on (n.student_id, o.code) n.student_id, o.series_id, o.code, o.amount, o.ts, o.trashed
            from orders o join nums n on n.m = o.m and length(n.m) = 10 and o.placed <= n.until
+            -- a reused number: an order placed while an earlier student still had it is not the new holder's
+            and not exists (select 1 from nums e where e.m = n.m and e.student_id <> n.student_id and e.until < n.until and o.placed <= e.until)
           order by n.student_id, o.code),
   od as (select student_id, series_id, count(*) as n, sum(amount) as amt, max(ts) as ts, (array_agg(code order by ts desc))[1] as code, bool_or(trashed) as trashed
            from mo group by student_id, series_id),
