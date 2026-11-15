@@ -1,0 +1,79 @@
+-- =====================================================================
+-- v80: Access check (Admin → Students & accounts → Access check). OWNER ONLY, READ ONLY.
+--
+-- For every PAID series (read from the series table, so a series made later shows up by itself) it lists the
+-- students who HAVE the series and what payment is on record for it:
+--   order  = a paid store order for an item linked to THIS series (also: an order that was later deleted from
+--            Orders and is kept in order_trash, and an order made with an earlier mobile number of the student)
+--   other  = no paid order for this series, but a payment is on record: a hand-added payment (it does not name a
+--            series) or a paid order for another / unlinked item
+--   none   = no payment record at all
+-- "none" is NOT "did not pay": students who joined before the store were paid by hand and may never have been
+-- recorded. This page only shows; nothing is changed, nobody loses access.
+--
+-- Run in Supabase → SQL Editor: THIS file first, then supabase_v35_admin_team.sql (adds the owner-only rule).
+-- Needs v44 (mobile_changes) and v46 (order_trash). Creates only a function (create / grant / revoke).
+-- =====================================================================
+create or replace function public.cbt_admin_access_check(p_pw text, p_action text, p_data jsonb default '{}'::jsonb)
+returns jsonb language plpgsql security definer set search_path = cbt_private, pg_temp as $$
+declare e text; v jsonb;
+begin
+  e := admin_ok(p_pw);
+  if e is not null then return jsonb_build_object('ok', false, 'error', e); end if;
+  -- owner only (a team member has a session user id)
+  if nullif(current_setting('cbt.uid', true), '') is not null then return jsonb_build_object('ok', false, 'error', 'forbidden'); end if;
+  if p_action <> 'get' then return jsonb_build_object('ok', false, 'error', 'action'); end if;
+
+  with
+  ser as (select id, title, sort_order from series where coalesce(is_free, false) = false),
+  acc as (select a.student_id, a.series_id from series_access a join ser on ser.id = a.series_id),
+  -- every number a student has had: the current one and the ones before (mobile_changes)
+  nums as (select id as student_id, right(regexp_replace(mobile, '[^0-9]', '', 'g'), 10) as m from students
+           union
+           select student_id, right(regexp_replace(old_mobile, '[^0-9]', '', 'g'), 10) from mobile_changes),
+  items as (select id, case when series_id ~ '^[0-9a-fA-F-]{36}$' then series_id::uuid end as series_id from public.cbt_store_items),
+  orders as (
+    select right(regexp_replace(o.mobile, '[^0-9]', '', 'g'), 10) as m, i.series_id, o.code, coalesce(o.amount, 0) as amount,
+           coalesce(o.paid_at, o.created_at) as ts, false as trashed
+      from public.cbt_store_orders o left join items i on i.id = o.item_id where o.status = 'paid'
+    union all
+    select right(regexp_replace(coalesce(t.data->>'mobile', ''), '[^0-9]', '', 'g'), 10), i.series_id, t.code, coalesce(nullif(t.data->>'amount', '')::int, 0),
+           coalesce(nullif(t.data->>'paid_at', '')::timestamptz, t.at), true
+      from (select distinct on (code) * from order_trash order by code, id desc) t
+      left join items i on i.id::text = t.data->>'item_id'
+     where t.data->>'status' = 'paid' and not exists (select 1 from public.cbt_store_orders o2 where o2.code = t.code)
+  ),
+  rws as (
+    select ac.series_id, ac.student_id, s.name, s.mobile, s.created_at as joined,
+           od.n as orders, od.amt as order_amt, od.ts as order_at, od.code as order_code, od.trashed as order_trashed,
+           ot.n as other_orders, pm.n as manual_n, pm.amt as manual_amt, pm.on_ as manual_on,
+           case when od.n > 0 then 'order' when pm.n > 0 or ot.n > 0 then 'other' else 'none' end as b
+      from acc ac
+      join students s on s.id = ac.student_id
+      left join lateral (select count(*) as n, coalesce(sum(o.amount), 0) as amt, max(o.ts) as ts, (array_agg(o.code order by o.ts desc))[1] as code, coalesce(bool_or(o.trashed), false) trashed
+                           from orders o where o.series_id = ac.series_id and o.m in (select m from nums where student_id = ac.student_id)) od on true
+      left join lateral (select count(*) as n from orders o
+                          where o.series_id is distinct from ac.series_id and o.m in (select m from nums where student_id = ac.student_id)) ot on true
+      left join lateral (select count(*) as n, coalesce(sum(p.amount), 0) as amt, max(p.paid_on) as on_ from public.cbt_payments p where p.student_id = ac.student_id) pm on true
+  )
+  select jsonb_build_object('ok', true, 'at', cbt_private.now_ms(),
+    'series', coalesce(jsonb_agg(jsonb_build_object(
+      'id', ser.id, 'title', ser.title,
+      'access', (select count(*) from rws where rws.series_id = ser.id),
+      'order', (select count(*) from rws where rws.series_id = ser.id and rws.b = 'order'),
+      'other', (select count(*) from rws where rws.series_id = ser.id and rws.b = 'other'),
+      'none', (select count(*) from rws where rws.series_id = ser.id and rws.b = 'none'),
+      'rows', coalesce((select jsonb_agg(jsonb_build_object(
+          'id', r.student_id, 'name', r.name, 'mobile', r.mobile, 'joined', (extract(epoch from r.joined) * 1000)::bigint, 'b', r.b,
+          'orders', r.orders, 'amt', r.order_amt, 'at', (extract(epoch from r.order_at) * 1000)::bigint, 'code', r.order_code, 'trashed', r.order_trashed,
+          'other', r.other_orders, 'manual', r.manual_n, 'manual_amt', r.manual_amt, 'manual_on', (extract(epoch from r.manual_on::timestamp) * 1000)::bigint)
+        order by case r.b when 'none' then 0 when 'other' then 1 else 2 end, r.name) from rws r where r.series_id = ser.id), '[]'::jsonb)
+    ) order by ser.sort_order, ser.title), '[]'::jsonb))
+  into v from ser;
+  return v;
+end $$;
+revoke all on function public.cbt_admin_access_check(text, text, jsonb) from public, authenticated;
+grant execute on function public.cbt_admin_access_check(text, text, jsonb) to anon;
+
+notify pgrst, 'reload schema';
+select 'v80 installed — now run supabase_v35_admin_team.sql again' as status;

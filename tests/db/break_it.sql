@@ -1369,6 +1369,58 @@ update public.cbt_result_alerts set sent_at = null where test_id = 'aaaaaaaa-000
 select pg_temp.chk('36f result alert: if the admin moves the result time later, the alert waits',
   not exists (select 1 from public.cbt_result_alerts_claim(100) c where c.test_id = 'aaaaaaaa-0000-0000-0000-0000000000ab'));
 
+-- ===== AC. v80 access check: owner only, read only, every paid series, honest buckets =====
+reset role;
+-- a third paid series made "later", with its own item; students in every situation
+insert into cbt_private.series (id, title, is_free) values ('33333333-3333-3333-3333-333333333333', 'CHEM Series', false);
+insert into public.cbt_store_items (id, title, price, series_id) values
+  ('cccccccc-0000-0000-0000-0000000000a1', 'Chem item', 299, '33333333-3333-3333-3333-333333333333'),
+  ('cccccccc-0000-0000-0000-0000000000a2', 'Other item', 299, '11111111-1111-1111-1111-111111111111');
+insert into cbt_private.students (id, name, mobile, status, salt, code_hash) values
+  ('ffffffff-0000-0000-0000-0000000000c1', 'Chem Buyer',    '9100000001', 'approved', 'x', 'x'),
+  ('ffffffff-0000-0000-0000-0000000000c2', 'Hand Paid',     '9100000002', 'approved', 'x', 'x'),
+  ('ffffffff-0000-0000-0000-0000000000c3', 'Nothing',       '9100000003', 'approved', 'x', 'x'),
+  ('ffffffff-0000-0000-0000-0000000000c4', 'Old Number',     '9100000004', 'approved', 'x', 'x'),
+  ('ffffffff-0000-0000-0000-0000000000c5', 'Deleted Order', '9100000005', 'approved', 'x', 'x'),
+  ('ffffffff-0000-0000-0000-0000000000c6', 'Other Series',  '9100000006', 'approved', 'x', 'x');
+insert into cbt_private.series_access (student_id, series_id)
+  select id, '33333333-3333-3333-3333-333333333333' from cbt_private.students where id::text like 'ffffffff-0000-0000-0000-0000000000c%';
+insert into cbt_private.series_access (student_id, series_id) values ('ffffffff-0000-0000-0000-0000000000c1', '22222222-2222-2222-2222-222222222222') on conflict do nothing;   -- the FREE series
+insert into public.cbt_store_orders (code, item_id, item_title, amount, name, mobile, status) values
+  ('ASP-C1', 'cccccccc-0000-0000-0000-0000000000a1', 'Chem item', 299, 'Chem Buyer', '9100000001', 'paid'),
+  ('ASP-C3', 'cccccccc-0000-0000-0000-0000000000a1', 'Chem item', 299, 'Nothing',    '9100000003', 'pending'),   -- not paid: does not count
+  ('ASP-C4', 'cccccccc-0000-0000-0000-0000000000a1', 'Chem item', 299, 'Old Number', '9100000094', 'paid'),       -- paid with an earlier number
+  ('ASP-C6', 'cccccccc-0000-0000-0000-0000000000a2', 'Other item', 299, 'Other Series', '9100000006', 'paid');    -- paid, but for another series
+insert into cbt_private.mobile_changes (student_id, old_mobile, new_mobile) values ('ffffffff-0000-0000-0000-0000000000c4', '9100000094', '9100000004');
+insert into cbt_private.order_trash (code, data) values ('ASP-C5', jsonb_build_object('mobile', '9100000005', 'status', 'paid', 'item_id', 'cccccccc-0000-0000-0000-0000000000a1', 'amount', 299));
+insert into public.cbt_payments (student_id, amount, method) values ('ffffffff-0000-0000-0000-0000000000c2', 500, 'upi');
+select (select count(*) from cbt_private.series_access) + (select count(*) from public.cbt_store_orders) + (select count(*) from public.cbt_payments) + (select count(*) from cbt_private.students) as c0 \gset
+set role anon;
+select pg_temp.chk('AC1 access check: a stranger and a team member get nothing',
+  public.cbt_admin_access_check('wrong-password','get','{}')->>'ok' is distinct from 'true'
+  and public.cbt_admin_access_check(:'smt','get','{}')->>'error' = 'forbidden'
+  and public.cbt_admin_access_check(:'nct','get','{}')->>'error' = 'forbidden'
+  and public.cbt_admin_access_check(:'ow9','nothing','{}')->>'error' = 'action');
+select public.cbt_admin_access_check(:'ow9','get','{}') as ac \gset
+select pg_temp.chk('AC2 access check: every paid series is listed (the one made later too), the free series is not, counts add up',
+  (:'ac'::jsonb->>'ok')::boolean
+  and exists (select 1 from jsonb_array_elements(:'ac'::jsonb->'series') x where x->>'title' = 'CHEM Series' and (x->>'access')::int = 6 and (x->>'order')::int = 3 and (x->>'other')::int = 2 and (x->>'none')::int = 1)
+  and exists (select 1 from jsonb_array_elements(:'ac'::jsonb->'series') x where x->>'title' = 'PAID Series')
+  and not exists (select 1 from jsonb_array_elements(:'ac'::jsonb->'series') x where x->>'title' = 'FREE Series')
+  and not exists (select 1 from jsonb_array_elements(:'ac'::jsonb->'series') x where (x->>'access')::int <> (x->>'order')::int + (x->>'other')::int + (x->>'none')::int));
+select pg_temp.chk('AC3 access check: each case lands in the right bucket (paid order · hand payment · nothing · earlier number · deleted order · other series · pending order)',
+  (with r as (select y->>'name' n, y->>'b' b, (y->>'trashed')::boolean tr from jsonb_array_elements(:'ac'::jsonb->'series') x, jsonb_array_elements(x->'rows') y where x->>'title' = 'CHEM Series')
+   select (select b from r where n = 'Chem Buyer') = 'order' and (select b from r where n = 'Hand Paid') = 'other'
+      and (select b from r where n = 'Nothing') = 'none' and (select b from r where n = 'Old Number') = 'order'
+      and (select b from r where n = 'Deleted Order') = 'order' and (select tr from r where n = 'Deleted Order')
+      and (select b from r where n = 'Other Series') = 'other' and not (select tr from r where n = 'Chem Buyer')));
+reset role;
+select pg_temp.chk('AC4 access check: read only (nothing was added, changed or removed) and rows list the worst cases first',
+  (select count(*) from cbt_private.series_access) + (select count(*) from public.cbt_store_orders) + (select count(*) from public.cbt_payments) + (select count(*) from cbt_private.students) = :'c0'::bigint
+  and (select y->>'b' from jsonb_array_elements(:'ac'::jsonb->'series') x, jsonb_array_elements(x->'rows') y where x->>'title' = 'CHEM Series' limit 1) = 'none');
+select pg_temp.chk('AC5 access check: a refused try by a team member is in the activity log',
+  exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_access_check' and result = 'refused'));
+
 -- ===== report =====
 \t off
 \a
