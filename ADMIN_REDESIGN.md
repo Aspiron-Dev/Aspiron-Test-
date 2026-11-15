@@ -96,6 +96,9 @@ Same family as the student app (`v3.css`): warm paper, graphite, champagne-gold,
 - **Home:** a "Live now" row with one card per live test (series, test, ends at, writing / submitted / not started).
 - Egress: the open board refreshes every 15 s, the other live boards at most once a minute, Home reads once (nothing polled). No SQL change. Series names come from the catalog; `cbt_admin3` (base setup) is not in this repository, so the tour stubs it.
 
+### Access check (v80, owner only, read only)
+`#/access`: for every paid series (read from the series table, so a series made later appears by itself) the students who have it, split into **Paid order** / **Series not named** (hand payment or order for another item) / **No record**. "No record" is not "did not pay": students from before the store were paid by hand. Nothing is changed. Run `supabase_v80_access_check.sql`, then `supabase_v35_admin_team.sql`. Tests: break_it AC1-AC5 and the tour (a third series added during the run shows on Live and on Access check without code changes).
+
 ## 4. What next, and which model
 | Phase | Work | Model |
 |---|---|---|

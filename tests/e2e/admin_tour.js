@@ -33,7 +33,7 @@ const stubLive = id => {   // the shape the panel reads from cbt_admin3 live: co
   return { ok: true, now: t0, eligible: 240, test: { title: row.title, questions: 45, duration: 45, max: 180, active: true, opens_at: t0 - 3600e3 },
     writing: Array.from({ length: 3 + k }, (_, i) => Object.assign(P(i), { started: t0 - 600e3, ends: t0 + 2100e3 })),
     done: Array.from({ length: 12 + k * 7 }, (_, i) => Object.assign(P(100 + i), { score: 100 - i, max: 180, correct: 30, wrong: 5, skipped: 10, used: 1800, at: t0 - 300e3, late: false })),
-    waiting: Array.from({ length: 20 }, (_, i) => Object.assign(P(200 + i), i === 0 ? { id: STU.paid } : i === 1 ? { id: STU.free } : {}, { seen: t0 - 86400e3, devices: 1, max_devices: 2 })), expired: [] };
+    waiting: Array.from({ length: 20 }, (_, i) => Object.assign(P(200 + i), i === 0 ? { id: STU.paid } : i === 1 ? { id: STU.free } : i === 2 && STU.chem ? { id: STU.chem[0] } : i === 3 && STU.chem ? { id: STU.chem[1] } : {}, { seen: t0 - 86400e3, devices: 1, max_devices: 2 })), expired: [] };
 };
 async function rpcRoute(route) {
   const req = route.request(), fn = req.url().split('/rpc/')[1].split('?')[0];
@@ -139,6 +139,26 @@ async function rpcRoute(route) {
       LIVE.push({ id: nid, title: 'Late mock', series: 'FREE Series', open_now: 0 }); await page.evaluate(() => { AX.cache.drop('catalog'); }); await page.waitForTimeout(4500);
       ok((await page.$$eval('.lv-pane', a => a.length)) === 4 && (await page.$$eval('.lv-pane h3', a => a.map(x => x.textContent.trim()))).includes('Late mock'), tag + ' live: a test that opens later gets its board by itself');
       await q(`delete from cbt_private.tests where id = $1`, [nid]); LIVE.pop(); await page.evaluate(() => { AX.live.watchMs = 0; AX.live.catEvery = 5; AX.cache.drop('catalog'); });
+      // a series made later: its live board counts only its own students, and the access check lists it — no code change
+      const CS = '33333333-3333-3333-3333-333333333333';
+      await q(`insert into cbt_private.series (id, title, is_free) values ($1, 'CHEM Series', false)`, [CS]);
+      STU.chem = (await q(`insert into cbt_private.students (id, name, mobile, status, salt, code_hash) values (gen_random_uuid(), 'Chem A', '9100000011', 'approved', 'x', 'x'), (gen_random_uuid(), 'Chem B', '9100000012', 'approved', 'x', 'x') returning id`)).map(r => r.id);
+      await q(`insert into cbt_private.series_access (student_id, series_id) select id, $1 from cbt_private.students where mobile in ('9100000011', '9100000012')`, [CS]);
+      const cid = (await q(`insert into cbt_private.tests select (jsonb_populate_record(null::cbt_private.tests, to_jsonb(t) || jsonb_build_object('id', gen_random_uuid(), 'title', 'Chem Live', 'series_id', $1::text, 'opens_at', (extract(epoch from now() - interval '1 minute') * 1000)::bigint, 'closes_at', (extract(epoch from now() + interval '1 hour') * 1000)::bigint))).* from cbt_private.tests t where t.id = 'aaaaaaaa-0000-0000-0000-000000000001' returning id`, [CS]))[0].id;
+      LIVE.push({ id: cid, title: 'Chem Live', series: 'CHEM Series', open_now: 0 });
+      await page.goto(U('home')); await page.evaluate(() => { AX.cache.drop('catalog'); AX.cache.drop('students'); AX.cache.drop('access_check'); }); await page.goto(U('live'));
+      await page.waitForSelector('.lv-pane .lv-board .k-v'); await page.waitForTimeout(1800);
+      const nots2 = await page.$$eval('.lv-pane', a => Object.fromEntries(a.map(p => [p.querySelector('h3').textContent.trim(), p.querySelector('.lv-stat.mut .k-v').textContent.trim()])));
+      ok(nots2['Chem Live'] === '2' && nots2['Paid Live'] === '1' && nots2['Free Live'] === '20', tag + ' new series: its live board counts only its own 2 students, the others are unchanged ' + JSON.stringify(nots2));
+      await page.goto(U('access')); await page.waitForSelector('.ac-card'); await page.waitForTimeout(300);
+      const acs = await page.$$eval('.ac-card', a => a.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
+      ok(acs.some(c => /CHEM Series/.test(c) && /2 students have it/.test(c)) && acs.some(c => /PAID Series/.test(c)) && !acs.some(c => /FREE Series/.test(c)), tag + ' access check: every paid series is listed, the new one too, the free one is not: ' + acs.map(x => x.slice(0, 34)).join(' / '));
+      await sh('access');
+      await page.goto(U('access/' + CS + '/none')); await page.waitForSelector('#ac-rows .ac-row'); await page.waitForTimeout(300);
+      ok((await page.$$eval('#ac-rows .ac-row', a => a.length)) === 2 && /No payment record/.test(await page.textContent('#ac-rows')), tag + ' access check: the students without a payment record are listed');
+      await page.click('#ac-rows .ac-row'); await page.waitForSelector('.drawer'); ok(/Chem/.test(await page.textContent('.drawer')), tag + ' access check: a row opens the student'); await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+      await q(`delete from cbt_private.tests where id = $1`, [cid]); await q(`delete from cbt_private.series_access where series_id = $1`, [CS]); await q(`delete from cbt_private.students where mobile in ('9100000011', '9100000012')`); await q(`delete from cbt_private.series where id = $1`, [CS]);
+      LIVE.pop(); STU.chem = null; await page.evaluate(() => { AX.cache.drop('catalog'); AX.cache.drop('students'); AX.cache.drop('access_check'); });
       await page.goto(U('live/history')); await page.waitForSelector('.lv-sc-card'); await page.waitForTimeout(300);
       const cards = await page.$$eval('.lv-sc-card', a => a.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
       ok(cards.length >= 2 && cards.some(c => /PAID Series/.test(c) && /1 live/.test(c)) && cards.some(c => /FREE Series/.test(c) && /2 live/.test(c)), tag + ' history: series first, with how many are live: ' + cards.join(' / '));

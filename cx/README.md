@@ -98,6 +98,7 @@ check `errors` is empty, `H.unknown` lists no unexpected calls, and `H.overflow(
 | settings | m-settings.js | Settings | Team & security / 20 | any |
 | storage | m-ops.js | Storage | Content & storage / 10 | owner |
 | billing | m-ops.js | Billing & costs | Costs & integrations / 10 | owner |
+| access | m-access.js | Access check | Students & accounts / 12 | owner |
 
 Groups were renamed in the v13 redesign (see `ADMIN_REDESIGN.md`); the table's old group names map to the new ones there.
 
