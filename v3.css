@@ -1961,29 +1961,29 @@ p.hint>svg{display:inline-block;vertical-align:-2px;margin-right:4px}
 .evA::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:5px;border-radius:0 5px 5px 0;background:var(--acc)}
 .evA.st-today::before,.evA.st-live::before{background:#e5162b}
 
-/* v83: the live card (dark) */
-.evD{position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column;gap:8px;padding:18px;border-radius:24px;color:#fff;background:linear-gradient(150deg,#1b1d24,#0d0e12);box-shadow:0 24px 48px -28px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.08)}
-.evD-glow{position:absolute;z-index:-1;width:260px;height:260px;right:-90px;top:-110px;border-radius:50%;background:radial-gradient(circle,rgba(239,45,60,.55),rgba(239,45,60,0) 65%);animation:evDrift 7s ease-in-out infinite alternate}
-.evD-glow::after{content:"";position:absolute;width:200px;height:200px;left:-260px;top:250px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--acc2) 45%,transparent),transparent 65%)}
-.evD-grain{position:absolute;inset:0;z-index:-1;opacity:.07;background-image:radial-gradient(rgba(255,255,255,.9) .6px,transparent .7px);background-size:3px 3px}
-@keyframes evDrift{from{transform:translate(0,0) scale(1)}to{transform:translate(-40px,30px) scale(1.15)}}
+/* v83: the live card (light, in the theme's colours; the red is only the small LIVE dot / pill) */
+.evD{position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column;gap:8px;padding:18px;border-radius:24px;color:var(--tx);background:linear-gradient(160deg,color-mix(in srgb,var(--acc1) 26%,var(--surface)),var(--surface) 62%);border:1px solid color-mix(in srgb,var(--acc2) 30%,var(--line));box-shadow:0 22px 44px -30px color-mix(in srgb,var(--acc2) 70%,transparent)}
+.evD-glow{position:absolute;z-index:-1;width:240px;height:240px;right:-90px;top:-110px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--acc1) 70%,transparent),transparent 66%);animation:evDrift 8s ease-in-out infinite alternate}
+.evD-glow::after{display:none}
+.evD-grain{display:none}
+@keyframes evDrift{from{transform:translate(0,0) scale(1)}to{transform:translate(-36px,26px) scale(1.12)}}
 .evD-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
 .evD-r{display:flex;align-items:center;gap:10px;min-width:0}
-.evD-live{display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:.14em;background:rgba(239,45,60,.16);color:#ff6b74;border:1px solid rgba(239,45,60,.45)}
-.evD-live i{position:relative;width:8px;height:8px;border-radius:50%;background:#ff3b47;box-shadow:0 0 10px #ff3b47}
-.evD-live i::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:1.5px solid #ff3b47;animation:evPing 1.6s cubic-bezier(.2,.6,.3,1) infinite}
-.evD-end{font-size:12.5px;color:rgba(255,255,255,.65);white-space:nowrap}
-.evD-end b{margin-left:4px;font-size:15px;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:.02em}
-.evD-bell{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;color:#fff;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);transition:transform .2s}
+.evD-live{display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:.14em;background:color-mix(in srgb,#e5162b 10%,var(--surface));color:#c8142a;border:1px solid color-mix(in srgb,#e5162b 32%,var(--line))}
+.evD-live i{position:relative;width:8px;height:8px;border-radius:50%;background:#e5162b}
+.evD-live i::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:1.5px solid #e5162b;animation:evPing 1.6s cubic-bezier(.2,.6,.3,1) infinite}
+.evD-end{font-size:12.5px;color:var(--mut);white-space:nowrap}
+.evD-end b{margin-left:4px;font-size:15px;color:var(--tx);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.evD-bell{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;color:var(--tx);background:var(--surface2);border:1px solid var(--line);transition:transform .2s}
 .evD-bell:active{transform:scale(.92)}
-.evD-b{display:flex;flex-direction:column;gap:6px;text-align:left;color:#fff}
+.evD-b{display:flex;flex-direction:column;gap:6px;text-align:left;color:var(--tx)}
 .evD-b b{font-size:21px;font-weight:700;letter-spacing:-.02em;line-height:1.25}
-.evD-b small{font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.55)}
-.evD-bar{height:5px;border-radius:5px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:8px}
-.evD-bar i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#ff8a5c,#ef2d3c);box-shadow:0 0 12px rgba(239,45,60,.7)}
-.evD-t{font-size:12px;color:rgba(255,255,255,.55);margin-bottom:6px}
-.evD-go{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;width:100%;height:52px;border-radius:16px;font-size:16px;font-weight:700;background:linear-gradient(135deg,var(--acc1),var(--acc2));color:var(--onAcc);box-shadow:0 14px 26px -14px var(--acc2)}
+.evD-b small{font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+.evD-bar{height:5px;border-radius:5px;background:color-mix(in srgb,var(--acc2) 18%,var(--surface2));overflow:hidden;margin-top:8px}
+.evD-bar i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--acc1),var(--acc2))}
+.evD-t{font-size:12px;color:var(--mut);margin-bottom:6px}
+.evD-go{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;width:100%;height:52px;border-radius:16px;font-size:16px;font-weight:700;background:var(--ink);color:var(--onInk);box-shadow:0 14px 26px -16px var(--ink)}
 .evD-go span{display:inline-flex;align-items:center;gap:9px;position:relative;z-index:1}
-.evD-go::after{content:"";position:absolute;top:0;bottom:0;left:-40%;width:35%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent);transform:skewX(-20deg);animation:evShine 3.2s ease-in-out infinite}
+.evD-go::after{content:"";position:absolute;top:0;bottom:0;left:-40%;width:35%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.3),transparent);transform:skewX(-20deg);animation:evShine 3.2s ease-in-out infinite}
 @keyframes evShine{0%,60%{left:-40%}100%{left:130%}}
 @media (prefers-reduced-motion:reduce){.evD-go::after,.evD-glow,.evD-live i::after{animation:none}}
