@@ -1421,6 +1421,21 @@ select pg_temp.chk('AC4 access check: read only (nothing was added, changed or r
 select pg_temp.chk('AC5 access check: a refused try by a team member is in the activity log',
   exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_access_check' and result = 'refused'));
 
+-- AC6: blank numbers never match each other; an old number counts only for orders made before the change
+insert into cbt_private.students (id, name, mobile, status, salt, code_hash) values
+  ('ffffffff-0000-0000-0000-0000000000c7', 'No Mobile', '', 'approved', 'x', 'x');
+insert into cbt_private.series_access (student_id, series_id) values ('ffffffff-0000-0000-0000-0000000000c7', '33333333-3333-3333-3333-333333333333');
+insert into public.cbt_store_orders (code, item_id, item_title, amount, name, mobile, status) values
+  ('ASP-C7', 'cccccccc-0000-0000-0000-0000000000a1', 'Chem item', 299, 'Nobody', '', 'paid');
+insert into public.cbt_store_orders (code, item_id, item_title, amount, name, mobile, status, paid_at) values
+  ('ASP-C8', 'cccccccc-0000-0000-0000-0000000000a1', 'Chem item', 299, 'New owner of old number', '9100000094', 'paid', now() + interval '2 days');
+set role anon;
+select public.cbt_admin_access_check(:'ow9','get','{}') as ac2 \gset
+reset role;
+select pg_temp.chk('AC6 access check: a student with no mobile is not credited with an order that has no mobile, and an order made after a number change does not go to its earlier owner',
+  (with r as (select y->>'name' n, y->>'b' b, (y->>'orders')::int o from jsonb_array_elements(:'ac2'::jsonb->'series') x, jsonb_array_elements(x->'rows') y where x->>'title' = 'CHEM Series')
+   select (select b from r where n = 'No Mobile') = 'none' and (select o from r where n = 'Old Number') = 1));
+
 -- ===== report =====
 \t off
 \a

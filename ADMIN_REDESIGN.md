@@ -68,6 +68,7 @@ Routes did not change (no redirect needed); only the menu groups did.
 | `#/pyq` | m-pyq.js | Tests & questions | cbt_admin_pyq | content | tour ✓, 35h |
 | `#/qbank` | m-qbank.js | Tests & questions | cbt_admin_qbank | content | tour ✓ |
 | `#/results` | m-results.js | Analytics | cbt_admin results, cbt_admin_sheet, cbt_admin_ranks | results | tour ✓ |
+| `#/access` **new** | m-access.js | Students & accounts | cbt_admin_access_check | owner | tour ✓, AC1–AC6 |
 | `#/storage` **new** | m-ops.js | Content & storage | cbt_admin_ops storage | owner | tour ✓, 35a–b |
 | `#/orders` | m-orders.js | Sales & billing | cbt_admin_store_order … | store | tour ✓ |
 | `#/payments` | m-payments.js | Sales & billing | cbt_admin_payments, cbt_admin_money | payments | tour ✓ |
