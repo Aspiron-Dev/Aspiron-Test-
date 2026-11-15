@@ -134,17 +134,24 @@ function instr(t,s){
 window.insStep=n=>{document.querySelectorAll('.ins .im-pane').forEach(e=>{e.hidden=+e.dataset.p!==n});
   document.querySelectorAll('.ins .im-stp button').forEach(b=>{const k=+b.dataset.s;b.classList.toggle('on',k===n);b.classList.toggle('done',k<n)});
   const e=document.querySelector('.ins .im-stp');if(e)e.scrollIntoView({block:'start',behavior:'smooth'})};
-// Start: always ask once first: marking scheme, "do not leave this screen", and (for a two-language test) the medium
+// Start: always ask once first: the medium (a two-language test), "do not leave this screen"
 window.insGo=id=>{const t=CAT&&CAT.tests.find(x=>x.id===id);if(!t)return;
-  const sid=t.series_id,bi=serBi(sid)||testHi(t.id),m=medOf(sid),L=langFor(t),hi=m==='hi',X=TX[hi?'hi':'en'],resume=!!(t.in_progress||getProg(id));
-  const showMed=bi&&m&&!(m==='hi'&&L==='en'),O=L==='hi'?'en':'hi',canSwitch=showMed&&(O==='en'||testHi(t.id));
-  const warn=hi?'<b>पीछे (Back) न जाएँ और इस स्क्रीन से बाहर न निकलें।</b> हर बार बाहर जाने पर आपको चेतावनी मिलेगी और टाइमर चलता रहेगा।':'<b>Do not press Back or leave this screen.</b> Each time you leave you get a warning, and the timer keeps running.';
-  modal(`<div class="logo">${ic('info',24)}</div><h2>${hi?'शुरू करने से पहले':'Before you start'}</h2>
-   <div class="pm-mk"><span class="g"><b>+${t.correct}</b>${X.right}</span><span class="b"><b>${t.wrong?'−'+t.wrong:'0'}</b>${X.wrongA}</span><span><b>0</b>${X.skip}</span></div>
-   <div class="pm-w">${ic('info',16)}<span>${warn}</span></div>
-   ${showMed?`<div class="pm-m">${ic('globe',16)}<span>${X.med}: <b>${LNAME[L]}</b>${resume?'':' · '+(hi?'शुरू होने के बाद नहीं बदलेगा':'cannot change after you start')}</span>${canSwitch&&!resume?`<button onclick="closeModal();medChoose('${sid}','${O}','${id}')">${O==='hi'?'हिंदी':'English'}</button>`:''}</div>`:''}
-   <button class="btn block" onclick="closeModal();startTest('${id}')">${ic('play')} ${resume?(hi?'टेस्ट जारी रखें':'Resume test'):(hi?'ठीक है, शुरू करें':'Got it, start the test')}</button>
-   <button class="btn ghost block" style="margin-top:8px" onclick="closeModal()">${hi?'रद्द करें':'Cancel'}</button>`)};
+  const sid=t.series_id,bi=serBi(sid)||testHi(t.id),m=medOf(sid),L=langFor(t),hi=m==='hi',resume=!!(t.in_progress||getProg(id)),can2=bi&&m&&testHi(t.id)&&!resume;
+  const T=hi?{ttl:'शुरू करने से पहले',med:'माध्यम',note:'माध्यम आप एक बार ही चुन सकते हैं। टेस्ट शुरू होने के बाद इसे बदला नहीं जा सकता।',fixed:'यह टेस्ट इसी माध्यम में चलेगा।',
+      wt:'इस स्क्रीन से बाहर न जाएँ',wx:'Back दबाने, ऐप बदलने या फोन लॉक करने पर हर बार चेतावनी मिलेगी। टाइमर कभी नहीं रुकता।',go:resume?'टेस्ट जारी रखें':'ठीक है, शुरू करें',no:'रद्द करें'}
+    :{ttl:'Before you start',med:'Medium',note:'You can choose the medium only once. It cannot be changed after the test starts.',fixed:'This test continues in the same medium.',
+      wt:'Do not leave this screen',wx:'Pressing Back, switching apps or locking the phone gives you a warning each time. The timer never stops.',go:resume?'Resume test':'Got it, start the test',no:'Cancel'};
+  window.__pm={id,sid,sel:L,cur:L};
+  const seg=can2?`<div class="pm-seg" role="radiogroup" aria-label="${T.med}"><button role="radio" class="${L==='en'?'on':''}" data-l="en" aria-checked="${L==='en'}" onclick="pmPick('en')">English</button><button role="radio" class="${L==='hi'?'on':''}" data-l="hi" aria-checked="${L==='hi'}" onclick="pmPick('hi')">हिंदी</button></div>`:`<span class="pm-one">${LNAME[L]}</span>`;
+  modal(`<div class="pm-h"><span class="pm-i">${ic('info',22)}</span><div><h2>${T.ttl}</h2><small>${esc(t.title)}</small></div></div>
+   ${bi&&m?`<div class="pm-m"><div class="pm-mr"><span class="pm-ml">${ic('globe',16)} ${T.med}</span>${seg}</div><p>${can2?T.note:T.fixed}</p></div>`:''}
+   <div class="pm-w"><span class="pm-wi">${ic('info',18)}</span><div><b>${T.wt}</b><p>${T.wx}</p></div></div>
+   <button class="btn block pm-go" onclick="pmGo()">${ic('play')} ${T.go}</button>
+   <button class="btn ghost block" style="margin-top:8px" onclick="closeModal()">${T.no}</button>`)};
+window.pmPick=l=>{if(!window.__pm)return;window.__pm.sel=l;document.querySelectorAll('.pm-seg button').forEach(b=>{const on=b.dataset.l===l;b.classList.toggle('on',on);b.setAttribute('aria-checked',on)})};
+window.pmGo=async()=>{const P=window.__pm;if(!P)return;closeModal();
+  if(P.sel!==P.cur){const ok=await medSet(P.sid,P.sel);if(!ok)return}
+  startTest(P.id)};
 /* ---------- during the test: the language is shown and never changes ---------- */
 {const _st=startTest;startTest=async function(id){
   const t=CAT&&CAT.tests.find(x=>x.id===id);
@@ -242,17 +249,20 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .im-stp button.done i{background:var(--ia2);color:var(--iok)}
 .im-pane[hidden]{display:none}
 .im-nav{margin-top:14px}.im-nav .two{display:grid;grid-template-columns:1fr 1.6fr;gap:10px}.im-nav>.btn{width:100%}
-.pm-mk{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 10px}
-.pm-mk span{display:flex;flex-direction:column;align-items:center;gap:1px;padding:9px 4px;border-radius:12px;font-size:11.5px;text-align:center;background:var(--x-surface2,var(--surface2));color:var(--x-mut,var(--mut))}
-.pm-mk b{font-size:19px}.pm-mk .g{background:var(--okSoft,#e3f4ea)}.pm-mk .g b{color:var(--ok,#1f8a4c)}.pm-mk .b{background:var(--badSoft,#fde7e9)}.pm-mk .b b{color:var(--bad,#d1233a)}
-.pm-w{display:flex;gap:10px;align-items:flex-start;padding:12px;margin-bottom:10px;border-radius:14px;font-size:13.5px;line-height:1.5;background:var(--warnSoft,#fff0e6);border:1px solid color-mix(in srgb,var(--warn,#e8750a) 40%,transparent)}
-.pm-w svg{flex:none;margin-top:2px;color:var(--warn,#e8750a)}
-.pm-m{display:flex;gap:10px;align-items:center;padding:10px 12px;margin-bottom:14px;border-radius:14px;font-size:13px;background:var(--x-surface2,var(--surface2))}
-.pm-m span{flex:1}.pm-m button{flex:none;padding:6px 12px;border-radius:999px;font-weight:700;font-size:12.5px;background:var(--x-ink,var(--tx));color:var(--x-onInk,#fff)}
-.im-g .im-lg{padding-left:42px;margin-top:8px}
-.ins.im{padding-bottom:170px}
-.im-go{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,transparent,var(--x-bg,var(--bg)) 30%);pointer-events:none}
-.im-gi{pointer-events:auto;max-width:680px;margin:0 auto;padding:10px 12px 12px;border-radius:22px;background:color-mix(in srgb,var(--is) 86%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid color-mix(in srgb,var(--ia2) 22%,var(--il));box-shadow:0 -10px 30px -18px rgba(0,0,0,.3)}
-.im-gi .decl{margin:0 0 8px;padding:6px 4px;background:none}
+.pm-h{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.pm-h h2{margin:0;font-size:19px}.pm-h small{display:block;margin-top:2px;font-size:12.5px;color:var(--x-mut,var(--mut))}
+.pm-i{flex:none;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--x-ink,var(--tx));color:var(--x-onInk,#fff)}
+.pm-m{padding:12px 14px;margin-bottom:10px;border-radius:16px;background:var(--x-surface2,var(--surface2));border:1px solid var(--x-line,var(--bd))}
+.pm-mr{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.pm-ml{display:inline-flex;align-items:center;gap:7px;font-size:14px;font-weight:700}
+.pm-seg{display:inline-flex;padding:3px;border-radius:999px;background:var(--x-surface,var(--surface));border:1px solid var(--x-line,var(--bd))}
+.pm-seg button{min-width:78px;height:34px;padding:0 14px;border-radius:999px;font-size:13.5px;font-weight:700;color:var(--x-mut,var(--mut));background:transparent;border:0;box-shadow:none;transition:background .2s,color .2s}
+.pm-seg button.on{background:var(--x-ink,var(--tx));color:var(--x-onInk,#fff)}
+.pm-one{padding:7px 14px;border-radius:999px;font-size:13.5px;font-weight:700;background:var(--x-surface,var(--surface));border:1px solid var(--x-line,var(--bd))}
+.pm-m p{margin:9px 0 0;font-size:12.5px;line-height:1.5;color:var(--x-mut,var(--mut))}
+.pm-w{display:flex;gap:12px;align-items:flex-start;padding:13px 14px;margin-bottom:16px;border-radius:16px;background:var(--warnSoft,#fff0e6);border:1px solid color-mix(in srgb,var(--warn,#e8750a) 38%,transparent)}
+.pm-wi{flex:none;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;color:var(--warn,#e8750a);background:color-mix(in srgb,var(--warn,#e8750a) 14%,var(--x-surface,#fff))}
+.pm-w b{display:block;font-size:14.5px}.pm-w p{margin:3px 0 0;font-size:13px;line-height:1.5;color:var(--x-mut,var(--mut))}
+.pm-go{min-height:52px;font-size:16px;font-weight:700}
 </style>`);
 ;(window.__p=window.__p||{})['app19']=1;
