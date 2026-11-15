@@ -16,9 +16,10 @@
 //            so a big list never runs past the function's time limit (that used to stop sending part-way).
 //            Without `limit` (an old panel) everything is sent in one call, as before.
 // Body: { mode: "due" }   → called every minute by pg_cron (several workers at once, see v36):
-//   sends "test is LIVE now" to students who tapped 🔔 on that test, once, when it opens.
+//   sends "test is LIVE now" to students who tapped 🔔 on that test, once, when it opens, and (v79) "Result is out" to
+//   students who tapped 🔔 on a submitted test waiting for its result, once, when the result time comes.
 //   No password needed: it only sends alerts that are already due and marks each one sent.
-// Body: { mode: "info", vapid? } → { v: 2, vapid: secrets set?, key_ok: does `vapid` match VAPID_PUBLIC? } (no password; no secrets returned)
+// Body: { mode: "info", vapid? } → { v: 3, vapid: secrets set?, key_ok: does `vapid` match VAPID_PUBLIC? } (no password; no secrets returned)
 
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
@@ -51,7 +52,7 @@ async function handle(req: Request): Promise<Response> {
   try { b = await req.json(); } catch { return json({ ok: false, error: "body" }, 400); }
 
   const pub = Deno.env.get("VAPID_PUBLIC") || "", priv = Deno.env.get("VAPID_PRIVATE") || "";
-  if (b.mode === "info") return json({ ok: true, v: 2, vapid: !!(pub && priv), key_ok: typeof b.vapid === "string" ? b.vapid === pub : null,
+  if (b.mode === "info") return json({ ok: true, v: 3, vapid: !!(pub && priv), key_ok: typeof b.vapid === "string" ? b.vapid === pub : null,
     secrets: { VAPID_PUBLIC: !!pub, VAPID_PRIVATE: !!priv, VAPID_SUBJECT: !!Deno.env.get("VAPID_SUBJECT") },
     secret_key: (Deno.env.get("SB_SECRET_KEY") || "").startsWith("sb_secret_") });
 
@@ -59,7 +60,11 @@ async function handle(req: Request): Promise<Response> {
   const sk = Deno.env.get("SB_SECRET_KEY") || "";
   const db = createClient(Deno.env.get("SUPABASE_URL")!, sk.startsWith("sb_secret_") ? sk : Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 
-  if (b.mode === "due") return dueAlerts(db, pub, priv, Number(b.w) || 1);
+  if (b.mode === "due") {
+    // v79: "Result is out" alerts first; whatever happens there, the "LIVE now" alerts below always run
+    try { await dueResults(db, pub, priv); } catch (_e) { /* never stop the live alerts */ }
+    return dueAlerts(db, pub, priv, Number(b.w) || 1);
+  }
 
   // admin check: only a sign-in session of the admin panel ("as1.…"). A bare password is refused here, so nobody can
   // guess passwords through this function (every guess would count against this function's own address)
@@ -187,6 +192,41 @@ function hint(st: Stats): string {
   if (c["400"] || c["413"]) return "The push service did not accept the message (check VAPID_SUBJECT, and keep the text short).";
   if (c["429"] || Object.keys(c).some((k) => k === "network" || Number(k) >= 500)) return "The push service was busy or not reachable. Try again in a few minutes.";
   return "";
+}
+
+// ---------- "Result is out" alerts (the 🔔 on a test that is waiting for its result, supabase_v79_result_alerts.sql) ----------
+// Its own claim and its own table: the "LIVE now" path below is not touched. Does nothing until v79 is installed.
+async function dueResults(db: DB, pub: string, priv: string) {
+  if (!pub || !priv) return;
+  const c = await db.rpc("cbt_result_alerts_claim", { p_limit: DUE_ALERTS });
+  if (c.error || !c.data || !c.data.length) return;
+  const due = c.data as { mobile: string; test_id: string; title: string }[];
+  webpush.setVapidDetails(Deno.env.get("VAPID_SUBJECT") || "mailto:admin@example.com", pub, priv);
+  const mobiles = [...new Set(due.map((d) => d.mobile))];
+  const { data: all } = await db.from("cbt_push_subs").select("endpoint,mobile,p256dh,auth").in("mobile", mobiles);
+  const subs = ((all || []) as Sub[]).filter((s) => PUSH_HOST.test(s.endpoint));
+  const st: Stats = { sent: 0, removed: 0, failed: 0, codes: {}, sample: [], dead: [], why: new Set() };
+  const res = due.map(() => ({ phones: 0, ok: 0, passing: 0 }));
+  const jobs: Parameters<typeof sendMany>[0] = [];
+  due.forEach((a, i) => {
+    const payload = JSON.stringify({
+      title: "📊 Result is out: " + String(a.title || "Your test").slice(0, 60),
+      body: "Your result, rank and answer key are ready. Tap to see them.",
+      url: "#/h",
+      tag: "result-" + a.test_id,
+    });
+    for (const s of subs.filter((x) => x.mobile === a.mobile)) {
+      res[i].phones++;
+      jobs.push({ s, payload, ttl: 6 * 3600, done: (ok, passing) => { if (ok) res[i].ok++; else if (passing) res[i].passing++; } });
+    }
+  });
+  await sendMany(jobs, st);
+  await removeDead(db, st);
+  // only a passing problem stopped it: give the alert back, it is tried again next minute (up to 30 minutes)
+  for (let i = 0; i < due.length; i++) {
+    const r = res[i];
+    if (r.phones && !r.ok && r.passing) await db.rpc("cbt_result_alerts_release", { p_mobile: due[i].mobile, p_test: due[i].test_id });
+  }
 }
 
 // ---------- "test is LIVE now" alerts (the 🔔 on a scheduled test) ----------

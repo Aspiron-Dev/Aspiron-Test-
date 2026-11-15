@@ -1329,6 +1329,46 @@ select pg_temp.chk('35b feed, paid student: announcements and answer-key PDFs to
   and not exists (select 1 from jsonb_array_elements(:'fd2'::jsonb->'items') i where (i->>'locked')::boolean));
 reset role;
 
+-- ===== 36. v79: "Result is out" notification =====
+insert into cbt_private.tests (id, series_id, title, duration, data, question_count, closes_at, result_at)
+select 'aaaaaaaa-0000-0000-0000-0000000000ab', series_id, 'Result alert test', 30, data, question_count, cbt_private.now_ms() - 600000, cbt_private.now_ms() + 3600000
+  from cbt_private.tests where id = 'aaaaaaaa-0000-0000-0000-000000000004';
+insert into cbt_private.tests (id, series_id, title, duration, data, question_count, practice)
+select 'aaaaaaaa-0000-0000-0000-0000000000ac', series_id, 'Result alert practice', 30, data, question_count, true
+  from cbt_private.tests where id = 'aaaaaaaa-0000-0000-0000-000000000004';
+insert into cbt_private.results (student_id, test_id, test_title, score, max_score, correct, wrong, skipped, used_seconds, answers)
+select id, t, 'x', 4, 8, 1, 0, 1, 60, '{}' from cbt_private.students, (values ('aaaaaaaa-0000-0000-0000-0000000000ab'::uuid), ('aaaaaaaa-0000-0000-0000-0000000000ac'::uuid), ('aaaaaaaa-0000-0000-0000-000000000004'::uuid)) v(t) where mobile = '9000000002';
+set role anon;
+select pg_temp.chk('36a result alert: refused without an attempt, for a practice test, after the result time, and with a wrong code',
+  public.cbt_result_alert_set('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-0000000000ab')->>'error' = 'not_attempted'
+  and public.cbt_result_alert_set('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000000ac')->>'error' = 'practice'
+  and public.cbt_result_alert_set('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-000000000004')->>'error' = 'already'
+  and coalesce((public.cbt_result_alert_set('9000000002','wrongcode','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000000ab')->>'ok')::boolean, false) is false
+  and public.cbt_result_alert_set('9000000002','BBBB2222','dev-bbbbbbbb','not-a-uuid')->>'error' = 'test');
+select pg_temp.chk('36b result alert: the bell can be set and the server lists it',
+  (public.cbt_result_alert_set('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000000ab')->>'ok')::boolean
+  and public.cbt_result_alerts_mine('9000000002','BBBB2222','dev-bbbbbbbb')->'ids' ? 'aaaaaaaa-0000-0000-0000-0000000000ab'
+  and not (public.cbt_result_alerts_mine('9000000001','AAAA1111','dev-aaaaaaaa')->'ids' ? 'aaaaaaaa-0000-0000-0000-0000000000ab'));
+select pg_temp.chk('36c result alert: only the minute job (service role) can claim or give back an alert',
+  not has_function_privilege('anon', 'public.cbt_result_alerts_claim(int)', 'execute')
+  and not has_function_privilege('anon', 'public.cbt_result_alerts_release(text,text)', 'execute')
+  and not has_function_privilege('authenticated', 'public.cbt_result_alert_set(text,text,text,text,boolean)', 'execute'));
+reset role;
+select pg_temp.chk('36d result alert: nothing is claimed before the result time',
+  not exists (select 1 from public.cbt_result_alerts_claim(100) c where c.test_id = 'aaaaaaaa-0000-0000-0000-0000000000ab'));
+update cbt_private.tests set result_at = cbt_private.now_ms() - 1000 where id = 'aaaaaaaa-0000-0000-0000-0000000000ab';
+select count(*) as nclaim from public.cbt_result_alerts_claim(100) c where c.test_id = 'aaaaaaaa-0000-0000-0000-0000000000ab' and c.mobile = '9000000002' and c.title = 'Result alert test' \gset
+select pg_temp.chk('36e result alert: claimed once when the result is out, not again, given back once, and the bell list is empty after',
+  :'nclaim'::int = 1
+  and not exists (select 1 from public.cbt_result_alerts_claim(100) c where c.test_id = 'aaaaaaaa-0000-0000-0000-0000000000ab')
+  and (select count(*) from public.cbt_result_alerts_mine('9000000002','BBBB2222','dev-bbbbbbbb') m, jsonb_array_elements_text(m->'ids') i where i = 'aaaaaaaa-0000-0000-0000-0000000000ab') = 0
+  and (public.cbt_result_alerts_release('9000000002','aaaaaaaa-0000-0000-0000-0000000000ab') is not distinct from null)
+  and exists (select 1 from public.cbt_result_alerts_claim(100) c where c.test_id = 'aaaaaaaa-0000-0000-0000-0000000000ab'));
+update cbt_private.tests set result_at = cbt_private.now_ms() + 3600000 where id = 'aaaaaaaa-0000-0000-0000-0000000000ab';
+update public.cbt_result_alerts set sent_at = null where test_id = 'aaaaaaaa-0000-0000-0000-0000000000ab';
+select pg_temp.chk('36f result alert: if the admin moves the result time later, the alert waits',
+  not exists (select 1 from public.cbt_result_alerts_claim(100) c where c.test_id = 'aaaaaaaa-0000-0000-0000-0000000000ab'));
+
 -- ===== report =====
 \t off
 \a

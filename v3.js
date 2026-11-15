@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=65;
+const V3VER=66;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -393,12 +393,12 @@ A.evBell=()=>{try{if(typeof npSup==='function'&&(!npSup()||npInApp())){npHelp('a
   const pm=window.Notification&&window.Notification.permission;if(pm==='denied'){npHelp('blocked');return}
   if(typeof npEnable==='function')npEnable()}catch(e){toast3('Could not open notification settings')}};
 /* a live test the student has already submitted: no Start; Result instead; tapping the test explains the re-attempt */
-function evHeld(x){const t=x.t,s=sOf(t.series_id)||{},ra=liveTill(t)||t.result_at||t.closes_at,when=ra?(day0(ra)===day0(nowMs())?fT(ra):dayWord(ra)+', '+fT(ra)):'';
+function evHeld(x){raLoad();const t=x.t,s=sOf(t.series_id)||{},ra=liveTill(t)||t.result_at||t.closes_at,when=ra?(day0(ra)===day0(nowMs())?fT(ra):dayWord(ra)+', '+fT(ra)):'';
   return `<article class="evD evD-held"><i class="evD-glow" aria-hidden="true"></i>
    <div class="evD-top"><span class="evD-live ok">${ic('check',14)}ATTEMPTED</span></div>
    <button class="evD-b" data-a="heldInfo" data-id="${esc3(t.id)}"><b>${esc3(t.title)}</b><small>${esc3(s.title||'')}</small></button>
    ${when?`<p class="evD-hn">${ic('clock',15)}<span>Result &amp; answer key after <b>${when}</b></span></p>`:''}
-   <button class="evD-go" data-a="hist"><span>${ic('chart',18)}Result</span></button>
+   <button class="evD-go" data-a="hist"><span>${ic('chart',18)}Result</span></button>${RA3.ok&&ra?`<div class="evD-rb">${raBell(t.id)}</div>`:''}
    <small class="evD-t">You can re-attempt after the result.</small></article>`}
 A.heldInfo=el=>{const t=tOf(el.dataset.id),ra=t&&(liveTill(t)||t.result_at||t.closes_at);
   openSheet(`<div class="lk3"><span class="lk3i">${ic('check',26)}</span><h2 id="sheetT">Already attempted</h2>
@@ -1144,15 +1144,28 @@ function histGroups(){const M=new Map();
 const attLbl=(g,i)=>i===0?(g.t&&g.t.practice?'Practice':g.first.late?'Late attempt (no rank)':liveTill(g.t)!=null?'Live attempt · counts for rank':'First attempt · counts for rank'):'Re-attempt '+i;
 function spark(att){const n=att.length,P=att.map(rawPct),mx=Math.max(20,...P),W=64,H=26,bw=Math.min(9,(W-(n-1)*3)/n),x0=(W-(n*bw+(n-1)*3))/2;
   return `<svg class="hs3-sp" viewBox="0 0 ${W} ${H}" aria-hidden="true">${P.map((p,i)=>{const h=Math.max(2,Math.abs(p)/mx*(H-2));return `<rect x="${(x0+i*(bw+3)).toFixed(1)}" y="${(H-h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" class="${i===0?'a':'b'}"/>`}).join('')}</svg>`}
-function waitCard(p){const t=tOf(p.test_id),s=t&&sOf(t.series_id),ra=p.result_at||0;
-  return `<article class="card hs3-w"><div class="hs3-wt"><span class="hs3-wp">${ic('clock',14)}WAITING FOR RESULT</span></div>
+/* v88: the bell on a result that is still held back: "Result is out" notification (supabase_v79_result_alerts.sql + send-push v3).
+   RA3.ok stays false (no bell) until the server has the functions. */
+const RA3={ok:false,ids:new Set(),loading:false,loaded:false,busy:false};
+function raLoad(){if(RA3.loading||RA3.loaded)return;RA3.loading=true;
+  rpc('cbt_result_alerts_mine',{}).then(r=>{RA3.loading=false;RA3.loaded=true;if(r&&r.ok){RA3.ok=true;RA3.ids=new Set((r.ids||[]).map(String));try{if(top()&&(top().key==='hist'))redraw();else if(!scrOpen())softRender()}catch(e){}}}).catch(()=>{RA3.loading=false})}
+const raBell=id=>RA3.ok?`<button class="hs3-bell${RA3.ids.has(id)?' on':''}" data-a="raBell" data-id="${esc3(id)}" aria-pressed="${RA3.ids.has(id)}" aria-label="${RA3.ids.has(id)?'Result alert on':'Notify me when the result is out'}">${ic('bell',17)}<span>${RA3.ids.has(id)?'Alert on':'Notify me'}</span></button>`:'';
+A.raBell=async el=>{const id=el.dataset.id;if(!id||RA3.busy)return;const on=RA3.ids.has(id);
+  if(!on){try{if(!npSup()||npInApp()){npHelp('app');return}let pm=window.Notification.permission;if(pm==='default'){try{pm=await window.Notification.requestPermission()}catch(e){pm=window.Notification.permission}}
+    if(pm!=='granted'){npHelp('blocked');return}if(!npOn())npEnable();else await pushSync(true)}catch(e){toast3('Could not turn on notifications');return}}
+  RA3.busy=true;let r=null;try{r=await rpc('cbt_result_alert_set',{p_test:id,p_on:!on})}catch(e){}RA3.busy=false;
+  if(!r||!r.ok){toast3(r&&r.error==='already'?'The result is already out.':r&&r.status===404?'Result alerts are not set up yet.':'Could not save. Please try again.');if(r&&r.error==='already'){loadCat(true).then(()=>{try{redraw()}catch(e){}})}return}
+  if(on)RA3.ids.delete(id);else RA3.ids.add(id);hap(8);toast3(on?'Alert off':'Done! We will notify you when the result is out');
+  if(top()&&top().key==='hist')redraw();else softRender()};
+function waitCard(p){const t=tOf(p.test_id),s=t&&sOf(t.series_id),ra=p.result_at||0;raLoad();
+  return `<article class="card hs3-w"><div class="hs3-wt"><span class="hs3-wp">${ic('clock',14)}WAITING FOR RESULT</span>${ra?raBell(p.test_id):''}</div>
    <b class="hs3-wn">${esc3(p.title||titleOf(p))}</b><small>${s?esc3(s.title)+' · ':''}Submitted ${dayWord(p.at)}, ${fT(p.at)}</small>
    ${ra?`<div class="hs3-cd"><span>Result in</span><b data-cdw="${ra}">${cdTxt(ra-nowMs())}</b></div><p class="hint" style="margin:0">Result, rank and answer key at <b>${dayWord(ra)}, ${fT(ra)}</b>. You can re-attempt after that.</p>`:''}</article>`}
 function histTick(){const n=nowMs();let due=false;root.querySelectorAll('[data-cdw]').forEach(e=>{const ms=+e.dataset.cdw-n;if(ms<=0)due=true;e.textContent=cdTxt(ms)});
   if(due){clearInterval(histT);histT=0;try{loadCat(true).then(()=>{if(top()&&(top().key==='hist'||top().key==='hist3'))redraw()})}catch(e){}}}
 function histAfter(){clearInterval(histT);histT=0;if(root.querySelector('[data-cdw]'))histT=setInterval(histTick,1000)}
 const histLeave=()=>{clearInterval(histT);histT=0};
-function histView(){return {t:'Test history',s:`${histGroups().length} tests`,key:'hist',after:histAfter,leave:histLeave,html:()=>{
+function histView(){return {t:'Test history',s:`${histGroups().length} tests`,key:'hist',after:histAfter,leave:histLeave,html:()=>{raLoad();
   const G=histGroups(),W=(C().pending||[]).filter(p=>!G.some(g=>g.id===p.test_id&&false)),n=allRes().length;
   if(!G.length&&!W.length)return `<div class="card empty"><span class="ti">${ic('trophy',22)}</span><b>No tests yet</b><p>Your results appear here once you attempt a test.</p></div>`;
   return `${W.length?`<section class="stack" style="gap:10px"><div class="sh" style="margin:0"><h2>Waiting for result</h2><span class="aside">${W.length}</span></div>${W.map(waitCard).join('')}</section>`:''}
@@ -1900,6 +1913,7 @@ async function openRanks(){closeLayer();RK3.i=0;if(!(top()&&top().key==='rank'))
 A.rkTab=async el=>{RK3.i=+el.dataset.i;qbKeep();if(!RK3.i)return;let T=[];try{T=lbTests()}catch(e){}const t=T[RK3.i-1],k=RK3.i;await rkLoad(t);if(top()&&top().key==='rank'&&RK3.i===k)qbKeep()};
 A.ranks=()=>openRanks();
 V3H.push([/^#\/r$/,()=>openRanks()]);
+V3H.push([/^#\/h$/,()=>A.hist()]);   // the "Result is out" notification opens Test history
 
 /* ================= REFER AND EARN in the new design =================
    Same server as the classic page (app22.js): cbt_refer_app through the classic rfLoad; the link and the message
