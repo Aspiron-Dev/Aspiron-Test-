@@ -99,7 +99,7 @@ function appIn(){
   requestAnimationFrame(()=>{navUi();railsInit()});
   if(RM)return;document.body.classList.add('boot');setTimeout(()=>document.body.classList.remove('boot'),1200);
 }
-/* ---------- course: NEET or JEE (welcome screen, Profile, or the switch at the top). A series set to NEET or
+/* ---------- course: NEET or JEE (welcome screen, or Settings → Profile & settings). A series set to NEET or
    JEE in the admin panel shows only for that course; a series with no course shows for both. ---------- */
 const CN={neet:'NEET',jee:'JEE'},other=c=>c==='jee'?'neet':'jee';
 let CRS='';   // the course for this visit if the phone does not allow saving
@@ -123,7 +123,7 @@ function setCourse(c){
   courseGo(1);if(VW==='me'||VW==='help')toast(`Showing ${CN[c]} test series`,c==='jee'?'atom':'steth');
 }
 // the course changed: redraw the series, the search and the reviews for it
-// fade = the student tapped the switch: the old list fades out first
+// fade = the student changed the course: the old list fades out first
 function courseGo(fade){
   courseUi();
   const l=$('#list'),f=fade&&l&&ST.items.length&&!RM&&VW==='home',run=()=>{if(l)l.classList.remove('fade');draw(true);rvAllDraw();if(VW==='search')sDraw();if(VW==='me')meDraw()};
@@ -950,14 +950,15 @@ function meDraw(){
 // app's own sign-in (cbt_auth) is a separate thing and stays. Orders and payments live on the server and stay there.
 function acctSheet(del){
   const m=ME();if(!m)return;
-  const who=`${esc(m.name)} · ${esc(m.mobile)}`;
+  const who=`${esc(m.name)} · ${esc(m.mobile)}`,o=lastOrd(),
+   warn=o?`<div class="callout warn">${I('alert')}<span>You have an open order <b class="code">${esc(o.code)}</b>. Note the code first — after this you cannot continue it here. If you already paid, verify it on Telegram / WhatsApp before you go.</span></div>`:'';
   ovSet(modal({t:del?'Delete account?':'Sign out?',s:who,cls:'narrow',
    body:del?`<div class="soonbox">${bigI('trash','bad')}<b>Delete everything saved on this phone</b>
-    <p>Your name, mobile number, course, open order, “Notify me” list and referral link are removed. You will go back to the welcome screen.</p>
+    <p>Your name, mobile number, course, open order, “Notify me” list and referral link are removed. You will go back to the welcome screen.</p>${warn}
     <p>Paid orders and payment records stay with ${esc(CFG.SITE_NAME||'us')} — they are needed to unlock your test series. To have your data removed from our server too, message support.</p>
     ${tgUser()?`<a class="btn line block mt12" target="_blank" rel="noopener" href="${esc(tgLink(`Please delete my data. Name: ${m.name}, mobile: ${m.mobile}`))}">${I('tg')}Ask support to delete my data</a>`:''}</div>`
      :`<div class="soonbox">${bigI('logout','info')}<b>Sign out of the store on this phone</b>
-    <p>Your name and mobile number are removed from this phone. Your orders and unlocked tests stay safe on your mobile number — enter it again any time to come back.</p></div>`,
+    <p>Your name and mobile number are removed from this phone. Your orders and unlocked tests stay safe on your mobile number — enter it again any time to come back.</p>${warn}</div>`,
    foot:`<button class="btn ${del?'dng':'pri'} lg block" ${del?'data-delgo':'data-signoutgo'}>${I(del?'trash':'logout')}${del?'Delete account':'Sign out'}</button><button class="btn line lg block" data-close>Cancel</button>`}));
 }
 function accountWipe(del){

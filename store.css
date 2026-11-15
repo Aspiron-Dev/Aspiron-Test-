@@ -128,6 +128,7 @@ p{margin:0}
 .btn.goldl:hover{background:color-mix(in srgb,var(--gold) 20%,transparent)}
 .btn.dng{background:var(--bad-soft);border-color:color-mix(in srgb,var(--bad) 40%,transparent);color:var(--bad)}
 .btn.dng:hover{background:color-mix(in srgb,var(--bad) 20%,transparent)}
+.soonbox .callout{text-align:left;margin-top:14px}
 .acts{display:flex;gap:10px;flex-wrap:wrap}.acts .btn{flex:1 1 150px}
 .btn.okb{background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 35%,transparent);color:var(--ok)}
 .btn.line{background:transparent;border-color:var(--line-2);color:var(--tx)}
