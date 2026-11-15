@@ -122,7 +122,9 @@ function instr(t,s){
   const pn=(n,inner,nav)=>`<div class="im-pane" data-p="${n}"${n>1?' hidden':''}>${inner}<div class="im-nav">${nav}</div></div>`;
   const bBack=n=>`<button class="btn ghost" onclick="insStep(${n})">${ic('back')} ${NX[1]}</button>`,bNext=n=>`<button class="btn" onclick="insStep(${n})">${NX[0]} ${ic('right')}</button>`;
   const overview=medPick+(livePts?grp('calendar',X.rules,livePts):'')+grp(t.lock_back?'lock':'info',X.nav,[t.lock_back?X.back:X.free,...(t.practice?[X.prac]:[]),...(bi&&!need?[X.lockMed]:[])]);
-  const rulesP=grp('clock',X.timer,PT.timer)+grp('info',X.stay,[X.stayT]);
+  const strict=!t.practice&&(t.result_at||t.closes_at)&&srvNow()<(t.result_at||t.closes_at);   // a live-window attempt: see xguard.js
+  const stayTx=strict?(m==='hi'?'Back दबाने, दूसरा ऐप खोलने, कॉल उठाने या फोन लॉक करने पर आपका टेस्ट <b>अपने आप submit हो जाएगा</b>। लाइव टेस्ट में कॉपी करना और स्क्रीनशॉट लेना मना है।':'If you press Back, switch apps, take a call or lock the phone, your test is <b>submitted automatically</b>. Copying and screenshots are not allowed in a live test.'):X.stayT;
+  const rulesP=grp('clock',X.timer,PT.timer)+grp('info',X.stay,[stayTx]);
   const guideP=grp('grid',X.pal,[X.palT],palLg)+grp('check',X.btn,PT.btn);
   const decl=`<label class="chk decl"><input type="checkbox" id="dc" ${need?'disabled':''} onchange="$('#sb').disabled=!this.checked||${off?'true':'false'}"><span class="sm">${need?TX.en.choose+' · '+TX.hi.choose:X.decl}</span></label>`;
   const sb=`<button class="btn block" id="sb" disabled onclick="insGo('${t.id}')">${wait?`${ic('clock')} ${X.opens} <span data-op="${t.opens_at}">--:--</span>`:closed?`${ic('lock')} ${X.closed}${t.result_at?' · '+X.result+' '+esc(fmtWhen(t.result_at)):''}`:`${ic('play')} ${t.practice?X.startP:X.start}${bi&&m?' · '+LNAME[L]:''}`}</button>`;
@@ -137,10 +139,11 @@ window.insStep=n=>{document.querySelectorAll('.ins .im-pane').forEach(e=>{e.hidd
 // Start: always ask once first: the medium (a two-language test), "do not leave this screen"
 window.insGo=id=>{const t=CAT&&CAT.tests.find(x=>x.id===id);if(!t)return;
   const sid=t.series_id,bi=serBi(sid)||testHi(t.id),m=medOf(sid),L=langFor(t),hi=m==='hi',resume=!!(t.in_progress||getProg(id)),can2=bi&&m&&testHi(t.id)&&!resume;
+  const ST=!t.practice&&(t.result_at||t.closes_at)&&srvNow()<(t.result_at||t.closes_at);
   const T=hi?{ttl:'शुरू करने से पहले',med:'माध्यम',note:'माध्यम आप एक बार ही चुन सकते हैं। टेस्ट शुरू होने के बाद इसे बदला नहीं जा सकता।',fixed:'यह टेस्ट इसी माध्यम में चलेगा।',
-      wt:'इस स्क्रीन से बाहर न जाएँ',wx:'Back दबाने, ऐप बदलने या फोन लॉक करने पर हर बार चेतावनी मिलेगी। टाइमर कभी नहीं रुकता।',go:resume?'टेस्ट जारी रखें':'ठीक है, शुरू करें',no:'रद्द करें'}
+      wt:'इस स्क्रीन से बाहर न जाएँ',wx:ST?'Back, दूसरा ऐप, कॉल या फोन लॉक करने पर टेस्ट अपने आप submit हो जाएगा।':'Back दबाने, ऐप बदलने या फोन लॉक करने पर हर बार चेतावनी मिलेगी। टाइमर कभी नहीं रुकता।',go:resume?'टेस्ट जारी रखें':'ठीक है, शुरू करें',no:'रद्द करें'}
     :{ttl:'Before you start',med:'Medium',note:'You can choose the medium only once. It cannot be changed after the test starts.',fixed:'This test continues in the same medium.',
-      wt:'Do not leave this screen',wx:'Pressing Back, switching apps or locking the phone gives you a warning each time. The timer never stops.',go:resume?'Resume test':'Got it, start the test',no:'Cancel'};
+      wt:'Do not leave this screen',wx:ST?'Back, another app, a call or locking the phone submits your test automatically.':'Pressing Back, switching apps or locking the phone gives you a warning each time. The timer never stops.',go:resume?'Resume test':'Got it, start the test',no:'Cancel'};
   window.__pm={id,sid,sel:L,cur:L};
   const seg=can2?`<div class="pm-seg" role="radiogroup" aria-label="${T.med}"><button role="radio" class="${L==='en'?'on':''}" data-l="en" aria-checked="${L==='en'}" onclick="pmPick('en')">English</button><button role="radio" class="${L==='hi'?'on':''}" data-l="hi" aria-checked="${L==='hi'}" onclick="pmPick('hi')">हिंदी</button></div>`:`<span class="pm-one">${LNAME[L]}</span>`;
   modal(`<div class="pm-h"><span class="pm-i">${ic('info',22)}</span><div><h2>${T.ttl}</h2><small>${esc(t.title)}</small></div></div>
