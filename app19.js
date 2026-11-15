@@ -104,46 +104,42 @@ function instr(t,s){
   else medBox=`<div class="im-med ${L}"><span class="im-mi">${L==='hi'?'अ':'A'}</span><div class="grow"><span class="im-k">${X.med}</span><b>${LNAME[L]}</b><div class="sm mut">${L==='hi'?X.medHiAll:X.medAll}</div></div><button class="btn ghost sm" onclick="medSheet('${t.series_id}','${t.id}')">${X.change}</button></div>`;
   const li=(icn,title,txt)=>`<div class="im-li"><span class="im-ic">${ic(icn,17)}</span><div><b>${title}</b><div class="sm">${txt}</div></div></div>`;
   const live=(t.closes_at||t.result_at)&&!t.practice?li('calendar',X.rules,`${t.closes_at?`${X.live1} <b>${esc(fmtWhen(t.closes_at))}</b> ${X.live2} `:''}${t.result_at||t.closes_at?`${X.res} <b>${esc(fmtWhen(t.result_at||t.closes_at))}</b>. `:''}${X.first}`):'';
-  // v84: the page in three looks to choose from (preview: localStorage cbt_ins_style = A | B | C)
-  let sty='A';try{sty=localStorage.getItem('cbt_ins_style')||'A'}catch(e){}
-  const row=(icn,title,txt,open)=>`<details class="im-d"${open?' open':''}><summary><span class="im-ic">${ic(icn,17)}</span><b>${title}</b>${ic('right',16)}</summary><div class="sm im-dt">${txt}</div></details>`;
-  const liveTx=(t.closes_at||t.result_at)&&!t.practice?`${t.closes_at?`${X.live1} <b>${esc(fmtWhen(t.closes_at))}</b> ${X.live2} `:''}${t.result_at||t.closes_at?`${X.res} <b>${esc(fmtWhen(t.result_at||t.closes_at))}</b>. `:''}${X.first}`:'';
-  const palTx=`${X.palT}<div class="lg-row im-lg"><span><i class="lg nv">1</i>${X.nv}</span><span><i class="lg na">2</i>${X.na}</span><span><i class="lg ans">3</i>${X.an}</span><span><i class="lg mark">4</i>${X.mk}</span><span><i class="lg mans">5</i>${X.am}</span></div>`;
-  const navTx=t.lock_back?X.back:X.free,items={timer:[ 'clock',X.timer,X.timerT],live:liveTx?['calendar',X.rules,liveTx]:null,pal:['grid',X.pal,palTx],btn:['check',X.btn,X.btnT+' '+X.star],prac:t.practice?['check','Practice',X.prac]:null,nav:[t.lock_back?'lock':'info',X.nav,navTx]};
-  const R=(k,o)=>items[k]?row(items[k][0],items[k][1],items[k][2],o):'';
+  // v85: one page: top bar (Back + Change medium), glass hero (details + marking, once), rules as points, fixed Start bar
+  const PT={en:{timer:['The countdown at the top right <b>never pauses</b>, even if you refresh or close the app.','Your answers are saved online as you go.','When the time ends, the test is submitted automatically.'],
+    btn:['<b>Save &amp; Next</b> saves your answer and moves ahead.','<b>Mark &amp; Next</b> flags the question to revisit.','<b>Clear</b> removes your answer.','Tap <b>★</b> to save a question for revision and <b>⚑</b> to report a mistake in it.']},
+   hi:{timer:['ऊपर दाईं ओर का टाइमर <b>कभी नहीं रुकता</b>, पेज refresh या ऐप बंद करने पर भी नहीं।','आपके उत्तर साथ-साथ online सेव होते रहते हैं।','समय खत्म होने पर टेस्ट अपने आप submit हो जाता है।'],
+    btn:['<b>Save &amp; Next</b> उत्तर सेव करके आगे बढ़ता है।','<b>Mark &amp; Next</b> प्रश्न को दोबारा देखने के लिए चिह्नित करता है।','<b>Clear</b> आपका उत्तर हटाता है।','<b>★</b> से प्रश्न को revision के लिए सेव करें और <b>⚑</b> से प्रश्न में गलती की रिपोर्ट करें।']}}[m==='hi'?'hi':'en'];
+  const grp=(icn,title,pts,extra)=>`<div class="im-g"><div class="im-gh"><span class="im-ic">${ic(icn,16)}</span><b>${title}</b></div><ul class="im-ul">${pts.map(x=>`<li>${x}</li>`).join('')}</ul>${extra||''}</div>`;
+  const livePts=(t.closes_at||t.result_at)&&!t.practice?[...(t.closes_at?[`${X.live1} <b>${esc(fmtWhen(t.closes_at))}</b> ${X.live2}`]:[]),...(t.result_at||t.closes_at?[`${X.res} <b>${esc(fmtWhen(t.result_at||t.closes_at))}</b>.`]:[]),X.first]:null;
+  const palLg=`<div class="lg-row im-lg"><span><i class="lg nv">1</i>${X.nv}</span><span><i class="lg na">2</i>${X.na}</span><span><i class="lg ans">3</i>${X.an}</span><span><i class="lg mark">4</i>${X.mk}</span><span><i class="lg mans">5</i>${X.am}</span></div>`;
+  const rules=[grp('clock',X.timer,PT.timer),livePts?grp('calendar',X.rules,livePts):'',grp('grid',X.pal,[X.palT],palLg),grp('check',X.btn,PT.btn),
+    grp(t.lock_back?'lock':'info',X.nav,[t.lock_back?X.back:X.free,...(t.practice?[X.prac]:[]),...(bi&&!need?[X.lockMed]:[])])].join('');
+  const medPick=need||(m==='hi'&&L==='en')?medBox:'';   // a choice still to make, or "English only": shown in the page; otherwise the top button is enough
+  const chg=bi&&!need&&!(m==='hi'&&L==='en')?`<button class="im-chg" onclick="medSheet('${t.series_id}','${t.id}')" aria-label="${X.change}">${ic('globe',15)}<span>${LNAME[L]}</span><em>${X.change}</em></button>`:'';
   const hero=`<div class="ig"><i class="ig-glow" aria-hidden="true"></i><span class="im-s">${esc(s.title||'')}</span><h1>${esc(t.title)}</h1>
-    <div class="im-ch">${t.practice?'<span class="chip ok">Practice</span>':''}${t.lock_back?`<span class="chip warn">${ic('lock',12)} No going back</span>`:''}${bi&&m?`<span class="chip pri">${ic('globe',12)} ${LNAME[L]}</span>`:''}</div>
-    <ul class="ig-meta"><li><b>${t.questions}</b><span>${X.q}</span></li><li><b>${t.duration}</b><span>${X.min}</span></li><li><b>${mx}</b><span>${X.max}</span></li></ul></div>`;
-  const mk=`<div class="im-mk3"><span class="g"><b>+${t.correct}</b>${X.right}</span><span class="b"><b>${t.wrong?'−'+t.wrong:'0'}</b>${X.wrongA}</span><span><b>0</b>${X.skip}</span></div>`;
-  const med=`${medBox}${bi&&!need?`<div class="im-lock">${ic('shield',16)}<span>${X.lockMed}</span></div>`:''}`;
+    ${t.practice||t.lock_back?`<div class="im-ch">${t.practice?'<span class="chip ok">Practice</span>':''}${t.lock_back?`<span class="chip warn">${ic('lock',12)} No going back</span>`:''}</div>`:''}
+    <div class="ig-st"><div><b>${t.questions}</b><span>${X.q}</span></div><div><b>${t.duration}</b><span>${X.min}</span></div><div><b>${mx}</b><span>${X.max}</span></div></div>
+    <div class="ig-mk"><span class="g">+${t.correct} ${X.right}</span><span class="b">${t.wrong?'−'+t.wrong:'0'} ${X.wrongA}</span><span>0 ${X.skip}</span></div></div>`;
   const stay=`<div class="stayw">${ic('info',18)}<span><b>${X.stay}.</b> ${X.stayT}</span></div>`;
   const decl=`<label class="chk decl"><input type="checkbox" id="dc" ${need?'disabled':''} onchange="$('#sb').disabled=!this.checked||${off?'true':'false'}"><span class="sm">${need?TX.en.choose+' · '+TX.hi.choose:X.decl}</span></label>`;
-  const sb=`<button class="btn block" id="sb" disabled onclick="startTest('${t.id}')">${wait?`${ic('clock')} ${X.opens} <span data-op="${t.opens_at}">--:--</span>`:closed?`${ic('lock')} ${X.closed}${t.result_at?' · '+X.result+' '+esc(fmtWhen(t.result_at)):''}`:`${ic('play')} ${t.practice?X.startP:X.start}${bi&&m?' · '+LNAME[L]:''}`}</button>`;
-  const back=`<button class="btn ghost sm" onclick="route()">${ic('back')} Back</button>`;
-  let body;
-  if(sty==='B'){   // three steps: Overview -> Rules -> Start
-    const st=n=>`<div class="im-steps" aria-hidden="true">${[1,2,3].map(i=>`<i class="${i<=n?'on':''}"></i>`).join('')}<span>${n} / 3</span></div>`;
-    body=`${back}${hero}
-     <div class="im-pane" data-p="1">${st(1)}${med}<div class="im-sec">${'<h3>'+X.mark+'</h3>'}${mk}</div><div class="im-nav"><button class="btn block" onclick="insStep(2)">Next: Rules ${ic('right')}</button></div></div>
-     <div class="im-pane" data-p="2" hidden>${st(2)}<div class="im-acc">${R('timer')}${R('live',1)}${R('nav')}${R('pal')}${R('btn')}${R('prac')}</div><div class="im-nav two"><button class="btn ghost" onclick="insStep(1)">${ic('back')} Back</button><button class="btn" onclick="insStep(3)">Next ${ic('right')}</button></div></div>
-     <div class="im-pane" data-p="3" hidden>${st(3)}${stay}<div class="im-go">${decl}${sb}<button class="btn ghost block im-pv" onclick="insStep(2)">${ic('back')} Read the rules again</button></div></div>`;
-  }else if(sty==='C'){   // tabs: Overview | Rules | Guide, Start bar always at the bottom
-    body=`${back}${hero}
-     <div class="im-tabs" role="tablist"><button class="on" data-t="o" onclick="insTab('o')">Overview</button><button data-t="r" onclick="insTab('r')">Rules</button><button data-t="g" onclick="insTab('g')">Guide</button></div>
-     <div class="im-pane" data-p="o">${med}<div class="im-sec">${'<h3>'+X.mark+'</h3>'}${mk}</div>${stay}</div>
-     <div class="im-pane" data-p="r" hidden><div class="im-acc">${R('timer',1)}${R('live',1)}${R('nav',1)}${R('prac',1)}</div></div>
-     <div class="im-pane" data-p="g" hidden><div class="im-acc">${R('pal',1)}${R('btn',1)}</div></div>
-     <div class="im-go">${decl}${sb}</div>`;
-  }else{   // A: one short page, the rules fold open one by one
-    body=`${back}${hero}${med}<div class="im-sec"><h3>${X.mark}</h3>${mk}</div>
-     <div class="im-sec"><h3>${X.read}</h3><div class="im-acc">${R('timer')}${R('live',1)}${R('pal')}${R('btn')}${R('prac')}${R('nav')}</div></div>
-     ${stay}<div class="im-go">${decl}${sb}</div>`;
-  }
-  setApp(`<div class="wrap"><div class="ins im im-${sty}" ${m==='hi'?'lang="hi"':''}>${body}</div></div>`);
+  const sb=`<button class="btn block" id="sb" disabled onclick="insGo('${t.id}')">${wait?`${ic('clock')} ${X.opens} <span data-op="${t.opens_at}">--:--</span>`:closed?`${ic('lock')} ${X.closed}${t.result_at?' · '+X.result+' '+esc(fmtWhen(t.result_at)):''}`:`${ic('play')} ${t.practice?X.startP:X.start}${bi&&m?' · '+LNAME[L]:''}`}</button>`;
+  setApp(`<div class="wrap"><div class="ins im" ${m==='hi'?'lang="hi"':''}><div class="im-top"><button class="btn ghost sm" onclick="route()">${ic('back')} Back</button>${chg}</div>
+   ${hero}${medPick}<div class="im-sec im-rules"><h3>${X.read}</h3>${rules}</div>${stay}
+   <div class="im-go"><div class="im-gi">${decl}${sb}</div></div></div></div>`);
 }
 
-window.insStep=n=>{document.querySelectorAll('.ins .im-pane').forEach(e=>{e.hidden=+e.dataset.p!==n});const h=document.querySelector('.ins .ig');if(h)h.scrollIntoView({block:'start',behavior:'smooth'})};
-window.insTab=k=>{document.querySelectorAll('.ins .im-pane').forEach(e=>{e.hidden=e.dataset.p!==k});document.querySelectorAll('.ins .im-tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===k))};
+// Start: for a test that comes in two languages, confirm the medium once before it begins
+window.insGo=id=>{const t=CAT&&CAT.tests.find(x=>x.id===id);if(!t)return;
+  const bi=serBi(t.series_id)||testHi(t.id),m=medOf(t.series_id);
+  if(!bi||!m||t.in_progress||getProg(id)||(typeof isWait==='function'&&isWait(t)))return startTest(id);
+  const L=langFor(t),O=L==='hi'?'en':'hi';
+  if(m==='hi'&&L==='en')return startTest(id);
+  const hi=L==='hi';
+  modal(`<div class="logo">${ic('globe',24)}</div><h2>${hi?'हिंदी में शुरू करें?':'Start in English?'}</h2>
+   <p class="mut" style="margin:6px 0 14px">${hi?'टेस्ट शुरू होने के बाद भाषा नहीं बदलेगी।':'The medium cannot be changed after the test starts.'}</p>
+   <button class="btn block" onclick="closeModal();startTest('${id}')">${ic('play')} ${hi?'हिंदी में शुरू करें':'Start in English'}</button>
+   ${O==='en'||testHi(t.id)?`<button class="btn soft block" style="margin-top:8px" onclick="closeModal();medChoose('${t.series_id}','${O}','${t.id}')">${O==='hi'?'Switch to हिंदी':'Switch to English'}</button>`:''}
+   <button class="btn ghost block" style="margin-top:8px" onclick="closeModal()">${hi?'रद्द करें':'Cancel'}</button>`)};
 /* ---------- during the test: the language is shown and never changes ---------- */
 {const _st=startTest;startTest=async function(id){
   const t=CAT&&CAT.tests.find(x=>x.id===id);
@@ -219,31 +215,26 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .ig .im-s{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--imu);font-weight:600}
 .ig h1{font-size:22px;margin:4px 0 0;line-height:1.25;color:var(--it);letter-spacing:-.02em}
 .ig .im-ch .chip{background:var(--is2);color:var(--it);border:1px solid var(--il)}
-.ig-meta{list-style:none;display:grid;grid-template-columns:repeat(3,1fr);margin:16px 0 0;padding:12px 0 0;border-top:1px solid color-mix(in srgb,var(--ia2) 22%,var(--il))}
-.ig-meta li{display:flex;flex-direction:column;align-items:center;gap:1px;border:0;padding:0;margin:0;background:none}.ig-meta li+li{border-left:1px solid var(--il)}
-.ig-meta b{font-size:20px;font-weight:700}.ig-meta span{font-size:11.5px;color:var(--imu)}
-.im-mk3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.im-mk3 span{display:flex;flex-direction:column;align-items:center;gap:1px;padding:9px 4px;border-radius:12px;background:var(--is2);font-size:11.5px;color:var(--imu);text-align:center}
-.im-mk3 b{font-size:18px;color:var(--it)}.im-mk3 .g{background:var(--okSoft,#e3f4ea)}.im-mk3 .g b{color:var(--ok,#1f8a4c)}.im-mk3 .b{background:var(--badSoft,#fde7e9)}.im-mk3 .b b{color:var(--bad,#d1233a)}
-.im-acc{display:flex;flex-direction:column}
-.im-d{border-top:1px solid var(--il)}.im-d:first-child{border-top:0}
-.im-d summary{display:flex;align-items:center;gap:12px;padding:12px 2px;cursor:pointer;list-style:none}
-.im-d summary::-webkit-details-marker{display:none}
-.im-d summary b{flex:1;font-size:14.5px}
-.im-d summary>svg{color:var(--imu);transition:transform .25s}
-.im-d[open] summary>svg{transform:rotate(90deg)}
-.im-dt{padding:0 2px 12px 46px;color:var(--imu);line-height:1.55}
-.im-dt b{color:var(--it)}
-.im-steps{display:flex;align-items:center;gap:6px;margin:14px 0 4px}
-.im-steps i{flex:1;height:5px;border-radius:5px;background:var(--is2)}.im-steps i.on{background:linear-gradient(90deg,var(--ia1),var(--ia2))}
-.im-steps span{font-size:12px;color:var(--imu);margin-left:6px;white-space:nowrap}
-.im-nav{margin-top:14px}.im-nav.two{display:grid;grid-template-columns:1fr 1.6fr;gap:10px}
-.im-pv{margin-top:8px}
-.im-tabs{display:flex;gap:4px;margin:14px 0 4px;padding:4px;border-radius:14px;background:var(--is2)}
-.im-tabs button{flex:1;padding:10px 0;border-radius:11px;border:0;background:transparent;box-shadow:none;font-size:14px;font-weight:600;color:var(--imu)}
-.im-tabs button.on{background:var(--is);color:var(--it);box-shadow:0 4px 12px -6px rgba(0,0,0,.25)}
-.ins.im .im-d summary,.ins.im .im-steps i{border:0}.ins.im .ig-meta{border-bottom:0}
-.im-pane[hidden]{display:none}
-.im-C .im-go,.im-B .im-pane[data-p="3"] .im-go{position:sticky;bottom:0}
+.ig-st{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 0}
+.ig-st div{display:flex;flex-direction:column;align-items:center;gap:1px;padding:10px 4px;border-radius:14px;background:color-mix(in srgb,var(--is) 70%,transparent);border:0}
+.ig-st b{font-size:20px;font-weight:700}.ig-st span{font-size:11.5px;color:var(--imu)}
+.ig-mk{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.ig-mk span{padding:5px 10px;border-radius:999px;font-size:12px;font-weight:600;color:var(--imu);background:color-mix(in srgb,var(--is) 70%,transparent)}
+.ig-mk .g{color:var(--ok,#1f8a4c);background:var(--okSoft,#e3f4ea)}.ig-mk .b{color:var(--bad,#d1233a);background:var(--badSoft,#fde7e9)}
+.im-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.im-chg{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 6px 0 12px;border-radius:999px;font-size:13px;font-weight:700;color:var(--it);background:color-mix(in srgb,var(--ia1) 30%,var(--is));border:1px solid color-mix(in srgb,var(--ia2) 35%,var(--il))}
+.im-chg em{font-style:normal;font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:999px;background:var(--ik);color:var(--iok)}
+.im-rules h3{margin:0 0 4px}
+.im-g{padding:12px 0;border-top:1px solid var(--il)}.im-g:first-of-type{border-top:0}
+.im-gh{display:flex;align-items:center;gap:10px;margin-bottom:6px}.im-gh b{font-size:14.5px}
+.im-ul{list-style:none;margin:0;padding:0 0 0 42px;display:flex;flex-direction:column;gap:6px}
+.ins.im .im-ul li{display:block;position:relative;border:0;padding:0;margin:0;font-size:13.5px;line-height:1.5;color:var(--imu)}
+.im-ul li::before{content:"";position:absolute;left:-14px;top:.55em;width:6px;height:6px;border-radius:50%;background:var(--ia2)}
+.im-ul li b{color:var(--it)}
+.im-g .im-lg{padding-left:42px;margin-top:8px}
+.ins.im{padding-bottom:170px}
+.im-go{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,transparent,var(--x-bg,var(--bg)) 30%);pointer-events:none}
+.im-gi{pointer-events:auto;max-width:680px;margin:0 auto;padding:10px 12px 12px;border-radius:22px;background:color-mix(in srgb,var(--is) 86%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid color-mix(in srgb,var(--ia2) 22%,var(--il));box-shadow:0 -10px 30px -18px rgba(0,0,0,.3)}
+.im-gi .decl{margin:0 0 8px;padding:6px 4px;background:none}
 </style>`);
 ;(window.__p=window.__p||{})['app19']=1;
