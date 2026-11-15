@@ -177,11 +177,13 @@ function liveEnd(ms){if(!ms)return 0;const e=new Date(ms);e.setHours(LIVE_END_H,
 const liveStart=(t,m)=>t.opens_at||m[t.id]||0;
 // end of the live window: the admin's "Live ends" time when set, else 9 PM as above
 const liveEndT=(t,m)=>t.closes_at||liveEnd(liveStart(t,m));
-function liveTests(){
+// every live test (all series); the classic Home card shows the newest two of them
+function liveAll(){
   const m=liveSeen(),now=srvNow();
   return CAT.tests.filter(t=>!t.locked&&!t.practice&&!isWait(t)&&CAT.series.some(s=>s.id===t.series_id)
-    &&now<liveEndT(t,m)).sort((a,b)=>liveStart(b,m)-liveStart(a,m)).slice(0,2);
+    &&now<liveEndT(t,m)).sort((a,b)=>liveStart(b,m)-liveStart(a,m));
 }
+function liveTests(){return liveAll().slice(0,2)}
 let liveIv=null;
 function liveHtml(){
   const L=liveTests();clearTimeout(liveIv);if(!L.length)return '';

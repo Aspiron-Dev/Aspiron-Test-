@@ -1,5 +1,6 @@
 /* ===== v20: improved Test series list + series page + test rows ===== */
-const liveIds=()=>{try{return new Set(liveTests().map(t=>t.id))}catch(e){return new Set()}};
+// v80: every live test counts as Live (it was only the newest two, so a third series' live test showed as Available)
+const liveIds=()=>{try{return new Set((typeof liveAll==='function'?liveAll():liveTests()).map(t=>t.id))}catch(e){return new Set()}};
 function serInfo(s){
   const ts=CAT.tests.filter(t=>t.series_id===s.id),done=ts.filter(t=>t.attempts>0);
   const sc=done.filter(t=>t.best_max).map(t=>pct(t.best,t.best_max));
