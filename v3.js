@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=55;
+const V3VER=56;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -384,9 +384,12 @@ function evCard(x){const t=x.t,live=['live','prog'].includes(x.st),t0=nowMs(),op
   return `<article class="card evc${live?' is-live':today?' is-today':''}"><div class="evc-top">${pill}<span class="evw">${when}</span>${!live&&typeof alOn==='function'?`<button class="evbell${alOn3(t.id)?' on':''}" data-a="alT" data-id="${esc3(t.id)}" aria-label="${alOn3(t.id)?'Alert on':'Notify me'}" aria-pressed="${alOn3(t.id)}">${ic('bell',18)}</button>`:''}</div>
    <button class="evc-b" data-a="openSD" data-id="${esc3(t.series_id)}" data-t="t"><b>${esc3(t.title)}</b><small>${meta}</small></button>${foot}</article>`}
 function evTick(){const L=root.querySelectorAll('[data-cd]');if(!L.length)return;const t0=nowMs();let due=false;L.forEach(e=>{const ms=+e.dataset.cd-t0;if(ms<=0)due=true;e.textContent=cdTxt(ms)});if(due)softRender()}
+// v80: the heading follows the day: Upcoming Events before the test's day, Live Today on its day, Live Now while it runs
+const evHead=x=>{if(!x)return 'Upcoming Events';const live=['live','prog'].includes(x.st),today=x.t.opens_at&&day0(x.t.opens_at)===day0(nowMs());
+  return live?'<span class="evh"><i></i>Live Now</span>':today?'<span class="evh"><i></i>Live Today</span>':'Upcoming Events'};
 // v78: only ONE test on Home: the one live now, else the next one; the one after it shows once this one is over
 function upcoming(){const cs=curSeries(),all=upList(),L=all.slice(0,1),done=(C().tests||[]).some(t=>cs&&t.series_id===cs.id&&t.closes_at&&day0(t.closes_at)===day0(nowMs())&&t.closes_at<nowMs());
-  return `<section class="sec"><div class="sh"><h2>Upcoming Events</h2>${all.length>1?`<span class="aside">${all.length-1} more in the schedule</span>`:''}</div>
+  return `<section class="sec"><div class="sh"><h2>${evHead(L[0])}</h2>${all.length>1?`<span class="aside">${all.length-1} more in the schedule</span>`:''}</div>
   ${L.length?L.map(evCard).join(''):`<div class="evnone"><span class="ti">${ic('cal',20)}</span><span>${done?'Today’s live tests have ended':'No live or upcoming tests right now'}</span></div>`}
   ${cs?'<button class="obtn" data-a="week">View Weekly Schedule</button>':''}</section>`}
 /* study zone: one calm tone for every tile, two-tone line icons */

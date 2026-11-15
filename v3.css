@@ -1944,3 +1944,7 @@ p.hint>svg{display:inline-block;vertical-align:-2px;margin-right:4px}
 .evcd b{font-size:22px;font-weight:700;letter-spacing:.02em;font-variant-numeric:tabular-nums;color:var(--tx)}
 .evc.is-today .evcd b{color:#d11226}
 @media (prefers-reduced-motion:reduce){.evp.live i,.evp.live i::after{animation:none}}
+.evh{display:inline-flex;align-items:center;gap:9px}
+.evh i{position:relative;width:10px;height:10px;border-radius:50%;background:#e5162b;box-shadow:0 0 0 3px color-mix(in srgb,#e5162b 18%,transparent)}
+.evh i::after{content:"";position:absolute;inset:-2px;border-radius:50%;border:2px solid #e5162b;animation:evPing 1.6s cubic-bezier(.2,.6,.3,1) infinite}
+@media (prefers-reduced-motion:reduce){.evh i::after{animation:none}}
