@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=62;
+const V3VER=63;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -2153,7 +2153,7 @@ async function rvAsk(sid,title,manual,test){
 (function(){if(typeof sendPending!=='function')return;let just=null;
   const _sp=sendPending;sendPending=function(it){try{const L=(typeof CAT!=='undefined'&&CAT)||null,t=L&&(L.tests||[]).find(x=>x.id===(it&&it.tid)),s=t&&(L.series||[]).find(x=>x.id===t.series_id);
     just=t?{sid:s&&s.unlocked?s.id:null,title:s&&s.title,test:{id:t.id,title:t.title},at:Date.now()}:null}catch(e){just=null}return _sp.apply(this,arguments)};
-  const after=()=>{if(!just||Date.now()-just.at>120000)return;const j=just;just=null;setTimeout(()=>rvAsk(j.sid,j.title,false,j.test),1400)};
+  const after=()=>{if(window.XG&&XG.noRev){XG.noRev=false;just=null;return}if(!just||Date.now()-just.at>120000)return;   /* no review prompt right after an auto-submit (xguard.js) */const j=just;just=null;setTimeout(()=>rvAsk(j.sid,j.title,false,j.test),1400)};
   ['showHeld','showResult'].forEach(n=>{const f=window[n];if(typeof f!=='function')return;window[n]=function(){const r=f.apply(this,arguments);try{after()}catch(e){}return r}})})();
 })();
 
