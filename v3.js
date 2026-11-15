@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=61;
+const V3VER=62;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -2198,7 +2198,7 @@ draw=function(){if(!on()||!T||!P)return _draw.apply(this,arguments);
   tick()};
 /* the instructions page and the exam pop-ups take the new look too (CSS below); keep the colours in step */
 if(typeof instr==='function'){const _in=instr;instr=function(){const r=_in.apply(this,arguments);if(on()){xSync();document.body.classList.add('x3ins');
-    const b=document.querySelector('#app .ins > button.btn.ghost');if(b&&window.v3BackNew){b.removeAttribute('onclick');b.addEventListener('click',e=>{e.preventDefault();window.v3BackNew()})}}return r}}
+    const b=document.querySelector('#app .ins .im-top > button.btn.ghost,#app .ins > button.btn.ghost');if(b&&window.v3BackNew){b.removeAttribute('onclick');b.addEventListener('click',e=>{e.preventDefault();window.v3BackNew()})}}return r}}
 addEventListener('hashchange',()=>{if(!document.querySelector('#app .ins'))document.body.classList.remove('x3ins')});
 /* a test you made with the test generator: the same classic engine (cbt_gen_start / save / submit), drawn like the exam above */
 if(typeof gDraw==='function'&&typeof gSt==='function'){const _gd=gDraw;
