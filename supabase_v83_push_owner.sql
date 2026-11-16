@@ -1,5 +1,5 @@
 -- =====================================================================
---  v82: a phone's notifications can only be changed by that student or that phone (finding V2 of the input-validation review)
+--  v83: a phone's notifications can only be changed by that student or that phone (finding V2 of the input-validation review)
 --  Before: a signed-in student who knew another phone's push link could turn its notifications off, or move them to
 --  their own number (with their own keys, so the other phone got nothing). Now cbt_push_save acts on a saved link only
 --  when it belongs to the student who is signed in, or the request carries that link's secret key (only the phone that
@@ -28,7 +28,7 @@ begin
   -- v45: only the real push services (Google, Mozilla, Apple, Microsoft): the server never posts to any other address
   if v_ep !~ '^https://' or (v_on and v_ep !~* '^https://(fcm\.googleapis\.com|android\.googleapis\.com|updates\.push\.services\.mozilla\.com|web\.push\.apple\.com|[a-z0-9.-]+\.push\.apple\.com|[a-z0-9.-]+\.notify\.windows\.com)/') then return jsonb_build_object('ok', false, 'error', 'sub'); end if;
   if not v_on then
-    -- v82: only this student's own link, or a link whose secret key came with the request
+    -- v83: only this student's own link, or a link whose secret key came with the request
     delete from public.cbt_push_subs s where s.endpoint = v_ep
        and (s.mobile = v_m
             or (v_k <> '' and rtrim(translate(s.auth, '+/', '-_'), '=') = v_k));
@@ -40,7 +40,7 @@ begin
   insert into public.cbt_push_subs as s (endpoint, mobile, p256dh, auth)
   values (v_ep, v_m, left(p_sub#>>'{keys,p256dh}', 200), v_auth)
   on conflict (endpoint) do update set mobile = excluded.mobile, p256dh = excluded.p256dh, auth = excluded.auth, seen_at = now()
-   -- v82: a link already saved moves only for its own student, or for the phone that has its secret key
+   -- v83: a link already saved moves only for its own student, or for the phone that has its secret key
    where s.mobile = excluded.mobile
       or rtrim(translate(s.auth, '+/', '-_'), '=') = rtrim(translate(excluded.auth, '+/', '-_'), '=');
   if not found then return jsonb_build_object('ok', false, 'error', 'taken'); end if;
@@ -48,7 +48,7 @@ begin
 end;
 $function$;
 
--- ---------- cbt_push_rotate (v76 + v82: the link it moves to must not be someone else's) ----------
+-- ---------- cbt_push_rotate (v76 + v83: the link it moves to must not be someone else's) ----------
 create or replace function public.cbt_push_rotate(p_old text, p_sub jsonb, p_old_auth text default null)
 returns jsonb language plpgsql security definer set search_path = public, pg_temp as $$
 declare v_old text := left(coalesce(p_old, ''), 1000); v_ep text := left(coalesce(p_sub->>'endpoint', ''), 1000); m text;
@@ -67,7 +67,7 @@ begin
   insert into public.cbt_push_subs as s (endpoint, mobile, p256dh, auth)
   values (v_ep, m, left(p_sub#>>'{keys,p256dh}', 200), left(p_sub#>>'{keys,auth}', 100))
   on conflict (endpoint) do update set mobile = excluded.mobile, p256dh = excluded.p256dh, auth = excluded.auth, seen_at = now()
-   -- v82: a link already saved for another student moves only with its own secret key
+   -- v83: a link already saved for another student moves only with its own secret key
    where s.mobile = excluded.mobile or rtrim(translate(s.auth, '+/', '-_'), '=') = v_k;
   if not found then return jsonb_build_object('ok', false, 'error', 'taken'); end if;
   if v_old <> v_ep then delete from public.cbt_push_subs where endpoint = v_old; end if;
@@ -77,5 +77,5 @@ grant execute on function public.cbt_push_rotate(text, jsonb, text) to anon;
 revoke all on function public.cbt_push_rotate(text, jsonb, text) from public, authenticated;
 
 -- check (should be true)
-select pg_get_functiondef('public.cbt_push_save(text,text,text,jsonb,boolean)'::regprocedure) like '%v82: a link already saved%' as push_v82,
-       pg_get_functiondef('public.cbt_push_rotate(text,jsonb,text)'::regprocedure) like '%v82: a link already saved for another%' as rotate_v82;
+select pg_get_functiondef('public.cbt_push_save(text,text,text,jsonb,boolean)'::regprocedure) like '%v83: a link already saved%' as push_v83,
+       pg_get_functiondef('public.cbt_push_rotate(text,jsonb,text)'::regprocedure) like '%v83: a link already saved for another%' as rotate_v83;

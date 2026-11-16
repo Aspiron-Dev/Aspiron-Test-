@@ -1,7 +1,9 @@
 -- Which SQL files are installed? Read only: it changes nothing. Run in Supabase → SQL Editor.
 -- Every row is one supabase_v*.sql file and one function that only that file makes.
 -- "MISSING" = run that file (in the order shown, top to bottom), then run supabase_v35_admin_team.sql once at the end.
-select f.file, case when to_regproc(f.fn) is not null then 'ok' else 'MISSING — run this file' end as status
+-- one result table (the SQL Editor shows only the last result of a script)
+select n, file, status from (
+select f.n, f.file, case when to_regproc(f.fn) is not null then 'ok' else 'MISSING — run this file' end as status
 from (values
   (1, 'supabase_v52_coupons_refer.sql',        'public.cbt_admin_refer'),
   (2, 'supabase_v53_refer_fixes.sql',          'public.cbt_admin_refer_min'),
@@ -23,9 +25,21 @@ from (values
   (18, 'supabase_v70_ops.sql',                 'public.cbt_admin_ops'),
   (19, 'supabase_v72_owner_profile.sql',       'public.cbt_admin_profile'),
   (21, 'supabase_v80_access_check.sql',        'public.cbt_admin_access_check')
-) as f(n, file, fn) order by f.n;
+  ) as f(n, file, fn)
+union all
 -- v71 changes an existing function: 'ok' when its text has the new code
-select 'supabase_v71_refer_code.sql' as file, case when pg_get_functiondef('cbt_private.refer_code_for(text,text,text)'::regprocedure) like '%''asp''%' then 'ok' else 'MISSING — run this file' end as status;
-
+select 22, 'supabase_v71_refer_code.sql', case when to_regprocedure('cbt_private.refer_code_for(text,text,text)') is not null
+  and pg_get_functiondef(to_regprocedure('cbt_private.refer_code_for(text,text,text)')) like '%''asp''%' then 'ok' else 'MISSING — run this file' end
+union all
 -- v73 makes no function: 'ok' when its one-time step has run
-select 'supabase_v73_contacts.sql' as file, case when exists (select 1 from cbt_private.settings where key = 'contacts_perm_seeded') then 'ok' else 'MISSING — run supabase_v35_admin_team.sql, then this file' end as status;
+select 23, 'supabase_v73_contacts.sql', case when exists (select 1 from cbt_private.settings where key = 'contacts_perm_seeded') then 'ok' else 'MISSING — run supabase_v35_admin_team.sql, then this file' end
+union all
+-- v74 changes existing functions: 'ok' when the email/Google login must type the access code once (review F-02)
+select 24, 'supabase_v74_login_code_once.sql', case when to_regprocedure('public.student_signin(text)') is not null
+  and pg_get_functiondef(to_regprocedure('public.student_signin(text)')) like '%need_code%' then 'ok' else 'MISSING — run this file' end
+union all
+-- v82 makes no function: 'ok' when the cron key exists and the minute job sends it (review F-05; then set CRON_KEY in send-push)
+select 25, 'supabase_v82_cron_key.sql', case when exists (select 1 from cbt_private.settings where key = 'cron_key')
+  and exists (select 1 from cron.job where jobname = 'cbt-test-alerts' and command like '%x-cron-key%') then 'ok' else 'MISSING — run this file' end
+) x
+order by n;

@@ -3,6 +3,8 @@
 --  notification automatically the moment that test goes LIVE (even if the app is closed).
 --  Needs v10 (push) to be run first, and the send-push Edge Function deployed (it also sends these alerts).
 --  Run ONCE in Supabase → SQL Editor → New query → paste → Run.  Safe to run again.
+--  ⚠️ This file replaces the minute job with an OLD copy: if you run it again, run supabase_v36_notice_audience.sql again afterwards
+--  (it brings back the 4 workers and the v82 cron key header; without it the alerts stop once CRON_KEY is set).
 -- =====================================================================
 
 create table if not exists public.cbt_test_alerts (

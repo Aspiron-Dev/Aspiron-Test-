@@ -21,7 +21,7 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 20
     env: { PGHOST: localhost, PGUSER: postgres, PGPASSWORD: throwaway-test-db, PGDATABASE: breakit }
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build the test database
         run: |
           command -v psql >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client; }
@@ -43,7 +43,7 @@ jobs:
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 20
     env: { PGHOST: localhost, PGUSER: postgres, PGPASSWORD: throwaway-test-db, PGDATABASE: e2e }
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build the test database
         run: |
           command -v psql >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client; }

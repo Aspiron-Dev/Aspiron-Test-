@@ -8,6 +8,8 @@
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase automatically.
 //   SB_SECRET_KEY  – optional (R7): a new "sb_secret_…" key (Settings → API Keys). When set it is used instead of the
 //                    legacy service_role key, so the legacy keys can be turned off. Check: mode "info" → secret_key: true.
+//   CRON_KEY       – optional (v82, review F-05): the value of cbt_private.settings 'cron_key'. When set, mode "due" runs
+//                    only for a request that carries it in the x-cron-key header (the database's minute job does).
 // Deploy with "Verify JWT" OFF (the site calls it with the public key only; the admin password is checked here).
 //
 // Body: { pw, title, body, url?, tag?, series?, after?, limit? }   (pw = an admin panel sign-in session "as1.…", checked with cbt_admin 'ping')
@@ -18,7 +20,8 @@
 // Body: { mode: "due" }   → called every minute by pg_cron (several workers at once, see v36):
 //   sends "test is LIVE now" to students who tapped 🔔 on that test, once, when it opens, and (v79) "Result is out" to
 //   students who tapped 🔔 on a submitted test waiting for its result, once, when the result time comes.
-//   No password needed: it only sends alerts that are already due and marks each one sent.
+//   No password: it only sends alerts that are already due and marks each one sent. With CRON_KEY set (v82), the
+//   x-cron-key header must match it.
 // Body: { mode: "info", vapid? } → { v: 2, result_alerts: true (v79 version), vapid: secrets set?, key_ok: does `vapid` match VAPID_PUBLIC? } (no password; no secrets returned)
 
 import webpush from "npm:web-push@3.6.7";
@@ -53,7 +56,7 @@ async function handle(req: Request): Promise<Response> {
 
   const pub = Deno.env.get("VAPID_PUBLIC") || "", priv = Deno.env.get("VAPID_PRIVATE") || "";
   if (b.mode === "info") return json({ ok: true, v: 2, result_alerts: true, vapid: !!(pub && priv),   // v stays 2: the admin panel refuses any other value key_ok: typeof b.vapid === "string" ? b.vapid === pub : null,
-    secrets: { VAPID_PUBLIC: !!pub, VAPID_PRIVATE: !!priv, VAPID_SUBJECT: !!Deno.env.get("VAPID_SUBJECT") },
+    secrets: { VAPID_PUBLIC: !!pub, VAPID_PRIVATE: !!priv, VAPID_SUBJECT: !!Deno.env.get("VAPID_SUBJECT"), CRON_KEY: !!Deno.env.get("CRON_KEY") },
     secret_key: (Deno.env.get("SB_SECRET_KEY") || "").startsWith("sb_secret_") });
 
   // R7: the new secret key when it is set, else the legacy service_role key
@@ -61,6 +64,11 @@ async function handle(req: Request): Promise<Response> {
   const db = createClient(Deno.env.get("SUPABASE_URL")!, sk.startsWith("sb_secret_") ? sk : Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 
   if (b.mode === "due") {
+    // v82 (review F-05): only the database's minute job may run this. When the secret CRON_KEY is set, the request must
+    // carry the same value in x-cron-key (supabase_v82_cron_key.sql). Not set yet: works as before, so nothing breaks
+    // while the owner sets it up.
+    const ck = Deno.env.get("CRON_KEY") || "";
+    if (ck && !sameText(req.headers.get("x-cron-key") || "", ck)) return json({ ok: false, error: "invalid" }, 401);
     // v79: "Result is out" alerts first; whatever happens there, the "LIVE now" alerts below always run
     try { await dueResults(db, pub, priv); } catch (_e) { /* never stop the live alerts */ }
     return dueAlerts(db, pub, priv, Number(b.w) || 1);
@@ -121,6 +129,14 @@ Deno.serve(async (req) => {
   if (ORIGINS.includes(origin)) h.set("Access-Control-Allow-Origin", origin);
   return new Response(res.body, { status: res.status, headers: h });
 });
+
+// compares two strings in a time that does not depend on where they differ (for the cron key)
+function sameText(a: string, b: string): boolean {
+  const x = new TextEncoder().encode(a), y = new TextEncoder().encode(b);
+  let d = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) d |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return d === 0;
+}
 
 // the VAPID keys are two secrets; say which one is missing (in the Logs tab and in the admin "Check setup" answer)
 function vapidMissing(): Response {

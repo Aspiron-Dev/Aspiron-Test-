@@ -131,13 +131,13 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
   chapter list covers.
 - Read only: no table is created or changed. A student sees only their own numbers.
 
-## Notifications: only the student or the phone itself (`supabase_v82_push_owner.sql`, review V2)
+## Notifications: only the student or the phone itself (`supabase_v83_push_owner.sql`, review V2)
 - A phone's notification link can be turned off or moved only by the student it belongs to, or by the phone that made
   it (it has the link's secret key; the app always sends it). Someone who only knows a saved link changes nothing.
 - The same phone used by another student after sign-out still moves to the new student, as before. No app change.
 - A phone renewing its own link (the service worker does this) cannot renew it into another student's saved link.
-- **Setup:** run `supabase_v82_push_owner.sql` once (after v81). Nothing else. If v10, v36, v45 or v76 is ever run
-  again, run v82 again after it.
+- **Setup:** run `supabase_v83_push_owner.sql` once (after v81; it does not need v82). Nothing else. If v10, v36, v45 or v76 is ever run
+  again, run v83 again after it.
 
 ## Size limits on submitting a test (`supabase_v81_submit_limits.sql`, review V1)
 - A submit with answers longer than 60,000 characters (or not a list of answers per question) is refused, the same
@@ -155,6 +155,32 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
   announcements and answer keys only for students who have the series, files open by the v77 rules).
 - Home shows only ONE test of the chosen series: the one live now, else the next one. The one after it shows once
   this one is over ("N more in the schedule").
+
+## Security review fixes, Nov 2026 (`supabase_v82_cron_key.sql`, `send-push` CRON_KEY)
+
+- **Section names can no longer run as code (F-04):** section / topic names in the exam screen (both designs), the
+  results and mistakes filters and the PYQ topic list are put into their buttons as escaped text
+  (`esc(JSON.stringify(…))`). Test: `tests/e2e/v3_xss.js` presses section buttons whose name holds `&quot;`.
+- **send-push "due" only for the database's minute job (F-05):** `supabase_v82_cron_key.sql` makes a random key in
+  `cbt_private.settings` (`cron_key`), and the minute job sends it as `x-cron-key`. When the Edge Function secret
+  `CRON_KEY` is set to the same value, other callers of mode `due` get 401 before any work is done. Until it is set,
+  everything works as before. A refused call still counts as an Edge Function invocation: limiting floods of calls
+  needs Cloudflare (or similar) in front.
+  - **Owner steps, in this order:**
+    1. Run `supabase_v82_cron_key.sql`.
+    2. Run `select value from cbt_private.settings where key = 'cron_key';` and copy the value.
+    3. Edge Functions → Secrets → add `CRON_KEY` with that value, then redeploy `send-push` (Verify JWT off).
+    4. Check: mode `info` shows `secrets.CRON_KEY: true`; a few minutes later
+       `select status_code, count(*) from net._http_response where created > now() - interval '10 minutes' group by 1;`
+       shows only 200 (401 = the secret and `cron_key` differ).
+  - If the secret is set **before** step 1, LIVE-now / result alerts stop until step 1 is run.
+  - `v36_notice_audience` now builds the same job with the header, so re-running it is safe. Re-running the older
+    `v12_test_alerts` / `v22_alerts_via_send_push` removes the header: run `v36` again after them.
+- **GitHub Actions pinned to commit SHAs (F-08)** (`# vX.Y.Z` comments; Dependabot keeps updating them).
+- **`supabase_v49_v50_all_in_one.sql` is an old file (F-13):** on a database with v62 or later it stops with an error,
+  because its copy of v35 has no admin-key check. Run `v49_answer_sheet`, `v50_rank_order` and `v35_admin_team` instead.
+- New in the install order: `… → v80_access_check → v35_admin_team → v81_submit_limits → v82_cron_key`. `supabase_check_installed.sql`
+  now also shows v74 and v82.
 
 ## "Result is out" notification (`supabase_v79_result_alerts.sql` + `send-push` with `result_alerts`)
 
@@ -434,7 +460,7 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 
 ## Rank in one fixed order (`supabase_v50_rank_order.sql`)
 - No two students share a rank: 1. more marks, 2. fewer wrong answers, 3. more marks in Biology, 4. Chemistry, 5. Physics, 6. less time, 7. submitted earlier. Used by the student leaderboard / "Your rank" and Admin → Results → a test → Top students (`cbt_admin_ranks`).
-- **Setup:** `supabase_v49_v50_all_in_one.sql` runs v49 + v50 + v35 in one go.
+- **Setup:** run `supabase_v49_answer_sheet.sql`, `supabase_v50_rank_order.sql`, then `supabase_v35_admin_team.sql` (the old `supabase_v49_v50_all_in_one.sql` stops on databases with v62 or later).
 
 ## Answer sheet of an attempt (`supabase_v49_answer_sheet.sql`)
 - Admin → Results → the list icon on a result opens its **answer sheet**: every question with the student's option, the correct option today, right / wrong / skipped, seconds spent, and the medium (हिंदी attempts show the Hindi text next to the English).
@@ -503,7 +529,7 @@ Made for 500–1000 students taking a test at the same time.
  (run once each, in this order, in SQL Editor — on top of the original base setup)
 `supabase_v9_banners` → `v10_push` → `v11_pyq` → `v12_test_alerts` → `v13_store` → `v17_store_fix` →
 `v18_store_schedule` → `v19_store_security` → `v20_store_payer` → `v21_devices` → `v22_alerts_via_send_push` →
-`v23_reviews` → `v24_cheating` → `v25_cheat_leaderboard` → `v26_lift_fix` → `v27_lift_fix2` → `v28_store_followup` → `v29_payments` → `v30_promotions` → `v30_store_explore` → `v31_store_soon` → `v30_result_time` → `v32_store_layout` → `v33_live_one_attempt` → `v34_attack_fixes` → `v35_admin_team` → `v36_notice_audience` (then run `v35_admin_team` once more) → `v38_store_cleanup` (only removes the unused store function of the dropped v37 “Let's study”; safe if v37 was never run) → `v39_scale` → `v40_series_msg` (then run `v35_admin_team` once more) → `v41_medium` (then run `v35_admin_team` once more) → `v42_audit_fixes` → `v43_test_rules` → `v44_edit_details` → `v45_checklist_cd` → `v46_order_trash` → `v47_alerts_results` → `v48_review_low` → `v49_answer_sheet` → `v50_rank_order` (then `v35_admin_team` once more; `v49_v50_all_in_one` does these three). Every file is safe to run again; run `v42_audit_fixes` again after re-running v19, v20, v21, v31, v34 or v39; if you re-run an older file (for example `v25_cheat_leaderboard`), run `v30_result_time`, `v33_live_one_attempt`, `v34_attack_fixes`, `v39_scale`, `v41_medium`, `v43_test_rules`, `v47_alerts_results` and `v48_review_low` again afterwards (and v48 after any re-run of v47), because it replaces some of the same functions. Run `v35_admin_team` again after any file that (re)creates a `cbt_admin…` function (for example after re-running v30_result_time): until then team members cannot use that part (the owner's password always works). Then `v52_coupons_refer` (then `v35_admin_team` once more). Then `v53_refer_fixes` (then `v35_admin_team` once more) → `v54_store_map` (Test series page: the store item of each series; read only) → `v55_qbank` (Question bank + Test generator; then `v35_admin_team` once more). → `v56_student_keep` (profile details and exam countdown kept on the account) → `v57_social` (Social media links; then `v35_admin_team` once more). `supabase_check_alerts.sql` only reads (for checking alerts). `supabase_security_check.sql` only reads too: it lists the permissions, RLS and public functions, so run it after any database change.
+`v23_reviews` → `v24_cheating` → `v25_cheat_leaderboard` → `v26_lift_fix` → `v27_lift_fix2` → `v28_store_followup` → `v29_payments` → `v30_promotions` → `v30_store_explore` → `v31_store_soon` → `v30_result_time` → `v32_store_layout` → `v33_live_one_attempt` → `v34_attack_fixes` → `v35_admin_team` → `v36_notice_audience` (then run `v35_admin_team` once more) → `v38_store_cleanup` (only removes the unused store function of the dropped v37 “Let's study”; safe if v37 was never run) → `v39_scale` → `v40_series_msg` (then run `v35_admin_team` once more) → `v41_medium` (then run `v35_admin_team` once more) → `v42_audit_fixes` → `v43_test_rules` → `v44_edit_details` → `v45_checklist_cd` → `v46_order_trash` → `v47_alerts_results` → `v48_review_low` → `v49_answer_sheet` → `v50_rank_order` (then `v35_admin_team` once more; do **not** use the old `v49_v50_all_in_one` file for this, see "Security review fixes"). Every file is safe to run again; run `v42_audit_fixes` again after re-running v19, v20, v21, v31, v34 or v39; if you re-run an older file (for example `v25_cheat_leaderboard`), run `v30_result_time`, `v33_live_one_attempt`, `v34_attack_fixes`, `v39_scale`, `v41_medium`, `v43_test_rules`, `v47_alerts_results` and `v48_review_low` again afterwards (and v48 after any re-run of v47), because it replaces some of the same functions. Run `v35_admin_team` again after any file that (re)creates a `cbt_admin…` function (for example after re-running v30_result_time): until then team members cannot use that part (the owner's password always works). Then `v52_coupons_refer` (then `v35_admin_team` once more). Then `v53_refer_fixes` (then `v35_admin_team` once more) → `v54_store_map` (Test series page: the store item of each series; read only) → `v55_qbank` (Question bank + Test generator; then `v35_admin_team` once more). → `v56_student_keep` (profile details and exam countdown kept on the account) → `v57_social` (Social media links; then `v35_admin_team` once more). `supabase_check_alerts.sql` only reads (for checking alerts). `supabase_security_check.sql` only reads too: it lists the permissions, RLS and public functions, so run it after any database change.
 
 **Database backup:** every night GitHub Actions saves a locked (AES-256) copy of the whole database for 90 days (`.github/workflows/db-backup.yml`); setup from a phone and restore steps: `BACKUP.md`.
 
