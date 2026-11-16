@@ -3,6 +3,8 @@
 --  (the same one that already sends announcements), so no extra function is needed.
 --  FIRST deploy the new supabase/functions/send-push/index.ts, THEN run this.
 --  Run in Supabase → SQL Editor → New query → paste → Run.  Safe to run again.
+--  ⚠️ This file replaces the minute job with an OLD copy: if you run it again, run supabase_v36_notice_audience.sql again afterwards
+--  (it brings back the 4 workers and the v81 cron key header; without it the alerts stop once CRON_KEY is set).
 -- =====================================================================
 create extension if not exists pg_cron;
 create extension if not exists pg_net with schema extensions;
