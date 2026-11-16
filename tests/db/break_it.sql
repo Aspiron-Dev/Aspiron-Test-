@@ -1505,6 +1505,58 @@ select pg_temp.chk('41g V1 another student''s number with this code submits noth
 select pg_temp.chk('41h V1 exactly four results were added (normal, extra keys, long id, no answers)',
   (select count(*) from cbt_private.results) = :'r0'::bigint + 4);
 
+-- ===== 42. V2: only the student or the phone itself changes a push link (supabase_v82_push_owner.sql) =====
+reset role;
+select set_config('request.headers', '{"x-real-ip":"198.51.100.42"}', false);
+update cbt_private.students set fail_count = 0, locked_until = 0 where mobile in ('9000000001', '9000000002');
+delete from public.cbt_push_subs where endpoint like 'https://fcm.googleapis.com/fcm/send/v2-%';
+set role anon;
+-- A (9000000001) saves her phone's link
+select public.cbt_push_save('9000000001','AAAA1111','dev-aaaaaaaa','{"endpoint":"https://fcm.googleapis.com/fcm/send/v2-a","keys":{"p256dh":"PA","auth":"AuthA+/x=="}}', true) as v2a \gset
+reset role;
+select pg_temp.chk('42a V2 a student saves her own push link',
+  :'v2a'::jsonb->>'ok' = 'true' and exists (select 1 from public.cbt_push_subs where endpoint = 'https://fcm.googleapis.com/fcm/send/v2-a' and mobile = '9000000001'));
+set role anon;
+-- B (9000000002) knows A's link: tries to turn it off without keys and with wrong keys
+select public.cbt_push_save('9000000002','BBBB2222','dev-bbbbbbbb','{"endpoint":"https://fcm.googleapis.com/fcm/send/v2-a"}', false) as v2b1 \gset
+select public.cbt_push_save('9000000002','BBBB2222','dev-bbbbbbbb','{"endpoint":"https://fcm.googleapis.com/fcm/send/v2-a","keys":{"p256dh":"PB","auth":"WrongB"}}', false) as v2b2 \gset
+reset role;
+select pg_temp.chk('42b V2 another student cannot turn off her link (no keys / wrong keys); the answer tells nothing',
+  :'v2b1'::jsonb->>'ok' = 'true' and :'v2b2'::jsonb->>'ok' = 'true'
+  and exists (select 1 from public.cbt_push_subs where endpoint = 'https://fcm.googleapis.com/fcm/send/v2-a' and mobile = '9000000001' and auth = 'AuthA+/x=='));
+set role anon;
+-- ... and to take it with his own keys
+select public.cbt_push_save('9000000002','BBBB2222','dev-bbbbbbbb','{"endpoint":"https://fcm.googleapis.com/fcm/send/v2-a","keys":{"p256dh":"PB","auth":"WrongB"}}', true) as v2b3 \gset
+reset role;
+select pg_temp.chk('42c V2 another student cannot move her link to his number or his keys ("taken")',
+  :'v2b3'::jsonb->>'error' = 'taken'
+  and exists (select 1 from public.cbt_push_subs where endpoint = 'https://fcm.googleapis.com/fcm/send/v2-a' and mobile = '9000000001' and p256dh = 'PA' and auth = 'AuthA+/x=='));
+set role anon;
+-- the same phone, now signed in as B (it has the link's secret key, sent in the URL-safe form): the link moves to B
+select public.cbt_push_save('9000000002','BBBB2222','dev-bbbbbbbb','{"endpoint":"https://fcm.googleapis.com/fcm/send/v2-a","keys":{"p256dh":"PA","auth":"AuthA-_x"}}', true) as v2d \gset
+-- B's own link: B turns it off without keys (his own number)
+select public.cbt_push_save('9000000002','BBBB2222','dev-bbbbbbbb','{"endpoint":"https://fcm.googleapis.com/fcm/send/v2-b","keys":{"p256dh":"PB","auth":"AuthB"}}', true) as v2e1 \gset
+select public.cbt_push_save('9000000002','BBBB2222','dev-bbbbbbbb','{"endpoint":"https://fcm.googleapis.com/fcm/send/v2-b"}', false) as v2e2 \gset
+-- a number typed with +91 and spaces is saved as the student's 10 digits
+select public.cbt_push_save('+91 90000 00001','AAAA1111','dev-aaaaaaaa','{"endpoint":"https://fcm.googleapis.com/fcm/send/v2-c","keys":{"p256dh":"PC","auth":"AuthC"}}', true) as v2f \gset
+-- the phone with the secret key turns off a link saved for another number (A signed out on it; B is signed in now)
+select public.cbt_push_save('9000000001','AAAA1111','dev-aaaaaaaa','{"endpoint":"https://fcm.googleapis.com/fcm/send/v2-d","keys":{"p256dh":"PD","auth":"AuthD"}}', true)->>'ok';
+select public.cbt_push_save('9000000002','BBBB2222','dev-bbbbbbbb','{"endpoint":"https://fcm.googleapis.com/fcm/send/v2-d","keys":{"p256dh":"PD","auth":"AuthD"}}', false) as v2g \gset
+-- not signed in: nothing
+select public.cbt_push_save('9000000001','WRONG999','dev-aaaaaaaa','{"endpoint":"https://fcm.googleapis.com/fcm/send/v2-b"}', false) as v2h \gset
+reset role;
+select pg_temp.chk('42d V2 the same phone (same secret key) moves the link to the student now signed in on it',
+  :'v2d'::jsonb->>'ok' = 'true' and exists (select 1 from public.cbt_push_subs where endpoint = 'https://fcm.googleapis.com/fcm/send/v2-a' and mobile = '9000000002'));
+select pg_temp.chk('42e V2 a student turns off his own link (no keys needed)',
+  :'v2e1'::jsonb->>'ok' = 'true' and :'v2e2'::jsonb->>'ok' = 'true'
+  and not exists (select 1 from public.cbt_push_subs where endpoint = 'https://fcm.googleapis.com/fcm/send/v2-b'));
+select pg_temp.chk('42f V2 a number typed as +91 90000 00001 is saved as 9000000001',
+  :'v2f'::jsonb->>'ok' = 'true' and exists (select 1 from public.cbt_push_subs where endpoint = 'https://fcm.googleapis.com/fcm/send/v2-c' and mobile = '9000000001'));
+select pg_temp.chk('42g V2 the phone with the secret key turns off a link saved for another number',
+  :'v2g'::jsonb->>'ok' = 'true' and not exists (select 1 from public.cbt_push_subs where endpoint = 'https://fcm.googleapis.com/fcm/send/v2-d'));
+select pg_temp.chk('42h V2 a wrong access code changes nothing',
+  :'v2h'::jsonb->>'ok' = 'false');
+
 -- ===== report =====
 \t off
 \a

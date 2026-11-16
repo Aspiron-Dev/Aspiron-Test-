@@ -131,6 +131,12 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
   chapter list covers.
 - Read only: no table is created or changed. A student sees only their own numbers.
 
+## Notifications: only the student or the phone itself (`supabase_v82_push_owner.sql`, review V2)
+- A phone's notification link can be turned off or moved only by the student it belongs to, or by the phone that made
+  it (it has the link's secret key; the app always sends it). Someone who only knows the link changes nothing.
+- The same phone used by another student after sign-out still moves to the new student, as before. No app change.
+- **Setup:** run `supabase_v82_push_owner.sql` once (after v81). Nothing else.
+
 ## Size limits on submitting a test (`supabase_v81_submit_limits.sql`, review V1)
 - A submit with answers longer than 60,000 characters (or not a list of answers per question) is refused, the same
   limit the auto-save already has. A 200-question test sends about 3.6 KB, so real students never reach it.
