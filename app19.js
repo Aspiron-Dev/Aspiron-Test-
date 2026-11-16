@@ -252,6 +252,31 @@ document.head.insertAdjacentHTML('beforeend',`<style>
 .im-stp button.done i{background:var(--ia2);color:var(--iok)}
 .im-pane[hidden]{display:none}
 .im-nav{margin-top:14px}.im-nav .two{display:grid;grid-template-columns:1fr 1.6fr;gap:10px}.im-nav>.btn{width:100%}
+/* glass pass: one soft light from the corner (no hard blob), clear tiles, quiet number chips, a frosted Start bar.
+   The letter tile takes the "on ink" colour: in the new design --grad is the ink colour (white in dark themes). */
+.mdl,.im-mi{color:var(--onpri3,#fff)}
+.mdb{position:relative}
+.mdb.on::after{content:"";position:absolute;right:12px;top:12px;width:20px;height:20px;border-radius:50%;background:var(--pri)}
+.mdb.on::before{content:"";position:absolute;z-index:1;right:19px;top:16px;width:5px;height:9px;border:solid var(--bg);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.ins.im{--ihi:rgba(255,255,255,.08);--ich:color-mix(in srgb,var(--ia2) 13%,transparent);--icb:color-mix(in srgb,var(--ia2) 30%,transparent);--ict:color-mix(in srgb,var(--ia2) 55%,var(--it))}
+.ig{background:radial-gradient(135% 125% at 100% 0%,color-mix(in srgb,var(--ia1) 24%,transparent),transparent 64%),linear-gradient(180deg,color-mix(in srgb,var(--it) 4%,var(--is)),var(--is));border-color:color-mix(in srgb,var(--ia2) 24%,var(--il));box-shadow:inset 0 1px 0 var(--ihi),0 18px 40px -26px rgba(0,0,0,.45)}
+.ig-glow{display:none}
+.ig-st div{background:color-mix(in srgb,var(--is) 58%,transparent);border:1px solid color-mix(in srgb,var(--it) 9%,transparent);box-shadow:inset 0 1px 0 var(--ihi);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.im-chg{background:color-mix(in srgb,var(--ia1) 12%,var(--is));border-color:var(--icb);box-shadow:inset 0 1px 0 var(--ihi)}
+.im-stp button{background:color-mix(in srgb,var(--is2) 66%,transparent);border-color:color-mix(in srgb,var(--it) 7%,transparent)}
+.im-stp button i{background:color-mix(in srgb,var(--it) 9%,transparent)}
+.im-stp button.on{background:color-mix(in srgb,var(--ia1) 13%,var(--is));border-color:color-mix(in srgb,var(--ia2) 48%,var(--il));box-shadow:inset 0 1px 0 var(--ihi)}
+.ins.im .im-sec{box-shadow:inset 0 1px 0 var(--ihi),0 16px 36px -28px rgba(0,0,0,.4)}
+.ins.im .im-ic{background:var(--ich);border:1px solid var(--icb);color:var(--ict)}
+.im-g{counter-reset:ip}
+.im-ol li::before{border-radius:8px;font-weight:700;color:var(--ict);background:var(--ich);border-color:var(--icb)}
+.im-go{margin:14px -16px 0;padding:8px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--il);border-radius:22px 22px 0 0;background:color-mix(in srgb,var(--x-bg,var(--bg)) 74%,transparent);-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4)}
+.im-go .decl{background:transparent;padding:6px 2px;margin:0 0 6px}
+.im-go .decl input{-webkit-appearance:none;appearance:none;width:22px;height:22px;margin:0;border-radius:7px;border:1.5px solid color-mix(in srgb,var(--it) 38%,transparent);background:color-mix(in srgb,var(--it) 6%,transparent);display:grid;place-items:center;cursor:pointer;transition:background .15s,border-color .15s}
+.im-go .decl input::after{content:"";width:5px;height:10px;margin-top:-2px;border:solid var(--iok);border-width:0 2px 2px 0;transform:rotate(45deg) scale(0);transition:transform .15s}
+.im-go .decl input:checked{background:var(--ik);border-color:var(--ik)}.im-go .decl input:checked::after{transform:rotate(45deg) scale(1)}
+.im-go .decl input:focus-visible{outline:2px solid var(--ia2);outline-offset:2px}.im-go .decl input:disabled{opacity:.45}
+html[data-lite] .im-go{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--x-bg,var(--bg))}html[data-lite] .ig-st div{-webkit-backdrop-filter:none;backdrop-filter:none}
 .pm-h{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 .pm-h h2{margin:0;font-size:19px}.pm-h small{display:block;margin-top:2px;font-size:12.5px;color:var(--x-mut,var(--mut))}
 .pm-i{flex:none;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--x-ink,var(--tx));color:var(--x-onInk,#fff)}
