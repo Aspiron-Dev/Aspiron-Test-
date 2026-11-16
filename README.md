@@ -135,6 +135,7 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - A phone's notification link can be turned off or moved only by the student it belongs to, or by the phone that made
   it (it has the link's secret key; the app always sends it). Someone who only knows a saved link changes nothing.
 - The same phone used by another student after sign-out still moves to the new student, as before. No app change.
+- A phone renewing its own link (the service worker does this) cannot renew it into another student's saved link.
 - **Setup:** run `supabase_v82_push_owner.sql` once (after v81). Nothing else.
 
 ## Size limits on submitting a test (`supabase_v81_submit_limits.sql`, review V1)
