@@ -875,7 +875,8 @@ svg.i .f{fill:currentColor;fill-opacity:0;transition:fill-opacity .3s var(--ease
 .tc3-m{display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;font-size:13px;color:var(--mut)}
 .tc3-m>svg{flex:none;color:var(--faint);margin-right:2px}
 .tc3-m i{width:1px;height:12px;background:var(--line)}
-.tc3-go{align-self:center;display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 16px;color:var(--tx)}
+.tc3-go{align-self:center;display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 10px 12px 2px;color:var(--tx)}
+.tc3-go small{letter-spacing:-.015em;white-space:nowrap}
 .tc3-go span{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:var(--onInk);box-shadow:0 8px 18px -10px rgba(0,0,0,.5);transition:transform .3s var(--spring)}
 .tc3-go:active span{transform:scale(.9)}
 .tc3-go small{font-size:12.5px;font-weight:600}

@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=72;
+const V3VER=74;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -65,7 +65,7 @@ const P={eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circl
  layers:'<path d="M12.8 2.2a2 2 0 0 0-1.6 0L2.6 6.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0l8.6-3.9a1 1 0 0 0 0-1.8z"/><path d="m22 17.6-9.2 4.2a2 2 0 0 1-1.6 0L2 17.6"/><path d="m22 12.6-9.2 4.2a2 2 0 0 1-1.6 0L2 12.6"/>',
  book:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
  dl:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
- hist:'<path d="M3 12a9 9 0 1 0 9-9 9.8 9.8 0 0 0-6.7 2.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+ hist:'<path d="M3 12a9 9 0 1 0 9-9 9.8 9.8 0 0 0-6.7 2.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',redo:'<path d="M3 12a9 9 0 1 0 9-9 9.8 9.8 0 0 0-6.7 2.7L3 8"/><path d="M3 3v5h5"/>',
  doubt:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
  qb:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>',
  pyq:'<path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M4.3 21a2 2 0 0 0 1.7 1h12a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v3"/><path d="m9 18-1.5-1.5"/><circle cx="5" cy="14" r="3"/>',
@@ -808,9 +808,21 @@ const RESL={schedule:'Schedule',syllabus:'Syllabus',notes:'Notes and PDFs'};
 function resGroups(sid){const G=new Map();for(const f of (sOf(sid).files||[])){const k=String(f.folder||'').trim()||RESL[f.kind||'notes']||'Notes and PDFs';if(!G.has(k))G.set(k,[]);G.get(k).push(f)}return [...G]}
 function spRes(sid){const G=resGroups(sid),ok=sOk(sOf(sid));pdf3Ask();
   const KT=ok?testsOf(sid).filter(t=>PDF3&&PDF3[t.id]):[];   // result & answer key PDFs (Google Drive): enrolled students only
-  const KH=KT.length?`<div class="stack" style="gap:10px"><p class="gh">Result &amp; answer key PDFs <span>${KT.length}</span></p><div class="card rows">${KT.map(t=>`<div class="row"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(PDF3[t.id].label||t.title)}</b><small>${esc3(t.title)}</small></span><button class="btn sm" data-a="pdfOpen" data-id="${esc3(t.id)}">${ic('eye',15)}View</button></div>`).join('')}</div></div>`:'';
+  const KG=pdfGroups(sid,KT);
+  const KH=KT.length?`<div class="stack" style="gap:10px"><p class="gh">Result &amp; answer key PDFs <span>${KT.length}</span></p>${KG?`<div class="fd3g">${KG.map((g,i)=>`<button class="fd3" style="--i:${i}" data-a="kfOpen" data-id="${esc3(sid)}" data-f="${esc3(g.id)}" aria-label="${esc3(g.t)}, ${g.L.length} PDF${g.L.length===1?'':'s'}">${fd3Ic(false)}<b>${esc3(g.t)}</b><small>${g.L.length} PDF${g.L.length===1?'':'s'}</small></button>`).join('')}</div>`:`<div class="card rows">${KT.map(t=>pdfRow(t)).join('')}</div>`}</div>`:'';
   if(!G.length&&!KH)return `<div class="card empty"><span class="ti">${ic('file',22)}</span><b>No study material yet</b><p>Schedules, syllabus and PDFs for this series will appear here.</p></div>`;
   return `<div class="fd3g">${G.map(([k,L],i)=>{const lk=L.every(f=>f.locked);return `<button class="fd3${lk?' lk':''}" style="--i:${i}" data-a="resOpen" data-id="${esc3(sid)}" data-k="${esc3(k)}" aria-label="${esc3(k)}, ${L.length} ${L.length===1?'file':'files'}${lk?', locked':''}">${fd3Ic(lk)}<b>${esc3(k)}</b><small>${lk?`${ic('lock',12)} Buy to open`:`${L.length} ${L.length===1?'file':'files'}`}</small></button>`}).join('')}</div>`+KH}
+/* answer-key PDFs in the admin's test folders (in the admin's folder order); null when no PDF test is in a folder */
+const pdfRow=(t,i)=>`<div class="row${i!=null?' fly3':''}"${i!=null?` style="--d:${i}"`:''}><span class="ti g">${ic('file',19)}</span><span><b>${esc3(PDF3[t.id].label||t.title)}</b>${PDF3[t.id].label&&PDF3[t.id].label!==t.title?`<small>${esc3(t.title)}</small>`:''}</span><button class="btn sm" data-a="pdfOpen" data-id="${esc3(t.id)}">${ic('eye',15)}View</button></div>`;
+function pdfGroups(sid,KT){const F=(C().folders||[]).filter(f=>f.series_id===sid);if(!KT.some(t=>F.some(f=>f.id===t.folder_id)))return null;
+  const G=F.map(f=>({id:f.id,t:f.title,L:KT.filter(t=>t.folder_id===f.id)})).filter(g=>g.L.length),rest=KT.filter(t=>!F.some(f=>f.id===t.folder_id));
+  if(rest.length)G.push({id:'none',t:'Other tests',L:rest});return G}
+function kfView(sid,fid){const ok=sOk(sOf(sid)),KT=ok?testsOf(sid).filter(t=>PDF3&&PDF3[t.id]):[],g=(pdfGroups(sid,KT)||[]).find(x=>x.id===fid);if(!g)return null;
+  return {t:g.t,s:'Result & answer key PDFs',key:'res',html:()=>{const KT2=sOk(sOf(sid))?testsOf(sid).filter(t=>PDF3&&PDF3[t.id]):[],g2=(pdfGroups(sid,KT2)||[]).find(x=>x.id===fid);
+    if(!g2)return `<div class="card empty"><b>No PDFs here</b></div>`;
+    return `<div class="fd3h">${fd3Ic(false)}<div><b>${esc3(g2.t)}</b><small>${g2.L.length} PDF${g2.L.length===1?'':'s'}</small></div></div><div class="card rows fd3l">${g2.L.map(pdfRow).join('')}</div>`}}}
+A.kfOpen=el=>{const v=kfView(el.dataset.id,el.dataset.f);if(!v||el.classList.contains('open'))return;
+  if(RM){push(v);return}el.classList.add('open');hap(6);setTimeout(()=>{push(v);setTimeout(()=>el.classList.remove('open'),300)},460)};
 // v78: a folder drawn in CSS (back, papers, front flap); on tap the flap opens, papers rise, then the files fly out
 const fd3Ic=lk=>`<span class="fd3-ic" aria-hidden="true"><i class="fd3-bk"></i><i class="fd3-pp"></i><i class="fd3-pp"></i><i class="fd3-pp"></i><i class="fd3-fr"></i>${lk?`<i class="fd3-lk">${ic('lock',14)}</i>`:''}</span>`;
 function resView(sid,k){const g=resGroups(sid).find(x=>x[0]===k);if(!g)return null;const lk=g[1].every(f=>f.locked);
@@ -825,7 +837,7 @@ const TSF=[['all','All'],['att','Attempted'],['non','Not attempted'],['res','Res
 function tState(t){const st=stOf(t);return st==='prog'?'res':st==='live'?'live':st==='wait'?'up':st==='lock'?'lock':st==='held'?'held':(st==='done'||t.attempts>0)?'att':st==='closed'?'miss':'new'}
 const TSL={live:['live','Live'],res:['live','Resume'],up:['','Upcoming'],new:['ok','Available'],held:['gold','Result soon'],att:['ok','Attempted'],miss:['err','Missed'],lock:['','Locked']};
 function tCard(t){const s=tState(t),r=resOf(t.id)[0],syl=((META||{}).syl||{})[t.id],marks=(t.questions||0)*(t.correct||4),when=t.opens_at;let p;try{p=typeof pendOf==='function'&&pendOf(t.id)}catch(e){}
-  const act=s==='lock'?['lock','Unlock','test']:s==='up'?['bell',alOn3(t.id)?'Alert on':'Notify me','alT']:s==='held'?['clock','Result','']:s==='miss'?(r&&!p?['chart','Result','review']:['lock','Closed','']):s==='res'?['play','Resume','test']:s==='att'?['play','Start','test']:['play','Start','test'];
+  const act=s==='lock'?['lock','Unlock','test']:s==='up'?['bell',alOn3(t.id)?'Alert on':'Notify me','alT']:s==='held'?['clock','Result','']:s==='miss'?(r&&!p?['chart','Result','review']:['lock','Closed','']):s==='res'?['play','Resume','test']:s==='att'?['redo','Re-attempt','test']:['play','Start','test'];
   const L=TSL[s];
   return `<article class="card tc3${s==='miss'||s==='lock'?' dim':''}"><div class="tc3-b">
    <div class="tc3-top"><span class="st ${L[0]}">${L[1]}</span>${when?`<span class="mut">${s==='up'?'Opens':'Held on'} ${fD(when,{day:'numeric',month:'short'})}, ${fT(when)}</span>`:''}</div>
