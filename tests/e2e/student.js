@@ -366,10 +366,10 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     ok(lb['Pro Test 03'] && lb['Pro Test 03'][0] === 'Start', 'Series tests: a test not taken yet says Start');
     ok(Object.values(lb).every(x => x[1]), 'Series tests: the button label fits at 360 px');
     await ev(() => { const r = document.getElementById('v3host').shadowRoot; r.querySelector('[data-a="xt"][data-v="r"]').click(); }); await p10.waitForTimeout(1500);
-    const fd = await ev(() => { const r = document.getElementById('v3host').shadowRoot; return [...r.querySelectorAll('[data-a="kfOpen"]')].map(b => b.querySelector('b').textContent + ':' + b.querySelector('small').textContent); });
-    ok(fd.join('|') === 'Problem series:1 PDF|Cumulative:1 PDF|Other tests:1 PDF', 'Resources: answer-key PDFs in the test folders, in the admin\'s order (' + fd.join('|') + ')');
-    await ev(() => { const r = document.getElementById('v3host').shadowRoot; r.querySelector('[data-a="kfOpen"][data-f="f0000000-0000-0000-0000-000000000002"]').click(); }); await p10.waitForTimeout(1500);
-    const ins = await ev(() => { const r = document.getElementById('v3host').shadowRoot; return [...r.querySelectorAll('.fd3l [data-a="pdfOpen"]')].map(b => b.dataset.id); });
+    const fd = await ev(() => { const r = document.getElementById('v3host').shadowRoot; return [...r.querySelectorAll('[data-a="resOpen"]')].map(b => b.querySelector('b').textContent + ':' + b.querySelector('small').textContent); });
+    ok(fd.join('|') === 'Notes and PDFs:1 file|Problem series:1 file|Cumulative:1 file|Other tests:1 file', 'Resources: one grid; answer keys in the test folders, in the admin\'s order (' + fd.join('|') + ')');
+    await ev(() => { const r = document.getElementById('v3host').shadowRoot; r.querySelector('[data-a="resOpen"][data-k="cumulative"]').click(); }); await p10.waitForTimeout(1500);
+    const ins = await ev(() => { const r = document.getElementById('v3host').shadowRoot; return [...r.querySelectorAll('.rs3r[data-a="pdfOpen"]')].map(b => b.dataset.id); });
     ok(ins.length === 1 && ins[0] === 'e0000000-0000-0000-0000-000000000002', 'Resources: a folder opens its own PDFs (' + ins.join(',') + ')');
     ok(!e10.length, 'no page errors (folders, re-attempt) ' + e10.join(' | ')); await c10.close(); }
   // the phone's Back button closes an open sheet or the menu first, never the page behind it

@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=74;
+const V3VER=75;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -802,35 +802,31 @@ function spDesc(sid){const s=sOf(sid),it=itemOfSeries(sid),m=MT(sid),ups=upgrade
   ${sel?`<div class="buybar"><span class="price"><b>₹${fmtN(sel.it.price)}</b>${offPct(sel.it)?`<s>₹${fmtN(sel.it.mrp)}</s><span class="badge off">${offPct(sel.it)}% off</span>`:''}</span><a class="btn gold" href="${buyHref(sel.it)}">Upgrade now</a></div>`:''}`}
 A.plan=el=>{TQ.plan=+el.dataset.i;redraw()};
 /* Resources: the series' files (schedule, syllabus, notes) grouped, each group opens its own list */
-const RESK=[['schedule','Schedule','cal'],['syllabus','Syllabus','list'],['notes','Notes and PDFs','file']];
-/* v77: files in the admin's folders and order; a student who has not bought the series opens only the Schedule */
+/* Resources: one grid of folders. The admin's file folders (schedule, syllabus, notes) and test folders (answer keys of the
+   tests inside) are shown together; a file folder and a test folder with the same name are one folder. */
 const RESL={schedule:'Schedule',syllabus:'Syllabus',notes:'Notes and PDFs'};
-function resGroups(sid){const G=new Map();for(const f of (sOf(sid).files||[])){const k=String(f.folder||'').trim()||RESL[f.kind||'notes']||'Notes and PDFs';if(!G.has(k))G.set(k,[]);G.get(k).push(f)}return [...G]}
-function spRes(sid){const G=resGroups(sid),ok=sOk(sOf(sid));pdf3Ask();
-  const KT=ok?testsOf(sid).filter(t=>PDF3&&PDF3[t.id]):[];   // result & answer key PDFs (Google Drive): enrolled students only
-  const KG=pdfGroups(sid,KT);
-  const KH=KT.length?`<div class="stack" style="gap:10px"><p class="gh">Result &amp; answer key PDFs <span>${KT.length}</span></p>${KG?`<div class="fd3g">${KG.map((g,i)=>`<button class="fd3" style="--i:${i}" data-a="kfOpen" data-id="${esc3(sid)}" data-f="${esc3(g.id)}" aria-label="${esc3(g.t)}, ${g.L.length} PDF${g.L.length===1?'':'s'}">${fd3Ic(false)}<b>${esc3(g.t)}</b><small>${g.L.length} PDF${g.L.length===1?'':'s'}</small></button>`).join('')}</div>`:`<div class="card rows">${KT.map(t=>pdfRow(t)).join('')}</div>`}</div>`:'';
-  if(!G.length&&!KH)return `<div class="card empty"><span class="ti">${ic('file',22)}</span><b>No study material yet</b><p>Schedules, syllabus and PDFs for this series will appear here.</p></div>`;
-  return `<div class="fd3g">${G.map(([k,L],i)=>{const lk=L.every(f=>f.locked);return `<button class="fd3${lk?' lk':''}" style="--i:${i}" data-a="resOpen" data-id="${esc3(sid)}" data-k="${esc3(k)}" aria-label="${esc3(k)}, ${L.length} ${L.length===1?'file':'files'}${lk?', locked':''}">${fd3Ic(lk)}<b>${esc3(k)}</b><small>${lk?`${ic('lock',12)} Buy to open`:`${L.length} ${L.length===1?'file':'files'}`}</small></button>`}).join('')}</div>`+KH}
-/* answer-key PDFs in the admin's test folders (in the admin's folder order); null when no PDF test is in a folder */
-const pdfRow=(t,i)=>`<div class="row${i!=null?' fly3':''}"${i!=null?` style="--d:${i}"`:''}><span class="ti g">${ic('file',19)}</span><span><b>${esc3(PDF3[t.id].label||t.title)}</b>${PDF3[t.id].label&&PDF3[t.id].label!==t.title?`<small>${esc3(t.title)}</small>`:''}</span><button class="btn sm" data-a="pdfOpen" data-id="${esc3(t.id)}">${ic('eye',15)}View</button></div>`;
-function pdfGroups(sid,KT){const F=(C().folders||[]).filter(f=>f.series_id===sid);if(!KT.some(t=>F.some(f=>f.id===t.folder_id)))return null;
-  const G=F.map(f=>({id:f.id,t:f.title,L:KT.filter(t=>t.folder_id===f.id)})).filter(g=>g.L.length),rest=KT.filter(t=>!F.some(f=>f.id===t.folder_id));
-  if(rest.length)G.push({id:'none',t:'Other tests',L:rest});return G}
-function kfView(sid,fid){const ok=sOk(sOf(sid)),KT=ok?testsOf(sid).filter(t=>PDF3&&PDF3[t.id]):[],g=(pdfGroups(sid,KT)||[]).find(x=>x.id===fid);if(!g)return null;
-  return {t:g.t,s:'Result & answer key PDFs',key:'res',html:()=>{const KT2=sOk(sOf(sid))?testsOf(sid).filter(t=>PDF3&&PDF3[t.id]):[],g2=(pdfGroups(sid,KT2)||[]).find(x=>x.id===fid);
-    if(!g2)return `<div class="card empty"><b>No PDFs here</b></div>`;
-    return `<div class="fd3h">${fd3Ic(false)}<div><b>${esc3(g2.t)}</b><small>${g2.L.length} PDF${g2.L.length===1?'':'s'}</small></div></div><div class="card rows fd3l">${g2.L.map(pdfRow).join('')}</div>`}}}
-A.kfOpen=el=>{const v=kfView(el.dataset.id,el.dataset.f);if(!v||el.classList.contains('open'))return;
-  if(RM){push(v);return}el.classList.add('open');hap(6);setTimeout(()=>{push(v);setTimeout(()=>el.classList.remove('open'),300)},460)};
-// v78: a folder drawn in CSS (back, papers, front flap); on tap the flap opens, papers rise, then the files fly out
-const fd3Ic=lk=>`<span class="fd3-ic" aria-hidden="true"><i class="fd3-bk"></i><i class="fd3-pp"></i><i class="fd3-pp"></i><i class="fd3-pp"></i><i class="fd3-fr"></i>${lk?`<i class="fd3-lk">${ic('lock',14)}</i>`:''}</span>`;
-function resView(sid,k){const g=resGroups(sid).find(x=>x[0]===k);if(!g)return null;const lk=g[1].every(f=>f.locked);
-  return {t:k,s:sOf(sid).title,key:'res',html:()=>`<div class="fd3h${lk?' lk':''}">${fd3Ic(lk)}<div><b>${esc3(k)}</b><small>${g[1].length} ${g[1].length===1?'file':'files'}${lk?' · buy the series to open':''}</small></div></div>
-   <div class="card rows fd3l">${g[1].map((f,i)=>f.locked?`<button class="row dim fly3" style="--d:${i}" data-a="resLocked"><span class="ti">${ic('lock',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>Buy this series to open it</small></span>${ic('lock',18)}</button>`
-     :`<button class="row fly3" style="--d:${i}" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>${/\.pdf$/i.test(f.name||'')?'PDF':'Picture'}${f.size?`, ${f.size>1048576?(f.size/1048576).toFixed(1)+' MB':Math.max(1,Math.round(f.size/1024))+' KB'}`:''}</small></span>${ic('eye',18)}</button>`).join('')}</div>`}}
-A.resOpen=el=>{const v=resView(el.dataset.id,el.dataset.k);if(!v||el.classList.contains('open'))return;
-  if(RM){push(v);return}el.classList.add('open');hap(6);setTimeout(()=>{push(v);setTimeout(()=>el.classList.remove('open'),300)},460)};
+const pdfT=sid=>sOk(sOf(sid))?testsOf(sid).filter(t=>PDF3&&PDF3[t.id]):[];   // answer-key PDFs: enrolled students only
+function resGroups(sid){const G=new Map(),put=(n,o)=>{const k=n.trim().toLowerCase();if(!G.has(k))G.set(k,{k,t:n.trim(),f:[],p:[]});o(G.get(k))};
+  for(const f of (sOf(sid).files||[]))put(String(f.folder||'').trim()||RESL[f.kind||'notes']||'Notes and PDFs',g=>g.f.push(f));
+  const KT=pdfT(sid),F=(C().folders||[]).filter(f=>f.series_id===sid);
+  for(const fo of F){const L=KT.filter(t=>t.folder_id===fo.id);if(L.length)put(String(fo.title||'Tests'),g=>g.p.push(...L))}
+  const rest=KT.filter(t=>!F.some(f=>f.id===t.folder_id));if(rest.length)put(F.length?'Other tests':'Test answer keys',g=>g.p.push(...rest));
+  return [...G.values()].map(g=>Object.assign(g,{n:g.f.length+g.p.length,lk:!g.p.length&&g.f.length>0&&g.f.every(f=>f.locked)}))}
+const rsIc=g=>g.p.length&&!g.f.length?'tests':/schedul/i.test(g.t)?'cal':/syllab/i.test(g.t)?'list':'file';
+const nFiles=n=>`${n} ${n===1?'file':'files'}`;
+function spRes(sid){pdf3Ask();const G=resGroups(sid);
+  if(!G.length)return `<div class="card empty"><span class="ti">${ic('file',22)}</span><b>No study material yet</b><p>Schedules, syllabus, notes and answer keys for this series will appear here.</p></div>`;
+  return `<div class="rs3g">${G.map((g,i)=>`<button class="rs3${g.lk?' lk':''}" style="--i:${i}" data-a="resOpen" data-id="${esc3(sid)}" data-k="${esc3(g.k)}" aria-label="${esc3(g.t)}, ${nFiles(g.n)}${g.lk?', locked':''}">
+   <span class="rs3-ic">${ic(g.lk?'lock':rsIc(g),20)}</span><b>${esc3(g.t)}</b><small>${g.lk?'Buy to open':nFiles(g.n)}</small><span class="rs3-go">${ic('right',15)}</span></button>`).join('')}</div>`}
+const fSize=f=>f.size?(f.size>1048576?(f.size/1048576).toFixed(1)+' MB':Math.max(1,Math.round(f.size/1024))+' KB'):'';
+function resView(sid,k){if(!resGroups(sid).some(x=>x.k===k))return null;
+  return {t:(resGroups(sid).find(x=>x.k===k)||{}).t||'Resources',s:sOf(sid).title,key:'res',html:()=>{const g=resGroups(sid).find(x=>x.k===k);
+   if(!g)return `<div class="card empty"><b>Nothing here yet</b></div>`;let i=0;
+   return `<div class="rs3h${g.lk?' lk':''}"><span class="rs3-ic">${ic(g.lk?'lock':rsIc(g),22)}</span><div><b>${esc3(g.t)}</b><small>${nFiles(g.n)}${g.lk?' · buy the series to open':''}</small></div></div>
+   <div class="card rows">${g.f.map(f=>f.locked?`<button class="row dim rs3r" style="--d:${i++}" data-a="resLocked"><span class="ti">${ic('lock',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>Buy this series to open it</small></span>${ic('lock',18)}</button>`
+     :`<button class="row rs3r" style="--d:${i++}" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b>${fSize(f)?`<small>${fSize(f)}</small>`:''}</span>${ic('eye',18)}</button>`).join('')}${g.p.map(t=>{const l=PDF3[t.id].label||t.title;
+     return `<button class="row rs3r" style="--d:${i++}" data-a="pdfOpen" data-id="${esc3(t.id)}"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(l)}</b>${l!==t.title?`<small>${esc3(t.title)}</small>`:''}</span>${ic('eye',18)}</button>`}).join('')}</div>`}}}
+A.resOpen=el=>{const v=resView(el.dataset.id,el.dataset.k);if(v){hap(6);push(v)}};
 A.resLocked=()=>toast3('This file opens after you buy the series.');
 /* Tests: category chips (the series' folders), a status filter, the banner from the admin, then the tests in order */
 const TSF=[['all','All'],['att','Attempted'],['non','Not attempted'],['res','Resume'],['up','Upcoming'],['miss','Missed']];
