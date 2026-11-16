@@ -1709,6 +1709,33 @@ select pg_temp.chk('44g a member without content rights cannot arrange folders o
 select pg_temp.chk('44h the folder order change is written to the activity log',
   exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_files' and act = 'order' and who = 'Owner'));
 
+-- ===== 38. v86: every student's FIRST attempt is ranked, live or days later =====
+insert into cbt_private.students(id,name,mobile,status,salt,code_hash) values
+  ('bbbbbbbb-0000-0000-0000-0000000000c1','Late Lata','9000000086','approved','s86',cbt_private.hash_code('s86','LLLL8686'))
+on conflict do nothing;
+insert into cbt_private.tests (id, series_id, title, duration, data, question_count, opens_at, closes_at, result_at)
+select 'aaaaaaaa-0000-0000-0000-0000000000b6', series_id, 'Rank v86 test', 30, data, question_count,
+       cbt_private.now_ms() - 10*86400000, cbt_private.now_ms() - 10*86400000 + 3600000, cbt_private.now_ms() - 10*86400000 + 7200000
+  from cbt_private.tests where id = 'aaaaaaaa-0000-0000-0000-000000000004';
+-- live: Free Student 4 marks (10 days ago); 4 days later: Paid Student 6 marks (first) then 8 marks (second); Late Lata: first attempt late
+insert into cbt_private.results (student_id, test_id, test_title, score, max_score, correct, wrong, skipped, used_seconds, answers, late, created_at) values
+  ('bbbbbbbb-0000-0000-0000-00000000000a','aaaaaaaa-0000-0000-0000-0000000000b6','Rank v86 test',4,8,1,0,1,600,'{}',false, now() - interval '10 days' + interval '30 minutes'),
+  ('bbbbbbbb-0000-0000-0000-00000000000b','aaaaaaaa-0000-0000-0000-0000000000b6','Rank v86 test',6,8,2,0,0,600,'{}',false, now() - interval '6 days'),
+  ('bbbbbbbb-0000-0000-0000-00000000000b','aaaaaaaa-0000-0000-0000-0000000000b6','Rank v86 test',8,8,2,0,0,600,'{}',false, now() - interval '5 days'),
+  ('bbbbbbbb-0000-0000-0000-0000000000c1','aaaaaaaa-0000-0000-0000-0000000000b6','Rank v86 test',8,8,2,0,0,600,'{}',true, now() - interval '3 days');
+set role anon;
+select public.cbt_leaderboard('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000000b6') as lb86 \gset
+select public.cbt_leaderboard('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-0000000000b6') as lb86a \gset
+select pg_temp.chk('38a rank: a first attempt taken days after the live test gets a rank (it used to be left out)',
+  (:'lb86'::jsonb->>'total')::int = 2 and (:'lb86'::jsonb->>'my_rank')::int = 1 and (:'lb86a'::jsonb->>'my_rank')::int = 2,
+  'total ' || (:'lb86'::jsonb->>'total') || ', paid rank ' || coalesce(:'lb86'::jsonb->>'my_rank','null'));
+select pg_temp.chk('38b rank: only the FIRST attempt counts (6 marks), never the better second one (8 marks)',
+  (:'lb86'::jsonb->>'my_score')::numeric = 6 and (:'lb86'::jsonb->>'top_score')::numeric = 6);
+select pg_temp.chk('38c rank: a late first attempt (submitted after its own timer) still has no rank; the score bands match the ranked students',
+  not exists (select 1 from jsonb_array_elements(:'lb86'::jsonb->'top') x where x->>'name' ilike 'Late%')
+  and (select sum(v::int) from jsonb_array_elements_text(:'lb86'::jsonb->'dist') v) = 2);
+reset role;
+
 -- ===== report =====
 \t off
 \a

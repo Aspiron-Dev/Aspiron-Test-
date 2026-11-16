@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=77;
+const V3VER=78;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -1090,7 +1090,7 @@ function anTests(R){const T=(C().tests||[]).filter(t=>!t.locked&&!t.practice),t0
   return anSec('Tests',`${T.length} in your series`,`<div class="card p stack" style="gap:14px">
    <div class="c3n"><div><b>${N(nD)}</b><small>Attempted</small></div><div><b class="${nM?'warn':''}">${N(nM)}</b><small>Missed</small></div><div><b>${N(nO)}</b><small>Not attempted yet</small></div></div>
    ${T.length?`<span class="astk" role="img" aria-label="${nD} attempted, ${nM} missed, ${nO} not attempted yet"><i class="acc" style="flex:${nD}"></i><i class="low" style="flex:${nM}"></i><i class="na" style="flex:${nO}"></i></span>`:''}
-   ${nM?`<p class="note">${ic('info',15)}<span>You missed ${nM===1?'<b>'+esc3(miss[0].title)+'</b>':`${nM} tests`}. A missed live test has no rank; you can still take it for practice when it opens again.</span></p>`:''}</div>
+   ${nM?`<p class="note">${ic('info',15)}<span>You missed ${nM===1?'<b>'+esc3(miss[0].title)+'</b>':`${nM} tests`}. You can still take it when it opens again: your first attempt gets a rank in that test.</span></p>`:''}</div>
   ${R.length?`<div class="card p stack" style="gap:14px"><div class="rowb"><b>Score in your latest tests</b><small class="mut">${Math.min(10,R.length)} of ${R.length}</small></div>${vbars(resPts(R,pctOf,'%'),{max:100,unit:'%',label:'Marks across your latest 10 tests',tip0:'Tap a bar to see the test.'})}
    ${re.length?`<div class="sub2"><b>Tests you took again</b>${re.map(x=>{const d=x.b-x.a;return `<div class="rt"><span>${esc3(x.t)}<small>${x.n} attempts</small></span><span class="rtv">${x.a}% <i aria-hidden="true">→</i> <b>${x.b}%</b><i class="atr ${d>0?'up':d<0?'dn':''}">${d>0?'+':d<0?'−':''}${Math.abs(d)}</i></span></div>`}).join('')}</div>`:''}</div>
    <button class="morebtn card" data-a="hist"><span>${ic('trophy',19)}Test history, results and solutions</span>${ic('right',18)}</button>`
@@ -1170,7 +1170,7 @@ function histGroups(){const M=new Map();
   const G=[...M.values()];G.forEach(g=>{const t=tOf(g.id);g.t=t;g.title=(t&&t.title)||g.title||'Test';g.s=t&&sOf(t.series_id);
     g.best=Math.max(...g.att.map(rawPct));g.last=g.att[g.att.length-1];g.first=g.att[0]});
   return G.sort((a,b)=>(b.last.at||0)-(a.last.at||0))}
-const attLbl=(g,i)=>i===0?(g.t&&g.t.practice?'Practice':g.first.late?'Late attempt (no rank)':liveTill(g.t)!=null?'Live attempt · counts for rank':'First attempt · counts for rank'):'Re-attempt '+i;
+const attLbl=(g,i)=>i===0?(g.t&&g.t.practice?'Practice':g.first.late?'Late attempt (no rank)':liveTill(g.t)!=null&&g.first.at<=liveTill(g.t)?'Live attempt · counts for rank':'First attempt · counts for rank'):'Re-attempt '+i;
 function spark(att){const n=att.length,P=att.map(rawPct),mx=Math.max(20,...P),W=64,H=26,bw=Math.min(9,(W-(n-1)*3)/n),x0=(W-(n*bw+(n-1)*3))/2;
   return `<svg class="hs3-sp" viewBox="0 0 ${W} ${H}" aria-hidden="true">${P.map((p,i)=>{const h=Math.max(2,Math.abs(p)/mx*(H-2));return `<rect x="${(x0+i*(bw+3)).toFixed(1)}" y="${(H-h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" class="${i===0?'a':'b'}"/>`}).join('')}</svg>`}
 /* v88: the bell on a result that is still held back: "Result is out" notification (supabase_v79_result_alerts.sql + send-push v3).

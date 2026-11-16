@@ -203,6 +203,14 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - New in the install order: `… → v80_access_check → v35_admin_team → v81_submit_limits → v82_cron_key`. `supabase_check_installed.sql`
   now also shows v74 and v82.
 
+## Rank: every student's first attempt counts (`supabase_v86_rank_first_attempt.sql`)
+
+- **Setup:** run `supabase_v86_rank_first_attempt.sql` once (after v85). Nothing else.
+- A test's rank (leaderboard, "Your rank", percentile, admin Top students) now counts each student's **first attempt
+  whenever it was taken**, live or days later. Second and later attempts never count. A first attempt submitted late
+  (more than 2 minutes after its own timer, e.g. kept offline) still does not count. The overall rank is unchanged.
+- DB checks 38a-38c.
+
 ## "Result is out" notification (`supabase_v79_result_alerts.sql` + `send-push` with `result_alerts`)
 
 - A student who submitted a live test sees it under **Test history → Waiting for result** (and on the Home *Attempted* card)
