@@ -154,6 +154,13 @@ async function rpcRoute(route) {
       const acs = await page.$$eval('.ac-card', a => a.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
       ok(acs.some(c => /CHEM Series/.test(c) && /2 students have it/.test(c)) && acs.some(c => /PAID Series/.test(c)) && !acs.some(c => /FREE Series/.test(c)), tag + ' access check: every paid series is listed, the new one too, the free one is not: ' + acs.map(x => x.slice(0, 34)).join(' / '));
       await sh('access');
+      // tapping a number opens that series' students at the top of the screen (on a phone too), with a way back
+      await page.click('.ac-card:has-text("CHEM Series") .ac-chip.bad'); await page.waitForSelector('#ac-rows .ac-row'); await page.waitForTimeout(400);
+      const vis = await page.$eval('#ac-rows .ac-row', e => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; });
+      ok(vis && (await page.$$eval('.ac-card', a => a.length)) === 1 && /access\/33333333-3333-3333-3333-333333333333\/none$/.test(page.url()), tag + ' access check: a tap shows that series\' students on screen, without the other cards');
+      await sh('access_open');
+      await page.click('.ac-back'); await page.waitForSelector('.ac-card'); await page.waitForTimeout(300);
+      ok((await page.$$eval('.ac-card', a => a.length)) >= 2, tag + ' access check: "All series" goes back to every card');
       await page.goto(U('access/' + CS + '/none')); await page.waitForSelector('#ac-rows .ac-row'); await page.waitForTimeout(300);
       ok((await page.$$eval('#ac-rows .ac-row', a => a.length)) === 2 && /No payment record/.test(await page.textContent('#ac-rows')), tag + ' access check: the students without a payment record are listed');
       await page.click('#ac-rows .ac-row'); await page.waitForSelector('.drawer'); ok(/Chem/.test(await page.textContent('.drawer')), tag + ' access check: a row opens the student'); await page.keyboard.press('Escape'); await page.waitForTimeout(300);

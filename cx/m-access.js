@@ -52,8 +52,13 @@ AX.mod({
       return h`<div class="card ac-card ${cur && cur.id === s.id ? 'on' : ''}"><a class="ac-h" href="${link(s.id)}"><b class="ell">${s.title}</b><span class="mut sm">${fmt.plural(s.access, 'student')} ${s.access === 1 ? 'has' : 'have'} it</span>${icon('chevR', 16)}</a>
         <div class="ac-bar" role="img" aria-label="${s.order} with a paid order, ${s.other} with a payment but no series named, ${s.none} with no payment record"><i style="width:${w('order')}%;background:var(--ok)"></i><i style="width:${w('other')}%;background:var(--warn)"></i><i style="width:${w('none')}%;background:var(--bad)"></i></div>
         <div class="ac-chips">${join(['order', 'other', 'none'], k => h`<a class="ac-chip ${B[k].tone}" href="${link(s.id, k)}" title="${B[k].t}">${icon(B[k].ic, 14)}<b class="num">${s[k]}</b><span>${k === 'order' ? 'Paid order' : k === 'other' ? 'Series not named' : 'No record'}</span></a>`)}</div></div>`; };
-    AX.set(ctx.el, h`<div class="callout info">${icon('info')}<div class="sm"><b>“No payment record” is not “did not pay”.</b> Students who joined before the store were paid by hand, and a hand-added payment does not say which series it was for. Look at each student before changing anything. This page only shows; nobody loses access from here.</div></div>
-      <div class="ac-grid mt16">${join(S, card)}</div><div id="ac-list" class="mt16"></div>`);
+    // one series open: only its card and its students, at the top of the page (on a phone the list was far below the cards)
+    const used = S.filter(s => s.access > 0), empty = S.filter(s => !s.access);
+    AX.set(ctx.el, cur
+      ? h`<a class="btn sm ac-back" href="#/access">${icon('chevL', 15)} All series</a><div class="ac-grid mt12">${card(cur)}</div><div id="ac-list" class="mt16"></div>`
+      : h`<div class="callout info">${icon('info')}<div class="sm"><b>“No payment record” is not “did not pay”.</b> Students who joined before the store were paid by hand, and a hand-added payment does not say which series it was for. Look at each student before changing anything. This page only shows; nobody loses access from here.</div></div>
+      <div class="ac-grid mt16">${join(used, card)}</div>${empty.length ? h`<div class="xs mut mt12 ac-empty">No students yet: ${empty.map(s => s.title).join(' · ')}</div>` : ''}<div id="ac-list" class="mt16"></div>`);
+    if (cur) window.scrollTo(0, 0);
     if (!cur) return AX.set('#ac-list', h`<div class="xs mut">Tap a series, or one of its numbers, to see the students.</div>`);
     const rows = () => {
       const q = ST.q.trim().toLowerCase(), all = (cur.rows || []).filter(x => bk === 'all' || x.b === bk), L = all.filter(x => !q || String(x.name || '').toLowerCase().includes(q) || String(x.mobile || '').includes(q));
@@ -82,6 +87,9 @@ AX.css('access', `
 .ac-chip b{font-size:14px;color:var(--tx)}
 .ac-chip.ok .ax-ic{color:var(--ok)}.ac-chip.warn .ax-ic{color:var(--warn)}.ac-chip.bad .ax-ic{color:var(--bad)}
 .ac-chip:hover{background:var(--solid-3)}
+.ac-chip,.ac-h{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ac-chip:active,.ac-h:active{opacity:.7}
+.ac-back{align-self:flex-start}
 .ac-lh{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .ac-lh h3{font-family:var(--font-display);font-size:20px;font-weight:600;letter-spacing:-.015em}
 .ac-lh .chips{margin-left:auto}
