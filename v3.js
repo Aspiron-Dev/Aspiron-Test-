@@ -2276,7 +2276,7 @@ draw=function(){if(!on()||!T||!P)return _draw.apply(this,arguments);
    <header class="x3h cbtbar"><div class="x3t"><b class="tb-title">${esc(T.title)}${hi?' <span class="lgb">हिंदी</span>':''}</b><small>${esc((AUTH&&AUTH.name)||'')}</small></div>
     <div class="timer x3tm" id="tm">${ic('clock',16)}<span>--:--</span></div><button class="x3sub" onclick="submitAsk()">Submit</button></header>
    <div class="x3bar" aria-hidden="true"><i style="width:${(done/n*100).toFixed(1)}%"></i></div>
-   ${SEC.has?`<nav class="x3sec">${SEC.names.map(s=>`<button class="${s===SEC.of(P.cur)?'on':''}" ${lock?'disabled':''} onclick="goSec(${JSON.stringify(s).replace(/"/g,'&quot;')})">${esc(SEC.label(s))}</button>`).join('')}</nav>`:''}
+   ${SEC.has?`<nav class="x3sec">${SEC.names.map(s=>`<button class="${s===SEC.of(P.cur)?'on':''}" ${lock?'disabled':''} onclick="goSec(${esc(JSON.stringify(s))})">${esc(SEC.label(s))}</button>`).join('')}</nav>`:''}
    <div class="x3m"><section class="qcard x3q"${hi?' lang="hi"':''}>
      <div class="x3qm"><span class="x3qn">Question ${P.cur+1}<small> of ${n}</small></span><span class="x3mk"><i class="g">+${T.correct}</i><i class="b">−${T.wrong}</i></span>${P.mark[P.cur]?'<span class="x3chip">Marked</span>':''}<span style="flex:1"></span>${bmBtn(P.tid,P.cur)}${rpBtn(P.tid,P.cur)}</div>
      <div class="x3qt">${esc(q.q)}</div>${imgTag(q.img)}

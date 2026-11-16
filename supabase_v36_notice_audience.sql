@@ -315,7 +315,8 @@ end $$;
 select cron.schedule('cbt-test-alerts', '* * * * *', $job$
   select net.http_post(
     url     := 'https://klvvhbqkhbdzysgpykpr.supabase.co/functions/v1/Send-push',
-    headers := '{"Content-Type":"application/json","apikey":"sb_publishable_pt-b8kuOOsxyyAz277qsNA_q6e8D2G3"}'::jsonb,
+    headers := jsonb_build_object('Content-Type', 'application/json', 'apikey', 'sb_publishable_pt-b8kuOOsxyyAz277qsNA_q6e8D2G3',   -- v82: + the cron key, '' until v82 is run
+                                  'x-cron-key', coalesce((select value from cbt_private.settings where key = 'cron_key'), '')),
     body    := ('{"mode":"due","w":' || w || '}')::jsonb)
   from generate_series(1, 4) as w;
 $job$);

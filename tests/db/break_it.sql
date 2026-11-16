@@ -1505,6 +1505,24 @@ select pg_temp.chk('41g V1 another student''s number with this code submits noth
 select pg_temp.chk('41h V1 exactly four results were added (normal, extra keys, long id, no answers)',
   (select count(*) from cbt_private.results) = :'r0'::bigint + 4);
 
+-- ===== v82: the minute job proves itself to send-push with x-cron-key (review F-05) =====
+select pg_temp.chk('CK1 v82: a random cron key is kept in the private settings (48 hex characters)',
+  coalesce((select value ~ '^[0-9a-f]{48}$' from cbt_private.settings where key = 'cron_key'), false));
+delete from net.test_log;
+do $$ declare c text; begin
+  select command into c from cron.job where jobname = 'cbt-test-alerts';
+  execute c;   -- run the minute job once (pg_net stand-in records each request)
+end $$;
+select pg_temp.chk('CK2 v82: the minute job still calls send-push 4 times with mode "due", each with the current cron key',
+  (select count(*) from net.test_log where url like '%/functions/v1/Send-push' and body->>'mode' = 'due'
+     and headers->>'x-cron-key' = (select value from cbt_private.settings where key = 'cron_key')
+     and headers->>'apikey' like 'sb_publishable_%') = 4
+  and (select count(*) from cron.job where jobname = 'cbt-test-alerts') = 1);
+select pg_temp.chk('CK3 v82: the website (anon / authenticated) cannot read the cron key',
+  not has_table_privilege('anon', 'cbt_private.settings', 'SELECT') and not has_schema_privilege('anon', 'cbt_private', 'USAGE')
+  and not has_table_privilege('authenticated', 'cbt_private.settings', 'SELECT'));
+delete from net.test_log;
+
 -- ===== report =====
 \t off
 \a
