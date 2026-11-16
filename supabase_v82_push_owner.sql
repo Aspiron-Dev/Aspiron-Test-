@@ -9,7 +9,7 @@
 --   * turning on: someone else's link is not moved; the answer is "taken"
 --  Same phone, other student (sign out, then another student signs in on it): the phone has the same secret key, so the
 --  link moves to the new student as before. No app change.
---  Run after v81. Safe to run again.
+--  Run after v81. Safe to run again. (If v10, v36, v45 or v76 is ever run again, run this file again after it.)
 -- =====================================================================
 CREATE OR REPLACE FUNCTION public.cbt_push_save(p_mobile text, p_code text, p_device text, p_sub jsonb DEFAULT NULL::jsonb, p_on boolean DEFAULT true)
  RETURNS jsonb

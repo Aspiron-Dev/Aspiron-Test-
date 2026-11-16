@@ -136,7 +136,8 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
   it (it has the link's secret key; the app always sends it). Someone who only knows a saved link changes nothing.
 - The same phone used by another student after sign-out still moves to the new student, as before. No app change.
 - A phone renewing its own link (the service worker does this) cannot renew it into another student's saved link.
-- **Setup:** run `supabase_v82_push_owner.sql` once (after v81). Nothing else.
+- **Setup:** run `supabase_v82_push_owner.sql` once (after v81). Nothing else. If v10, v36, v45 or v76 is ever run
+  again, run v82 again after it.
 
 ## Size limits on submitting a test (`supabase_v81_submit_limits.sql`, review V1)
 - A submit with answers longer than 60,000 characters (or not a list of answers per question) is refused, the same
