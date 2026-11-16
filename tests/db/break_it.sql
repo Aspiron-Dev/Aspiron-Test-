@@ -1421,6 +1421,35 @@ select pg_temp.chk('AC4 access check: read only (nothing was added, changed or r
 select pg_temp.chk('AC5 access check: a refused try by a team member is in the activity log',
   exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_access_check' and result = 'refused'));
 
+-- AC6: blank numbers never match each other; an old number counts only for orders made before the change
+insert into cbt_private.students (id, name, mobile, status, salt, code_hash) values
+  ('ffffffff-0000-0000-0000-0000000000c7', 'No Mobile', '', 'approved', 'x', 'x');
+insert into cbt_private.series_access (student_id, series_id) values ('ffffffff-0000-0000-0000-0000000000c7', '33333333-3333-3333-3333-333333333333');
+insert into public.cbt_store_orders (code, item_id, item_title, amount, name, mobile, status) values
+  ('ASP-C7', 'cccccccc-0000-0000-0000-0000000000a1', 'Chem item', 299, 'Nobody', '', 'paid');
+insert into public.cbt_store_orders (code, item_id, item_title, amount, name, mobile, status, created_at, paid_at) values
+  ('ASP-C8', 'cccccccc-0000-0000-0000-0000000000a1', 'Chem item', 299, 'New owner of old number', '9100000094', 'paid', now() + interval '2 days', now() + interval '2 days');
+-- the old number now belongs to another student: ASP-C4 (placed before the change) stays with Old Number, ASP-C8 is the new holder's
+insert into cbt_private.students (id, name, mobile, status, salt, code_hash) values ('ffffffff-0000-0000-0000-0000000000c9', 'New Holder', '9100000094', 'approved', 'x', 'x');
+insert into cbt_private.series_access (student_id, series_id) values ('ffffffff-0000-0000-0000-0000000000c9', '33333333-3333-3333-3333-333333333333');
+-- placed with the old number BEFORE the change, approved AFTER it: still the student's order
+insert into cbt_private.students (id, name, mobile, status, salt, code_hash) values ('ffffffff-0000-0000-0000-0000000000c8', 'Late Approval', '9100000008', 'approved', 'x', 'x');
+insert into cbt_private.series_access (student_id, series_id) values ('ffffffff-0000-0000-0000-0000000000c8', '33333333-3333-3333-3333-333333333333');
+insert into cbt_private.mobile_changes (student_id, old_mobile, new_mobile, at) values ('ffffffff-0000-0000-0000-0000000000c8', '9100000098', '9100000008', now() - interval '1 day');
+insert into public.cbt_store_orders (code, item_id, item_title, amount, name, mobile, status, created_at, paid_at) values
+  ('ASP-C9', 'cccccccc-0000-0000-0000-0000000000a1', 'Chem item', 299, 'Late Approval', '9100000098', 'paid', now() - interval '2 days', now());
+set role anon;
+select public.cbt_admin_access_check(:'ow9','get','{}') as ac2 \gset
+reset role;
+select pg_temp.chk('AC6 access check: no-mobile never matches; an old number counts only for orders placed before the change (even if approved later); empty rows show 0, not null',
+  (with r as (select y->>'name' n, y->>'b' b, (y->>'orders')::int o from jsonb_array_elements(:'ac2'::jsonb->'series') x, jsonb_array_elements(x->'rows') y where x->>'title' = 'CHEM Series')
+   select (select b from r where n = 'No Mobile') = 'none' and (select o from r where n = 'Old Number') = 1
+      and (select b from r where n = 'Late Approval') = 'order'
+      and (select o from r where n = 'New Holder') = 1
+      and (select c from (select y->>'name' n, y->>'code' c from jsonb_array_elements(:'ac2'::jsonb->'series') x, jsonb_array_elements(x->'rows') y where x->>'title' = 'CHEM Series') q where n = 'New Holder') = 'ASP-C8'
+      and (select c from (select y->>'name' n, y->>'code' c from jsonb_array_elements(:'ac2'::jsonb->'series') x, jsonb_array_elements(x->'rows') y where x->>'title' = 'CHEM Series') q where n = 'Old Number') = 'ASP-C4'
+      and exists (select 1 from jsonb_array_elements(:'ac2'::jsonb->'series') x, jsonb_array_elements(x->'rows') y
+                   where y->>'name' = 'Nothing' and (y->>'orders')::int = 0 and (y->>'amt')::int = 0 and (y->>'manual')::int = 0 and (y->>'trashed')::boolean = false)));
 -- ===== 41. V1: size limits on submitting a test (supabase_v81_submit_limits.sql) =====
 reset role;
 update cbt_private.students set fail_count = 0, locked_until = 0 where mobile in ('9000000001', '9000000002');
