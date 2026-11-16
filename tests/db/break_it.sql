@@ -1450,6 +1450,60 @@ select pg_temp.chk('AC6 access check: no-mobile never matches; an old number cou
       and (select c from (select y->>'name' n, y->>'code' c from jsonb_array_elements(:'ac2'::jsonb->'series') x, jsonb_array_elements(x->'rows') y where x->>'title' = 'CHEM Series') q where n = 'Old Number') = 'ASP-C4'
       and exists (select 1 from jsonb_array_elements(:'ac2'::jsonb->'series') x, jsonb_array_elements(x->'rows') y
                    where y->>'name' = 'Nothing' and (y->>'orders')::int = 0 and (y->>'amt')::int = 0 and (y->>'manual')::int = 0 and (y->>'trashed')::boolean = false)));
+-- ===== 41. V1: size limits on submitting a test (supabase_v81_submit_limits.sql) =====
+reset role;
+update cbt_private.students set fail_count = 0, locked_until = 0 where mobile in ('9000000001', '9000000002');
+insert into cbt_private.tests(id,series_id,title,duration,data,question_count,active,practice)
+select ('aaaaaaaa-0000-0000-0000-0000000008a' || g)::uuid, '22222222-2222-2222-2222-222222222222', 'V1 test ' || g, 30,
+       '[{"q":"Q1","options":["a","b","c","d"],"answer":1},{"q":"Q2","options":["a","b","c","d"],"answer":2},{"q":"Q3","options":["a","b","c","d"],"answer":3}]',
+       3, true, true
+  from generate_series(1, 5) g
+on conflict (id) do nothing;
+select count(*) as r0 from cbt_private.results \gset
+set role anon;
+select public.cbt_start('9000000002','BBBB2222','dev-bbbbbbbb',('aaaaaaaa-0000-0000-0000-0000000008a' || g)::uuid)->>'ok' from generate_series(1, 5) g;
+-- a normal submit, as the app sends it (answers + times), with fields a student must never set
+select public.cbt_submit('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000008a1',
+  '{"0":1,"1":2,"2":0,"_t":{"0":30,"1":40,"2":50},"score":999,"correct":999,"rank":1,"paid":true,"isAdmin":true,"role":"admin"}', 'v1-normal') as v1a \gset
+-- too big (over 60,000 characters) and not an object
+select public.cbt_submit('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000008a2',
+  (select jsonb_object_agg(g::text, 1) from generate_series(1, 9000) g), 'v1-big') as v1b \gset
+select public.cbt_submit('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000008a2', '[1,2,3]', 'v1-array') as v1c \gset
+select public.cbt_submit('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000008a2', '"text"', 'v1-string') as v1c2 \gset
+-- under the limit but full of answers for questions the test does not have, negative and wrong-type values
+select public.cbt_submit('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000008a3',
+  (select jsonb_object_agg(g::text, 1) from generate_series(3, 4000) g) || '{"0":1,"1":-7,"2":"3","00":1,"-1":2,"_t":{"0":-5,"1":99999,"2":"x","7":10,"99":10}}', 'v1-extra') as v1d \gset
+-- a 100,000-character client id: cut to 80, and sending it again gives the same result (no second row)
+select public.cbt_submit('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000008a4', '{"0":1}', repeat('z', 100000)) as v1e \gset
+select public.cbt_submit('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000008a4', '{"0":1}', repeat('z', 100000)) as v1e2 \gset
+-- no answers at all still submits (every question skipped)
+select public.cbt_submit('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000008a5', null, 'v1-null') as v1f \gset
+-- another student's number with this student's code
+select public.cbt_submit('9000000001','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-0000000008a5', '{"0":1}', 'v1-other') as v1g \gset
+reset role;
+select pg_temp.chk('41a V1 a normal submit is graded by the server: score 999 / rank / paid / role from the student are ignored',
+  :'v1a'::jsonb->>'ok' = 'true' and (:'v1a'::jsonb->'result'->>'score')::numeric = 7 and (:'v1a'::jsonb->'result'->>'correct')::int = 2
+  and (select answers = '{"0":1,"1":2,"2":0}'::jsonb and times = '{"0":30,"1":40,"2":50}'::jsonb from cbt_private.results where client_id = 'v1-normal')
+  and not exists (select 1 from cbt_private.results where client_id = 'v1-normal' and score = 999));
+select pg_temp.chk('41b V1 answers over 60,000 characters are refused and nothing is saved (the attempt stays open)',
+  :'v1b'::jsonb->>'error' = 'bad_request' and not exists (select 1 from cbt_private.results where client_id = 'v1-big')
+  and exists (select 1 from cbt_private.sessions s join cbt_private.students st on st.id = s.student_id
+               where st.mobile = '9000000002' and s.test_id = 'aaaaaaaa-0000-0000-0000-0000000008a2' and not s.submitted));
+select pg_temp.chk('41c V1 answers that are a list or a text are refused (wrong type)',
+  :'v1c'::jsonb->>'error' = 'bad_request' and :'v1c2'::jsonb->>'error' = 'bad_request'
+  and not exists (select 1 from cbt_private.results where client_id in ('v1-array', 'v1-string')));
+select pg_temp.chk('41d V1 only the test''s real questions are saved: no extra keys, no negative or wrong-type answers, times 0-3600',
+  :'v1d'::jsonb->>'ok' = 'true'
+  and (select answers = '{"0":1}'::jsonb and times = '{"0":0,"1":3600}'::jsonb from cbt_private.results where client_id = 'v1-extra'));
+select pg_temp.chk('41e V1 a 100,000-character client id is cut to 80, and the same submit again gives the same result',
+  :'v1e'::jsonb->>'ok' = 'true' and :'v1e2'::jsonb->'result'->>'id' = :'v1e'::jsonb->'result'->>'id'
+  and (select count(*) = 1 and max(length(client_id)) = 80 from cbt_private.results where client_id = repeat('z', 80)));
+select pg_temp.chk('41f V1 a submit with no answers still works (all skipped)',
+  :'v1f'::jsonb->>'ok' = 'true' and (:'v1f'::jsonb->'result'->>'skipped')::int = 3);
+select pg_temp.chk('41g V1 another student''s number with this code submits nothing',
+  :'v1g'::jsonb->>'ok' = 'false' and not exists (select 1 from cbt_private.results where client_id = 'v1-other'));
+select pg_temp.chk('41h V1 exactly four results were added (normal, extra keys, long id, no answers)',
+  (select count(*) from cbt_private.results) = :'r0'::bigint + 4);
 
 -- ===== report =====
 \t off

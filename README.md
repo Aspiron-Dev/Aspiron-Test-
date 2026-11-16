@@ -131,6 +131,14 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
   chapter list covers.
 - Read only: no table is created or changed. A student sees only their own numbers.
 
+## Size limits on submitting a test (`supabase_v81_submit_limits.sql`, review V1)
+- A submit with answers longer than 60,000 characters (or not a list of answers per question) is refused, the same
+  limit the auto-save already has. A 200-question test sends about 3.6 KB, so real students never reach it.
+- Only the answers and times of the test's real questions are saved; the attempt's id is cut to 80 characters.
+  Score and grading are unchanged.
+- **Setup:** run `supabase_v81_submit_limits.sql` once (after v80). Nothing else. If v30 or v41 is ever run again,
+  run v81 again after it.
+
 ## Weekly schedule shows what was added (`supabase_v78_series_feed.sql`)
 
 - **Setup:** run `supabase_v78_series_feed.sql` once (after v77). Nothing else.
