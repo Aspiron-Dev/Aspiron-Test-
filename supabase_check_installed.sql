@@ -38,8 +38,8 @@ union all
 select 24, 'supabase_v74_login_code_once.sql', case when to_regprocedure('public.student_signin(text)') is not null
   and pg_get_functiondef(to_regprocedure('public.student_signin(text)')) like '%need_code%' then 'ok' else 'MISSING — run this file' end
 union all
--- v81 makes no function: 'ok' when the cron key exists and the minute job sends it (review F-05; then set CRON_KEY in send-push)
-select 25, 'supabase_v81_cron_key.sql', case when exists (select 1 from cbt_private.settings where key = 'cron_key')
+-- v82 makes no function: 'ok' when the cron key exists and the minute job sends it (review F-05; then set CRON_KEY in send-push)
+select 25, 'supabase_v82_cron_key.sql', case when exists (select 1 from cbt_private.settings where key = 'cron_key')
   and exists (select 1 from cron.job where jobname = 'cbt-test-alerts' and command like '%x-cron-key%') then 'ok' else 'MISSING — run this file' end
 ) x
 order by n;

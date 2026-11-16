@@ -8,7 +8,7 @@
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase automatically.
 //   SB_SECRET_KEY  – optional (R7): a new "sb_secret_…" key (Settings → API Keys). When set it is used instead of the
 //                    legacy service_role key, so the legacy keys can be turned off. Check: mode "info" → secret_key: true.
-//   CRON_KEY       – optional (v81, review F-05): the value of cbt_private.settings 'cron_key'. When set, mode "due" runs
+//   CRON_KEY       – optional (v82, review F-05): the value of cbt_private.settings 'cron_key'. When set, mode "due" runs
 //                    only for a request that carries it in the x-cron-key header (the database's minute job does).
 // Deploy with "Verify JWT" OFF (the site calls it with the public key only; the admin password is checked here).
 //
@@ -20,7 +20,7 @@
 // Body: { mode: "due" }   → called every minute by pg_cron (several workers at once, see v36):
 //   sends "test is LIVE now" to students who tapped 🔔 on that test, once, when it opens, and (v79) "Result is out" to
 //   students who tapped 🔔 on a submitted test waiting for its result, once, when the result time comes.
-//   No password: it only sends alerts that are already due and marks each one sent. With CRON_KEY set (v81), the
+//   No password: it only sends alerts that are already due and marks each one sent. With CRON_KEY set (v82), the
 //   x-cron-key header must match it.
 // Body: { mode: "info", vapid? } → { v: 2, result_alerts: true (v79 version), vapid: secrets set?, key_ok: does `vapid` match VAPID_PUBLIC? } (no password; no secrets returned)
 
@@ -64,8 +64,8 @@ async function handle(req: Request): Promise<Response> {
   const db = createClient(Deno.env.get("SUPABASE_URL")!, sk.startsWith("sb_secret_") ? sk : Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 
   if (b.mode === "due") {
-    // v81 (review F-05): only the database's minute job may run this. When the secret CRON_KEY is set, the request must
-    // carry the same value in x-cron-key (supabase_v81_cron_key.sql). Not set yet: works as before, so nothing breaks
+    // v82 (review F-05): only the database's minute job may run this. When the secret CRON_KEY is set, the request must
+    // carry the same value in x-cron-key (supabase_v82_cron_key.sql). Not set yet: works as before, so nothing breaks
     // while the owner sets it up.
     const ck = Deno.env.get("CRON_KEY") || "";
     if (ck && !sameText(req.headers.get("x-cron-key") || "", ck)) return json({ ok: false, error: "invalid" }, 401);

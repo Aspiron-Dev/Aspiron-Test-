@@ -1,5 +1,5 @@
 -- =====================================================================
---  v81: the minute job proves itself to send-push (security review F-05)
+--  v82: the minute job proves itself to send-push (security review F-05)
 --  Until now anyone could call send-push with {"mode":"due"} (no password) and make it run the alert sending and its
 --  database calls. Now the minute job also sends a secret header "x-cron-key". send-push checks it only when its own
 --  secret CRON_KEY is set, so nothing breaks in between. Other callers then get 401 before any work is done.
@@ -14,7 +14,7 @@
 --  If supabase_v12 / v22 / v36 is run again later, the job keeps the header only with the v36 of this change.
 --  The key lives only in cbt_private.settings (never readable from the website) and in the function's secrets.
 --  To change it: update cbt_private.settings set value = encode(cbt_private.adm_rand(24), 'hex') where key = 'cron_key';
---  then put the new value in CRON_KEY again. Run after v80 (needs v35 for adm_rand).
+--  then put the new value in CRON_KEY again. Run after v81 (needs v35 for adm_rand).
 -- =====================================================================
 
 insert into cbt_private.settings (key, value) values ('cron_key', encode(cbt_private.adm_rand(24), 'hex'))
@@ -33,4 +33,4 @@ select cron.schedule('cbt-test-alerts', '* * * * *', $job$
   from generate_series(1, 4) as w;
 $job$);
 
-select 'v81 installed: now copy cron_key into the Edge Function secret CRON_KEY and redeploy send-push' as status;
+select 'v82 installed: now copy cron_key into the Edge Function secret CRON_KEY and redeploy send-push' as status;
