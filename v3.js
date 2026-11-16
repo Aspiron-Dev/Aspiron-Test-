@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=72;
+const V3VER=76;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -65,7 +65,7 @@ const P={eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circl
  layers:'<path d="M12.8 2.2a2 2 0 0 0-1.6 0L2.6 6.1a1 1 0 0 0 0 1.8l8.6 3.9a2 2 0 0 0 1.6 0l8.6-3.9a1 1 0 0 0 0-1.8z"/><path d="m22 17.6-9.2 4.2a2 2 0 0 1-1.6 0L2 17.6"/><path d="m22 12.6-9.2 4.2a2 2 0 0 1-1.6 0L2 12.6"/>',
  book:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
  dl:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
- hist:'<path d="M3 12a9 9 0 1 0 9-9 9.8 9.8 0 0 0-6.7 2.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+ hist:'<path d="M3 12a9 9 0 1 0 9-9 9.8 9.8 0 0 0-6.7 2.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',redo:'<path d="M3 12a9 9 0 1 0 9-9 9.8 9.8 0 0 0-6.7 2.7L3 8"/><path d="M3 3v5h5"/>',
  doubt:'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
  qb:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>',
  pyq:'<path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M4.3 21a2 2 0 0 0 1.7 1h12a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v3"/><path d="m9 18-1.5-1.5"/><circle cx="5" cy="14" r="3"/>',
@@ -802,30 +802,38 @@ function spDesc(sid){const s=sOf(sid),it=itemOfSeries(sid),m=MT(sid),ups=upgrade
   ${sel?`<div class="buybar"><span class="price"><b>₹${fmtN(sel.it.price)}</b>${offPct(sel.it)?`<s>₹${fmtN(sel.it.mrp)}</s><span class="badge off">${offPct(sel.it)}% off</span>`:''}</span><a class="btn gold" href="${buyHref(sel.it)}">Upgrade now</a></div>`:''}`}
 A.plan=el=>{TQ.plan=+el.dataset.i;redraw()};
 /* Resources: the series' files (schedule, syllabus, notes) grouped, each group opens its own list */
-const RESK=[['schedule','Schedule','cal'],['syllabus','Syllabus','list'],['notes','Notes and PDFs','file']];
-/* v77: files in the admin's folders and order; a student who has not bought the series opens only the Schedule */
+/* Resources: one grid of folders. The admin's file folders (schedule, syllabus, notes) and test folders (answer keys of the
+   tests inside) are shown together; a file folder and a test folder with the same name are one folder. */
 const RESL={schedule:'Schedule',syllabus:'Syllabus',notes:'Notes and PDFs'};
-function resGroups(sid){const G=new Map();for(const f of (sOf(sid).files||[])){const k=String(f.folder||'').trim()||RESL[f.kind||'notes']||'Notes and PDFs';if(!G.has(k))G.set(k,[]);G.get(k).push(f)}return [...G]}
-function spRes(sid){const G=resGroups(sid),ok=sOk(sOf(sid));pdf3Ask();
-  const KT=ok?testsOf(sid).filter(t=>PDF3&&PDF3[t.id]):[];   // result & answer key PDFs (Google Drive): enrolled students only
-  const KH=KT.length?`<div class="stack" style="gap:10px"><p class="gh">Result &amp; answer key PDFs <span>${KT.length}</span></p><div class="card rows">${KT.map(t=>`<div class="row"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(PDF3[t.id].label||t.title)}</b><small>${esc3(t.title)}</small></span><button class="btn sm" data-a="pdfOpen" data-id="${esc3(t.id)}">${ic('eye',15)}View</button></div>`).join('')}</div></div>`:'';
-  if(!G.length&&!KH)return `<div class="card empty"><span class="ti">${ic('file',22)}</span><b>No study material yet</b><p>Schedules, syllabus and PDFs for this series will appear here.</p></div>`;
-  return `<div class="fd3g">${G.map(([k,L],i)=>{const lk=L.every(f=>f.locked);return `<button class="fd3${lk?' lk':''}" style="--i:${i}" data-a="resOpen" data-id="${esc3(sid)}" data-k="${esc3(k)}" aria-label="${esc3(k)}, ${L.length} ${L.length===1?'file':'files'}${lk?', locked':''}">${fd3Ic(lk)}<b>${esc3(k)}</b><small>${lk?`${ic('lock',12)} Buy to open`:`${L.length} ${L.length===1?'file':'files'}`}</small></button>`}).join('')}</div>`+KH}
-// v78: a folder drawn in CSS (back, papers, front flap); on tap the flap opens, papers rise, then the files fly out
-const fd3Ic=lk=>`<span class="fd3-ic" aria-hidden="true"><i class="fd3-bk"></i><i class="fd3-pp"></i><i class="fd3-pp"></i><i class="fd3-pp"></i><i class="fd3-fr"></i>${lk?`<i class="fd3-lk">${ic('lock',14)}</i>`:''}</span>`;
-function resView(sid,k){const g=resGroups(sid).find(x=>x[0]===k);if(!g)return null;const lk=g[1].every(f=>f.locked);
-  return {t:k,s:sOf(sid).title,key:'res',html:()=>`<div class="fd3h${lk?' lk':''}">${fd3Ic(lk)}<div><b>${esc3(k)}</b><small>${g[1].length} ${g[1].length===1?'file':'files'}${lk?' · buy the series to open':''}</small></div></div>
-   <div class="card rows fd3l">${g[1].map((f,i)=>f.locked?`<button class="row dim fly3" style="--d:${i}" data-a="resLocked"><span class="ti">${ic('lock',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>Buy this series to open it</small></span>${ic('lock',18)}</button>`
-     :`<button class="row fly3" style="--d:${i}" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>${/\.pdf$/i.test(f.name||'')?'PDF':'Picture'}${f.size?`, ${f.size>1048576?(f.size/1048576).toFixed(1)+' MB':Math.max(1,Math.round(f.size/1024))+' KB'}`:''}</small></span>${ic('eye',18)}</button>`).join('')}</div>`}}
-A.resOpen=el=>{const v=resView(el.dataset.id,el.dataset.k);if(!v||el.classList.contains('open'))return;
-  if(RM){push(v);return}el.classList.add('open');hap(6);setTimeout(()=>{push(v);setTimeout(()=>el.classList.remove('open'),300)},460)};
+const pdfT=sid=>sOk(sOf(sid))?testsOf(sid).filter(t=>PDF3&&PDF3[t.id]):[];   // answer-key PDFs: enrolled students only
+function resGroups(sid){const G=new Map(),put=(n,o)=>{const k=n.trim().toLowerCase();if(!G.has(k))G.set(k,{k,t:n.trim(),f:[],p:[]});o(G.get(k))};
+  for(const f of (sOf(sid).files||[]))put(String(f.folder||'').trim()||RESL[f.kind||'notes']||'Notes and PDFs',g=>g.f.push(f));
+  const KT=pdfT(sid),F=(C().folders||[]).filter(f=>f.series_id===sid);
+  for(const fo of F){const L=KT.filter(t=>t.folder_id===fo.id);if(L.length)put(String(fo.title||'Tests'),g=>g.p.push(...L))}
+  const rest=KT.filter(t=>!F.some(f=>f.id===t.folder_id));if(rest.length)put(F.length?'Other tests':'Test answer keys',g=>g.p.push(...rest));
+  return [...G.values()].map(g=>Object.assign(g,{n:g.f.length+g.p.length,lk:!g.p.length&&g.f.length>0&&g.f.every(f=>f.locked)}))}
+const rsIc=g=>g.p.length&&!g.f.length?'tests':/schedul/i.test(g.t)?'cal':/syllab/i.test(g.t)?'list':'file';
+const nFiles=n=>`${n} ${n===1?'file':'files'}`;
+function spRes(sid){pdf3Ask();const G=resGroups(sid);
+  if(!G.length)return `<div class="card empty"><span class="ti">${ic('file',22)}</span><b>No study material yet</b><p>Schedules, syllabus, notes and answer keys for this series will appear here.</p></div>`;
+  return `<div class="rs3g">${G.map((g,i)=>`<button class="rs3${g.lk?' lk':''}" style="--i:${i}" data-a="resOpen" data-id="${esc3(sid)}" data-k="${esc3(g.k)}" aria-label="${esc3(g.t)}, ${nFiles(g.n)}${g.lk?', locked':''}">
+   <span class="rs3-ic">${ic(g.lk?'lock':rsIc(g),20)}</span><b>${esc3(g.t)}</b><small>${g.lk?'Buy to open':nFiles(g.n)}</small><span class="rs3-go">${ic('right',15)}</span></button>`).join('')}</div>`}
+const fSize=f=>f.size?(f.size>1048576?(f.size/1048576).toFixed(1)+' MB':Math.max(1,Math.round(f.size/1024))+' KB'):'';
+function resView(sid,k){if(!resGroups(sid).some(x=>x.k===k))return null;
+  return {t:(resGroups(sid).find(x=>x.k===k)||{}).t||'Resources',s:sOf(sid).title,key:'res',html:()=>{const g=resGroups(sid).find(x=>x.k===k);
+   if(!g)return `<div class="card empty"><b>Nothing here yet</b></div>`;let i=0;
+   return `<div class="rs3h${g.lk?' lk':''}"><span class="rs3-ic">${ic(g.lk?'lock':rsIc(g),22)}</span><div><b>${esc3(g.t)}</b><small>${nFiles(g.n)}${g.lk?' · buy the series to open':''}</small></div></div>
+   <div class="card rows">${g.f.map(f=>f.locked?`<button class="row dim rs3r" style="--d:${i++}" data-a="resLocked"><span class="ti">${ic('lock',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>Buy this series to open it</small></span>${ic('lock',18)}</button>`
+     :`<button class="row rs3r" style="--d:${i++}" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b>${fSize(f)?`<small>${fSize(f)}</small>`:''}</span>${ic('eye',18)}</button>`).join('')}${g.p.map(t=>{const l=PDF3[t.id].label||t.title;
+     return `<button class="row rs3r" style="--d:${i++}" data-a="pdfOpen" data-id="${esc3(t.id)}"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(l)}</b>${l!==t.title?`<small>${esc3(t.title)}</small>`:''}</span>${ic('eye',18)}</button>`}).join('')}</div>`}}}
+A.resOpen=el=>{const v=resView(el.dataset.id,el.dataset.k);if(v){hap(6);push(v)}};
 A.resLocked=()=>toast3('This file opens after you buy the series.');
 /* Tests: category chips (the series' folders), a status filter, the banner from the admin, then the tests in order */
 const TSF=[['all','All'],['att','Attempted'],['non','Not attempted'],['res','Resume'],['up','Upcoming'],['miss','Missed']];
 function tState(t){const st=stOf(t);return st==='prog'?'res':st==='live'?'live':st==='wait'?'up':st==='lock'?'lock':st==='held'?'held':(st==='done'||t.attempts>0)?'att':st==='closed'?'miss':'new'}
 const TSL={live:['live','Live'],res:['live','Resume'],up:['','Upcoming'],new:['ok','Available'],held:['gold','Result soon'],att:['ok','Attempted'],miss:['err','Missed'],lock:['','Locked']};
 function tCard(t){const s=tState(t),r=resOf(t.id)[0],syl=((META||{}).syl||{})[t.id],marks=(t.questions||0)*(t.correct||4),when=t.opens_at;let p;try{p=typeof pendOf==='function'&&pendOf(t.id)}catch(e){}
-  const act=s==='lock'?['lock','Unlock','test']:s==='up'?['bell',alOn3(t.id)?'Alert on':'Notify me','alT']:s==='held'?['clock','Result','']:s==='miss'?(r&&!p?['chart','Result','review']:['lock','Closed','']):s==='res'?['play','Resume','test']:s==='att'?['play','Start','test']:['play','Start','test'];
+  const act=s==='lock'?['lock','Unlock','test']:s==='up'?['bell',alOn3(t.id)?'Alert on':'Notify me','alT']:s==='held'?['clock','Result','']:s==='miss'?(r&&!p?['chart','Result','review']:['lock','Closed','']):s==='res'?['play','Resume','test']:s==='att'?['redo','Re-attempt','test']:['play','Start','test'];
   const L=TSL[s];
   return `<article class="card tc3${s==='miss'||s==='lock'?' dim':''}"><div class="tc3-b">
    <div class="tc3-top"><span class="st ${L[0]}">${L[1]}</span>${when?`<span class="mut">${s==='up'?'Opens':'Held on'} ${fD(when,{day:'numeric',month:'short'})}, ${fT(when)}</span>`:''}</div>

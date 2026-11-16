@@ -342,6 +342,36 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     await p9.evaluate(() => { location.hash = '#/'; }); await p9.waitForTimeout(2500);
     const hm = await im('#main .trc .cv img'); ok(hm && hm[1] > 0, 'Home Trending cover draws (' + JSON.stringify(hm) + ')');
     ok(!e9.length, 'no page errors (pictures) ' + e9.join(' | ')); await c9.close(); }
+  // Series page: an attempted test says Re-attempt (a new one says Start); answer-key PDFs sit in the admin's test folders
+  await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
+  { const SID = '11111111-1111-1111-1111-111111111111', FO = [['f0000000-0000-0000-0000-000000000001', 'Problem series'], ['f0000000-0000-0000-0000-000000000002', 'Cumulative']];
+    const TX = [['e0000000-0000-0000-0000-000000000001', 'Pro Test 01', FO[0][0], 1], ['e0000000-0000-0000-0000-000000000002', 'Cumulative Test 1', FO[1][0], 1], ['e0000000-0000-0000-0000-000000000003', 'Pro Test 03', null, 0]];
+    const c10 = await br.newContext({ viewport: { width: 360, height: 800 } }); const p10 = await c10.newPage(); const e10 = [];
+    p10.on('pageerror', e => e10.push(e.message));
+    await p10.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort());
+    await p10.route(SUPA + '/rest/v1/rpc/**', async r => { const u = r.request().url(), J = o => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(o) });
+      if (/rpc\/cbt_catalog(\?|$)/.test(u)) { const rs = await new Promise(z => { const f = { fulfill: o => z(JSON.parse(o.body)), request: () => r.request() }; rpcRoute(f); });
+        rs.folders = (rs.folders || []).concat(FO.map(([id, title], i) => ({ id, series_id: SID, title, sort_order: i, active: true })));
+        rs.tests = (rs.tests || []).concat(TX.map(([id, title, folder_id, n], i) => ({ id, series_id: SID, folder_id, title, questions: 45, duration: 45, correct: 4, wrong: 1, attempts: n, best: n ? 10 : null, best_max: n ? 180 : null, sort: i, opens_at: Date.now() - 86400000 * (3 - i) })));
+        return J(rs); }
+      if (/rpc\/cbt_test_pdfs/.test(u)) return J({ ok: true, items: Object.fromEntries(TX.map(x => [x[0], { url: 'https://drive.google.com/file/d/' + x[0] + '/view', label: x[1] }])) });
+      return rpcRoute(r); });
+    await p10.goto(BASE + 'index.html'); await codeScreen(p10); await p10.fill('#ph', '9000000002'); await p10.fill('#cd', 'BBBB2222'); await p10.click('#lbtn'); await p10.waitForTimeout(3500);
+    const ev = f => p10.evaluate(f);
+    await ev(() => { const r = document.getElementById('v3host').shadowRoot; const x = r.querySelector('[data-ob="skip"]'); if (x) x.click(); }); await p10.waitForTimeout(2600);
+    await ev(() => { const r = document.getElementById('v3host').shadowRoot; const x = r.querySelector('#sheet.open [data-a="close"]'); if (x) x.click(); }); await p10.waitForTimeout(600);
+    await ev(() => { location.hash = '#/s/11111111-1111-1111-1111-111111111111'; }); await p10.waitForTimeout(2500);
+    const lb = await ev(() => { const r = document.getElementById('v3host').shadowRoot; const o = {}; r.querySelectorAll('.tc3').forEach(c => { o[c.querySelector('h3').textContent] = [c.querySelector('.tc3-go small').textContent, c.querySelector('.tc3-go').scrollWidth <= c.querySelector('.tc3-go').clientWidth + 1]; }); return o; });
+    ok(lb['Pro Test 01'] && lb['Pro Test 01'][0] === 'Re-attempt' && lb['Cumulative Test 1'][0] === 'Re-attempt', 'Series tests: an attempted test says Re-attempt (' + JSON.stringify(lb) + ')');
+    ok(lb['Pro Test 03'] && lb['Pro Test 03'][0] === 'Start', 'Series tests: a test not taken yet says Start');
+    ok(Object.values(lb).every(x => x[1]), 'Series tests: the button label fits at 360 px');
+    await ev(() => { const r = document.getElementById('v3host').shadowRoot; r.querySelector('[data-a="xt"][data-v="r"]').click(); }); await p10.waitForTimeout(1500);
+    const fd = await ev(() => { const r = document.getElementById('v3host').shadowRoot; return [...r.querySelectorAll('[data-a="resOpen"]')].map(b => b.querySelector('b').textContent + ':' + b.querySelector('small').textContent); });
+    ok(fd.join('|') === 'Notes and PDFs:1 file|Problem series:1 file|Cumulative:1 file|Other tests:1 file', 'Resources: one grid; answer keys in the test folders, in the admin\'s order (' + fd.join('|') + ')');
+    await ev(() => { const r = document.getElementById('v3host').shadowRoot; r.querySelector('[data-a="resOpen"][data-k="cumulative"]').click(); }); await p10.waitForTimeout(1500);
+    const ins = await ev(() => { const r = document.getElementById('v3host').shadowRoot; return [...r.querySelectorAll('.rs3r[data-a="pdfOpen"]')].map(b => b.dataset.id); });
+    ok(ins.length === 1 && ins[0] === 'e0000000-0000-0000-0000-000000000002', 'Resources: a folder opens its own PDFs (' + ins.join(',') + ')');
+    ok(!e10.length, 'no page errors (folders, re-attempt) ' + e10.join(' | ')); await c10.close(); }
   // the phone's Back button closes an open sheet or the menu first, never the page behind it
   await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
   { const c5 = await br.newContext({ viewport: { width: 390, height: 844 } }); const p5 = await c5.newPage(); const e5 = []; p5.on('pageerror', e => e5.push(e.message));
