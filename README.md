@@ -131,6 +131,17 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
   chapter list covers.
 - Read only: no table is created or changed. A student sees only their own numbers.
 
+## Resources folders: order and the folder of an answer key (`supabase_v85_resource_folders.sql`)
+- **Arrange the folders:** Test studio → a series → **Arrange Resources** (or the series menu ⋯). The list shows the
+  folders of the student's Resources tab (files from *Cover & files*, test folders with an answer key, folders chosen
+  for an answer key). Move them with ↑ ↓ and *Save order*: Schedule on top, then any information folder, and so on.
+  A folder that is not in the saved list (a new one) comes after the arranged ones.
+- **The folder of an answer-key PDF:** a test's menu → *PDF notes link*. Under *Folder in Resources* choose a folder
+  (for example Schedule or Cumulative) or *+ New folder*. *Same as the test* keeps it in the test's own folder.
+- Nothing is deleted; links saved before stay where they were.
+- **Setup:** run `supabase_v85_resource_folders.sql` once (after v84), then `supabase_v35_admin_team.sql` again.
+  Until then the app works as before and the admin panel says to run it.
+
 ## Database rules on results, students and tests (`supabase_v84_table_checks.sql`, review V3)
 - 12 rules in the database itself (a second wall behind the functions): no negative counts, marks or times, no unknown
   student status (only pending / approved / blocked), a mobile of 10 digits, and wide size limits on text and answers.

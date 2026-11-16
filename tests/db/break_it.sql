@@ -1674,6 +1674,41 @@ select pg_temp.chk('43j V3 the largest data the app itself allows still fits: 10
   and pg_temp.goes($q$update cbt_private.students set devices = '{}', keep = '{}', max_devices = 2 where mobile = '9000000002'$q$)
   and :'v84mm1' = 'ok' and :'v84mm2' = 'ok');
 
+-- ===== 44. v85: Resources folders — the folder of an answer-key PDF, the order of the folders =====
+select public.cbt_admin_login('','OwnerPass2026x','Owner')->>'token' as ow85 \gset
+select public.cbt_admin_login('viewer1','Tr7k-9mQz-pLx2','V')->>'token' as vt85 \gset
+select public.cbt_admin_test_pdf(:'ow85','set','{"id":"aaaaaaaa-0000-0000-0000-000000000001","url":"https://drive.google.com/file/d/f85/view","label":"Key","folder":"  <b>Cumu\nlative</b>  "}')->>'ok' as v85a \gset
+select pg_temp.chk('44a owner puts an answer-key PDF in a folder; the name is cleaned (no < > or line breaks)',
+  :'v85a' = 'true' and (select folder from cbt_private.test_pdfs where test_id = 'aaaaaaaa-0000-0000-0000-000000000001') = 'bCumulative/b'
+  and public.cbt_admin_test_pdf(:'ow85','get','{}')->'items'->'aaaaaaaa-0000-0000-0000-000000000001'->>'folder' = 'bCumulative/b'
+  and (public.cbt_admin_test_pdf(:'ow85','get','{}')->>'v85')::boolean);
+select public.cbt_admin_test_pdf(:'ow85','set','{"id":"aaaaaaaa-0000-0000-0000-000000000001","url":"https://drive.google.com/file/d/f85/view"}')->>'ok' as v85b \gset
+select pg_temp.chk('44b a link saved without a folder keeps an empty folder (= the test''s own folder)',
+  :'v85b' = 'true' and (select folder from cbt_private.test_pdfs where test_id = 'aaaaaaaa-0000-0000-0000-000000000001') = '');
+select public.cbt_admin_test_pdf(:'ow85','set',jsonb_build_object('id','aaaaaaaa-0000-0000-0000-000000000001','url','https://drive.google.com/file/d/f85/view','folder',repeat('x',500)))->>'ok' as v85c \gset
+select pg_temp.chk('44c the folder name is at most 60 letters',
+  :'v85c' = 'true' and (select length(folder) from cbt_private.test_pdfs where test_id = 'aaaaaaaa-0000-0000-0000-000000000001') = 60);
+select public.cbt_admin_files(:'ow85','order','{"series_id":"11111111-1111-1111-1111-111111111111","names":["Schedule"," schedule ","<i>Info</i>","","Cumulative"]}') as v85o \gset
+select pg_temp.chk('44d owner arranges the Resources folders: names cleaned, repeats and empty names dropped, order kept',
+  :'v85o'::jsonb->'order' = '["Schedule","iInfo/i","Cumulative"]'::jsonb
+  and public.cbt_admin_files(:'ow85','get','{"series_id":"11111111-1111-1111-1111-111111111111"}')->'order' = '["Schedule","iInfo/i","Cumulative"]'::jsonb
+  and public.cbt_series_meta()->'series'->'11111111-1111-1111-1111-111111111111'->'o' = '["Schedule","iInfo/i","Cumulative"]'::jsonb);
+select pg_temp.chk('44e the order keeps the series dates and plans as they were',
+  (select starts_at from cbt_private.series_meta where series_id = '11111111-1111-1111-1111-111111111111') is not distinct from
+  (public.cbt_series_meta()->'series'->'11111111-1111-1111-1111-111111111111'->>'s')::bigint);
+select pg_temp.chk('44f wrong input is refused: not a list, a number in the list, an unknown series, more than 100 names',
+  public.cbt_admin_files(:'ow85','order','{"series_id":"11111111-1111-1111-1111-111111111111","names":"Schedule"}')->>'error' = 'names'
+  and public.cbt_admin_files(:'ow85','order','{"series_id":"11111111-1111-1111-1111-111111111111","names":[1]}')->>'error' = 'names'
+  and public.cbt_admin_files(:'ow85','order','{"series_id":"99999999-9999-9999-9999-999999999999","names":[]}')->>'error' = 'series'
+  and public.cbt_admin_files(:'ow85','order',jsonb_build_object('series_id','11111111-1111-1111-1111-111111111111','names',(select jsonb_agg('f'||g) from generate_series(1,101) g)))->>'error' = 'names');
+select pg_temp.chk('44g a member without content rights cannot arrange folders or choose a PDF folder; nobody signed out can',
+  public.cbt_admin_files(:'vt85','order','{"series_id":"11111111-1111-1111-1111-111111111111","names":["X"]}')->>'error' = 'forbidden'
+  and public.cbt_admin_files('wrong','order','{"series_id":"11111111-1111-1111-1111-111111111111","names":["X"]}')->>'ok' = 'false'
+  and public.cbt_admin_test_pdf(:'vt85','set','{"id":"aaaaaaaa-0000-0000-0000-000000000001","url":"https://drive.google.com/file/d/x","folder":"X"}')->>'error' = 'forbidden'
+  and public.cbt_series_meta()->'series'->'11111111-1111-1111-1111-111111111111'->'o' = '["Schedule","iInfo/i","Cumulative"]'::jsonb);
+select pg_temp.chk('44h the folder order change is written to the activity log',
+  exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_files' and act = 'order' and who = 'Owner'));
+
 -- ===== report =====
 \t off
 \a

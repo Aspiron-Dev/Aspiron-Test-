@@ -56,5 +56,12 @@ union all
 select 28, 'supabase_v84_table_checks.sql', case (select count(*) from pg_constraint where conname like 'v84\_%' and connamespace = 'cbt_private'::regnamespace)
   when 12 then 'ok' when 0 then 'MISSING — run this file'
   else 'PARTLY — ' || (select count(*) from pg_constraint where conname like 'v84\_%' and connamespace = 'cbt_private'::regnamespace) || ' of 12 rules; run the file again and read its table' end
+union all
+select 29, 'supabase_v85_resource_folders.sql', case when exists (select 1 from information_schema.columns where table_schema = 'cbt_private' and table_name = 'series_meta' and column_name = 'res_order')
+  and exists (select 1 from information_schema.columns where table_schema = 'cbt_private' and table_name = 'test_pdfs' and column_name = 'folder')
+  and to_regprocedure('cbt_private.cbt_admin_files__core(text,text,jsonb)') is not null
+  and pg_get_functiondef(to_regprocedure('cbt_private.cbt_admin_files__core(text,text,jsonb)')) like '%''order''%' then 'ok'
+  when exists (select 1 from information_schema.columns where table_schema = 'cbt_private' and table_name = 'series_meta' and column_name = 'res_order')
+  then 'run supabase_v35_admin_team.sql again' else 'MISSING — run this file' end
 ) x
 order by n;

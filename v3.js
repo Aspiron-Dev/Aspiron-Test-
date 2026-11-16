@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=76;
+const V3VER=77;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -809,9 +809,12 @@ const pdfT=sid=>sOk(sOf(sid))?testsOf(sid).filter(t=>PDF3&&PDF3[t.id]):[];   // 
 function resGroups(sid){const G=new Map(),put=(n,o)=>{const k=n.trim().toLowerCase();if(!G.has(k))G.set(k,{k,t:n.trim(),f:[],p:[]});o(G.get(k))};
   for(const f of (sOf(sid).files||[]))put(String(f.folder||'').trim()||RESL[f.kind||'notes']||'Notes and PDFs',g=>g.f.push(f));
   const KT=pdfT(sid),F=(C().folders||[]).filter(f=>f.series_id===sid);
-  for(const fo of F){const L=KT.filter(t=>t.folder_id===fo.id);if(L.length)put(String(fo.title||'Tests'),g=>g.p.push(...L))}
-  const rest=KT.filter(t=>!F.some(f=>f.id===t.folder_id));if(rest.length)put(F.length?'Other tests':'Test answer keys',g=>g.p.push(...rest));
-  return [...G.values()].map(g=>Object.assign(g,{n:g.f.length+g.p.length,lk:!g.p.length&&g.f.length>0&&g.f.every(f=>f.locked)}))}
+  const own=t=>PDF3[t.id].folder,KT2=KT.filter(t=>!own(t));   // v85: the admin chose a folder for this PDF
+  for(const fo of F){const L=KT2.filter(t=>t.folder_id===fo.id);if(L.length)put(String(fo.title||'Tests'),g=>g.p.push(...L))}
+  for(const t of KT)if(own(t))put(own(t),g=>g.p.push(t));
+  const rest=KT2.filter(t=>!F.some(f=>f.id===t.folder_id));if(rest.length)put(F.length?'Other tests':'Test answer keys',g=>g.p.push(...rest));
+  const O=(((META||{}).series||{})[sid]||{}).o,at=Array.isArray(O)?O.map(x=>String(x).trim().toLowerCase()):[],rk=g=>{const i=at.indexOf(g.k);return i<0?1e4:i};
+  return [...G.values()].map((g,i)=>[g,i]).sort((a,b)=>rk(a[0])-rk(b[0])||a[1]-b[1]).map(([g])=>g).map(g=>Object.assign(g,{n:g.f.length+g.p.length,lk:!g.p.length&&g.f.length>0&&g.f.every(f=>f.locked)}))}
 const rsIc=g=>g.p.length&&!g.f.length?'tests':/schedul/i.test(g.t)?'cal':/syllab/i.test(g.t)?'list':'file';
 const nFiles=n=>`${n} ${n===1?'file':'files'}`;
 function spRes(sid){pdf3Ask();const G=resGroups(sid);
@@ -1260,7 +1263,7 @@ function notesView(){return {t:'Notes & PDFs',s:'Study material of your test ser
   return S.map(s=>`<div class="stack" style="gap:10px"><p class="gh">${esc3(s.title)}</p><div class="card rows">${s.files.map(f=>`<button class="row" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>${({schedule:'Schedule',syllabus:'Syllabus',notes:'Notes'})[f.kind]||'File'}</small></span>${ic('eye',18)}</button>`).join('')}</div></div>`).join('')
    +(T.length?`<div class="stack" style="gap:10px"><p class="gh">Notes of tests</p><div class="card rows">${T.map(t=>`<div class="row"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(PDF3[t.id].label||t.title)}</b><small>${esc3(t.title)}, Google Drive</small></span><button class="btn sm" data-a="pdfOpen" data-id="${esc3(t.id)}" aria-label="View">${ic('eye',15)}View</button></div>`).join('')}</div></div>`:'')}}}
 const pdfLinkOk=u=>typeof u==='string'&&u.length<=500&&/^https:\/\/(drive|docs)\.google\.com\/[A-Za-z0-9/_?=&%.#~+-]+$/.test(u);
-function loadPdf3(){return rpc('cbt_test_pdfs',{}).then(r=>{const o={};if(r&&r.ok&&r.items)for(const k in r.items){const x=r.items[k];if(/^[A-Za-z0-9_-]{1,64}$/.test(k)&&x&&pdfLinkOk(x.url))o[k]={url:x.url,label:String(x.label||'')}}PDF3=o}).catch(()=>{PDF3=PDF3||{}})}
+function loadPdf3(){return rpc('cbt_test_pdfs',{}).then(r=>{const o={};if(r&&r.ok&&r.items)for(const k in r.items){const x=r.items[k];if(/^[A-Za-z0-9_-]{1,64}$/.test(k)&&x&&pdfLinkOk(x.url))o[k]={url:x.url,label:String(x.label||''),folder:String(x.folder||'').trim()}}PDF3=o}).catch(()=>{PDF3=PDF3||{}})}
 A.pdfOpen=el=>{const p=PDF3&&PDF3[el.dataset.id];if(!p||!pdfLinkOk(p.url)){toast3('PDF not available');return}const w=window.open(p.url,'_blank','noopener,noreferrer');if(w)w.opener=null};
 // v68: direct download of a Google Drive / Docs file
 const pdfDl3=u=>{let m=/\/file\/d\/([A-Za-z0-9_-]{10,})/.exec(u)||/[?&]id=([A-Za-z0-9_-]{10,})/.exec(u);

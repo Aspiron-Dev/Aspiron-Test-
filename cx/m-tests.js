@@ -204,7 +204,7 @@ function vSeries(ctx) {
       <div class="ts-hb"><div class="row wrap gap6">${s.is_free ? UI.pill('Free for everyone', 'ok') : UI.pill('Paid · ' + (s.price_label || 'unlock per student'), 'gold')}${s.active === false ? UI.pill('Hidden from students', 'warn') : UI.pill('Visible to students', 'pri')}<span class="pill">Order ${s.sort_order || 0}</span></div>
         <div class="row wrap gap20"><div><div class="disp" style="font-size:26px">${T.length}</div><div class="xs mut">tests</div></div><div><div class="disp" style="font-size:26px">${F.length}</div><div class="xs mut">folders</div></div><div><div class="disp" style="font-size:26px">${fmt.num(T.reduce((a, t) => a + (t.questions || 0), 0))}</div><div class="xs mut">questions</div></div><div><div class="disp" style="font-size:26px">${fmt.num(T.reduce((a, t) => a + (t.results || 0), 0))}</div><div class="xs mut">attempts</div></div></div>
         <div class="row wrap gap6">${st.filter(x => x.k === 'live').length ? h`<span class="pill ok"><span class="live-dot"></span> ${st.filter(x => x.k === 'live').length} live now</span>` : ''}${st.filter(x => x.k === 'sched').length ? UI.pill(st.filter(x => x.k === 'sched').length + ' scheduled', 'info') : ''}${(s.files || []).length ? join(s.files, f => UI.pill(f.title + ' · ' + f.kind)) : h`<span class="xs mut">No syllabus or schedule files yet.</span>`}</div>
-        ${m ? h`<div class="row wrap gap6"><button class="btn sm" data-act="media" data-id="${s.id}">${icon('image', 15)} Cover & files</button><button class="btn sm" data-act="newFolder" data-sid="${s.id}">${icon('folder', 15)} New folder</button>${F.length > 1 ? h`<button class="btn sm ghost" data-act="reorderF" data-sid="${s.id}">${icon('sort', 15)} Reorder folders</button>` : ''}</div>` : ''}
+        ${m ? h`<div class="row wrap gap6"><button class="btn sm" data-act="media" data-id="${s.id}">${icon('image', 15)} Cover & files</button><button class="btn sm" data-act="newFolder" data-sid="${s.id}">${icon('folder', 15)} New folder</button>${F.length > 1 ? h`<button class="btn sm ghost" data-act="reorderF" data-sid="${s.id}">${icon('sort', 15)} Reorder folders</button>` : ''}<button class="btn sm ghost" data-act="arrangeRes" data-id="${s.id}">${icon('sort', 15)} Arrange Resources</button></div>` : ''}
         ${medLine(s, T)}
         <div class="row wrap gap6"><button class="btn sm" data-act="amsg" data-id="${s.id}">${icon('msg', 15)} Approval message & Telegram</button>${AX.can('messaging', 'manage') ? h`<button class="btn sm" data-act="sNotice" data-id="${s.id}">${icon('bell', 15)} Notice to this series</button><button class="btn sm" data-act="sPush" data-id="${s.id}">${icon('send', 15)} Phone notification</button>` : ''}</div></div></div>
     ${T.length > 6 ? h`<div class="ts-tool"><div class="inp-wrap search">${icon('search', 16)}<input class="inp sm" id="ts-q" type="search" placeholder="Find a test in this series…" value="${CUR.q}" autocomplete="off" aria-label="Find a test"></div></div>` : ''}
@@ -283,6 +283,7 @@ const ACTS = {
   sNotice: el => AX.newNotice({ series: [el.dataset.id] }),
   sPush: el => AX.pushTo({ series: [el.dataset.id] }),
   media: el => mediaDrawer(el.dataset.id),
+  arrangeRes: el => arrangeRes(el.dataset.id),
   newFolder: el => folderModal(el.dataset.sid, null),
   reorderS: () => reorder('Reorder series', C.series.slice().sort(bySort).map(s => ({ id: s.id, t: s.title, s: s.sort_order })), (x, n) => AX.api.admin('series_save', { id: x.id, sort_order: n })),
   reorderF: el => reorder('Reorder folders', C.folders.filter(f => f.series_id === el.dataset.sid).sort(bySort).map(f => ({ id: f.id, t: f.title, s: f.sort_order })), (x, n) => AX.api.admin('folder_save', { id: x.id, sort_order: n })),
@@ -305,6 +306,7 @@ function sMenu(el, s) {
     m && { label: 'New folder', icon: 'folder', fn: () => folderModal(s.id, null) },
     m && { label: 'Edit series', icon: 'edit', fn: () => seriesModal(s) },
     m && { label: 'Cover & files', icon: 'image', fn: () => mediaDrawer(s.id) },
+    m && { label: 'Arrange Resources folders', icon: 'sort', fn: () => arrangeRes(s.id) },
     { label: 'Announcements (buyers only)', icon: 'bell', fn: () => annDrawer(s) },
     m && { label: 'Medium (English / हिंदी)', icon: 'globe', fn: () => mediumModal(s) },
     { label: 'Approval message & Telegram', icon: 'msg', fn: () => AX.amsg.edit(s.id) },
@@ -740,20 +742,87 @@ function mediaDrawer(sid) {
     }
   });
 }
-/* ---------- PDF notes link per test (Google Drive) — supabase_v51_test_pdf.sql, owner only ---------- */
+/* v85 (supabase_v85_resource_folders.sql): the folders students see in Resources, in their order (before the saved order):
+   file folders (Cover & files), test folders with an answer key, folders chosen for an answer key, then 'Other tests' */
+const RES_KIND = { schedule: 'Schedule', syllabus: 'Syllabus', notes: 'Notes and PDFs' };
+function resNames(sid, lay, pdfs) {
+  const M = new Map(), put = n => { n = String(n || '').trim(); if (n && !M.has(n.toLowerCase())) M.set(n.toLowerCase(), n); };
+  ((S_(sid) || {}).files || []).map((f, i) => [f, i]).sort((a, b) => (((lay || {})[a[0].id] || {}).sort || 0) - (((lay || {})[b[0].id] || {}).sort || 0) || a[1] - b[1])
+    .forEach(([f]) => put(((lay || {})[f.id] || {}).folder || RES_KIND[f.kind || 'notes'] || 'Notes and PDFs'));
+  const T = C.tests.filter(t => t.series_id === sid), F = C.folders.filter(f => f.series_id === sid).sort(bySort);
+  const pf = t => pdfs[String(t.id)] && String(pdfs[String(t.id)].folder || '').trim(), keyIn = t => pdfs[String(t.id)] && !pf(t);
+  F.forEach(f => { if (T.some(t => t.folder_id === f.id && keyIn(t))) put(f.title); });
+  T.forEach(t => { if (pf(t)) put(pf(t)); });
+  if (T.some(t => keyIn(t) && !F.some(f => f.id === t.folder_id))) put(F.length ? 'Other tests' : 'Test answer keys');
+  return [...M.values()];
+}
+const sortByOrder = (names, order) => { const at = (order || []).map(x => String(x).trim().toLowerCase()), rk = n => { const i = at.indexOf(n.toLowerCase()); return i < 0 ? 1e4 : i; };
+  return names.map((n, i) => [n, i]).sort((a, b) => rk(a[0]) - rk(b[0]) || a[1] - b[1]).map(x => x[0]); };
+async function resData(sid) {
+  const [fg, pg] = await Promise.all([AX.api.call('cbt_admin_files', 'get', { series_id: sid }), AX.isOwner() ? AX.api.call('cbt_admin_test_pdf', 'get') : Promise.resolve(null)]);
+  return { ok: !!(fg && fg.ok), v85: !!(fg && fg.v85), lay: (fg && fg.layout) || {}, order: (fg && fg.order) || [], pdfs: (pg && pg.ok && pg.items) || {} };
+}
+async function arrangeRes(sid) {
+  if (!canM()) return;
+  const d = await resData(sid);
+  if (!d.ok) return UI.toast('Could not load the folders. Try again.', { tone: 'bad' });
+  if (!d.v85) return UI.toast('Run supabase_v85_resource_folders.sql in Supabase first, then supabase_v35_admin_team.sql again.', { tone: 'warn' });
+  let L = sortByOrder(resNames(sid, d.lay, d.pdfs), d.order);
+  if (!L.length) return UI.toast('This series has no Resources folders yet: add files (Cover & files) or answer-key PDF links first.', { tone: 'warn' });
+  const rows = () => h`<div class="ts-ro">${join(L, (x, i) => h`<div class="r"><span class="n">${i + 1}</span><b>${x}</b><button class="ibtn sm" data-act="mv" data-i="${i}" data-d="-1" ${i ? '' : raw('disabled')} aria-label="Move up">${icon('chevU', 16)}</button><button class="ibtn sm" data-act="mv" data-i="${i}" data-d="1" ${i < L.length - 1 ? '' : raw('disabled')} aria-label="Move down">${icon('chevD', 16)}</button></div>`)}</div>`;
+  UI.modal({
+    title: 'Arrange Resources folders', sub: ((S_(sid) || {}).title || '') + ' · students see the folders of the Resources tab in this order', size: 'narrow',
+    body: h`<div id="ro">${rows()}</div><p class="xs mut mt8">Files and answer keys inside a folder keep their own order. A new folder goes to the end until you arrange it.</p>`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="save">${icon('check', 16)} Save order</button>`,
+    onOpen(el, close) {
+      AX.act(el, {
+        mv(b) { const i = +b.dataset.i, j = i + +b.dataset.d; [L[i], L[j]] = [L[j], L[i]]; AX.set(el.querySelector('#ro'), rows()); const nb = el.querySelector('[data-act=mv][data-i="' + j + '"][data-d="' + b.dataset.d + '"]'); if (nb && !nb.disabled) nb.focus(); },
+        async save(b) {
+          await UI.busy(b, async () => {
+            const r = await AX.api.call('cbt_admin_files', 'order', { series_id: sid, names: L });
+            if (!r || !r.ok) return UI.err(r);
+            close(true); UI.toast('Order saved');
+          });
+        }
+      });
+    }
+  });
+}
+/* ---------- PDF notes link per test (Google Drive) — supabase_v51_test_pdf.sql, owner only; v85: + its Resources folder ---------- */
 const PDF_RE = /^https:\/\/(drive|docs)\.google\.com\/[A-Za-z0-9/_?=&%.#~+-]+$/;
 async function pdfLink(t) {
   const g = await AX.api.call('cbt_admin_test_pdf', 'get');
   if (!g || !g.ok) { if (g && g.error === 'missing') UI.toast('Run supabase_v51_test_pdf.sql in Supabase first.', { tone: 'warn' }); else UI.err(g); return; }
-  const cur = (g.items || {})[String(t.id)] || {};
-  const v = await UI.prompt({ title: 'Result & answer key PDF (Google Drive link)', label: 'Google Drive link', value: cur.url || '', required: false,
-    placeholder: 'https://drive.google.com/file/d/…/view',
-    hint: 'Share the file as "Anyone with the link → Viewer". Students see an "Answer key PDF" button on this test (after its result time) and Open / Download in Notes & PDFs. Leave empty to remove.' });
-  if (v == null) return;
-  const url = String(v).trim();
-  if (url && (url.length > 500 || !PDF_RE.test(url))) { UI.toast('Only drive.google.com or docs.google.com links.', { tone: 'bad' }); return; }
-  const r = await AX.api.call('cbt_admin_test_pdf', url ? 'set' : 'remove', url ? { id: String(t.id), url } : { id: String(t.id) });
-  if (!r || !r.ok) { UI.err(r); return; }
-  UI.toast(url ? 'PDF link saved' : 'PDF link removed');
+  const cur = (g.items || {})[String(t.id)] || {}, v85 = !!g.v85;
+  const fg = v85 ? await AX.api.call('cbt_admin_files', 'get', { series_id: t.series_id }) : null;
+  const tf = C.folders.find(f => f.id === t.folder_id), own = tf ? tf.title : (C.folders.some(f => f.series_id === t.series_id) ? 'Other tests' : 'Test answer keys');
+  const names = sortByOrder(resNames(t.series_id, (fg && fg.layout) || {}, g.items || {}), (fg && fg.order) || []).filter(n => n.toLowerCase() !== own.toLowerCase());
+  const curF = String(cur.folder || '').trim();
+  if (curF && !names.some(n => n.toLowerCase() === curF.toLowerCase())) names.push(curF);
+  UI.modal({
+    title: 'Result & answer key PDF', sub: t.title, size: 'narrow',
+    body: h`<form id="pdff" class="col gap16">
+      ${AX.f.input({ name: 'url', label: 'Google Drive link', value: cur.url || '', max: 500, placeholder: 'https://drive.google.com/file/d/…/view', hint: 'Share the file as "Anyone with the link → Viewer". Leave empty to remove the link.' })}
+      ${v85 ? h`<div class="fld"><label for="pdf-f">Folder in Resources</label><select class="inp" id="pdf-f"><option value="">Same as the test: ${own}</option>${join(names, n => h`<option value="${n}" ${curF && n.toLowerCase() === curF.toLowerCase() ? raw('selected') : ''}>${n}</option>`)}<option value="__new">+ New folder…</option></select></div>
+      <div class="fld hide" id="pdf-nw"><label for="pdf-n">New folder name</label><input class="inp" id="pdf-n" maxlength="60" placeholder="e.g. Answer keys"></div>`
+      : h`<div class="xs mut">To choose the folder of this PDF in Resources, run supabase_v85_resource_folders.sql in Supabase.</div>`}
+      <div class="xs mut">Students see it on this test (after its result time) and in the Resources tab of the series.</div></form>`,
+    foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="save">${icon('check', 16)} Save</button>`,
+    onOpen(el, close) {
+      const sel = el.querySelector('#pdf-f'), nw = el.querySelector('#pdf-nw');
+      if (sel) sel.addEventListener('change', () => nw.classList.toggle('hide', sel.value !== '__new'));
+      AX.act(el, { async save(b) {
+        const url = String(el.querySelector('[name=url]').value || '').trim();
+        if (url && (url.length > 500 || !PDF_RE.test(url))) { UI.toast('Only drive.google.com or docs.google.com links.', { tone: 'bad' }); return; }
+        let folder = sel ? sel.value : '';
+        if (folder === '__new') { folder = String(el.querySelector('#pdf-n').value || '').trim(); if (!folder) { UI.toast('Type the folder name', { tone: 'warn' }); return; } }
+        await UI.busy(b, async () => {
+          const r = await AX.api.call('cbt_admin_test_pdf', url ? 'set' : 'remove', url ? Object.assign({ id: String(t.id), url, label: cur.label || '' }, v85 ? { folder } : {}) : { id: String(t.id) });
+          if (!r || !r.ok) return UI.err(r);
+          close(true); UI.toast(url ? 'PDF link saved' : 'PDF link removed');
+        });
+      } });
+    }
+  });
 }
 })();

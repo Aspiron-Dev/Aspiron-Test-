@@ -354,7 +354,8 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
         rs.folders = (rs.folders || []).concat(FO.map(([id, title], i) => ({ id, series_id: SID, title, sort_order: i, active: true })));
         rs.tests = (rs.tests || []).concat(TX.map(([id, title, folder_id, n], i) => ({ id, series_id: SID, folder_id, title, questions: 45, duration: 45, correct: 4, wrong: 1, attempts: n, best: n ? 10 : null, best_max: n ? 180 : null, sort: i, opens_at: Date.now() - 86400000 * (3 - i) })));
         return J(rs); }
-      if (/rpc\/cbt_test_pdfs/.test(u)) return J({ ok: true, items: Object.fromEntries(TX.map(x => [x[0], { url: 'https://drive.google.com/file/d/' + x[0] + '/view', label: x[1] }])) });
+      if (/rpc\/cbt_test_pdfs/.test(u)) return J({ ok: true, items: Object.fromEntries(TX.map(x => [x[0], { url: 'https://drive.google.com/file/d/' + x[0] + '/view', label: x[1], folder: x[2] ? '' : 'notes and pdfs' }])) });
+      if (/rpc\/cbt_series_meta/.test(u)) { const m = (await q('select public.cbt_series_meta() as r'))[0].r; m.series[SID] = Object.assign(m.series[SID] || {}, { o: ['Cumulative', '<b>'] }); return J(m); }
       return rpcRoute(r); });
     await p10.goto(BASE + 'index.html'); await codeScreen(p10); await p10.fill('#ph', '9000000002'); await p10.fill('#cd', 'BBBB2222'); await p10.click('#lbtn'); await p10.waitForTimeout(3500);
     const ev = f => p10.evaluate(f);
@@ -367,7 +368,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     ok(Object.values(lb).every(x => x[1]), 'Series tests: the button label fits at 360 px');
     await ev(() => { const r = document.getElementById('v3host').shadowRoot; r.querySelector('[data-a="xt"][data-v="r"]').click(); }); await p10.waitForTimeout(1500);
     const fd = await ev(() => { const r = document.getElementById('v3host').shadowRoot; return [...r.querySelectorAll('[data-a="resOpen"]')].map(b => b.querySelector('b').textContent + ':' + b.querySelector('small').textContent); });
-    ok(fd.join('|') === 'Notes and PDFs:1 file|Problem series:1 file|Cumulative:1 file|Other tests:1 file', 'Resources: one grid; answer keys in the test folders, in the admin\'s order (' + fd.join('|') + ')');
+    ok(fd.join('|') === 'Cumulative:1 file|Notes and PDFs:2 files|Problem series:1 file', 'Resources: the admin\'s folder order first; a PDF in the folder the admin chose (' + fd.join('|') + ')');
     await ev(() => { const r = document.getElementById('v3host').shadowRoot; r.querySelector('[data-a="resOpen"][data-k="cumulative"]').click(); }); await p10.waitForTimeout(1500);
     const ins = await ev(() => { const r = document.getElementById('v3host').shadowRoot; return [...r.querySelectorAll('.rs3r[data-a="pdfOpen"]')].map(b => b.dataset.id); });
     ok(ins.length === 1 && ins[0] === 'e0000000-0000-0000-0000-000000000002', 'Resources: a folder opens its own PDFs (' + ins.join(',') + ')');
