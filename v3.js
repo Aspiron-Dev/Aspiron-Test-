@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=78;
+const V3VER=79;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -190,8 +190,18 @@ function openSheet(h){sheet.onclick=null;sheet.innerHTML='<div class="grab"></di
 let STK=[],scr,undT=0;
 const top=()=>STK[STK.length-1],scrOpen=()=>STK.length>0;
 function drawScr(dir){const v=top();if(!v)return;$('#scrT').textContent=v.t;$('#scrS').textContent=v.s||'';$('#scrR').innerHTML=v.right?v.right():'';
-  $('#scrB').innerHTML=`<div class="scr-in${dir?' '+dir:''}">${v.html()}</div>`;v.after&&v.after()}
-function push(v){if(popIgnore){settled(()=>push(v));return}const was=STK.length>0;STK.push(v);try{history.pushState({v3s:STK.length},'',location.href)}catch(e){}
+  $('#scrB').innerHTML=`<div class="scr-in${dir?' '+dir:''}">${v.html()}</div>`;v.after&&v.after();entr($('#scrB'))}
+/* Entrance: a tap (open a page, change a tab or a group) arms it; the first drawn content (no skeleton) within 2 s plays it
+   once: cards rise one after another (the first 8 on screen), a series tab slides in from its side. Data that arrives
+   later redraws without any animation, so nothing moves under the finger. Off with reduced motion. */
+let ENT=0,ENTD='';
+const arm=d=>{if(RM)return;ENT=Date.now();ENTD=d||''};
+const ENTS='.sp-pane>.tbar,.sp-pane>.promo,.sp-pane .stack>.tc3,.sp-pane .rs3,.rs3h,.rs3r,.sp-pane>.card,.sp-pane>.stack>.card,.sp-pane .ann3,.list>.card,.list>article,.tt2,.sec>.card,.scr-in>.card,.scr-in>.stack>.card';
+function entr(root){if(!ENT||!root)return;if(Date.now()-ENT>2000){ENT=0;return}if(root.querySelector('.sk'))return;ENT=0;
+  const pane=root.querySelector('.sp-pane');if(pane&&ENTD){pane.style.setProperty('--tx',ENTD==='l'?'-16px':'16px');pane.classList.add('tabin')}ENTD='';
+  const H=window.innerHeight;let i=0;root.querySelectorAll(ENTS).forEach(el=>{if(i>=8||el.classList.contains('rv')||(el.parentElement&&el.parentElement.closest('.ent')))return;
+    if(el.getBoundingClientRect().top>H)return;el.style.setProperty('--e',i++);el.classList.add('ent')})}
+function push(v){if(popIgnore){settled(()=>push(v));return}const was=STK.length>0;STK.push(v);arm();try{history.pushState({v3s:STK.length},'',location.href)}catch(e){}
   drawScr(!RM?'fwd':'');try{pstSync()}catch(e){}$('#scrB').scrollTop=0;if(!scr.classList.contains('open')){scr.classList.add('open');scr.setAttribute('aria-hidden','false');clearTimeout(undT);undT=setTimeout(()=>{if(STK.length)$('#app3').classList.add('under')},260)}setTimeout(()=>$('#scrBack').focus({preventScroll:true}),60)}
 function pop(){const v=STK.pop();v&&v.leave&&v.leave();if(STK.length){drawScr(RM?'':'bwd')}else{clearTimeout(undT);$('#app3').classList.remove('under');scr.classList.remove('open');scr.setAttribute('aria-hidden','true');$('#scrB').innerHTML='';try{pstSync()}catch(e){}}}
 function back(){if(!STK.length)return;history.back()}
@@ -284,8 +294,8 @@ addEventListener('keydown',e=>{if(!booted||INTEST||!document.body.classList.cont
 function syncDock(){try{deskSync()}catch(e){}dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab));dock.querySelectorAll('button').forEach(b=>{const on=b.dataset.tab===S.tab;b.classList.toggle('on',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')})}
 let timers=[];
 const every=(fn,ms)=>{const t=setInterval(fn,ms);timers.push(t);return t};
-function render(anim){timers.forEach(clearInterval);timers=[];main.dataset.tab=S.tab;try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please pull down to refresh, or tell us from Help.</p></div>`}
-  main.classList.remove('in','swl','swr');if(swGhost){const g=swGhost;swGhost=null;main.style.transition='';main.style.transform='';dock&&dock.classList.remove('swp');requestAnimationFrame(()=>g.remove())}else if(anim&&!RM){void main.offsetWidth;main.classList.add(SWD==='l'?'swl':SWD==='r'?'swr':'in')}SWD='';try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);reveal(main)}
+function render(anim){timers.forEach(clearInterval);timers=[];main.dataset.tab=S.tab;if(anim&&S.tab==='test')arm();try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please pull down to refresh, or tell us from Help.</p></div>`}
+  main.classList.remove('in','swl','swr');if(swGhost){const g=swGhost;swGhost=null;main.style.transition='';main.style.transform='';dock&&dock.classList.remove('swp');requestAnimationFrame(()=>g.remove())}else if(anim&&!RM){void main.offsetWidth;main.classList.add(SWD==='l'?'swl':SWD==='r'?'swr':'in')}SWD='';try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);if(S.tab==='test')entr($('#tBody'));reveal(main)}
 /* content below the first screen fades up into place as it scrolls into view (once; nothing hides if the browser cannot) */
 let rvIO=null;
 function reveal(r){if(RM||!r||!('IntersectionObserver' in window))return;
@@ -676,7 +686,7 @@ function storeView(){
    `<a class="btn lg ghost" href="store.html">${ic('right',16)}Open the full store</a>`}
 
 VIEW.test=()=>poster()+`<div id="tBody" class="stack" style="gap:var(--gap)">${storeView()}</div>`;
-function drawT(){const b=$('#tBody');if(!b)return;b.innerHTML=storeView();const n=tfCount(),fb=$('[data-a="tFilter"]');if(fb){fb.className='fb'+(n?' on':'');fb.innerHTML=ic('filter',20)+(n?`<b>${n}</b>`:'')}const x=$('[data-a="tqClear"]');x&&(x.hidden=!TQ.q);const t=$('.tt2');t&&(t.outerHTML=tabs2());autoRail('#tbRail','#tbRailD');reveal(b);lastQ=-1;pstSync()}
+function drawT(){const b=$('#tBody');if(!b)return;b.innerHTML=storeView();entr(b);const n=tfCount(),fb=$('[data-a="tFilter"]');if(fb){fb.className='fb'+(n?' on':'');fb.innerHTML=ic('filter',20)+(n?`<b>${n}</b>`:'')}const x=$('[data-a="tqClear"]');x&&(x.hidden=!TQ.q);const t=$('.tt2');t&&(t.outerHTML=tabs2());autoRail('#tbRail','#tbRailD');reveal(b);lastQ=-1;pstSync()}
 AFTER.test=()=>{loadMeta();const q=$('#tq');q.addEventListener('input',()=>{TQ.q=q.value;drawT()});autoRail('#tbRail','#tbRailD');loadExtras();loadLook();loadPC();pstSync(true);const pi=$('#pst img');pi&&!pi.complete&&pi.addEventListener('load',()=>pstSync(true),{once:true});
   /* at most one try a minute: with no banners (or no network) the redraw below used to start the next load at once,
      an endless loop of requests and redraws that made the Tests page stutter */
@@ -755,7 +765,7 @@ function seriesPage(o){const x=o.item,sid=o.sid,s=sid&&sOf(sid);return {t:(x||s|
    ${x&&!sid?`<div class="buybar"><span>${priceH(x)}</span>${actH(x)}</div>`:''}`}}
 A.xp=el=>{const x=(STORE||[]).find(i=>i.id===el.dataset.id);if(!x)return;loadExtras();loadMeta();const sid=owned(x)||preview(x);TQ.xt='d';TQ.sf='all';TQ.tf='all';TQ.ts='all';TQ.plan=null;closeLayer();push(sid?ownedPage(sid):seriesPage({item:x,sid:null}))};
 A.openSD=el=>{const sid=el.dataset.id;if(!sOf(sid))return;loadExtras();loadMeta();if(STORE===null)loadStore();TQ.xt=el.dataset.t||'r';TQ.tf='all';TQ.ts='all';TQ.plan=null;closeLayer();push(ownedPage(sid))};
-A.xt=el=>{TQ.xt=el.dataset.v;redraw();requestAnimationFrame(()=>{try{const b=$('.utabs .on');if(b)b.scrollIntoView({inline:'center',block:'nearest'})}catch(e){}})};
+A.xt=el=>{const o=UT.findIndex(t=>t[0]===TQ.xt),n=UT.findIndex(t=>t[0]===el.dataset.v);if(o!==n)arm(n<o?'l':'r');TQ.xt=el.dataset.v;redraw();requestAnimationFrame(()=>{try{const b=$('.utabs .on');if(b)b.scrollIntoView({inline:'center',block:'nearest'})}catch(e){}})};
 A.sf=el=>{TQ.sf=el.dataset.v;redraw()};
 A.oldSeries=el=>openSeriesAny(el.dataset.id,'r');   // the series' folders, tests, notes and PDFs in the new design
 A.toStore=()=>{closeLayer();unwind(()=>{if(S.tab==='test'){scrollTo({top:0,behavior:RM?'auto':'smooth'});return}go('test')})};
@@ -860,9 +870,9 @@ function spTests(sid){const all=testsOf(sid),F=(C().folders||[]).filter(f=>f.ser
   ${P&&/^data:image\//.test(P)?`${pu?`<a class="promo" href="${esc3(pu)}"${/^https:/.test(pu)?' target="_blank" rel="noopener noreferrer"':''}>`:'<div class="promo">'}<img src="${esc3(P)}" alt="">${pu?'</a>':'</div>'}`:''}
   ${L.length?TORD.map(([k,h])=>{const g=by(k);return g.length?`<div class="stack" style="gap:12px"><p class="gh">${h} <span>${g.length}</span></p>${g.map(tCard).join('')}</div>`:''}).join('')
    :`<div class="card empty"><span class="ti">${ic('tests',22)}</span><b>No tests here</b><p>${all.length?'Try another group or filter.':'Tests of this series will appear here.'}</p>${TQ.ts!=='all'||TQ.tf!=='all'?'<button class="btn sm ghost" data-a="tfClear">Show all tests</button>':''}</div>`}`}
-A.tf=el=>{TQ.tf=el.dataset.v;redraw()};A.tfClear=()=>{TQ.tf='all';TQ.ts='all';redraw()};
+A.tf=el=>{if(TQ.tf!==el.dataset.v)arm();TQ.tf=el.dataset.v;redraw()};A.tfClear=()=>{arm();TQ.tf='all';TQ.ts='all';redraw()};
 A.tsF=()=>openSheet(`<h2 id="sheetT">Show tests</h2><div>${TSF.map(f=>`<button class="opt${TQ.ts===f[0]?' on':''}" data-a="tsPick" data-v="${f[0]}"><div><b>${f[1]}${f[0]==='all'?' (default)':''}</b></div><span class="ck">${ic('check')}</span></button>`).join('')}</div>`);
-A.tsPick=el=>{TQ.ts=el.dataset.v;closeLayer();redraw()};
+A.tsPick=el=>{if(TQ.ts!==el.dataset.v)arm();TQ.ts=el.dataset.v;closeLayer();redraw()};
 A.syl=el=>{const t=tOf(el.dataset.id),x=((META||{}).syl||{})[el.dataset.id];if(!x)return;openSheet(`<h2 id="sheetT">Syllabus</h2><p class="sub">${esc3(t?t.title:'')}</p><p style="font-size:15px;line-height:1.7;white-space:pre-wrap">${esc3(x)}</p>`)};
 /* Reviews: the series' reviews and the student's own */
 function spRev(sid){const it=itemOfSeries(sid),ok=sOk(sOf(sid));return `${ok?`<button class="btn lg ghost" data-a="rvWrite" data-id="${esc3(sid)}">${ic('star',17)}Write or edit your review</button>`:`<p class="hint">${ic('lock',14)} Only students who bought this series can write a review.</p>`}${rvBlock(it)}`}

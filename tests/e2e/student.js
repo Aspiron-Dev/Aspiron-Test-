@@ -372,6 +372,11 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     await ev(() => { const r = document.getElementById('v3host').shadowRoot; r.querySelector('[data-a="resOpen"][data-k="cumulative"]').click(); }); await p10.waitForTimeout(1500);
     const ins = await ev(() => { const r = document.getElementById('v3host').shadowRoot; return [...r.querySelectorAll('.rs3r[data-a="pdfOpen"]')].map(b => b.dataset.id); });
     ok(ins.length === 1 && ins[0] === 'e0000000-0000-0000-0000-000000000002', 'Resources: a folder opens its own PDFs (' + ins.join(',') + ')');
+    // entrance animation: a tab tap plays it once; nothing replays afterwards (data redraws stay still)
+    await ev(() => { const r = document.getElementById('v3host').shadowRoot; window.__an = 0; r.addEventListener('animationstart', e => { if (/entUp|tabIn/.test(e.animationName)) window.__an++; }); r.querySelector('#scrBack').click(); }); await p10.waitForTimeout(900);
+    await ev(() => { window.__an = 0; document.getElementById('v3host').shadowRoot.querySelector('[data-a="xt"][data-v="t"]').click(); }); await p10.waitForTimeout(900);
+    const an1 = await ev(() => window.__an); await p10.waitForTimeout(2500); const an2 = await ev(() => window.__an);
+    ok(an1 > 0 && an2 === an1, 'Series page: a tab tap plays the entrance once, nothing replays later (' + an1 + ', ' + an2 + ')');
     ok(!e10.length, 'no page errors (folders, re-attempt) ' + e10.join(' | ')); await c10.close(); }
   // the phone's Back button closes an open sheet or the menu first, never the page behind it
   await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
