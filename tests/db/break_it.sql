@@ -1597,6 +1597,68 @@ select pg_temp.chk('42j V2 a normal renewal of a phone''s own link still works',
 select pg_temp.chk('42k V2 a secret key made only of "=" is refused',
   :'v2k'::jsonb->>'error' = 'sub' and not exists (select 1 from public.cbt_push_subs where endpoint = 'https://fcm.googleapis.com/fcm/send/v2-z'));
 
+-- ===== 43. V3: database rules on results, students and tests (supabase_v84_table_checks.sql) =====
+reset role;
+create or replace function pg_temp.refused(p_sql text) returns boolean language plpgsql as $$
+begin
+  execute p_sql;
+  raise exception 'went through';
+exception when check_violation then return true;
+          when others then if sqlerrm = 'went through' then return false; end if; raise;
+end $$;
+create or replace function pg_temp.goes(p_sql text) returns boolean language plpgsql as $$
+declare n int;
+begin execute p_sql; get diagnostics n = row_count; return n = 1;
+exception when others then return false; end $$;
+select pg_temp.chk('43a V3 every rule of v84 is in the database',
+  (select count(*) from pg_constraint where conname like 'v84\_%' and connamespace = 'cbt_private'::regnamespace) = 13);
+select pg_temp.chk('43b V3 results: negative counts, negative or huge time, a 100,000-character client id and huge answers are refused',
+  pg_temp.refused($q$update cbt_private.results set correct = -1 where id = (select id from cbt_private.results limit 1)$q$)
+  and pg_temp.refused($q$update cbt_private.results set wrong = -5 where id = (select id from cbt_private.results limit 1)$q$)
+  and pg_temp.refused($q$update cbt_private.results set used_seconds = -1 where id = (select id from cbt_private.results limit 1)$q$)
+  and pg_temp.refused($q$update cbt_private.results set used_seconds = 999999 where id = (select id from cbt_private.results limit 1)$q$)
+  and pg_temp.refused($q$update cbt_private.results set client_id = repeat('z', 100000) where id = (select id from cbt_private.results limit 1)$q$)
+  and pg_temp.refused($q$update cbt_private.results set answers = (select jsonb_object_agg(g::text, 1) from generate_series(1, 30000) g) where id = (select id from cbt_private.results limit 1)$q$)
+  and pg_temp.refused($q$update cbt_private.results set max_score = -4 where id = (select id from cbt_private.results limit 1)$q$));
+select pg_temp.chk('43c V3 students: unknown status (e.g. "admin"), a bad mobile, a 100,000-character name, negative counts, 51 devices are refused',
+  pg_temp.refused($q$update cbt_private.students set status = 'admin' where mobile = '9000000002'$q$)
+  and pg_temp.refused($q$update cbt_private.students set mobile = '12345' where mobile = '9000000002'$q$)
+  and pg_temp.refused($q$update cbt_private.students set mobile = '90000000ab' where mobile = '9000000002'$q$)
+  and pg_temp.refused($q$update cbt_private.students set name = repeat('a', 100000) where mobile = '9000000002'$q$)
+  and pg_temp.refused($q$update cbt_private.students set fail_count = -1 where mobile = '9000000002'$q$)
+  and pg_temp.refused($q$update cbt_private.students set max_devices = 999 where mobile = '9000000002'$q$)
+  and pg_temp.refused($q$update cbt_private.students set devices = (select array_agg('d' || g) from generate_series(1, 51) g) where mobile = '9000000002'$q$)
+  and pg_temp.refused($q$insert into cbt_private.students (name, mobile, status) values ('X', '9123456780', 'paid')$q$));
+select pg_temp.chk('43d V3 tests: zero or huge duration, negative marks (e.g. -1 that would ADD a mark), negative question count, data that is not a list are refused',
+  pg_temp.refused($q$update cbt_private.tests set duration = 0 where id = 'aaaaaaaa-0000-0000-0000-000000000004'$q$)
+  and pg_temp.refused($q$update cbt_private.tests set duration = 100000 where id = 'aaaaaaaa-0000-0000-0000-000000000004'$q$)
+  and pg_temp.refused($q$update cbt_private.tests set wrong_marks = -1 where id = 'aaaaaaaa-0000-0000-0000-000000000004'$q$)
+  and pg_temp.refused($q$update cbt_private.tests set correct_marks = -4 where id = 'aaaaaaaa-0000-0000-0000-000000000004'$q$)
+  and pg_temp.refused($q$update cbt_private.tests set question_count = -1 where id = 'aaaaaaaa-0000-0000-0000-000000000004'$q$)
+  and pg_temp.refused($q$update cbt_private.tests set data = '{"q":1}' where id = 'aaaaaaaa-0000-0000-0000-000000000004'$q$));
+select pg_temp.chk('43e V3 normal values still go in (approved / pending / blocked, 0 negative marks, 600-minute test, empty answers)',
+  pg_temp.goes($q$update cbt_private.students set status = 'blocked' where mobile = '9000000002'$q$)
+  and pg_temp.goes($q$update cbt_private.students set status = 'approved' where mobile = '9000000002'$q$)
+  and pg_temp.goes($q$update cbt_private.tests set wrong_marks = 0, duration = 600 where id = 'aaaaaaaa-0000-0000-0000-000000000004'$q$)
+  and pg_temp.goes($q$update cbt_private.tests set wrong_marks = 1, duration = 30 where id = 'aaaaaaaa-0000-0000-0000-000000000004'$q$));
+-- old data that already breaks a rule: that rule is skipped and reported, nothing is changed, the rest stays
+alter table cbt_private.tests drop constraint if exists v84_tests_marks;
+insert into cbt_private.tests (id, series_id, title, duration, data, question_count, active, practice, wrong_marks)
+  values ('aaaaaaaa-0000-0000-0000-0000000008b1', '22222222-2222-2222-2222-222222222222', 'Old test with -1', 30, '[]', 0, false, true, -1);
+\i supabase_v84_table_checks.sql
+select pg_temp.chk('43f V3 a rule that old rows break is skipped and reported (1 row), the old row is not changed, the other rules are already there',
+  (select result like 'SKIPPED: old rows%' and bad_rows = 1 from v84_report where rule = 'v84_tests_marks')
+  and (select count(*) from v84_report where result = 'already there') = 12
+  and (select wrong_marks from cbt_private.tests where id = 'aaaaaaaa-0000-0000-0000-0000000008b1') = -1
+  and not exists (select 1 from pg_constraint where conname = 'v84_tests_marks'));
+select pg_temp.chk('43g V3 the old row can still be changed (other rules hold)',
+  pg_temp.goes($q$update cbt_private.tests set title = 'Old test renamed' where id = 'aaaaaaaa-0000-0000-0000-0000000008b1'$q$));
+delete from cbt_private.tests where id = 'aaaaaaaa-0000-0000-0000-0000000008b1';
+\i supabase_v84_table_checks.sql
+select pg_temp.chk('43h V3 once the old row is fixed, running the file again adds the skipped rule',
+  (select result from v84_report where rule = 'v84_tests_marks') = 'added'
+  and (select count(*) from pg_constraint where conname like 'v84\_%' and connamespace = 'cbt_private'::regnamespace) = 13);
+
 -- ===== report =====
 \t off
 \a

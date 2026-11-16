@@ -131,6 +131,15 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
   chapter list covers.
 - Read only: no table is created or changed. A student sees only their own numbers.
 
+## Database rules on results, students and tests (`supabase_v84_table_checks.sql`, review V3)
+- 13 rules in the database itself (a second wall behind the functions): no negative counts, marks or times, no unknown
+  student status (only pending / approved / blocked), a mobile of 10 digits, and wide size limits on text and answers.
+- Negative marks are typed as a positive number in the test editor (1 for −1); a −1 there is now refused, because it
+  would ADD a mark for every wrong answer.
+- **Setup:** run `supabase_v84_table_checks.sql` once (after v83). The table at the end must say *added* on every row.
+  A rule that old rows already break is *skipped* (nothing is changed or deleted) and the table shows how many rows;
+  send that table to your developer. Busy during a live test? Run it again later.
+
 ## Notifications: only the student or the phone itself (`supabase_v83_push_owner.sql`, review V2)
 - A phone's notification link can be turned off or moved only by the student it belongs to, or by the phone that made
   it (it has the link's secret key; the app always sends it). Someone who only knows a saved link changes nothing.
