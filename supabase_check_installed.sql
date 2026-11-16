@@ -29,3 +29,11 @@ select 'supabase_v71_refer_code.sql' as file, case when pg_get_functiondef('cbt_
 
 -- v73 makes no function: 'ok' when its one-time step has run
 select 'supabase_v73_contacts.sql' as file, case when exists (select 1 from cbt_private.settings where key = 'contacts_perm_seeded') then 'ok' else 'MISSING — run supabase_v35_admin_team.sql, then this file' end as status;
+
+-- v74 changes existing functions: 'ok' when the email/Google login must type the access code once (review F-02)
+select 'supabase_v74_login_code_once.sql' as file, case when to_regprocedure('public.student_signin(text)') is not null
+  and pg_get_functiondef('public.student_signin(text)'::regprocedure) like '%need_code%' then 'ok' else 'MISSING — run this file' end as status;
+
+-- v81 makes no function: 'ok' when the minute job sends the cron key (review F-05; then set CRON_KEY in send-push)
+select 'supabase_v81_cron_key.sql' as file, case when exists (select 1 from cbt_private.settings where key = 'cron_key')
+  and exists (select 1 from cron.job where jobname = 'cbt-test-alerts' and command like '%x-cron-key%') then 'ok' else 'MISSING — run this file' end as status;

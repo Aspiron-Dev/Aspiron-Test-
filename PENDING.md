@@ -32,6 +32,9 @@ Live database Claude ko nahi dikhta. Jo kaam pehle hi ho chuka ho, use seedha ti
 - [ ] **1.12 Owner profile + hidden phone numbers:** Supabase → SQL Editor: `supabase_v72_owner_profile.sql` → `supabase_v35_admin_team.sql` → `supabase_v73_contacts.sql`.
 - [x] **1.13 Access check (owner only):** Supabase → SQL Editor: `supabase_v80_access_check.sql` → `supabase_v35_admin_team.sql` (done, with the review fix).
   *Check:* Team & access → a member has a "Contact details" row; an account without it sees numbers as `98••• ••210`.
+- [ ] **1.14 send-push "due" ke liye secret (F-05):** SQL Editor → `supabase_v81_cron_key.sql` → `select value from cbt_private.settings where key = 'cron_key';`
+  → value copy karo → Edge Functions → Secrets → `CRON_KEY` → `send-push` redeploy (Verify JWT off). **Order zaroori hai:** pehle SQL, phir secret.
+  *Check:* Admin → Messaging → Check setup OK, aur "LIVE now" alert aata hai.
 - [ ] **1.7 R11, backup ke liye read-only login:** `supabase_backup_role.sql` chalao + GitHub secret `SUPABASE_BACKUP_DB_URL` (`BACKUP.md` → "Read-only login").
 - [ ] **1.8 R7, purani Supabase keys band karo:** `SECURITY_RUNBOOK.md` §7 (naya secret key → test notification → tab legacy keys off).
   Notification test kiye bina keys band mat karna.

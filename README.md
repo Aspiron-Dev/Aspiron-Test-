@@ -148,6 +148,26 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - Home shows only ONE test of the chosen series: the one live now, else the next one. The one after it shows once
   this one is over ("N more in the schedule").
 
+## Security review fixes, Nov 2026 (`supabase_v81_cron_key.sql`, `send-push` CRON_KEY)
+
+- **Section names can no longer run as code (F-04):** section / topic names in the exam screen (both designs), the
+  results and mistakes filters and the PYQ topic list are put into their buttons as escaped text
+  (`esc(JSON.stringify(…))`). Test: `tests/e2e/v3_xss.js` presses section buttons whose name holds `&quot;`.
+- **send-push "due" only for the database's minute job (F-05):** `supabase_v81_cron_key.sql` makes a random key in
+  `cbt_private.settings` (`cron_key`), and the minute job sends it as `x-cron-key`. When the Edge Function secret
+  `CRON_KEY` is set to the same value, other callers of mode `due` get 401. Until it is set, everything works as before.
+  - **Owner steps, in this order:**
+    1. Run `supabase_v81_cron_key.sql`.
+    2. Run `select value from cbt_private.settings where key = 'cron_key';` and copy the value.
+    3. Edge Functions → Secrets → add `CRON_KEY` with that value, then redeploy `send-push` (Verify JWT off).
+    4. Check: mode `info` shows `secrets.CRON_KEY: true`, and a "LIVE now" alert still arrives.
+  - If the secret is set **before** step 1, LIVE-now / result alerts stop until step 1 is run.
+- **GitHub Actions pinned to commit SHAs (F-08)** (`# vX.Y.Z` comments; Dependabot keeps updating them).
+- **`supabase_v49_v50_all_in_one.sql` is an old file (F-13):** on a database with v62 or later it stops with an error,
+  because its copy of v35 has no admin-key check. Run `v49_answer_sheet`, `v50_rank_order` and `v35_admin_team` instead.
+- New in the install order: `… → v80_access_check → v35_admin_team → v81_cron_key`. `supabase_check_installed.sql`
+  now also shows v74 and v81.
+
 ## "Result is out" notification (`supabase_v79_result_alerts.sql` + `send-push` with `result_alerts`)
 
 - A student who submitted a live test sees it under **Test history → Waiting for result** (and on the Home *Attempted* card)

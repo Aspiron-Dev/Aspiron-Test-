@@ -35,7 +35,7 @@ let MKQ='';
 function mkHead(){
   const c=MK.counts,tot=c.wrong+c.skipped,all=tot+c.mastered,mp=all?Math.round(c.mastered*100/all):0,td=rvToday();
   const kb=(k,t,n)=>`<button class="${MK.kind===k?'on':''}" onclick="mkKind('${k}')">${t}${n!=null?` <small>${n}</small>`:''}</button>`;
-  const sb=(k,t)=>`<button class="chip ${MK.sec===k?'pri':''}" onclick="mkSec(${JSON.stringify(k).replace(/"/g,'&quot;')})">${esc(t)}</button>`;
+  const sb=(k,t)=>`<button class="chip ${MK.sec===k?'pri':''}" onclick="mkSec(${esc(JSON.stringify(k))})">${esc(t)}</button>`;
   return `<div class="card nbhero"><div class="nbring">${ring(mp,86,8,'#fff')}<span><b>${mp}%</b><small>mastered</small></span></div>
    <div class="grow"><div class="sm" style="opacity:.85">Mistake notebook</div><div class="nbbig">${tot} <span>to revise</span></div>
    <div class="nbst"><span>✗ ${c.wrong} wrong</span><span>– ${c.skipped} skipped</span><span>✓ ${c.mastered} mastered</span></div></div></div>

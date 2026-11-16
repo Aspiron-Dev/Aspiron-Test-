@@ -106,7 +106,7 @@ function palHtml(){
 function draw(){
   const n=T.questions.length,q=T.questions[P.cur],a=P.ans[P.cur],lock=!!T.lock_back;
   P.vis[P.cur]=1;
-  const secTabs=SEC.has?`<div class="stabs">${SEC.names.map(s=>`<button class="${s===SEC.of(P.cur)?'on':''}" ${lock?'disabled':''} onclick="goSec(${JSON.stringify(s).replace(/"/g,'&quot;')})">${esc(SEC.label(s))}</button>`).join('')}</div>`:'';
+  const secTabs=SEC.has?`<div class="stabs">${SEC.names.map(s=>`<button class="${s===SEC.of(P.cur)?'on':''}" ${lock?'disabled':''} onclick="goSec(${esc(JSON.stringify(s))})">${esc(SEC.label(s))}</button>`).join('')}</div>`:'';
   $('#app').innerHTML=(`<div class="cbtbar"><div class="tb-l"><div class="tb-title">${esc(T.title)}</div><div class="sm mut cand">${ic('user',13)} ${esc(AUTH.name||'')}</div></div>
    <div class="timer" id="tm">${ic('clock')}<span>--:--</span></div><button class="btn danger sm" onclick="submitAsk()">Submit</button></div>${secTabs}
    <div class="tlayout"><section class="card qcard"><div class="qmeta"><b>Question ${P.cur+1} <span class="mut" style="font-weight:500">of ${n}</span></b><span class="chip ok">+${T.correct}</span><span class="chip warn">−${T.wrong}</span>${P.mark[P.cur]?'<span class="chip pri">Marked</span>':''}<span style="flex:1"></span>${bmBtn(P.tid,P.cur)}${rpBtn(P.tid,P.cur)}</div>

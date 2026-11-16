@@ -81,6 +81,44 @@ async function rpcRoute(route) {
     ok(!errs.length, tag + ' no page errors ' + errs.join(' | '));
     await c.close();
   }
+  // Section names go into the section buttons' onclick (exam screen, both designs). A name holding the text &quot;
+  // must stay a plain string when the browser decodes the attribute (it used to close the string and run).
+  {
+    const TID = 'aaaaaaaa-0000-0000-0000-000000000004';
+    const SX = 'Physics&quot;);window.__x=(window.__x||0)+1;//';
+    await q(`update cbt_private.tests set question_count = 2, data = jsonb_build_array(
+               jsonb_build_object('q', 'Q1', 'options', jsonb_build_array('a', 'b', 'c', 'd'), 'answer', 1, 'sec', $1::text),
+               jsonb_build_object('q', 'Q2', 'options', jsonb_build_array('a', 'b', 'c', 'd'), 'answer', 2, 'sec', 'Chemistry'))
+             where id = $2`, [SX, TID]);
+    await q(`delete from cbt_private.sessions where test_id = $1`, [TID]);
+    await q(`update cbt_private.students set fail_count = 0, locked_until = 0, devices = '{}' where mobile = '9000000002'`);
+    const c = await br.newContext({ viewport: { width: 390, height: 844 } });
+    const p = await c.newPage(); const errs = [];
+    p.on('pageerror', e => errs.push(e.message));
+    await p.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort());
+    await p.route(SUPA + '/rest/v1/rpc/**', rpcRoute);
+    await p.goto(BASE + 'index.html'); await p.waitForSelector('#lp');
+    await p.evaluate(() => { lpLogin(); login('code'); }); await p.waitForSelector('#ph');
+    await p.fill('#ph', '9000000002'); await p.fill('#cd', 'BBBB2222'); await p.click('#lbtn'); await p.waitForTimeout(3500);
+    await p.evaluate(id => { location.hash = '#/'; startTest(id); }, TID); await p.waitForTimeout(2500);
+    const clickAll = async sel => {
+      const n = await p.$$eval(sel, b => b.length);
+      for (let i = 0; i < n; i++) { await p.evaluate(([s, k]) => { const b = document.querySelectorAll(s)[k]; if (b) b.click(); }, [sel, i]); await p.waitForTimeout(150); }
+      return n;
+    };
+    const n3 = await clickAll('.x3sec button');
+    ok(n3 >= 2, 'new exam screen: section buttons drawn and pressed (' + n3 + ')');
+    await p.evaluate(() => { document.body.classList.remove('v3on'); draw(); });   // the classic exam screen, same engine
+    const n1 = await clickAll('.stabs button');
+    ok(n1 >= 2, 'classic exam screen: section buttons drawn and pressed (' + n1 + ')');
+    const ran = await p.evaluate(() => window.__x || 0);
+    ok(ran === 0, 'a section name with &quot; never runs as code (' + ran + ')');
+    ok(await p.evaluate(() => SEC.names.length === 2 && P.cur === 1), 'sections still work: the last button (Chemistry) opened question 2');
+    await p.evaluate(() => { document.querySelectorAll('.stabs button')[0].click(); });
+    ok(await p.evaluate(() => P.cur === 0), 'the section with the odd name still opens its own question');
+    ok(!errs.length, 'section buttons: no page errors ' + errs.join(' | '));
+    await c.close();
+  }
   await br.close(); server.close(); await db.end();
   console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

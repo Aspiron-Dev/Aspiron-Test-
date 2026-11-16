@@ -20,7 +20,7 @@ function rvSol(A){
   const {all,names,hasSec}=A,f=RV.filter,sf=RV.sec||'*',tid=A.rec.test_id;
   const items=all.filter(x=>(f==='all'||x.st===f)&&(!hasSec||sf==='*'||(x.q.sec||'')===sf));
   const fb=(k,t)=>`<button class="${f===k?'on':''}" onclick="setFilter('${k}')">${t}</button>`;
-  const sb=(k,t)=>`<button class="${sf===k?'on':''}" onclick="setSecF(${JSON.stringify(k).replace(/"/g,'&quot;')})">${esc(t)}</button>`;
+  const sb=(k,t)=>`<button class="${sf===k?'on':''}" onclick="setSecF(${esc(JSON.stringify(k))})">${esc(t)}</button>`;
   return `<div class="seg" style="width:100%;display:flex;margin-bottom:12px">${fb('all','All')}${fb('c','Correct')}${fb('w','Wrong')}${fb('s','Skipped')}</div>
    ${hasSec?`<div class="seg" style="margin-bottom:12px">${sb('*','All sections')}${names.map(s=>sb(s,s||'General')).join('')}</div>`:''}
    ${items.map(({q,i,a,t,st})=>`<div class="card rv" id="q${i}"><div class="row" style="margin-bottom:8px"><b>Q${i+1}</b>${st==='c'?'<span class="chip ok">Correct</span>':st==='w'?'<span class="chip" style="background:var(--badSoft);color:var(--bad)">Wrong</span>':'<span class="chip">Skipped</span>'}${q.sec?`<span class="chip">${esc(q.sec)}</span>`:''}${t>0?`<span class="chip">${ic('clock',12)} ${fs(t)}</span>`:''}<span style="flex:1"></span>${tid?bmBtn(tid,i)+rpBtn(tid,i):''}</div>
@@ -149,7 +149,7 @@ async function mkFetch(off){
 function mkHead(){
   const c=MK.counts,tot=c.wrong+c.skipped;
   const kb=(k,t)=>`<button class="${MK.kind===k?'on':''}" onclick="mkKind('${k}')">${t}</button>`;
-  const sb=(k,t)=>`<button class="${MK.sec===k?'on':''}" onclick="mkSec(${JSON.stringify(k).replace(/"/g,'&quot;')})">${esc(t)}</button>`;
+  const sb=(k,t)=>`<button class="${MK.sec===k?'on':''}" onclick="mkSec(${esc(JSON.stringify(k))})">${esc(t)}</button>`;
   return `<div class="card rankc" style="margin-bottom:12px"><div class="rk"><span class="sm">To revise</span><b>${tot}</b><span class="sm">questions</span></div><div class="rkr"><div><b>${c.wrong}</b><span>Wrong</span></div><div><b>${c.skipped}</b><span>Skipped</span></div><div><b>${c.mastered}</b><span>Mastered</span></div></div></div>
   <div class="seg" style="width:100%;display:flex;margin-bottom:10px">${kb('all','All')}${kb('wrong','Wrong')}${kb('skipped','Skipped')}</div>
   ${c.secs.length>1?`<div class="seg" style="margin-bottom:12px">${sb('','All subjects')}${c.secs.map(s=>sb(s.sec,s.sec+' ('+s.n+')')).join('')}</div>`:''}`;

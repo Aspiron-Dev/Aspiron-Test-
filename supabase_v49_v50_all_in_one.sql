@@ -1,4 +1,17 @@
 -- =====================================================================
+--  ⚠️ OLD FILE — DO NOT RUN on a database that already has v62 or later (security review F-13).
+--  Its copy of v35 is older: it makes an admin sign-in WITHOUT the admin page key and a weaker owner lock-out.
+--  Run supabase_v49_answer_sheet.sql, supabase_v50_rank_order.sql and supabase_v35_admin_team.sql instead.
+--  The check below stops with an error on such a database. (Whether the SQL Editor then skips the rest of the
+--  script depends on how it runs it; if anything did run, run supabase_v35_admin_team.sql again at once.)
+-- =====================================================================
+do $guard$ begin
+  if to_regprocedure('public.cbt_admin_login(text, text, text, text, text)') is not null then
+    raise exception 'supabase_v49_v50_all_in_one.sql is an OLD file: do not run it after v62. Run supabase_v35_admin_team.sql instead (and v49 / v50 on their own if needed).';
+  end if;
+end $guard$;
+
+-- =====================================================================
 --  ALL IN ONE: v49 (answer sheet) + v50 (rank order) + v35 (admin permissions, run again)
 --  Run this ONE file once in Supabase → SQL Editor → New query → paste → Run. Safe to run again.
 --  It is the three files below, one after another (nothing else):
