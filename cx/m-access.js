@@ -76,7 +76,9 @@ AX.mod({
 
 AX.css('access', `
 .ac-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:12px}
-.ac-card{display:flex;flex-direction:column;gap:10px;padding:14px 16px}
+.ac-card{display:flex;flex-direction:column;gap:10px;padding:14px 16px;position:relative}
+.ac-h::after{content:'';position:absolute;inset:0;border-radius:inherit}   /* the whole card opens the series */
+.ac-chips{position:relative;z-index:1}
 .ac-card.on{border-color:var(--pri-line);box-shadow:0 0 0 3px color-mix(in srgb,var(--pri) 12%,transparent)}
 .ac-h{display:flex;align-items:center;gap:10px;color:var(--tx);text-decoration:none!important;min-width:0}
 .ac-h b{flex:1;min-width:0;font-size:15.5px}

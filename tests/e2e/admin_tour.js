@@ -154,10 +154,18 @@ async function rpcRoute(route) {
       const acs = await page.$$eval('.ac-card', a => a.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
       ok(acs.some(c => /CHEM Series/.test(c) && /2 students have it/.test(c)) && acs.some(c => /PAID Series/.test(c)) && !acs.some(c => /FREE Series/.test(c)), tag + ' access check: every paid series is listed, the new one too, the free one is not: ' + acs.map(x => x.slice(0, 34)).join(' / '));
       await sh('access');
-      // tapping a number opens that series' students at the top of the screen (on a phone too), with a way back
-      await page.click('.ac-card:has-text("CHEM Series") .ac-chip.bad'); await page.waitForSelector('#ac-rows .ac-row'); await page.waitForTimeout(400);
-      const vis = await page.$eval('#ac-rows .ac-row', e => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; });
-      ok(vis && (await page.$$eval('.ac-card', a => a.length)) === 1 && /access\/33333333-3333-3333-3333-333333333333\/none$/.test(page.url()), tag + ' access check: a tap shows that series\' students on screen, without the other cards');
+      // like on a phone: scrolled down, tap the card (not its title) → that series and its students are on screen at once
+      await page.evaluate(() => scrollTo(0, document.body.scrollHeight)); await page.waitForTimeout(300);
+      const bar = await page.$('.ac-card:has-text("CHEM Series") .ac-bar'), bb = await bar.boundingBox();
+      await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2); await page.waitForSelector('#ac-rows .ac-row'); await page.waitForTimeout(400);
+      const inView = sel => page.$eval(sel, e => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; });
+      ok(await inView('.ac-back') && await inView('#ac-rows .ac-row') && (await page.$$eval('.ac-card', a => a.length)) === 1 && /access\/33333333-3333-3333-3333-333333333333$/.test(page.url()), tag + ' access check: a tap on the card (scrolled down) shows that series\' students on screen, without the other cards');
+      await page.click('.ac-card .ac-chip.bad'); await page.waitForTimeout(400);
+      ok(/\/none$/.test(page.url()) && (await page.$$eval('#ac-rows .ac-row', a => a.length)) === 2, tag + ' access check: a number on the card filters the list');
+      // opening and closing a student does not redraw the list (the place in a long list is kept)
+      await page.evaluate(() => { document.getElementById('ac-rows').dataset.mark = '1'; });
+      await page.click('#ac-rows .ac-row'); await page.waitForSelector('.drawer'); await page.keyboard.press('Escape'); await page.waitForTimeout(500);
+      ok(await page.$eval('#ac-rows', e => e.dataset.mark === '1'), tag + ' access check: closing a student keeps the list as it was');
       await sh('access_open');
       await page.click('.ac-back'); await page.waitForSelector('.ac-card'); await page.waitForTimeout(300);
       ok((await page.$$eval('.ac-card', a => a.length)) >= 2, tag + ' access check: "All series" goes back to every card');
