@@ -52,9 +52,9 @@ select 27, 'supabase_v83_push_owner.sql', case when to_regprocedure('public.cbt_
   and pg_get_functiondef(to_regprocedure('public.cbt_push_save(text,text,text,jsonb,boolean)')) like '%v83: a link already saved%'
   and pg_get_functiondef(to_regprocedure('public.cbt_push_rotate(text,jsonb,text)')) like '%v83: a link already saved for another%' then 'ok' else 'MISSING — run this file' end
 union all
--- v84 makes no function: 'ok' when all 13 database rules are there; a lower number means some were skipped (see the file)
+-- v84 makes no function: 'ok' when all 12 database rules are there; a lower number means some were skipped (see the file)
 select 28, 'supabase_v84_table_checks.sql', case (select count(*) from pg_constraint where conname like 'v84\_%' and connamespace = 'cbt_private'::regnamespace)
-  when 13 then 'ok' when 0 then 'MISSING — run this file'
-  else 'PARTLY — ' || (select count(*) from pg_constraint where conname like 'v84\_%' and connamespace = 'cbt_private'::regnamespace) || ' of 13 rules; run the file again and read its table' end
+  when 12 then 'ok' when 0 then 'MISSING — run this file'
+  else 'PARTLY — ' || (select count(*) from pg_constraint where conname like 'v84\_%' and connamespace = 'cbt_private'::regnamespace) || ' of 12 rules; run the file again and read its table' end
 ) x
 order by n;

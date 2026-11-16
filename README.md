@@ -132,11 +132,12 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - Read only: no table is created or changed. A student sees only their own numbers.
 
 ## Database rules on results, students and tests (`supabase_v84_table_checks.sql`, review V3)
-- 13 rules in the database itself (a second wall behind the functions): no negative counts, marks or times, no unknown
+- 12 rules in the database itself (a second wall behind the functions): no negative counts, marks or times, no unknown
   student status (only pending / approved / blocked), a mobile of 10 digits, and wide size limits on text and answers.
 - Negative marks are typed as a positive number in the test editor (1 for −1); a −1 there is now refused, because it
   would ADD a mark for every wrong answer.
-- **Setup:** run `supabase_v84_table_checks.sql` once (after v83). The table at the end must say *added* on every row.
+- **Setup:** run `supabase_v84_table_checks.sql` once (after v83), at a quiet time when no test is live (sign-ins and
+  submits wait for the few seconds it runs). The table at the end must say *added* on every row.
   A rule that old rows already break is *skipped* (nothing is changed or deleted) and the table shows how many rows;
   send that table to your developer. Busy during a live test? Run it again later.
 

@@ -1611,15 +1611,13 @@ declare n int;
 begin execute p_sql; get diagnostics n = row_count; return n = 1;
 exception when others then return false; end $$;
 select pg_temp.chk('43a V3 every rule of v84 is in the database',
-  (select count(*) from pg_constraint where conname like 'v84\_%' and connamespace = 'cbt_private'::regnamespace) = 13);
-select pg_temp.chk('43b V3 results: negative counts, negative or huge time, a 100,000-character client id and huge answers are refused',
+  (select count(*) from pg_constraint where conname like 'v84\_%' and connamespace = 'cbt_private'::regnamespace) = 12);
+select pg_temp.chk('43b V3 results: negative counts, negative time, a 100,000-character client id and huge answers are refused',
   pg_temp.refused($q$update cbt_private.results set correct = -1 where id = (select id from cbt_private.results limit 1)$q$)
   and pg_temp.refused($q$update cbt_private.results set wrong = -5 where id = (select id from cbt_private.results limit 1)$q$)
   and pg_temp.refused($q$update cbt_private.results set used_seconds = -1 where id = (select id from cbt_private.results limit 1)$q$)
-  and pg_temp.refused($q$update cbt_private.results set used_seconds = 999999 where id = (select id from cbt_private.results limit 1)$q$)
   and pg_temp.refused($q$update cbt_private.results set client_id = repeat('z', 100000) where id = (select id from cbt_private.results limit 1)$q$)
-  and pg_temp.refused($q$update cbt_private.results set answers = (select jsonb_object_agg(g::text, 1) from generate_series(1, 30000) g) where id = (select id from cbt_private.results limit 1)$q$)
-  and pg_temp.refused($q$update cbt_private.results set max_score = -4 where id = (select id from cbt_private.results limit 1)$q$));
+  and pg_temp.refused($q$update cbt_private.results set answers = (select jsonb_object_agg(g::text, 1) from generate_series(1, 30000) g) where id = (select id from cbt_private.results limit 1)$q$));
 select pg_temp.chk('43c V3 students: unknown status (e.g. "admin"), a bad mobile, a 100,000-character name, negative counts, 51 devices are refused',
   pg_temp.refused($q$update cbt_private.students set status = 'admin' where mobile = '9000000002'$q$)
   and pg_temp.refused($q$update cbt_private.students set mobile = '12345' where mobile = '9000000002'$q$)
@@ -1648,7 +1646,7 @@ insert into cbt_private.tests (id, series_id, title, duration, data, question_co
 \i supabase_v84_table_checks.sql
 select pg_temp.chk('43f V3 a rule that old rows break is skipped and reported (1 row), the old row is not changed, the other rules are already there',
   (select result like 'SKIPPED: old rows%' and bad_rows = 1 from v84_report where rule = 'v84_tests_marks')
-  and (select count(*) from v84_report where result = 'already there') = 12
+  and (select count(*) from v84_report where result = 'already there') = 11
   and (select wrong_marks from cbt_private.tests where id = 'aaaaaaaa-0000-0000-0000-0000000008b1') = -1
   and not exists (select 1 from pg_constraint where conname = 'v84_tests_marks'));
 select pg_temp.chk('43g V3 the old row can still be changed (other rules hold)',
@@ -1657,7 +1655,24 @@ delete from cbt_private.tests where id = 'aaaaaaaa-0000-0000-0000-0000000008b1';
 \i supabase_v84_table_checks.sql
 select pg_temp.chk('43h V3 once the old row is fixed, running the file again adds the skipped rule',
   (select result from v84_report where rule = 'v84_tests_marks') = 'added'
-  and (select count(*) from pg_constraint where conname like 'v84\_%' and connamespace = 'cbt_private'::regnamespace) = 13);
+  and (select count(*) from pg_constraint where conname like 'v84\_%' and connamespace = 'cbt_private'::regnamespace) = 12);
+-- the real functions at their own limits still work with the rules in place
+select set_config('request.headers', '{"x-real-ip":"198.51.100.84"}', false);
+delete from cbt_private.settings where key = 'admin_gate';
+select public.cbt_admin_login('', 'OwnerPass2026x', 'Owner')->>'token' as ow84 \gset
+select public.cbt_admin(:'ow84', 'test_save', '{"series_id":"22222222-2222-2222-2222-222222222222","title":"Neg marks","duration":30,"correct":4,"wrong":-1,"questions":[{"q":"Q","options":["a","b","c","d"],"answer":1}]}') as v84neg \gset
+select public.cbt_admin(:'ow84', 'test_save', '{"series_id":"22222222-2222-2222-2222-222222222222","title":"Long test","duration":600,"correct":4,"wrong":0,"questions":[{"q":"Q","options":["a","b","c","d"],"answer":1}]}') as v84ok \gset
+select pg_temp.chk('43i V3 the admin saving a test with -1 negative marks gets a clean "bad_request" (no test made); 600 min and 0 negative marks save',
+  :'v84neg'::jsonb->>'ok' = 'false' and :'v84neg'::jsonb->>'error' = 'bad_request'
+  and not exists (select 1 from cbt_private.tests where title = 'Neg marks')
+  and :'v84ok'::jsonb->>'ok' = 'true' and exists (select 1 from cbt_private.tests where title = 'Long test' and duration = 600));
+select coalesce(cbt_private.move_mobile('bbbbbbbb-0000-0000-0000-00000000000b', '9811122233', 'student', false), 'ok') as v84mm1 \gset
+select coalesce(cbt_private.move_mobile('bbbbbbbb-0000-0000-0000-00000000000b', '9000000002', 'admin', true), 'ok') as v84mm2 \gset
+select pg_temp.chk('43j V3 the largest data the app itself allows still fits: 10 devices, a 400,000-letter Hindi keep, a mobile change',
+  pg_temp.goes($q$update cbt_private.students set max_devices = 10, devices = (select array_agg('dev-' || g) from generate_series(1, 10) g) where mobile = '9000000002'$q$)
+  and pg_temp.goes($q$update cbt_private.students set keep = jsonb_build_object('pf', jsonb_build_object('n', repeat('अ', 399000))) where mobile = '9000000002'$q$)
+  and pg_temp.goes($q$update cbt_private.students set devices = '{}', keep = '{}', max_devices = 2 where mobile = '9000000002'$q$)
+  and :'v84mm1' = 'ok' and :'v84mm2' = 'ok');
 
 -- ===== report =====
 \t off

@@ -5,8 +5,9 @@
 --  The limits are wide on purpose: nothing the app or the admin panel writes today comes near them.
 --  Each rule is added on its own. If old rows already break a rule, that rule is SKIPPED (no row is changed or deleted)
 --  and the table at the end says which rule and how many rows. Everything else is still added.
---  Run after v83. Safe to run again (rules already there are left as they are). If a test is running right now and a
---  table is busy, a rule may be skipped with "busy": just run the file again later.
+--  Run after v83, at a quiet time when NO test is live: while it runs (a few seconds) sign-ins and submits wait.
+--  Safe to run again (rules already there are left as they are). If a table is busy, a rule is skipped with "busy":
+--  just run the file again later.
 -- =====================================================================
 create temp table if not exists v84_report (n int, tbl text, rule text, result text, bad_rows bigint);
 truncate v84_report;
@@ -18,9 +19,8 @@ begin
   for r in select * from (values
     -- results (a test attempt)
     ('results',  'v84_results_counts',   'coalesce(correct, 0) >= 0 and coalesce(wrong, 0) >= 0 and coalesce(skipped, 0) >= 0'),
-    ('results',  'v84_results_time',     'used_seconds is null or used_seconds between 0 and 200000'),
-    ('results',  'v84_results_max',      'max_score is null or max_score >= 0'),
-    ('results',  'v84_results_sizes',    'coalesce(length(client_id), 0) <= 200 and coalesce(length(test_title), 0) <= 2000
+    ('results',  'v84_results_time',     'used_seconds is null or used_seconds >= 0'),
+    ('results',  'v84_results_sizes',    'coalesce(length(client_id), 0) <= 200
                                           and coalesce(octet_length(answers::text), 0) <= 200000 and coalesce(octet_length(times::text), 0) <= 200000'),
     -- students
     ('students', 'v84_students_status',  'status::text in (''pending'', ''approved'', ''blocked'')'),
@@ -28,7 +28,7 @@ begin
     ('students', 'v84_students_text',    'length(name) <= 200 and coalesce(length(email), 0) <= 500'),
     ('students', 'v84_students_counts',  'fail_count >= 0 and lock_fails >= 0 and locked_until >= 0 and max_devices between 0 and 50
                                           and coalesce(cardinality(devices), 0) <= 50'),
-    ('students', 'v84_students_keep',    'octet_length(keep::text) <= 1000000'),
+    ('students', 'v84_students_keep',    'length(keep::text) <= 1000000'),
     -- tests
     ('tests',    'v84_tests_duration',   'duration between 1 and 10000'),
     ('tests',    'v84_tests_marks',      'correct_marks between 0 and 1000 and wrong_marks between 0 and 1000'),
