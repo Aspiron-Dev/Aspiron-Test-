@@ -41,5 +41,20 @@ union all
 -- v82 makes no function: 'ok' when the cron key exists and the minute job sends it (review F-05; then set CRON_KEY in send-push)
 select 25, 'supabase_v82_cron_key.sql', case when exists (select 1 from cbt_private.settings where key = 'cron_key')
   and exists (select 1 from cron.job where jobname = 'cbt-test-alerts' and command like '%x-cron-key%') then 'ok' else 'MISSING — run this file' end
+union all
+-- v81 changes an existing function: 'ok' when submitting a test has the size limits (review V1)
+select 26, 'supabase_v81_submit_limits.sql', case when to_regprocedure('public.cbt_submit(text,text,text,uuid,jsonb,text)') is not null
+  and pg_get_functiondef(to_regprocedure('public.cbt_submit(text,text,text,uuid,jsonb,text)')) like '%v81: the same limit%' then 'ok' else 'MISSING — run this file' end
+union all
+-- v83 changes existing functions: 'ok' when both push functions have the owner check (review V2)
+select 27, 'supabase_v83_push_owner.sql', case when to_regprocedure('public.cbt_push_save(text,text,text,jsonb,boolean)') is not null
+  and to_regprocedure('public.cbt_push_rotate(text,jsonb,text)') is not null
+  and pg_get_functiondef(to_regprocedure('public.cbt_push_save(text,text,text,jsonb,boolean)')) like '%v83: a link already saved%'
+  and pg_get_functiondef(to_regprocedure('public.cbt_push_rotate(text,jsonb,text)')) like '%v83: a link already saved for another%' then 'ok' else 'MISSING — run this file' end
+union all
+-- v84 makes no function: 'ok' when all 12 database rules are there; a lower number means some were skipped (see the file)
+select 28, 'supabase_v84_table_checks.sql', case (select count(*) from pg_constraint where conname like 'v84\_%' and connamespace = 'cbt_private'::regnamespace)
+  when 12 then 'ok' when 0 then 'MISSING — run this file'
+  else 'PARTLY — ' || (select count(*) from pg_constraint where conname like 'v84\_%' and connamespace = 'cbt_private'::regnamespace) || ' of 12 rules; run the file again and read its table' end
 ) x
 order by n;
