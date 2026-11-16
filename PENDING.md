@@ -30,6 +30,7 @@ Live database Claude ko nahi dikhta. Jo kaam pehle hi ho chuka ho, use seedha ti
 - [ ] **1.11 Clean referral code:** Supabase → SQL Editor: `supabase_v71_refer_code.sql` (nothing after it).
   *Check:* a new student's Refer & earn link looks like `store?r=asp48213`.
 - [ ] **1.12 Owner profile + hidden phone numbers:** Supabase → SQL Editor: `supabase_v72_owner_profile.sql` → `supabase_v35_admin_team.sql` → `supabase_v73_contacts.sql`.
+- [ ] **1.13 Access check (owner only):** Supabase → SQL Editor: `supabase_v80_access_check.sql` → `supabase_v35_admin_team.sql` (run again after the review fix; both are safe to repeat).
   *Check:* Team & access → a member has a "Contact details" row; an account without it sees numbers as `98••• ••210`.
 - [ ] **1.7 R11, backup ke liye read-only login:** `supabase_backup_role.sql` chalao + GitHub secret `SUPABASE_BACKUP_DB_URL` (`BACKUP.md` → "Read-only login").
 - [ ] **1.8 R7, purani Supabase keys band karo:** `SECURITY_RUNBOOK.md` §7 (naya secret key → test notification → tab legacy keys off).
