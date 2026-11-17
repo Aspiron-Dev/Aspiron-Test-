@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=89;
+const V3VER=91;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -370,10 +370,10 @@ function seriesHero(){const s=curSeries();
    <div class="band-meta"><span>${k.done} of ${k.n} tests attempted</span><button class="minibtn" data-a="openSD" data-id="${esc3(s.id)}">Open${ic('right',14)}</button></div></div></section>`}
 /* ---------- v89: the shortcut tiles under the series band: Resources and All Tests (both need a series). My Doubts joins them with the Doubts feature.
    Everything else stays in "My study zone". Upgrade plan opens the series' plans when the admin set upgrades for it. ---------- */
-const QK=[['res','Resources','file'],['tests','All Tests','tests']];
+const QK=[['res','Resources','file'],['tests','All Tests','tests'],['doubts','My Doubts','doubt']];
 function quickGrid(){const s=curSeries();if(!s)return '';
-  return `<section class="qk" id="qkBox" aria-label="Shortcuts"><div class="qk-g" style="--n:${QK.length}">${QK.map((x,i)=>`<button class="qk-t" data-a="qk" data-k="${x[0]}" style="--i:${i}"><span class="qk-i">${ic(x[2],26)}</span><span class="qk-l">${x[1]}</span></button>`).join('')}</div></section>`}
-A.qk=el=>{const s=curSeries();if(!s)return;A.openSD({dataset:{id:s.id,t:el.dataset.k==='res'?'r':'t'}})};
+  return `<section class="qk" id="qkBox" aria-label="Shortcuts"><div class="qk-g" style="--n:${QK.length}">${QK.map((x,i)=>`<button class="qk-t" data-a="qk" data-k="${x[0]}" style="--i:${i}"><span class="qk-i">${ic(x[2],21)}</span><span class="qk-l">${x[1]}</span></button>`).join('')}</div></section>`}
+A.qk=el=>{const s=curSeries();if(!s)return;if(el.dataset.k==='doubts'){openDoubts();return}A.openSD({dataset:{id:s.id,t:el.dataset.k==='res'?'r':'t'}})};
 let UPGB=false;   // one tap at a time; the page opens only if the student is still on Home with nothing open; the store after 2.5 s without the plans data
 A.upg=()=>{if(UPGB)return;UPGB=true;const s=curSeries(),wait=Promise.all([loadMeta(),STORE===null?loadStore():null]).catch(()=>{});
   Promise.race([wait,new Promise(r=>setTimeout(r,2500))]).then(()=>{UPGB=false;if(S.tab!=='home'||STK.length||layer)return;
@@ -1556,7 +1556,7 @@ function rsSol(A){const {all,names,hasSec}=A,f=RS3.f,sf=RS3.sec,cnt=k=>all.filte
   return `<div class="seg" role="tablist">${[['all','All'],['c','Correct'],['w','Wrong'],['s','Skipped']].map(t=>`<button role="tab" aria-selected="${f===t[0]}" class="${f===t[0]?'on':''}" data-a="rsF" data-v="${t[0]}">${t[1]}<small>${cnt(t[0])}</small></button>`).join('')}</div>
    ${hasSec?`<div class="chips">${[['*','All sections']].concat(names.map(s=>[s,s||'General'])).map(c=>`<button class="${sf===c[0]?'on':''}" data-a="rsSec" data-v="${esc3(c[0])}">${esc3(c[1])}</button>`).join('')}</div>`:''}
    ${items.length?items.map(({q,i,a,t,st})=>qCard(Object.assign({qidx:i},q),{id:'rq'+i,rev:true,pick:a,badge:`${st==='c'?'<span class="st ok">Correct</span>':st==='w'?'<span class="st err">Wrong</span>':'<span class="st">Skipped</span>'}${q.sec?`<span class="tag">${esc3(q.sec)}</span>`:''}${t?`<span class="mut" style="font-size:12.5px">${fsec(t)}</span>`:''}`,
-     tools:tid?`<button class="ib sm${RS3.bm.has(i)?' on':''}" data-a="rsBm" data-i="${i}" aria-label="${RS3.bm.has(i)?'Remove from saved':'Save this question'}">${ic('bookmark',17)}</button>`:'',
+     tools:tid?`<button class="ib sm" data-a="dbtAsk" data-i="${i}" aria-label="Ask a doubt on this question">${ic('doubt',17)}</button><button class="ib sm${RS3.bm.has(i)?' on':''}" data-a="rsBm" data-i="${i}" aria-label="${RS3.bm.has(i)?'Remove from saved':'Save this question'}">${ic('bookmark',17)}</button>`:'',
      note:q.answer==null?'<p class="qc3-n">No answer key was set for this question, so it is not marked.</p>':''})).join(''):`<div class="card empty"><b>Nothing to show here</b><p>Pick another filter above.</p></div>`}`}
 function rsHis(A){const tid=A.rec.test_id,L=allRes().filter(r=>r.test_id===tid).slice().sort((a,b)=>(a.at||0)-(b.at||0));
   if(!L.length)return `<div class="card empty"><b>No other attempts</b><p>Every attempt of this test shows up here.</p></div>`;
@@ -1593,6 +1593,65 @@ function heldOpen(title,at){push({t:'Test submitted',s:'',key:'held',html:()=>`<
     if(v3now()){try{const args=arguments,R=(typeof RV!=='undefined'&&RV)||null;toNew();if(typeof loadCat==='function')loadCat(true).then(()=>{if(!scrOpen())softRender()}).catch(()=>{});
       if(n==='showResult'&&R&&R.result){let tt='';try{const T0=(typeof CAT!=='undefined'&&CAT&&CAT.tests||[]).find(x=>x.id===R.result.test_id);tt=T0?T0.title:''}catch(e){}rsOpen(R.result,R.review,tt||(typeof CURPEND!=='undefined'&&CURPEND&&CURPEND.title)||'')}else if(n==='showHeld')heldOpen(args[0],args[1])}catch(e){console.error(e)}}
     return r}})})();
+
+/* ================= DOUBTS (v87): ask a doubt on a question of a test you took; the teacher answers; My Doubts keeps them all =================
+   Server: cbt_doubt_ask, cbt_doubts_list, cbt_doubt_del (supabase_v87_doubts.sql). Text only. Private to the student and the teachers.
+   Without the SQL the list says doubts are being set up and Ask says so; nothing else changes. */
+const DB3={L:null,busy:null,off:false,err:false,f:'all',sub:'*',ser:'*'};
+const dbKey=x=>String(x||'').trim().toLowerCase()||'general';
+function loadDoubts(){if(DB3.busy)return DB3.busy;DB3.err=false;
+  DB3.busy=rpc('cbt_doubts_list',{}).then(r=>{if(r&&r.ok&&Array.isArray(r.items)){DB3.L=r.items;DB3.off=false}else if(r&&r.error==='server'&&r.status===404){DB3.off=true;DB3.L=[]}else DB3.err=true}).catch(()=>{DB3.err=true})
+    .finally(()=>{DB3.busy=null;if(top()&&top().key==='dbt')redraw()});return DB3.busy}
+function openDoubts(){closeLayer();DB3.f='all';DB3.sub='*';DB3.ser='*';DB3.L=null;push(doubtsView())}
+const dbSt={open:['gold','Waiting'],answered:['ok','Answered'],closed:['','Closed']};
+function dbCard(d){const st=dbSt[d.status]||dbSt.open;
+  return `<article class="card dbc"><div class="tc3-top"><span class="st ${st[0]}">${st[1]}</span><span class="mut">${dS(d.at)}</span></div>
+   <p class="dbc-t">${esc3(d.test||'Test')} · Question ${(+d.qidx||0)+1}${d.subject?` · ${esc3(d.subject)}`:''}</p>
+   ${d.q?`<p class="dbc-q">${esc3(d.q)}</p>`:''}
+   <p class="dbc-b">${esc3(d.body)}</p>
+   ${d.answer?`<div class="dbc-a"><b>${ic('check',14)}Teacher's answer</b><p>${linkify3(esc3(d.answer))}</p>${d.ans_at?`<small>${dS(d.ans_at)}</small>`:''}</div>`
+     :d.status==='closed'?'<p class="hint" style="margin:0">Closed without an answer.</p>'
+     :`<div class="dbc-w"><span>${ic('clock',14)}Waiting for a teacher</span><button class="lnk" data-a="dbtDel" data-id="${esc3(d.id)}">Take back</button></div>`}</article>`}
+function doubtsView(){return {t:'My Doubts',s:'',key:'dbt',right:()=>`<button class="ib${DB3.ser!=='*'?' on':''}" data-a="dbtSer" aria-label="Filter by test series">${ic('filter',20)}</button>`,
+  html:()=>{
+   if(DB3.L===null){loadDoubts();return '<div class="card sk" style="height:46px"></div><div class="card sk" style="height:150px"></div><div class="card sk" style="height:150px"></div>'}
+   if(DB3.off)return `<div class="card empty"><span class="ti">${ic('doubt',22)}</span><b>Doubts are being set up</b><p>This will be ready soon. Please check back later.</p></div>`;
+   if(DB3.err&&!DB3.L.length)return `<div class="card empty"><span class="ti">${ic('wifiOff',22)}</span><b>Could not load your doubts</b><p>Check your internet and try again.</p><button class="btn sm" data-a="dbtRetry">Try again</button></div>`;
+   const all=DB3.L;
+   if(!all.length)return `<div class="card empty"><span class="ti">${ic('doubt',22)}</span><b>Doubts will be visible here</b><p>Open a test result, tap the <b>?</b> on a question and ask. Your doubts and the teacher's answers stay here.</p></div>`;
+   const bySer=all.filter(d=>DB3.ser==='*'||d.series_id===DB3.ser);
+   const subs=[];bySer.forEach(d=>{const k=dbKey(d.subject);if(!subs.some(x=>x[0]===k))subs.push([k,String(d.subject||'').trim()||'General'])});
+   if(DB3.sub!=='*'&&!subs.some(x=>x[0]===DB3.sub))DB3.sub='*';
+   const bySub=bySer.filter(d=>DB3.sub==='*'||dbKey(d.subject)===DB3.sub),cnt=k=>bySub.filter(d=>k==='all'||(k==='open'?d.status==='open':d.status!=='open')).length;
+   const L=bySub.filter(d=>DB3.f==='all'||(DB3.f==='open'?d.status==='open':d.status!=='open'));
+   return `<div class="seg" role="tablist">${[['all','All'],['open','Waiting'],['done','Answered']].map(t=>`<button role="tab" aria-selected="${DB3.f===t[0]}" class="${DB3.f===t[0]?'on':''}" data-a="dbtF" data-v="${t[0]}">${t[1]}<small>${cnt(t[0])}</small></button>`).join('')}</div>
+    ${subs.length>1?`<div class="chips">${[['*','All subjects']].concat(subs).map(c=>`<button class="${DB3.sub===c[0]?'on':''}" data-a="dbtSub" data-v="${esc3(c[0])}">${esc3(c[1])}</button>`).join('')}</div>`:''}
+    ${L.length?`<div class="stack dbl" style="gap:12px">${L.map(dbCard).join('')}</div>`:`<div class="card empty"><b>Nothing here</b><p>Try another filter.</p></div>`}`}}}
+A.dbtF=el=>{if(DB3.f!==el.dataset.v)arm();DB3.f=el.dataset.v;redraw()};
+A.dbtSub=el=>{if(DB3.sub!==el.dataset.v)arm();DB3.sub=el.dataset.v;redraw()};
+A.dbtRetry=()=>{DB3.L=null;redraw()};
+A.dbtSer=()=>{const ids=[...new Set((DB3.L||[]).map(d=>d.series_id).filter(Boolean))];
+  openSheet(`<h2 id="sheetT">Select a test series</h2><div>${[['*','All test series']].concat(ids.map(id=>[id,(sOf(id)||{}).title||'Test series'])).map(x=>`<button class="opt${DB3.ser===x[0]?' on':''}" data-a="dbtSerPick" data-v="${esc3(x[0])}"><div><b>${esc3(x[1])}</b></div><span class="ck">${ic('check')}</span></button>`).join('')}</div>`)};
+A.dbtSerPick=el=>{DB3.ser=el.dataset.v;DB3.sub='*';closeLayer();redraw()};
+A.dbtDel=async el=>{const id=el.dataset.id;el.disabled=true;let r=null;try{r=await rpc('cbt_doubt_del',{p_id:id})}catch(e){}
+  if(r&&r.ok){DB3.L=(DB3.L||[]).filter(d=>d.id!==id);redraw();toast3('Doubt removed')}else{el.disabled=false;toast3(r&&r.error==='not_found'?'This doubt was already answered.':'Could not remove. Please try again.')}};
+/* ask: from a question of a result */
+let DBA=null;
+A.dbtAsk=el=>{const i=+el.dataset.i,rec=RS3.rec,q=(RS3.Q||[])[i]||{};if(!rec||!rec.test_id)return;
+  const sec=String(q.sec||'').trim(),subs=[...new Set([sec].concat(LK().subjects||[]).filter(Boolean))];
+  DBA={tid:rec.test_id,i,sub:sec};
+  openSheet(`<h2 id="sheetT">Ask a doubt</h2><p class="sub">${esc3(RS3.title||'')} · Question ${i+1}</p>
+   <div class="dbq">${esc3(String(q.q||'').replace(/\s+/g,' ').slice(0,200))}</div>
+   <div class="fg"><h3>Subject</h3><div class="chips wrap">${subs.map(c=>`<button type="button" class="${c===sec?'on':''}" aria-pressed="${c===sec}" data-a="dbtPick" data-v="${esc3(c)}">${esc3(c)}</button>`).join('')}</div></div>
+   <label class="fl"><span>Your doubt</span><textarea class="inp" id="dbtTx" rows="3" maxlength="1200" placeholder="What did you not understand? Write the step or the idea."></textarea></label>
+   <div class="sheet-ft"><button class="btn ghost" data-a="dbtMine">My doubts</button><button class="btn" id="dbtGo" data-a="dbtSend">${ic('check',16)}Send doubt</button></div>`)};
+A.dbtPick=el=>{if(!DBA)return;DBA.sub=DBA.sub===el.dataset.v?'':el.dataset.v;sheet.querySelectorAll('[data-a="dbtPick"]').forEach(b=>{const on=b.dataset.v===DBA.sub;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)})};
+A.dbtMine=()=>openDoubts();
+A.dbtSend=async el=>{if(!DBA)return;const tx=($('#dbtTx')||{}).value||'';if(tx.trim().length<5){toast3('Write a little more about your doubt.');return}
+  el.disabled=true;let r=null;try{r=await rpc('cbt_doubt_ask',{p_test:DBA.tid,p_qidx:DBA.i,p_subject:DBA.sub||'',p_body:tx})}catch(e){}
+  if(r&&r.ok){DBA=null;DB3.L=null;closeLayer();toast3('Doubt sent. The answer will come in My Doubts.');return}
+  el.disabled=false;const e=r&&r.error;
+  toast3(e==='busy'?'You have asked many doubts today. Please try again later.':e==='waiting'?'This question already has 3 doubts waiting.':e==='hidden'||e==='not_taken'?'Doubts open when your result is out.':e==='short'?'Write a little more about your doubt.':(r&&r.status===404)?'Doubts are not available yet.':'Could not send. Please try again.')};
 
 /* ================= QUESTION BANK and TEST GENERATOR in the new design =================
    Same server and data as the classic pages (cbt_qb_meta, cbt_qb_next, cbt_qb_check, cbt_gen_list,

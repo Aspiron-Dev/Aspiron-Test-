@@ -716,7 +716,7 @@ svg.i .f{fill:currentColor;fill-opacity:0;transition:fill-opacity .3s var(--ease
 .o3{display:flex;flex-direction:column;align-items:center;text-align:center;border-radius:18px;overflow:hidden;border:1.5px solid color-mix(in srgb,var(--acc2) 45%,transparent);background:var(--accSoft);min-height:156px;transition:transform .3s var(--spring)}
 .o3:active{transform:scale(.96)}
 .o3i{margin-top:14px;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,var(--acc1),var(--acc2));color:var(--onAcc)}
-.o3 b{flex:1;padding:10px 8px;font-size:13px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.o3 b{flex:1;padding:10px 8px;font-size:13px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .o3 em{width:100%;font-style:normal;font-size:11.5px;font-weight:700;padding:8px 4px;background:linear-gradient(155deg,var(--hero1),var(--hero2));color:var(--heroTx)}
 .ic2{overflow:hidden;padding:0;display:flex;flex-direction:column}
 .ic2 .cv{position:relative;display:block;width:100%;aspect-ratio:16/9;background:var(--surface2);overflow:hidden}
@@ -1863,8 +1863,8 @@ button:focus:not(:focus-visible){outline:none}
 .lockn{display:flex;gap:12px;align-items:center}
 .lockn small{display:block;color:var(--mut);font-size:13px;margin-top:2px}
 .ann3 a{color:var(--acc);word-break:break-all}
-.ann3 a.ab{text-decoration:none;display:inline-flex;align-items:center;gap:7px;margin:4px 6px 4px 0;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--onInk);font-weight:600;font-size:14px;word-break:normal;transition:transform .15s}
-.ann3 a.ab:active{transform:scale(.96)}
+.ann3 a.ab,.dbc-a a.ab{text-decoration:none;display:inline-flex;align-items:center;gap:7px;margin:4px 6px 4px 0;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--onInk);font-weight:600;font-size:14px;word-break:normal;transition:transform .15s}
+.ann3 a.ab:active,.dbc-a a.ab:active{transform:scale(.96)}
 .row.dim{opacity:.6}
 .utabs button{padding:14px 10px 13px;font-size:14.5px}
 p.hint>svg{display:inline-block;vertical-align:-2px;margin-right:4px}
@@ -2061,16 +2061,31 @@ button.row:active{background:var(--surface2)}
 .rvc2-re b{display:block;font-size:11.5px;color:var(--tx);margin-bottom:2px}
 
 /* v89: shortcut tiles (Home) and the Upgrade plan pill */
-.qk{margin:14px 0 4px;padding:14px 10px 12px;border-radius:20px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--sh)}
-.qk-g{display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));gap:8px}
-.qk-t{display:flex;flex-direction:column;align-items:center;gap:8px;padding:4px 2px;min-width:0;color:var(--tx);-webkit-tap-highlight-color:transparent}
+.qk{margin:12px 0 2px;padding:0 2px}
+.qk-g{display:grid;grid-template-columns:repeat(var(--n,2),minmax(0,1fr));gap:6px}
+.qk-t{display:flex;flex-direction:column;align-items:center;gap:7px;padding:6px 2px;min-width:0;color:var(--tx);-webkit-tap-highlight-color:transparent}
 .main.in .qk-t{animation:rise .4s var(--out) both;animation-delay:calc(var(--i)*45ms)}   /* only on an animated render, not when Home redraws itself */
-.qk-i{width:56px;height:56px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(155deg,var(--hero1),var(--hero2));color:var(--acc1);border:1px solid color-mix(in srgb,var(--acc1) 38%,transparent);transition:transform .2s var(--out)}
+.qk-i{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(155deg,var(--hero1),var(--hero2));color:var(--acc1);border:1px solid color-mix(in srgb,var(--acc1) 34%,transparent);box-shadow:0 8px 16px -10px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.12);transition:transform .2s var(--out)}
 .qk-t:active .qk-i{transform:scale(.92)}
-.qk-l{font-size:13px;font-weight:600;line-height:1.25;text-align:center;overflow-wrap:anywhere;max-width:100%}
+.qk-l{font-size:12.5px;font-weight:600;letter-spacing:.01em;line-height:1.25;text-align:center;overflow-wrap:anywhere;max-width:100%}
 .pillbtn.upg{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:6px;padding:0 15px 0 11px;letter-spacing:.02em;font-size:13px;background:linear-gradient(155deg,var(--acc1),var(--acc2));color:var(--onAcc)}
 .pillbtn.upg .i{flex:none}
 .pillbtn.upg::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:38%;pointer-events:none;background:linear-gradient(100deg,transparent,rgba(255,255,255,.4),transparent);transform:skewX(-18deg);animation:sheen 6s ease-in-out infinite}
 .app.lay .pillbtn.upg::after{animation-play-state:paused!important}
 @media (prefers-reduced-motion: reduce){.pillbtn.upg::after{display:none}.main.in .qk-t{animation:none}}
-@media (min-width:1024px){.qk{grid-column:1/-1;padding:16px 22px}.qk-g{display:flex;gap:34px;justify-content:flex-start}.qk-t{width:104px}}
+@media (min-width:1024px){.qk{grid-column:1/-1;padding:4px 22px}.qk-g{display:flex;gap:34px;justify-content:flex-start}.qk-t{width:96px}}
+
+/* v87: doubts */
+.dbc{display:flex;flex-direction:column;gap:9px;padding:14px 16px}
+.dbc p{margin:0}
+.dbc-t{font-size:12.5px;color:var(--mut);font-weight:500}
+.dbc-q{font-size:13.5px;color:var(--mut);line-height:1.5;padding-left:10px;border-left:3px solid var(--line);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dbc-b{font-size:15px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+.dbc-a{display:flex;flex-direction:column;gap:5px;padding:12px 14px;border-radius:14px;background:var(--accSoft)}
+.dbc-a b{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--acc);letter-spacing:.01em}
+.dbc-a p{font-size:14.5px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.dbc-a a{color:var(--acc);word-break:break-all;text-decoration:underline}
+.dbc-a small{color:var(--mut);font-size:12px}
+.dbc-w{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--mut)}
+.dbc-w span{display:inline-flex;align-items:center;gap:6px}
+.dbq{margin:2px 0 16px;padding:10px 12px;border-radius:12px;background:var(--surface2);font-size:13.5px;line-height:1.5;color:var(--mut);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
