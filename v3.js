@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=79;
+const V3VER=80;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -894,7 +894,8 @@ function spAnn(sid){const s=sOf(sid);
   if(a==='err'){delete ANN3[sid];return `<div class="card empty"><span class="ti">${ic('info',22)}</span><b>Could not load</b><p>Check your internet and open this tab again.</p></div>`}
   if(!a.length)return `<div class="card empty"><span class="ti">${ic('mega',22)}</span><b>No announcements yet</b><p>Notices from your teachers for this series will appear here.</p></div>`;
   return a.map(p=>`<article class="card p stack ann3" style="gap:6px"><div class="tc3-top">${p.pinned?'<span class="st gold">Pinned</span>':''}<span class="mut">${fD(p.at,{day:'numeric',month:'short',year:'numeric'})}, ${fT(p.at)}</span></div>${p.title?`<b style="font-size:15.5px">${esc3(p.title)}</b>`:''}${p.body?`<p class="mut" style="white-space:pre-wrap;font-size:14.5px;line-height:1.65">${linkify3(esc3(p.body))}</p>`:''}</article>`).join('')}
-const linkify3=t=>t.replace(/https:\/\/[^\s<>"']+/g,u=>`<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
+/* a plain https:// address is a link; [Button text](https://…) (made by the admin's "Add link" button) is a tappable button */
+const linkify3=t=>t.replace(/\[([^\]\n]{1,60})\]\((https:\/\/[^\s<>"')]+)\)|https:\/\/[^\s<>"']+/g,(m,l,u)=>l?`<a class="ab" href="${u}" target="_blank" rel="noopener noreferrer">${ic('share',15)}${l}</a>`:`<a href="${m}" target="_blank" rel="noopener noreferrer">${m}</a>`);
 
 /* ================= TOOLS (run on the phone; nothing is sent) ================= */
 const FC=2*Math.PI*100,FM=2*Math.PI*28;
