@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=84;
+const V3VER=85;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -185,6 +185,10 @@ function openLayer(el){if(!layer&&!layH){try{history.pushState({v3l:1},'',locati
 function closeLayer(fromBack){if(!layer)return;$('#app3').classList.remove('lay');layer.classList.remove('open');scrim.classList.remove('open');layer=null;sheet.onclick=null;lastF&&lastF.focus&&lastF.focus({preventScroll:true});
   if(layH){layH=false;if(fromBack!==true){popIgnore++;clearTimeout(settleT);settleT=setTimeout(flushSettle,700);try{history.back()}catch(e){flushSettle()}}}}
 function openSheet(h){sheet.onclick=null;sheet.innerHTML='<div class="grab"></div>'+h;sheet.scrollTop=0;openLayer(sheet)}
+/* keyboard: lift the sheet above the on-screen keyboard (visual viewport shrinks, fixed bottom does not) */
+try{if(window.visualViewport){const vv=visualViewport,kb=()=>{const k=Math.max(0,Math.round(innerHeight-vv.height-vv.offsetTop));sheet.style.setProperty('--kb',(k>60?k:0)+'px');
+  if(k>60){setTimeout(()=>{try{const a=sheet.getRootNode().activeElement;if(a&&sheet.contains(a))a.scrollIntoView({block:'center',behavior:'smooth'})}catch(e){}},120)}};
+  vv.addEventListener('resize',kb);vv.addEventListener('scroll',kb)}}catch(e){}
 
 /* ---------- full-screen pages; the phone's back button closes them ---------- */
 let STK=[],scr,undT=0;
@@ -738,7 +742,9 @@ function rvBlock(x){const r=x&&rvOf(x);if(!x)return `<div class="card empty"><sp
   if(!r)return `<div class="card empty"><span class="ti">${ic('star',22)}</span><b>No reviews yet</b><p>Reviews are written by students whose series is unlocked.</p></div>`;
   const st=r.stars||[];return `<div class="card p rvs rvg"><i class="rvg-glow" aria-hidden="true"></i><div class="rv-big"><b>${(+r.avg).toFixed(1)}</b><span>${'★'.repeat(Math.round(r.avg))}${'☆'.repeat(5-Math.round(r.avg))}</span><small>${fmtN(r.count)} review${r.count===1?'':'s'}</small></div>
    <div class="rv-bars">${[5,4,3,2,1].map((n,i)=>`<div><span>${n}</span><i><em style="width:${r.count?Math.round((st[i]||0)*100/r.count):0}%"></em></i><span>${st[i]||0}</span></div>`).join('')}</div></div>
-   <div class="stack" style="gap:10px">${(r.list||[]).slice(0,30).map(v=>`<div class="card rows rvc"><div class="item"><span class="ti g" style="font-weight:600">${esc3(((v.name||'S').trim()[0]||'S').toUpperCase())}</span><div class="bd"><div class="tt"><b>${esc3(v.name||'Student')}</b><span class="gold" style="font-size:13px">${'★'.repeat(Number(v.rating)||0)}</span></div>${v.body?`<small style="font-size:13.5px;color:var(--tx)">${esc3(v.body)}</small>`:`<small>Gave ${Number(v.rating)||0} stars</small>`}${v.reply?`<small><b style="font-size:12.5px">Reply from Aspiron:</b> ${esc3(v.reply)}</small>`:''}</div></div></div>`).join('')}</div>`}
+   <div class="stack" style="gap:10px">${(r.list||[]).slice(0,30).map(v=>{const nm=String(v.name||'Student').trim()||'Student',h=[...nm].reduce((q,c)=>(q*31+c.charCodeAt(0))%6,0),rt=Math.max(0,Math.min(5,Number(v.rating)||0));
+    return `<div class="card rvc2"><div class="rvc2-h">${v.photo&&imgOk(v.photo)?`<img class="rvc2-av" src="${esc3(v.photo)}" alt="" loading="lazy">`:`<span class="rvc2-av t${h}">${esc3((nm[0]||'S').toUpperCase())}</span>`}<div class="rvc2-n"><b>${esc3(nm)}</b><span class="rvc2-v">${ic('check',12)}Verified student</span></div><div class="rvc2-r"><span class="gold">${'★'.repeat(rt)}</span>${v.at?`<small>${fD(v.at,{day:'numeric',month:'short'})}</small>`:''}</div></div>
+     <div class="rvc2-m">${v.body?esc3(v.body):`Gave ${rt} star${rt===1?'':'s'}`}</div>${v.reply?`<div class="rvc2-re"><b>Reply from Aspiron</b>${esc3(v.reply)}</div>`:''}</div>`}).join('')}</div>`}
 function descBlock(x,s){const d=String((x&&XD&&XD[x.id]||{}).description||s&&s.description||'').trim(),F=(x&&x.features)||[];
   return `${x&&x.subtitle?`<p style="font-size:15px">${esc3(x.subtitle)}</p>`:''}
   ${x&&LANGS.has(x.id)?`<div class="card p" style="display:flex;gap:12px;align-items:center"><span class="ti g">${ic('book',19)}</span><span><b style="font-size:14.5px">Available in English and हिंदी</b><br><small class="mut">Choose your medium when you buy. Every test comes in that language.</small></span></div>`:''}
