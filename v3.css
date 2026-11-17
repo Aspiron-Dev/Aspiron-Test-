@@ -1863,6 +1863,8 @@ button:focus:not(:focus-visible){outline:none}
 .lockn{display:flex;gap:12px;align-items:center}
 .lockn small{display:block;color:var(--mut);font-size:13px;margin-top:2px}
 .ann3 a{color:var(--acc);word-break:break-all}
+.ann3 a.ab{text-decoration:none;display:inline-flex;align-items:center;gap:7px;margin:4px 6px 4px 0;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--onInk);font-weight:600;font-size:14px;word-break:normal;transition:transform .15s}
+.ann3 a.ab:active{transform:scale(.96)}
 .row.dim{opacity:.6}
 .utabs button{padding:14px 10px 13px;font-size:14.5px}
 p.hint>svg{display:inline-block;vertical-align:-2px;margin-right:4px}

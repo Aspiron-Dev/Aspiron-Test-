@@ -566,7 +566,8 @@ function annDrawer(s) {
   const body = () => h`<div class="callout info mb16">${icon('info')}<div class="sm">Only students who have this series see these, in its <b>Announcements</b> tab. Students who have not bought it see the tab locked.</div></div>
     ${m ? h`<div class="card flat"><div class="col gap16">
       <div class="fld"><label for="an-t">Title</label><input class="inp" id="an-t" maxlength="120" placeholder="e.g. Test 05 moved to Sunday"></div>
-      <div class="fld"><label for="an-b">Message</label><textarea class="inp" id="an-b" rows="5" maxlength="3000" placeholder="Write the announcement. Links starting with https:// can be tapped."></textarea></div>
+      <div class="fld"><label for="an-b">Message</label><textarea class="inp" id="an-b" rows="5" maxlength="3000" placeholder="Write the announcement. Use Add link for a button students can tap."></textarea>
+        <div class="row gap8 mt8"><button type="button" class="btn sm soft" data-act="addLink">${icon('link', 15)} Add link</button><span class="xs mut">Puts a tap button in the message.</span></div></div>
       <label class="row gap8 sm"><input type="checkbox" id="an-p"> Pin to the top</label>
       <button class="btn pri" data-act="add">${icon('send', 15)} Post announcement</button></div></div>` : ''}
     <div class="section-t">Posted · ${L ? L.length : '…'}</div>
@@ -587,6 +588,20 @@ function annDrawer(s) {
         async add(b) {
           const t = el.querySelector('#an-t').value.trim(), m2 = el.querySelector('#an-b').value.trim(), p = el.querySelector('#an-p').checked;
           await UI.busy(b, async () => { if (await save({ series_id: s.id, title: t, body: m2, pinned: p })) UI.toast('Announcement posted'); });
+        },
+        addLink() {
+          const ta = el.querySelector('#an-b');
+          UI.modal({ title: 'Add a link button', size: 'narrow',
+            body: h`<form class="col gap16"><div class="fld"><label for="lk-t">Button text</label><input class="inp" id="lk-t" maxlength="40" placeholder="e.g. Join Telegram channel"></div>
+              <div class="fld"><label for="lk-u">Link</label><input class="inp" id="lk-u" maxlength="400" inputmode="url" placeholder="https://t.me/…"></div>
+              <div class="xs mut">The link must start with https://. Students see a button with this text.</div></form>`,
+            foot: h`<span class="sp"></span><button class="btn ghost" data-close>Cancel</button><button class="btn pri" data-act="ok">${icon('check', 16)} Add</button>`,
+            onOpen(m, close) { AX.act(m, { ok() {
+              const t = m.querySelector('#lk-t').value.replace(/[\[\]()<>\\\r\n]/g, '').trim(), u = m.querySelector('#lk-u').value.trim();
+              if (!t) return UI.toast('Write the button text', { tone: 'warn' });
+              if (!/^https:\/\/[^\s<>"'()\\]{3,380}$/.test(u)) return UI.toast('The link must start with https:// and have no spaces or brackets', { tone: 'warn' });
+              const tag = '[' + t + '](' + u + ')', a = ta.selectionStart == null ? ta.value.length : ta.selectionStart, z = ta.selectionEnd == null ? a : ta.selectionEnd, pre = ta.value.slice(0, a);
+              ta.value = pre + (a && !/\s$/.test(pre) ? ' ' : '') + tag + ta.value.slice(z); close(true); ta.focus(); } }); } });
         },
         async pin(b) { const a = L.find(x => x.id === b.dataset.id); if (a) await save({ id: a.id, series_id: s.id, title: a.title, body: a.body, pinned: !a.pinned }); },
         async del(b) {
