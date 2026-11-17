@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=83;
+const V3VER=84;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -736,9 +736,9 @@ function tRow(t){const st=stOf(t),r=resOf(t.id)[0],fo=t.folder_id&&(C().folders|
 function rvBlock(x){const r=x&&rvOf(x);if(!x)return `<div class="card empty"><span class="ti">${ic('star',22)}</span><b>No reviews yet</b><p>Reviews are written by students whose series is unlocked.</p></div>`;
   if(!XD)return '<div class="card sk" style="height:140px"></div>';
   if(!r)return `<div class="card empty"><span class="ti">${ic('star',22)}</span><b>No reviews yet</b><p>Reviews are written by students whose series is unlocked.</p></div>`;
-  const st=r.stars||[];return `<div class="card p rvs"><div class="rv-big"><b>${(+r.avg).toFixed(1)}</b><span>${'★'.repeat(Math.round(r.avg))}${'☆'.repeat(5-Math.round(r.avg))}</span><small>${fmtN(r.count)} review${r.count===1?'':'s'}</small></div>
+  const st=r.stars||[];return `<div class="card p rvs rvg"><i class="rvg-glow" aria-hidden="true"></i><div class="rv-big"><b>${(+r.avg).toFixed(1)}</b><span>${'★'.repeat(Math.round(r.avg))}${'☆'.repeat(5-Math.round(r.avg))}</span><small>${fmtN(r.count)} review${r.count===1?'':'s'}</small></div>
    <div class="rv-bars">${[5,4,3,2,1].map((n,i)=>`<div><span>${n}</span><i><em style="width:${r.count?Math.round((st[i]||0)*100/r.count):0}%"></em></i><span>${st[i]||0}</span></div>`).join('')}</div></div>
-   <div class="card rows">${(r.list||[]).slice(0,30).map(v=>`<div class="item"><span class="ti g" style="font-weight:600">${esc3(((v.name||'S').trim()[0]||'S').toUpperCase())}</span><div class="bd"><div class="tt"><b>${esc3(v.name||'Student')}</b><span class="gold" style="font-size:13px">${'★'.repeat(Number(v.rating)||0)}</span></div>${v.body?`<small style="font-size:13.5px;color:var(--tx)">${esc3(v.body)}</small>`:`<small>Gave ${Number(v.rating)||0} stars</small>`}${v.reply?`<small><b style="font-size:12.5px">Reply from Aspiron:</b> ${esc3(v.reply)}</small>`:''}</div></div>`).join('')}</div>`}
+   <div class="stack" style="gap:10px">${(r.list||[]).slice(0,30).map(v=>`<div class="card rows rvc"><div class="item"><span class="ti g" style="font-weight:600">${esc3(((v.name||'S').trim()[0]||'S').toUpperCase())}</span><div class="bd"><div class="tt"><b>${esc3(v.name||'Student')}</b><span class="gold" style="font-size:13px">${'★'.repeat(Number(v.rating)||0)}</span></div>${v.body?`<small style="font-size:13.5px;color:var(--tx)">${esc3(v.body)}</small>`:`<small>Gave ${Number(v.rating)||0} stars</small>`}${v.reply?`<small><b style="font-size:12.5px">Reply from Aspiron:</b> ${esc3(v.reply)}</small>`:''}</div></div></div>`).join('')}</div>`}
 function descBlock(x,s){const d=String((x&&XD&&XD[x.id]||{}).description||s&&s.description||'').trim(),F=(x&&x.features)||[];
   return `${x&&x.subtitle?`<p style="font-size:15px">${esc3(x.subtitle)}</p>`:''}
   ${x&&LANGS.has(x.id)?`<div class="card p" style="display:flex;gap:12px;align-items:center"><span class="ti g">${ic('book',19)}</span><span><b style="font-size:14.5px">Available in English and हिंदी</b><br><small class="mut">Choose your medium when you buy. Every test comes in that language.</small></span></div>`:''}
@@ -835,9 +835,9 @@ const fSize=f=>f.size?(f.size>1048576?(f.size/1048576).toFixed(1)+' MB':Math.max
 function resView(sid,k){if(!resGroups(sid).some(x=>x.k===k))return null;
   return {t:(resGroups(sid).find(x=>x.k===k)||{}).t||'Resources',s:sOf(sid).title,key:'res',html:()=>{const g=resGroups(sid).find(x=>x.k===k);
    if(!g)return `<div class="card empty"><b>Nothing here yet</b></div>`;let i=0;
-   return `<div class="card rows">${g.f.map(f=>f.locked?`<button class="row dim rs3r" style="--d:${i++}" data-a="resLocked"><span class="ti">${ic('lock',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>Buy this series to open it</small></span>${ic('lock',18)}</button>`
-     :`<button class="row rs3r" style="--d:${i++}" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}" data-kind="${esc3(f.kind||'')}" aria-label="${fileAria(f)} ${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b>${fSize(f)?`<small>${fSize(f)}</small>`:''}</span>${fileIc(f)}</button>`).join('')}${g.p.map(t=>{const l=PDF3[t.id].label||t.title;
-     return `<button class="row rs3r" style="--d:${i++}" data-a="pdfOpen" data-id="${esc3(t.id)}"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(l)}</b>${l!==t.title?`<small>${esc3(t.title)}</small>`:''}</span>${ic('dl',18)}</button>`}).join('')}</div>`}}}
+   return `<div class="stack" style="gap:10px">${g.f.map(f=>f.locked?`<div class="card rows"><button class="row dim rs3r" style="--d:${i++}" data-a="resLocked"><span class="ti">${ic('lock',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>Buy this series to open it</small></span>${ic('lock',18)}</button></div>`
+     :`<div class="card rows"><button class="row rs3r" style="--d:${i++}" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}" data-kind="${esc3(f.kind||'')}" aria-label="${fileAria(f)} ${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b>${fSize(f)?`<small>${fSize(f)}</small>`:''}</span>${fileIc(f)}</button></div>`).join('')}${g.p.map(t=>{const l=PDF3[t.id].label||t.title;
+     return `<div class="card rows"><button class="row rs3r" style="--d:${i++}" data-a="pdfOpen" data-id="${esc3(t.id)}"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(l)}</b>${l!==t.title?`<small>${esc3(t.title)}</small>`:''}</span>${ic('dl',18)}</button></div>`}).join('')}</div>`}}}
 A.resOpen=el=>{const v=resView(el.dataset.id,el.dataset.k);if(v){hap(6);push(v)}};
 A.resLocked=()=>toast3('This file opens after you buy the series.');
 /* Tests: category chips (the series' folders), a status filter, the banner from the admin, then the tests in order */
@@ -874,7 +874,10 @@ A.tsF=()=>openSheet(`<h2 id="sheetT">Show tests</h2><div>${TSF.map(f=>`<button c
 A.tsPick=el=>{if(TQ.ts!==el.dataset.v)arm();TQ.ts=el.dataset.v;closeLayer();redraw()};
 A.syl=el=>{const t=tOf(el.dataset.id),x=((META||{}).syl||{})[el.dataset.id];if(!x)return;openSheet(`<h2 id="sheetT">Syllabus</h2><p class="sub">${esc3(t?t.title:'')}</p><p style="font-size:15px;line-height:1.7;white-space:pre-wrap">${esc3(x)}</p>`)};
 /* Reviews: the series' reviews and the student's own */
-function spRev(sid){const it=itemOfSeries(sid),ok=sOk(sOf(sid));return `${ok?`<button class="btn lg ghost" data-a="rvWrite" data-id="${esc3(sid)}">${ic('star',17)}Write or edit your review</button>`:`<p class="hint">${ic('lock',14)} Only students who bought this series can write a review.</p>`}${rvBlock(it)}`}
+function spRev(sid){const it=itemOfSeries(sid),ok=sOk(sOf(sid));   // v89: a clear "write a review" card above the reviews
+  return `${ok?`<section class="card rvw"><i class="rvg-glow" aria-hidden="true"></i><div class="rvw-t"><span class="rvw-i">${ic('star',22).replace('class="i"','class="i fill"')}</span><div><b>Share your experience</b><small>Rate this series and help other students.</small></div></div>
+     <button class="btn rvw-b" data-a="rvWrite" data-id="${esc3(sid)}">${ic('pen',17)}Write or edit your review</button></section>`
+   :`<section class="card rvw lk"><div class="rvw-t"><span class="rvw-i">${ic('lock',20)}</span><div><b>Reviews are for students of this series</b><small>You can read every review. Buy the series to write yours.</small></div></div></section>`}${rvBlock(it)}`}
 A.rvWrite=el=>{const s=sOf(el.dataset.id);if(s)rvAsk(s.id,s.title,true)};
 
 function ownedPage(sid){const s0=sOf(sid);return {t:(s0||{}).title||'Test series',s:s0&&!sOk(s0)?'Explore':'Your test series',store:1,key:'sp',
