@@ -253,7 +253,7 @@ function vSeries(ctx) {
       <div class="row wrap gap6">${s.is_free ? UI.pill('Free for everyone', 'ok') : UI.pill('Paid · ' + (s.price_label || 'unlock per student'), 'gold')}${s.active === false ? UI.pill('Hidden from students', 'warn') : UI.pill('Visible to students', 'pri')}${nLive ? h`<span class="pill ok"><span class="live-dot"></span> ${nLive} live now</span>` : ''}${nSch ? UI.pill(nSch + ' scheduled', 'info') : ''}</div>
       <div class="ts-nums"><span><b>${T.length}</b> tests</span><span><b>${F.length}</b> folders</span><span><b>${fmt.num(T.reduce((a, t) => a + (t.questions || 0), 0))}</b> questions</span><span><b>${fmt.num(T.reduce((a, t) => a + (t.results || 0), 0))}</b> attempts</span></div></div></div>`;
   if (tab === 'settings') return AX.set(ctx.el, actCards(A, s.id, ['settings', 'danger']));
-  if (tab === 'messages') return AX.set(ctx.el, h`${actCards(A, s.id, ['messages'])}${AX.can('messaging') ? '' : h`<div class="xs mut mt12">Notices and phone notifications need the Messages permission.</div>`}`);
+  if (tab === 'messages') return AX.set(ctx.el, h`${actCards(A, s.id, ['messages'])}${AX.can('messaging', 'manage') ? '' : h`<div class="xs mut mt12">Notices and phone notifications need the Messages · manage permission.</div>`}`);
   const q = CUR.q, fT = list => q ? list.filter(t => t.title.toLowerCase().includes(q)) : list;
   AX.set(ctx.el, h`${top}
     <div class="ts-tool">${T.length > 3 ? h`<div class="inp-wrap search">${icon('search', 16)}<input class="inp sm" id="ts-q" type="search" placeholder="Find a test in this series…" value="${CUR.q}" autocomplete="off" aria-label="Find a test"></div>` : h`<span class="grow"></span>`}
