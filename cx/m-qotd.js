@@ -21,6 +21,7 @@ const dayName = (d, today) => { const t = new Date(d + 'T00:00:00'), diff = Math
   return diff === 0 ? 'Today · ' + nm : diff === 1 ? 'Tomorrow · ' + nm : diff === -1 ? 'Yesterday · ' + nm : nm; };
 const addDays = (d, n) => { const t = new Date(d + 'T00:00:00'); t.setDate(t.getDate() + n); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); };
 const setupBox = () => h`<div class="card">${UI.empty({ tone: 'lock', icon: 'db', title: 'One-time setup needed', text: 'Run supabase_v87_qotd.sql once in Supabase → SQL Editor, then supabase_v35_admin_team.sql again, and refresh this page.' })}</div>`;
+const chapOpts = s => { const x = SUBS().find(y => y.id === s); return x ? h`<option value="">All chapters</option>${join([11, 12], cl => { const L = x.chapters.filter(c => c.cls === cl && !c.old); return L.length ? h`<optgroup label="Class ${cl}">${join(L, c => h`<option value="${c.id}">${c.name}</option>`)}</optgroup>` : ''; })}` : h`<option value="">All chapters</option>`; };
 let CUR = null;
 const changed = msg => { AX.cache.drop('qotd'); if (msg) UI.toast(msg); if (CUR && CUR.ctx.alive()) CUR.ctx.reload(); };
 
@@ -73,23 +74,25 @@ function moveModal(id, day, today) {
 
 // pick questions from the Question bank (search + subject), then put them on a day
 function addModal(day, today) {
-  const sel = new Set(); let f = { s: '', q: '' }, page = 0, rows = [], total = 0, busy = false;
+  const sel = new Set(); let f = { s: '', c: '', q: '' }, page = 0, rows = [], total = 0, busy = false;
   const body = () => h`<div class="fld"><label for="qa-d">Show on</label><div class="row gap8 wrap"><input class="inp" id="qa-d" type="date" value="${day}" min="${addDays(today, -1)}" max="${addDays(today, 365)}" style="width:auto">
       <button class="btn xs ghost" data-act="dayTo" data-d="${today}">Today</button><button class="btn xs ghost" data-act="dayTo" data-d="${addDays(today, 1)}">Tomorrow</button></div></div>
     <div class="row gap8 wrap mt12"><div class="inp-wrap search grow">${icon('search', 16)}<input class="inp sm" id="qa-q" type="search" placeholder="Search the Question bank…" value="${f.q}" autocomplete="off"></div>
-      <select class="inp sm" id="qa-s" aria-label="Subject" style="width:auto"><option value="">All subjects</option>${join(SUBS(), x => h`<option value="${x.id}" ${x.id === f.s ? raw('selected') : ''}>${x.name}</option>`)}</select></div>
+      <select class="inp sm" id="qa-s" aria-label="Subject" style="width:auto"><option value="">All subjects</option>${join(SUBS(), x => h`<option value="${x.id}" ${x.id === f.s ? raw('selected') : ''}>${x.name}</option>`)}</select>
+      <select class="inp sm" id="qa-c" aria-label="Chapter" style="width:auto;max-width:100%" disabled><option value="">All chapters</option></select></div>
     <div id="qa-l" class="mt12"></div>`;
+  const button = m => { const n = m.querySelector('#qa-go'); if (n) { n.disabled = !sel.size; n.querySelector('span').textContent = sel.size ? 'Add ' + fmt.plural(sel.size, 'question') : 'Add'; } };   // a tick changes only the button (the list keeps its scroll)
   const list = m => {
     const L = m.querySelector('#qa-l');
     AX.set(L, rows.length ? h`<div class="card pad0 list qa-list">${join(rows, x => h`<label class="li qa-r ${x.img ? 'off' : ''}"><input type="checkbox" data-id="${x.id}" ${sel.has(x.id) ? raw('checked') : ''} ${x.img ? raw('disabled') : ''}>
         <span class="pill info">${subName(x.s)}</span><span class="grow"><span class="t qd-q">${x.q}</span><span class="s">${[chapName(x.s, x.c), x.img ? 'Has a picture: cannot be used' : '', x.src && /^test:/.test(x.src) ? 'From a test' : ''].filter(Boolean).join(' · ')}</span></span></label>`)}</div>
       ${rows.length < total ? h`<div class="row center mt12"><button class="btn sm" data-act="more">Show more · ${total - rows.length} left</button></div>` : ''}`
-      : h`<div class="card">${UI.empty({ icon: 'db', title: busy ? 'Loading…' : 'No questions found', text: busy ? '' : 'The Question bank has nothing for this search. Write new questions on the Question bank page.' })}</div>`);
-    const n = m.querySelector('#qa-go'); if (n) { n.disabled = !sel.size; n.querySelector('span').textContent = sel.size ? 'Add ' + fmt.plural(sel.size, 'question') : 'Add'; }
+      : h`<div class="card">${UI.empty({ icon: 'db', title: busy ? 'Loading…' : 'No questions found', text: busy ? '' : 'The Question bank has nothing for this search. Write or import questions on the Question bank page.', action: busy ? '' : h`<a class="btn" href="#/qbank" data-close>${icon('db', 15)} Open the Question bank</a>` })}</div>`);
+    button(m);
   };
   const fetchRows = async (m, more) => {
     busy = true; if (!more) { rows = []; page = 0; list(m); }
-    const r = await bank('list', { f: f.s ? { s: [f.s] } : {}, q: f.q, on: true, page }); busy = false;
+    const r = await bank('list', { f: Object.assign(f.s ? { s: [f.s] } : {}, f.c ? { c: [f.c] } : {}), q: f.q, on: true, page }); busy = false;
     if (!r.ok) { AX.set(m.querySelector('#qa-l'), UI.errorBox(r)); return; }
     total = r.total || 0; rows = rows.concat(r.items || []); list(m);
   };
@@ -99,14 +102,15 @@ function addModal(day, today) {
       fetchRows(m);
       const go = AX.u.debounce(() => { f.q = m.querySelector('#qa-q').value.trim(); fetchRows(m); }, 300);
       m.querySelector('#qa-q').addEventListener('input', go);
-      m.querySelector('#qa-s').addEventListener('change', e => { f.s = e.target.value; fetchRows(m); });
-      m.addEventListener('change', e => { const c = e.target.closest('input[data-id]'); if (!c) return; c.checked ? sel.add(c.dataset.id) : sel.delete(c.dataset.id); list(m); });
+      m.querySelector('#qa-s').addEventListener('change', e => { f.s = e.target.value; f.c = ''; const cs = m.querySelector('#qa-c'); AX.set(cs, chapOpts(f.s)); cs.disabled = !f.s; fetchRows(m); });
+      m.querySelector('#qa-c').addEventListener('change', e => { f.c = e.target.value; fetchRows(m); });
+      m.addEventListener('change', e => { const c = e.target.closest('input[data-id]'); if (!c) return; c.checked ? sel.add(c.dataset.id) : sel.delete(c.dataset.id); button(m); });
       AX.act(m, {
         dayTo: b => { m.querySelector('#qa-d').value = b.dataset.d; },
         more: async () => { page++; await fetchRows(m, true); },
         async go(b) { const d = m.querySelector('#qa-d').value; if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return UI.toast('Pick a day', { tone: 'warn' });
           await UI.busy(b, async () => { const x = await call('add', { date: d, ids: [...sel] });
-            if (!x.ok) return UI.toast(x.error === 'full' ? 'That day is full (40 questions)' + (x.added ? ' · ' + x.added + ' added' : '') : x.error === 'date' ? 'Pick today or a later day' : 'Could not add', { tone: 'warn', ms: 5000 });
+            if (!x.ok) { if (x.added) changed(); return UI.toast(x.error === 'full' ? 'That day is full (40 questions)' + (x.added ? ' · ' + x.added + ' added' : '') : x.error === 'date' ? 'Pick today or a later day' : 'Could not add', { tone: 'warn', ms: 5000 }); }
             const bits = [x.skipped ? x.skipped + ' skipped (already there or switched off)' : '', x.pic ? x.pic + ' with a picture' : '', x.held ? x.held + ' held back (live test)' : ''].filter(Boolean);
             close(true); changed('Added ' + x.added + (bits.length ? ' · ' + bits.join(' · ') : '')); });
         }

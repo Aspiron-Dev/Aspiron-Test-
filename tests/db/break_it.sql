@@ -1759,6 +1759,10 @@ select public.cbt_admin_team(:'qdo', 'user_save', '{"name":"QD other","username"
 select public.cbt_admin_login('qdview1', 'Tr7k-9mQz-pLq1', 'QV')->>'token' as qdv \gset
 select public.cbt_admin_login('qdman1', 'Tr7k-9mQz-pLq2', 'QM')->>'token' as qdm \gset
 select public.cbt_admin_login('qdoth1', 'Tr7k-9mQz-pLq3', 'QX')->>'token' as qdx \gset
+insert into cbt_private.qbank (id, subject, q, options, answer, explanation, oimg) values
+  ('d0d0d0d0-0000-0000-0000-000000000007', 'phy', 'QD-EMPTY-NULLS', '["a","b","c","d"]', 0, 'QDKEY-7', '[null,null,null,null]'),
+  ('d0d0d0d0-0000-0000-0000-000000000008', 'phy', 'QD-EMPTY-STRS', '["a","b","c","d"]', 0, 'QDKEY-8', '["","","",""]'),
+  ('d0d0d0d0-0000-0000-0000-000000000009', 'phy', 'QD-OPT-PIC', '["a","b","c","d"]', 0, 'QDKEY-9', '[null,"data:image/png;base64,AAAA",null,null]');
 select to_char(cbt_private.qotd_day(), 'YYYY-MM-DD') as qd_today, to_char(cbt_private.qotd_day() + 1, 'YYYY-MM-DD') as qd_tom \gset
 set role anon;
 select public.cbt_admin_qotd(:'qdo', 'add', jsonb_build_object('date', :'qd_today', 'ids', jsonb_build_array(
@@ -1766,6 +1770,9 @@ select public.cbt_admin_qotd(:'qdo', 'add', jsonb_build_object('date', :'qd_toda
   'd0d0d0d0-0000-0000-0000-000000000005', 'd0d0d0d0-0000-0000-0000-000000000006', 'd0d0d0d0-0000-0000-0000-000000000001'))) as qd_add \gset
 select pg_temp.chk('QD1 admin picks bank questions for a day: plain ones are added; a picture, an inactive one and a live test''s question are refused; a repeat is skipped',
   (:'qd_add'::jsonb->>'added')::int = 3 and (:'qd_add'::jsonb->>'pic')::int = 1 and (:'qd_add'::jsonb->>'held')::int = 1 and (:'qd_add'::jsonb->>'skipped')::int = 2);
+select public.cbt_admin_qotd(:'qdo', 'add', jsonb_build_object('date', :'qd_tom', 'ids', jsonb_build_array('d0d0d0d0-0000-0000-0000-000000000007', 'd0d0d0d0-0000-0000-0000-000000000008', 'd0d0d0d0-0000-0000-0000-000000000009'))) as qd_pic \gset
+select pg_temp.chk('QD1b an empty picture list ([null,…] or ["",…]) is no picture and can be picked; a real option picture is refused',
+  (:'qd_pic'::jsonb->>'added')::int = 2 and (:'qd_pic'::jsonb->>'pic')::int = 1);
 select pg_temp.chk('QD2 a stranger and a team member without Content get nothing; Content view may look but not change; Content manage may change',
   public.cbt_admin_qotd('wrong-password', 'list', '{}')->>'ok' is distinct from 'true'
   and public.cbt_admin_qotd(:'qdx', 'list', '{}')->>'error' = 'forbidden'

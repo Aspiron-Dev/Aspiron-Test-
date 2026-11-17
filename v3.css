@@ -2076,6 +2076,10 @@ button.row:active{background:var(--surface2)}
 @media (min-width:1024px){.qk{grid-column:1/-1;padding:16px 22px}.qk-g{display:flex;gap:34px;justify-content:flex-start}.qk-t{width:104px}}
 
 /* v90: Question of the Day (stories) */
+.qd{display:grid;grid-template-rows:1fr}
+.qd-in{min-height:0;display:flex;flex-direction:column;gap:12px;padding-top:4px}
+.qd.pop{animation:qdGrow .55s var(--out) both}   /* only when the load brings the row in: the rest of Home slides down */
+@keyframes qdGrow{from{grid-template-rows:0fr;opacity:0}to{grid-template-rows:1fr;opacity:1}}
 .qd-row{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 8px;margin:0 -2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .qd-row::-webkit-scrollbar{display:none}
 .main.in .qd-c{animation:rise .4s var(--out) both}
@@ -2091,4 +2095,4 @@ button.row:active{background:var(--surface2)}
 .qd-bar i{flex:1;height:4px;border-radius:3px;background:var(--line)}
 .qd-bar i.on{background:var(--acc)}
 .qd-bar i.cur{background:color-mix(in srgb,var(--acc) 40%,var(--line))}
-@media (prefers-reduced-motion: reduce){.main.in .qd-c{animation:none}}
+@media (prefers-reduced-motion: reduce){.main.in .qd-c{animation:none}.qd.pop{animation:none}}

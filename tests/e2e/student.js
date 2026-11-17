@@ -459,7 +459,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   };
   { // not installed (the function is missing) and nothing set for today: no row, no errors
     let t = await qdOpen({ w: 390, h: 844, mode: 'light' }, pg => pg.route(SUPA + '/rest/v1/rpc/cbt_qotd_today', r => r.fulfill({ status: 404, contentType: 'application/json', body: '{"message":"not found"}' })));
-    ok(!(await t.sr(r => !!r.querySelector('#qdBox'))) && !t.er.length, 'stories: SQL not installed → no row and no errors ' + t.er.join('|')); await t.c.close();
+    ok(!(await t.sr(r => !!r.querySelector('#qdBox'))) && !t.er.length && (await t.sr(r => !!r.querySelector('#serBox') && !!r.querySelector('#qkBox') && !r.querySelector('.net3') && !!r.querySelector('.zgrid'))), 'stories: SQL not installed → no row, no errors, and Home (band, tiles, study zone) is intact ' + t.er.join('|')); await t.c.close();
     t = await qdOpen({ w: 390, h: 844, mode: 'light' });
     ok(!(await t.sr(r => !!r.querySelector('#qdBox'))) && !t.er.length, 'stories: nothing set for today → no row ' + t.er.join('|')); await t.c.close();
   }

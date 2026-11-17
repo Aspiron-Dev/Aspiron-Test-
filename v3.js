@@ -385,16 +385,16 @@ A.upg=()=>{if(UPGB)return;UPGB=true;const s=curSeries(),wait=Promise.all([loadMe
    Server: cbt_qotd_today / cbt_qotd_answer (supabase_v87_qotd.sql). The admin picks Question bank questions for a day; Home shows one circle per
    subject (ring = not finished, grey = all answered). Tap = one question at a time; the right answer and the explanation come after answering.
    Until that SQL file is run, or when nothing is set for today, the row is simply not shown. Loaded once (again after 20 minutes or a new day). */
-const QD={ok:false,items:[],day:'',at:0,loading:false};
+const QD={ok:false,items:[],day:'',at:0,loading:false,fresh:false};
 const QD_IC={phy:'atom',chem:'flask',bio:'leaf',math:'sigma',maths:'sigma'};
 const istDay=()=>new Date(Date.now()+19800000).toISOString().slice(0,10);
 function qdLoad(){if(QD.loading||(QD.at&&Date.now()-QD.at<1200000&&QD.day===istDay()))return;QD.loading=true;
-  rpc('cbt_qotd_today',{}).then(r=>{QD.loading=false;QD.at=Date.now();QD.ok=!!(r&&r.ok);QD.items=QD.ok?(r.items||[]):[];QD.day=QD.ok?String(r.day||''):'';
-    try{if(S.tab==='home')softRender()}catch(e){}}).catch(()=>{QD.loading=false;QD.at=Date.now();QD.ok=false;QD.items=[]})}
+  rpc('cbt_qotd_today',{}).then(r=>{QD.loading=false;QD.at=Date.now();QD.ok=!!(r&&r.ok);QD.items=QD.ok?(r.items||[]):[];QD.day=QD.ok?String(r.day||''):'';QD.fresh=QD.ok&&QD.items.length>0;
+    try{if(S.tab==='home')softRender()}catch(e){}QD.fresh=false}).catch(()=>{QD.loading=false;QD.at=Date.now();QD.ok=false;QD.items=[]})}
 function qdGroups(){const M=new Map(),ord=['phy','chem','bio'];QD.items.forEach(q=>{const k=q.s||'';if(!M.has(k))M.set(k,[]);M.get(k).push(q)});
   const rk=s=>{const j=ord.indexOf(s);return j<0?9:j};return [...M.entries()].map(([s,L])=>({s,L,done:L.filter(x=>x.done).length})).sort((a,b)=>rk(a.s)-rk(b.s)||a.s.localeCompare(b.s))}
 function qdRow(){qdLoad();const G=QD.ok?qdGroups():[];if(!G.length)return '';const all=QD.items.length,dn=QD.items.filter(x=>x.done).length;
-  return `<section class="sec qd" id="qdBox"><div class="sh"><h2>Question of the Day</h2><span class="aside">${dn} of ${all} done</span></div><div class="qd-row" role="list">${G.map(g=>`<button class="qd-c${g.done===g.L.length?' seen':''}" role="listitem" data-a="qdOpen" data-s="${esc3(g.s)}" aria-label="${esc3(qbSub(g.s))}, ${g.done} of ${g.L.length} answered"><span class="qd-r"><span class="qd-i">${ic(QD_IC[g.s]||'book',26)}</span></span><span class="qd-l">${esc3(qbSub(g.s))}</span><small>${g.done}/${g.L.length}</small></button>`).join('')}</div></section>`}
+  return `<section class="qd${QD.fresh?' pop':''}" id="qdBox"><div class="qd-in"><div class="sh"><h2>Question of the Day</h2><span class="aside">${dn} of ${all} done</span></div><div class="qd-row" role="list">${G.map(g=>`<button class="qd-c${g.done===g.L.length?' seen':''}" role="listitem" data-a="qdOpen" data-s="${esc3(g.s)}" aria-label="${esc3(qbSub(g.s))}, ${g.done} of ${g.L.length} answered"><span class="qd-r"><span class="qd-i">${ic(QD_IC[g.s]||'book',26)}</span></span><span class="qd-l">${esc3(qbSub(g.s))}</span><small>${g.done}/${g.L.length}</small></button>`).join('')}</div></div></section>`}
 let QV=null;
 const qdList=()=>QV?QD.items.filter(x=>(x.s||'')===QV.s):[];
 const qdErr=r=>r&&r.error==='busy'?'Too many answers in a short time. Try again in a minute.':r&&r.error==='not_found'?'This question is not available any more.':'Could not save your answer. Please try again.';
