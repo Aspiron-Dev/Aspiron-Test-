@@ -2073,4 +2073,4 @@ button.row:active{background:var(--surface2)}
 .pillbtn.upg::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:38%;pointer-events:none;background:linear-gradient(100deg,transparent,rgba(255,255,255,.4),transparent);transform:skewX(-18deg);animation:sheen 6s ease-in-out infinite}
 .app.lay .pillbtn.upg::after{animation-play-state:paused!important}
 @media (prefers-reduced-motion: reduce){.pillbtn.upg::after{display:none}.main.in .qk-t{animation:none}}
-@media (min-width:1024px){.qk{max-width:620px}}
+@media (min-width:1024px){.qk{grid-column:1/-1;padding:16px 22px}.qk-g{display:flex;gap:34px;justify-content:flex-start}.qk-t{width:104px}}
