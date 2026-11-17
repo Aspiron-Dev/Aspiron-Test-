@@ -249,7 +249,7 @@ function xPanel(s){
   }
   if(SVT==='ma'){
     const fl=s.files||[];
-    return `<div class="xfiles">${fl.map(f=>`<button class="xfile${open?'':' lk'}" onclick="${open?`openFile('${esc(f.id)}')`:`tsExplore('${s.id}','rs')`}"><span class="xfi">${ic(open?(f.kind==='schedule'?'calendar':'file'):'lock',18)}</span>
+    return `<div class="xfiles">${fl.map(f=>`<button class="xfile${open?'':' lk'}" onclick="${open?`openFile('${esc(f.id)}','${esc(f.kind||'')}')`:`tsExplore('${s.id}','rs')`}"><span class="xfi">${ic(open?(f.kind==='schedule'?'calendar':'file'):'lock',18)}</span>
       <span class="grow"><b>${esc(f.title)}</b><small>${esc(KIND[f.kind]||'File')}${f.size?' · '+fsize(f.size):''}${open?'':' · opens after you buy'}</small></span><span class="xfa">${ic(open?'download':'lock',16)}</span></button>`).join('')}</div>`;
   }
   if(SVT==='rv'){

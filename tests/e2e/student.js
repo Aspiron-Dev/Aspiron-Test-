@@ -377,6 +377,11 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     await ev(() => { window.__an = 0; document.getElementById('v3host').shadowRoot.querySelector('[data-a="xt"][data-v="t"]').click(); }); await p10.waitForTimeout(900);
     const an1 = await ev(() => window.__an); await p10.waitForTimeout(2500); const an2 = await ev(() => window.__an);
     ok(an1 > 0 && an2 === an1, 'Series page: a tab tap plays the entrance once, nothing replays later (' + an1 + ', ' + an2 + ')');
+    // announcement with a link button: [text](https://…) is a tap button, a plain https:// address stays a link, nothing else becomes HTML
+    await q(`insert into cbt_private.series_posts (series_id, title, body) values ('11111111-1111-1111-1111-111111111111', 'Link news', $1)`, ['Join: [Telegram channel](https://t.me/abc?x=1&y=2) and https://example.com/plain [bad](javascript:alert(1)) <b>x</b>']);
+    await ev(() => { document.getElementById('v3host').shadowRoot.querySelector('[data-a="xt"][data-v="a"]').click(); }); await p10.waitForTimeout(1800);
+    const lk = await ev(() => { const r = document.getElementById('v3host').shadowRoot; return [...r.querySelectorAll('.ann3 a')].map(a => [a.className, a.textContent.trim(), a.getAttribute('href')]).concat([[r.querySelectorAll('.ann3 p b').length]]); });
+    ok(lk[0][0] === 'ab' && lk[0][1] === 'Telegram channel' && lk[0][2] === 'https://t.me/abc?x=1&y=2' && lk[1][0] === '' && lk[1][2] === 'https://example.com/plain' && !lk.some(x => /javascript/.test(x[2] || '')) && lk[lk.length - 1][0] === 0, 'Announcements: [text](https://…) is a link button, a plain address stays a link, javascript: and HTML stay text (' + JSON.stringify(lk) + ')');
     ok(!e10.length, 'no page errors (folders, re-attempt) ' + e10.join(' | ')); await c10.close(); }
   // the phone's Back button closes an open sheet or the menu first, never the page behind it
   await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);

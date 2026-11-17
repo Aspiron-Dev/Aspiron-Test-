@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=79;
+const V3VER=83;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -196,7 +196,7 @@ function drawScr(dir){const v=top();if(!v)return;$('#scrT').textContent=v.t;$('#
    later redraws without any animation, so nothing moves under the finger. Off with reduced motion. */
 let ENT=0,ENTD='';
 const arm=d=>{if(RM)return;ENT=Date.now();ENTD=d||''};
-const ENTS='.sp-pane>.tbar,.sp-pane>.promo,.sp-pane .stack>.tc3,.sp-pane .rs3,.rs3h,.rs3r,.sp-pane>.card,.sp-pane>.stack>.card,.sp-pane .ann3,.list>.card,.list>article,.tt2,.sec>.card,.scr-in>.card,.scr-in>.stack>.card';
+const ENTS='.sp-pane>.tbar,.sp-pane>.promo,.sp-pane .stack>.tc3,.sp-pane .rs3,.rs3r,.sp-pane>.card,.sp-pane>.stack>.card,.sp-pane .ann3,.list>.card,.list>article,.tt2,.sec>.card,.scr-in>.card,.scr-in>.stack>.card';
 function entr(root){if(!ENT||!root)return;if(Date.now()-ENT>2000){ENT=0;return}if(root.querySelector('.sk'))return;ENT=0;
   const pane=root.querySelector('.sp-pane');if(pane&&ENTD){pane.style.setProperty('--tx',ENTD==='l'?'-16px':'16px');pane.classList.add('tabin')}ENTD='';
   const H=window.innerHeight;let i=0;root.querySelectorAll(ENTS).forEach(el=>{if(i>=8||el.classList.contains('rv')||(el.parentElement&&el.parentElement.closest('.ent')))return;
@@ -484,7 +484,7 @@ function feedOf(sid){if(FEED3[sid]===undefined){FEED3[sid]=null;rpc('cbt_series_
 function dayFeed(a){const cs=curSeries();if(!cs)return [];const b=addDays(a,1);return feedOf(cs.id).filter(x=>x.at>=a&&x.at<b).sort((x,y)=>x.at-y.at)}
 const FDL={file:'New file',post:'Announcement',pdf:'Answer key PDF'};
 function feedRow(x,sid){const lk=!!x.locked,ico=x.k==='post'?'mega':x.k==='file'&&x.kind==='schedule'?'cal':'file',
-  act=x.k==='file'?(lk?'data-a="resLocked"':`data-a="fileOpen" data-id="${esc3(x.id)}" data-t="${esc3(x.title)}"`):`data-a="openSD" data-id="${esc3(sid)}" data-t="${x.k==='post'?'a':'r'}"`;
+  act=x.k==='file'?(lk?'data-a="resLocked"':`data-a="fileOpen" data-id="${esc3(x.id)}" data-t="${esc3(x.title)}" data-kind="${esc3(x.kind||'')}"`):`data-a="openSD" data-id="${esc3(sid)}" data-t="${x.k==='post'?'a':'r'}"`;
   return `<button class="it test${lk?' dim':''}" ${act} style="width:100%;text-align:left"><time>${fT(x.at)}</time><div><b>${esc3(x.title||FDL[x.k])}</b><small><em>${FDL[x.k]||'Update'}</em>${x.k==='file'?`, ${({schedule:'Schedule',syllabus:'Syllabus',notes:'Notes'})[x.kind]||'File'}`:''}${lk?', buy to open':''}</small></div>${ic(lk?'lock':'right',16)}</button>`}
 function dayItems(a){const b=addDays(a,1);return wkTests().filter(t=>t.opens_at>=a&&t.opens_at<b).sort((x,y)=>x.opens_at-y.opens_at)}
 const weekItems=i=>dayItems(addDays(MON(),i));
@@ -835,10 +835,9 @@ const fSize=f=>f.size?(f.size>1048576?(f.size/1048576).toFixed(1)+' MB':Math.max
 function resView(sid,k){if(!resGroups(sid).some(x=>x.k===k))return null;
   return {t:(resGroups(sid).find(x=>x.k===k)||{}).t||'Resources',s:sOf(sid).title,key:'res',html:()=>{const g=resGroups(sid).find(x=>x.k===k);
    if(!g)return `<div class="card empty"><b>Nothing here yet</b></div>`;let i=0;
-   return `<div class="rs3h${g.lk?' lk':''}"><span class="rs3-ic">${ic(g.lk?'lock':rsIc(g),22)}</span><div><b>${esc3(g.t)}</b><small>${nFiles(g.n)}${g.lk?' · buy the series to open':''}</small></div></div>
-   <div class="card rows">${g.f.map(f=>f.locked?`<button class="row dim rs3r" style="--d:${i++}" data-a="resLocked"><span class="ti">${ic('lock',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>Buy this series to open it</small></span>${ic('lock',18)}</button>`
-     :`<button class="row rs3r" style="--d:${i++}" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b>${fSize(f)?`<small>${fSize(f)}</small>`:''}</span>${ic('eye',18)}</button>`).join('')}${g.p.map(t=>{const l=PDF3[t.id].label||t.title;
-     return `<button class="row rs3r" style="--d:${i++}" data-a="pdfOpen" data-id="${esc3(t.id)}"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(l)}</b>${l!==t.title?`<small>${esc3(t.title)}</small>`:''}</span>${ic('eye',18)}</button>`}).join('')}</div>`}}}
+   return `<div class="card rows">${g.f.map(f=>f.locked?`<button class="row dim rs3r" style="--d:${i++}" data-a="resLocked"><span class="ti">${ic('lock',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>Buy this series to open it</small></span>${ic('lock',18)}</button>`
+     :`<button class="row rs3r" style="--d:${i++}" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}" data-kind="${esc3(f.kind||'')}" aria-label="${fileAria(f)} ${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b>${fSize(f)?`<small>${fSize(f)}</small>`:''}</span>${fileIc(f)}</button>`).join('')}${g.p.map(t=>{const l=PDF3[t.id].label||t.title;
+     return `<button class="row rs3r" style="--d:${i++}" data-a="pdfOpen" data-id="${esc3(t.id)}"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(l)}</b>${l!==t.title?`<small>${esc3(t.title)}</small>`:''}</span>${ic('dl',18)}</button>`}).join('')}</div>`}}}
 A.resOpen=el=>{const v=resView(el.dataset.id,el.dataset.k);if(v){hap(6);push(v)}};
 A.resLocked=()=>toast3('This file opens after you buy the series.');
 /* Tests: category chips (the series' folders), a status filter, the banner from the admin, then the tests in order */
@@ -857,7 +856,7 @@ function tCard(t){const s=tState(t),r=resOf(t.id)[0],syl=((META||{}).syl||{})[t.
    <button class="tc3-go${act[2]?'':' off'}${act[2]==='alT'&&alOn3(t.id)?' alon':''}" ${act[2]==='test'||act[2]==='alT'?`data-a="${act[2]}" data-id="${esc3(t.id)}"`:act[2]==='review'?`data-a="review" data-r="${esc3(r.id)}"`:'disabled'}><span>${ic(act[0],20)}</span><small>${act[1]}</small></button>
    ${pdf3Ask()}${(()=>{const pdf=PDF3&&PDF3[t.id],again=s==='att'&&r&&!p;   // v68: re-attempt any number of times + answer key PDF
      const res=r&&!p&&(s==='att'||s==='miss');void again;
-     return syl||res||pdf?`<div class="tc3-f">${syl?`<button data-a="syl" data-id="${esc3(t.id)}">Syllabus</button>`:''}${res?`<button data-a="review" data-r="${esc3(r.id)}">${ic('chart',14)} Result</button>`:''}${pdf?`<button data-a="pdfOpen" data-id="${esc3(t.id)}">${ic('eye',14)} PDF</button>`:''}</div>`:''})()}</article>`}
+     return syl||res||pdf?`<div class="tc3-f">${syl?`<button data-a="syl" data-id="${esc3(t.id)}">Syllabus</button>`:''}${res?`<button data-a="review" data-r="${esc3(r.id)}">${ic('chart',14)} Result</button>`:''}${pdf?`<button data-a="pdfOpen" data-id="${esc3(t.id)}">${ic('dl',14)} PDF</button>`:''}</div>`:''})()}</article>`}
 const TORD=[['live','Live now'],['res','Continue'],['up','Upcoming'],['new','Available'],['held','Waiting for result'],['att','Attempted'],['miss','Missed'],['lock','Locked']];
 function spTests(sid){const all=testsOf(sid),F=(C().folders||[]).filter(f=>f.series_id===sid&&all.some(t=>t.folder_id===f.id)),loose=all.some(t=>!t.folder_id);
   if(TQ.tf!=='all'&&TQ.tf!=='none'&&!F.some(f=>f.id===TQ.tf))TQ.tf='all';
@@ -894,7 +893,8 @@ function spAnn(sid){const s=sOf(sid);
   if(a==='err'){delete ANN3[sid];return `<div class="card empty"><span class="ti">${ic('info',22)}</span><b>Could not load</b><p>Check your internet and open this tab again.</p></div>`}
   if(!a.length)return `<div class="card empty"><span class="ti">${ic('mega',22)}</span><b>No announcements yet</b><p>Notices from your teachers for this series will appear here.</p></div>`;
   return a.map(p=>`<article class="card p stack ann3" style="gap:6px"><div class="tc3-top">${p.pinned?'<span class="st gold">Pinned</span>':''}<span class="mut">${fD(p.at,{day:'numeric',month:'short',year:'numeric'})}, ${fT(p.at)}</span></div>${p.title?`<b style="font-size:15.5px">${esc3(p.title)}</b>`:''}${p.body?`<p class="mut" style="white-space:pre-wrap;font-size:14.5px;line-height:1.65">${linkify3(esc3(p.body))}</p>`:''}</article>`).join('')}
-const linkify3=t=>t.replace(/https:\/\/[^\s<>"']+/g,u=>`<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
+/* a plain https:// address is a link; [Button text](https://…) (made by the admin's "Add link" button) is a tappable button */
+const linkify3=t=>t.replace(/\[([^\]\n]{1,60})\]\((https:\/\/[^\s<>"')]+)\)|https:\/\/[^\s<>"']+/g,(m,l,u)=>l?`<a class="ab" href="${u}" target="_blank" rel="noopener noreferrer">${ic('share',15)}${l}</a>`:`<a href="${m}" target="_blank" rel="noopener noreferrer">${m}</a>`);
 
 /* ================= TOOLS (run on the phone; nothing is sent) ================= */
 const FC=2*Math.PI*100,FM=2*Math.PI*28;
@@ -1245,8 +1245,13 @@ const clearOld=k=>{try{if(k==='bm'&&typeof BMC!=='undefined')BMC=null;if(k==='mk
 
 /* ---------- files: download in parts, then View / Save (the same checks as the classic page) ---------- */
 const FILES3={};
-async function fileGet(id,title){
-  if(FILES3[id])return fileSheet(id);
+// Only a Schedule file offers Download (it is open to every student); notes, syllabus and PDFs show View only.
+// This is the screen's rule: a file that can be viewed can still be saved from the browser's own menu.
+const dlOk=f=>!!f&&f.kind==='schedule';
+const fileIc=f=>ic(dlOk(f)?'dl':'eye',18),fileAria=f=>dlOk(f)?'Download':'View';
+const dlName=(n,t)=>fileDlName(n,t);   // shared helper in app2.js
+async function fileGet(id,title,dl){
+  if(FILES3[id])return fileSheet(id,dl)
   openSheet(`<h2 id="sheetT">${esc3(title||'File')}</h2><p class="sub" id="fpS">Downloading…</p><div class="fbar"><i id="fpB"></i></div>`);
   const parts=[];let n=0,total=1,name='file';
   while(n<total){let r=null;try{r=await rpc('cbt_file_part',{p_file:id,p_n:n})}catch(e){}
@@ -1255,13 +1260,13 @@ async function fileGet(id,title){
   try{const bin=atob(parts.join('')),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
     const sig=Array.from(u.slice(0,12)).map(c=>c.toString(16).padStart(2,'0')).join('');
     const real=/^25504446/.test(sig)?'application/pdf':/^89504e47/.test(sig)?'image/png':/^ffd8ff/.test(sig)?'image/jpeg':/^52494646.{8}57454250/.test(sig)?'image/webp':'';
-    FILES3[id]={url:URL.createObjectURL(new Blob([u],{type:real||'application/octet-stream'})),name,view:!!real,title}}catch(e){closeLayer();toast3('This file is damaged.');return}
-  fileSheet(id)}
-function fileSheet(id){const f=FILES3[id];   // v77: view only, no Save button
+    FILES3[id]={url:URL.createObjectURL(new Blob([u],{type:real||'application/octet-stream'})),name,view:!!real,title,mime:real}}catch(e){closeLayer();toast3('This file is damaged.');return}
+  fileSheet(id,dl)}
+function fileSheet(id,dl){const f=FILES3[id];   // a Schedule file also has Download
   if(!f.view){toast3('This file cannot be shown.');return}
   openSheet(`<span class="ti g" style="margin-bottom:12px">${ic('check',22)}</span><h2 id="sheetT">File ready</h2><p class="sub">${esc3(f.title||f.name)}</p>
-  <div style="margin-top:14px"><a class="btn block" href="${f.url}" target="_blank" rel="noopener">${ic('eye',16)}View</a></div>`)}
-A.fileOpen=el=>fileGet(el.dataset.id,el.dataset.t||'');
+  <div class="${dl?'g2':''}" style="margin-top:14px;${dl?'grid-template-columns:1fr 1fr':''}"><a class="btn${dl?' ghost':' block'}" href="${f.url}" target="_blank" rel="noopener">${ic('eye',16)}View</a>${dl?`<a class="btn" href=""${f.url}" download="${esc3(dlName(f.name,f.mime))}">${ic('dl',16)}Download</a>`:''}</div>`)}
+A.fileOpen=el=>fileGet(el.dataset.id,el.dataset.t||'',el.dataset.kind==='schedule');
 
 /* ---------- Notes & PDFs: notes of tests (Google Drive links) and the files of every series ---------- */
 let PDF3=null,pdf3Asked=0;
@@ -1270,16 +1275,18 @@ function notesView(){return {t:'Notes & PDFs',s:'Study material of your test ser
   const T=(C().tests||[]).filter(t=>PDF3&&PDF3[t.id]),S=mine().filter(s=>(s.files||[]).length);
   if(PDF3===null)return '<div class="card sk" style="height:90px"></div><div class="card sk" style="height:90px"></div>';
   if(!T.length&&!S.length)return `<div class="card empty"><span class="ti">${ic('file',22)}</span><b>No notes yet</b><p>When your teacher adds notes or PDFs to your test series, they show up here.</p></div>`;
-  return S.map(s=>`<div class="stack" style="gap:10px"><p class="gh">${esc3(s.title)}</p><div class="card rows">${s.files.map(f=>`<button class="row" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>${({schedule:'Schedule',syllabus:'Syllabus',notes:'Notes'})[f.kind]||'File'}</small></span>${ic('eye',18)}</button>`).join('')}</div></div>`).join('')
-   +(T.length?`<div class="stack" style="gap:10px"><p class="gh">Notes of tests</p><div class="card rows">${T.map(t=>`<div class="row"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(PDF3[t.id].label||t.title)}</b><small>${esc3(t.title)}, Google Drive</small></span><button class="btn sm" data-a="pdfOpen" data-id="${esc3(t.id)}" aria-label="View">${ic('eye',15)}View</button></div>`).join('')}</div></div>`:'')}}}
+  return S.map(s=>`<div class="stack" style="gap:10px"><p class="gh">${esc3(s.title)}</p><div class="card rows">${s.files.map(f=>`<button class="row" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}" data-kind="${esc3(f.kind||'')}" aria-label="${fileAria(f)} ${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>${({schedule:'Schedule',syllabus:'Syllabus',notes:'Notes'})[f.kind]||'File'}</small></span>${fileIc(f)}</button>`).join('')}</div></div>`).join('')
+   +(T.length?`<div class="stack" style="gap:10px"><p class="gh">Notes of tests</p><div class="card rows">${T.map(t=>`<div class="row"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(PDF3[t.id].label||t.title)}</b><small>${esc3(t.title)}, Google Drive</small></span><button class="btn sm" data-a="pdfOpen" data-id="${esc3(t.id)}" aria-label="Open or download">${ic('dl',15)}Open</button></div>`).join('')}</div></div>`:'')}}}
 const pdfLinkOk=u=>typeof u==='string'&&u.length<=500&&/^https:\/\/(drive|docs)\.google\.com\/[A-Za-z0-9/_?=&%.#~+-]+$/.test(u);
 function loadPdf3(){return rpc('cbt_test_pdfs',{}).then(r=>{const o={};if(r&&r.ok&&r.items)for(const k in r.items){const x=r.items[k];if(/^[A-Za-z0-9_-]{1,64}$/.test(k)&&x&&pdfLinkOk(x.url))o[k]={url:x.url,label:String(x.label||''),folder:String(x.folder||'').trim()}}PDF3=o}).catch(()=>{PDF3=PDF3||{}})}
-A.pdfOpen=el=>{const p=PDF3&&PDF3[el.dataset.id];if(!p||!pdfLinkOk(p.url)){toast3('PDF not available');return}const w=window.open(p.url,'_blank','noopener,noreferrer');if(w)w.opener=null};
+// v88: a Google Drive PDF opens a small sheet: View, or Download straight from Google (nothing is stored on our side)
+A.pdfOpen=el=>{const id=el.dataset.id,p=PDF3&&PDF3[id],t=tOf(id);if(!p||!pdfLinkOk(p.url)){toast3('PDF not available');return}
+  openSheet(`<span class="ti g" style="margin-bottom:12px">${ic('file',22)}</span><h2 id="sheetT">${esc3(p.label||(t&&t.title)||'PDF')}</h2><p class="sub">${t&&p.label&&p.label!==t.title?esc3(t.title)+' · ':''}Opens in Google Drive</p>
+  <div class="g2" style="margin-top:14px;grid-template-columns:1fr 1fr"><a class="btn ghost" href="${esc3(p.url)}" target="_blank" rel="noopener noreferrer">${ic('eye',16)}View</a><a class="btn" href="${esc3(pdfDl3(p.url))}" target="_blank" rel="noopener noreferrer">${ic('dl',16)}Download</a></div>`)};
 // v68: direct download of a Google Drive / Docs file
 const pdfDl3=u=>{let m=/\/file\/d\/([A-Za-z0-9_-]{10,})/.exec(u)||/[?&]id=([A-Za-z0-9_-]{10,})/.exec(u);
   if(m&&/^https:\/\/drive\.google\.com\//.test(u))return 'https://drive.google.com/uc?export=download&id='+m[1];
   m=/^https:\/\/docs\.google\.com\/(document|spreadsheets|presentation)\/d\/([A-Za-z0-9_-]{10,})/.exec(u);return m?'https://docs.google.com/'+m[1]+'/d/'+m[2]+'/export?format=pdf':u};
-A.pdfDl=el=>{const p=PDF3&&PDF3[el.dataset.id];if(!p||!pdfLinkOk(p.url)){toast3('PDF not available');return}const w=window.open(pdfDl3(p.url),'_blank','noopener,noreferrer');if(w)w.opener=null};
 function openNotes(){push(notesView());loadPdf3().then(()=>{if(top()&&top().key==='notes')redraw()})}
 
 /* ---------- one question card (Saved and Mistakes) ---------- */

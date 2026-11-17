@@ -129,6 +129,19 @@ async function rpcRoute(route) {
     const pf = (await q(`select url, folder from cbt_private.test_pdfs where test_id = 'aaaaaaaa-0000-0000-0000-000000000001'`))[0];
     ok(pf && pf.folder === 'Answer keys' && /e2e85/.test(pf.url), tag + ' the PDF is saved in the new folder (' + JSON.stringify(pf) + ')');
     const ovf2 = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1); ok(!ovf2, tag + ' no horizontal scroll (series page)');
+    // announcements: Add link puts a [text](https://…) button into the message
+    await page.goto(BASE + 'cp-dt764twzf54s5m.html#/tests'); await page.waitForSelector('[data-act=sMenu]');
+    await page.click('[data-act=sMenu][data-id="11111111-1111-1111-1111-111111111111"]'); await page.waitForSelector('.pop');
+    await page.click('.pop button:has-text("Announcements")'); await page.waitForSelector('.drawer [data-act=addLink]'); await page.waitForFunction(() => !/…/.test(document.querySelector('.drawer .section-t').textContent));
+    await q(`delete from cbt_private.series_posts where body like '%t.me/aspiron%'`);
+    await page.fill('.drawer #an-b', 'Join now'); await page.click('.drawer [data-act=addLink]'); await page.waitForSelector('#lk-u');
+    await page.fill('#lk-t', 'Telegram (channel)'); await page.fill('#lk-u', 'http://bad.example'); await page.click('.modal [data-act=ok]'); await page.waitForTimeout(300);
+    ok(await page.$('#lk-u') !== null && !/\]\(/.test(await page.inputValue('.drawer #an-b')), tag + ' Add link refuses a link that is not https://');
+    await page.fill('#lk-u', 'https://t.me/aspiron'); await page.click('.modal [data-act=ok]'); await page.waitForTimeout(400);
+    const av = await page.inputValue('.drawer #an-b');
+    ok(av === 'Join now [Telegram channel](https://t.me/aspiron)', tag + ' Add link puts the button into the message (' + av + ')');
+    await page.click('.drawer [data-act=add]'); await page.waitForTimeout(1200);
+    ok((await q(`select count(*)::int n from cbt_private.series_posts where body like '%[Telegram channel](https://t.me/aspiron)%'`))[0].n === 1, tag + ' the announcement with the link button is saved');
     ok(!errs.length, tag + ' no page errors ' + errs.join(' | '));
     await ctx.close();
   }
