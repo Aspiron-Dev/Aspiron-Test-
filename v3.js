@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=86;
+const V3VER=87;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -2213,7 +2213,8 @@ let rvHost=null;
 function rvDark(){try{if(document.body.classList.contains('v3on')&&!document.body.classList.contains('v3old')&&host)return host.dataset.mode!=='light';return document.documentElement.dataset.theme==='dark'}catch(e){return false}}
 const RVCSS=`:host{all:initial}*{box-sizing:border-box;margin:0;padding:0;font:inherit;color:inherit}
 .w{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:flex-end;justify-content:center;font-family:Geist,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
-.bg{position:absolute;inset:0;background:rgba(10,10,12,.5);opacity:0;transition:opacity .35s ease}
+.bg{position:absolute;inset:0;background:rgba(10,10,12,.45);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);opacity:0;transition:opacity .35s ease}
+.w{touch-action:none}.c{touch-action:pan-y}
 .c{position:relative;width:100%;max-width:460px;background:var(--s);color:var(--tx);border-radius:28px 28px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom,0px));box-shadow:0 -20px 60px -20px rgba(0,0,0,.4);transform:translateY(105%);transition:transform .5s cubic-bezier(.2,.9,.25,1)}
 .on .bg{opacity:1}.on .c{transform:none}
 .c{max-height:100%;overflow-y:auto;overscroll-behavior:contain}
@@ -2242,7 +2243,7 @@ const RVI={star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.5 2.3
   x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
   heart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-9.2-9A5 5 0 0 1 12 5.6 5 5 0 0 1 21.2 11C19 15.6 12 20 12 20z"/></svg>'};
 const RVW=['','Poor','Could be better','Good','Very good','Excellent'];
-function rvClose(){if(!rvHost)return;const h=rvHost;rvHost=null;try{if(h._vvf){visualViewport.removeEventListener('resize',h._vvf);visualViewport.removeEventListener('scroll',h._vvf)}}catch(e){}const w=h.shadowRoot.querySelector('.w');w.classList.remove('on');setTimeout(()=>h.remove(),RM?0:420)}
+function rvClose(){if(!rvHost)return;const h=rvHost;rvHost=null;try{if(h._lock){document.documentElement.style.overflow=h._lock[0];document.body.style.overflow=h._lock[1]}}catch(e){}try{if(h._vvf){visualViewport.removeEventListener('resize',h._vvf);visualViewport.removeEventListener('scroll',h._vvf)}}catch(e){}const w=h.shadowRoot.querySelector('.w');w.classList.remove('on');setTimeout(()=>h.remove(),RM?0:420)}
 async function rvAsk(sid,title,manual,test){
   if(rvHost||(!sid&&!test)||typeof rpc!=='function')return;
   if(!manual&&document.body.classList.contains('intest'))return;
@@ -2262,6 +2263,10 @@ async function rvAsk(sid,title,manual,test){
   const W=R.querySelector('.w'),B=R.querySelector('.body');
   /* keyboard: the card rides above it and the message box is scrolled into view (also right after a star tap) */
   const C=R.querySelector('.c');let kbUp=false;
+  /* the page behind stays still: no scrolling it, no drifting when the keyboard opens */
+  const de=document.documentElement,bo=document.body;rvHost._lock=[de.style.overflow,bo.style.overflow];de.style.overflow='hidden';bo.style.overflow='hidden';
+  W.addEventListener('touchmove',e=>{if(!C.contains(e.target)||C.scrollHeight<=C.clientHeight+1)e.preventDefault()},{passive:false});
+  W.addEventListener('wheel',e=>{if(!C.contains(e.target))e.preventDefault()},{passive:false});
   const fit=()=>{if(!kbUp)return;try{const ta=B.querySelector('textarea');if(ta)ta.scrollIntoView({block:'center',behavior:'smooth'})}catch(e){}};
   const vvf=()=>{const vv=window.visualViewport;if(!vv)return;const k=Math.max(0,Math.round(innerHeight-vv.height-vv.offsetTop));kbUp=k>60;W.style.bottom=(kbUp?k:0)+'px';if(kbUp){setTimeout(fit,100);setTimeout(fit,380)}};
   if(window.visualViewport){visualViewport.addEventListener('resize',vvf);visualViewport.addEventListener('scroll',vvf);rvHost._vvf=vvf}
