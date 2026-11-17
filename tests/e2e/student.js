@@ -530,13 +530,21 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     ok(row && row.labels === 'Physics 0/2|Biology 0/1' && row.head === '0 of 3 done' && !row.over && row.above, `${cfg.n}: Home shows a circle per subject with its count, above the shortcut tiles ` + JSON.stringify(row));
     await t.pg.screenshot({ path: path.join(__dirname, 'shots', `student_qd_${cfg.n}.png`) });
     if (cfg.flow) {
+      const topQ = () => t.sr(r => Math.round(r.querySelector('#qkBox').getBoundingClientRect().top + window.scrollY));
+      const top0 = await topQ();
+      await t.sr(r => { window.__rb = 0; new MutationObserver(l => { l.forEach(x => { if (x.addedNodes.length > 1) window.__rb++; }); }).observe(r.querySelector('#main'), { childList: true }); });
       await t.sr(r => r.querySelector('[data-s="phy"]').click()); await t.pg.waitForTimeout(1200);
+      const top1 = await topQ(), pg1 = await t.sr(r => r.querySelector('#scr').classList.contains('open'));
+      ok(top1 > top0 + 150 && !pg1, 'stories: the questions open under the circles on Home (no page), the shortcut tiles move down (' + top0 + ' → ' + top1 + ')');
       const v1 = await t.sr(r => ({ q: r.querySelector('.qc3-q').textContent, n: r.querySelectorAll('.opt3').length, ex: !!r.querySelector('.exp3'), xss: !!r.querySelector('.qc3-q img'), hdr: r.querySelector('.pr-top').textContent.replace(/\s+/g, ' '), flag: window.__xss === 1 }));
       ok(/QD-P1 <img src=x/.test(v1.q) && v1.n === 4 && !v1.ex && !v1.xss && !v1.flag && /Question 1 of 2/.test(v1.hdr), 'stories: the first question opens as text (HTML is not run), 4 options, no explanation yet ' + JSON.stringify(v1));
       await t.sr(r => r.querySelector('.opt3[data-j="1"]').click()); await t.pg.waitForTimeout(1200);
       const a1 = await t.sr(r => ({ res: (r.querySelector('.qc3-r') || {}).textContent, ex: (r.querySelector('.exp3') || {}).textContent, c: r.querySelector('.opt3.c .k').textContent, next: r.querySelector('[data-a="qdNext"]').textContent.trim() }));
       ok(/Correct/.test(a1.res) && /KEY-P1/.test(a1.ex) && a1.c === 'B' && a1.next === 'Next', 'stories: a right answer says so and shows the explanation ' + JSON.stringify(a1));
       await t.pg.screenshot({ path: path.join(__dirname, 'shots', 'student_qd_question.png') });
+      await t.sr(r => r.querySelector('[data-a="qdNext"]').click()); await t.pg.waitForTimeout(500);
+      await t.sr(r => r.querySelector('[data-a="qdPrev"]').click()); await t.pg.waitForTimeout(500);
+      ok(await t.sr(r => /Question 1 of 2/.test(r.querySelector('.pr-top').textContent.replace(/\s+/g, ' ')) && !!r.querySelector('.exp3')), 'stories: Back goes to the previous question and shows its answer');
       await t.sr(r => r.querySelector('[data-a="qdNext"]').click()); await t.pg.waitForTimeout(500);
       await t.sr(r => r.querySelector('.opt3[data-j="0"]').click()); await t.pg.waitForTimeout(1200);
       const a2 = await t.sr(r => ({ res: (r.querySelector('.qc3-r') || {}).textContent, c: r.querySelector('.opt3.c .k').textContent, w: r.querySelector('.opt3.w .k').textContent, next: r.querySelector('[data-a="qdNext"]').textContent.trim() }));
@@ -545,7 +553,9 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
       const sm = await t.sr(r => (r.querySelector('.pr-end') || {}).textContent);
       ok(/2\s*of\s*2\s*answered/.test(sm.replace(/\s+/g, ' ')) && /1\s*right/.test(sm.replace(/\s+/g, ' ')), 'stories: the summary says 2 of 2 answered, 1 right ' + (sm || '').replace(/\s+/g, ' ').slice(0, 90));
       await t.pg.screenshot({ path: path.join(__dirname, 'shots', 'student_qd_summary.png') });
-      await t.sr(r => r.querySelector('[data-a="back"]').click()); await t.pg.waitForTimeout(900);
+      await t.sr(r => r.querySelector('[data-a="qdClose"]').click()); await t.pg.waitForTimeout(1100);
+      const top2 = await topQ(), rb = await t.sr(() => window.__rb);
+      ok(Math.abs(top2 - top0) <= 2 && rb === 0 && !(await t.sr(r => r.querySelector('#qdpIn').innerHTML.trim())), 'stories: closing brings the tiles back to their place; answering and moving never rebuilt the page (' + top2 + ', ' + rb + ' rebuilds)');
       const row2 = await t.sr(r => { const c = r.querySelector('[data-s="phy"]'); return { seen: c.classList.contains('seen'), n: c.querySelector('small').textContent, head: r.querySelector('#qdBox .aside').textContent }; });
       ok(row2.seen && row2.n === '2/2' && row2.head === '2 of 3 done', 'stories: back on Home the Physics circle is grey with 2/2 ' + JSON.stringify(row2));
       await t.pg.reload(); await t.pg.waitForTimeout(3500);
@@ -553,6 +563,8 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
       ok(row3 === '2/2', 'stories: the answers are kept on the server (after a reload) ' + row3);
       await t.sr(r => r.querySelector('[data-s="phy"]').click()); await t.pg.waitForTimeout(1000);
       ok(await t.sr(r => !!r.querySelector('.exp3') && /Question 1 of 2/.test(r.querySelector('.pr-top').textContent.replace(/\s+/g, ' '))), 'stories: opening a finished subject shows its first question with the answer');
+      await t.sr(r => r.querySelector('[data-s="phy"]').click()); await t.pg.waitForTimeout(1000);
+      ok(!(await t.sr(r => r.querySelector('#qdpBox').classList.contains('open'))), 'stories: tapping the open circle again closes the questions');
     }
     ok(!t.er.length, `no page errors (stories ${cfg.n}) ` + t.er.join(' | ')); await t.c.close();
   }
