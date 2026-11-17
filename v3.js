@@ -385,12 +385,14 @@ A.upg=()=>{if(UPGB)return;UPGB=true;const s=curSeries(),wait=Promise.all([loadMe
    Server: cbt_qotd_today / cbt_qotd_answer (supabase_v87_qotd.sql). The admin picks Question bank questions for a day; Home shows one circle per
    subject (ring = not finished, grey = all answered). Tap = one question at a time; the right answer and the explanation come after answering.
    Until that SQL file is run, or when nothing is set for today, the row is simply not shown. Loaded once (again after 20 minutes or a new day). */
-const QD={ok:false,items:[],day:'',at:0,loading:false,fresh:false};
+const QD={ok:false,items:[],day:'',loading:false,fresh:false,sig:''};
+let QDT=0,QDD='';   // when the last call was made and which day the PHONE thought it was (one call per 20 minutes or per new day, whatever the reply)
 const QD_IC={phy:'atom',chem:'flask',bio:'leaf',math:'sigma',maths:'sigma'};
 const istDay=()=>new Date(Date.now()+19800000).toISOString().slice(0,10);
-function qdLoad(){if(QD.loading||(QD.at&&Date.now()-QD.at<1200000&&QD.day===istDay()))return;QD.loading=true;
-  rpc('cbt_qotd_today',{}).then(r=>{QD.loading=false;QD.at=Date.now();QD.ok=!!(r&&r.ok);QD.items=QD.ok?(r.items||[]):[];QD.day=QD.ok?String(r.day||''):'';QD.fresh=QD.ok&&QD.items.length>0;
-    try{if(S.tab==='home')softRender()}catch(e){}QD.fresh=false}).catch(()=>{QD.loading=false;QD.at=Date.now();QD.ok=false;QD.items=[]})}
+function qdLoad(){const d=istDay();if(QD.loading||(QDT&&Date.now()-QDT<1200000&&QDD===d))return;QD.loading=true;QDT=Date.now();QDD=d;
+  rpc('cbt_qotd_today',{}).then(r=>{QD.loading=false;const had=QD.items.length>0;QD.ok=!!(r&&r.ok);QD.items=QD.ok?(r.items||[]):[];QD.day=QD.ok?String(r.day||''):'';
+    const sig=QD.items.map(x=>x.id+(x.done?1:0)).join();if(sig===QD.sig)return;QD.sig=sig;   // Home is redrawn only when the row changed
+    QD.fresh=!had&&QD.items.length>0;try{if(S.tab==='home')softRender()}catch(e){}QD.fresh=false}).catch(()=>{QD.loading=false;QD.ok=false;QD.items=[];QD.sig=''})}
 function qdGroups(){const M=new Map(),ord=['phy','chem','bio'];QD.items.forEach(q=>{const k=q.s||'';if(!M.has(k))M.set(k,[]);M.get(k).push(q)});
   const rk=s=>{const j=ord.indexOf(s);return j<0?9:j};return [...M.entries()].map(([s,L])=>({s,L,done:L.filter(x=>x.done).length})).sort((a,b)=>rk(a.s)-rk(b.s)||a.s.localeCompare(b.s))}
 function qdRow(){qdLoad();const G=QD.ok?qdGroups():[];if(!G.length)return '';const all=QD.items.length,dn=QD.items.filter(x=>x.done).length;
