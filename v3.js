@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=89;
+const V3VER=90;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -95,6 +95,9 @@ const P={eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circl
  user:'<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
  gift:'<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
  out:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+ flask:'<path d="M10 2v7.5a2 2 0 0 1-.2.9L4.7 20.5a1 1 0 0 0 .9 1.5h12.8a1 1 0 0 0 .9-1.5l-5.1-10.1a2 2 0 0 1-.2-.9V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/>',
+ leaf:'<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10z"/><path d="M2 21c0-3 1.9-5.4 5.1-6C9.5 14.5 12 13 13 12"/>',
+ sigma:'<path d="M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2"/>',
  atom:'<circle cx="12" cy="12" r="1.5"/><path d="M20.2 20.2c2-2-.3-7.6-5.3-12.5S4.4 1.8 2.4 3.8s.3 7.6 5.3 12.5 10.5 5.9 12.5 3.9z"/><path d="M15.7 15.7c5-5 7.4-10.5 5.4-12.5s-7.6.4-12.6 5.4-7.4 10.6-5.4 12.6 7.6-.4 12.6-5.5z"/>',
  ruler:'<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/>',
  sigma:'<path d="M18 7V5a1 1 0 0 0-1-1H6.5a.5.5 0 0 0-.4.8l4.5 6a2 2 0 0 1 0 2.4l-4.5 6a.5.5 0 0 0 .4.8H17a1 1 0 0 0 1-1v-2"/>',
@@ -378,6 +381,46 @@ let UPGB=false;   // one tap at a time; the page opens only if the student is st
 A.upg=()=>{if(UPGB)return;UPGB=true;const s=curSeries(),wait=Promise.all([loadMeta(),STORE===null?loadStore():null]).catch(()=>{});
   Promise.race([wait,new Promise(r=>setTimeout(r,2500))]).then(()=>{UPGB=false;if(S.tab!=='home'||STK.length||layer)return;
     if(s&&upgradesOf(s.id).length&&!expired(s))A.openSD({dataset:{id:s.id,t:'d'}});else A.toStore()})};
+/* ---------- v90: Question of the Day (stories) ----------
+   Server: cbt_qotd_today / cbt_qotd_answer (supabase_v87_qotd.sql). The admin picks Question bank questions for a day; Home shows one circle per
+   subject (ring = not finished, grey = all answered). Tap = one question at a time; the right answer and the explanation come after answering.
+   Until that SQL file is run, or when nothing is set for today, the row is simply not shown. Loaded once (again after 20 minutes or a new day). */
+const QD={ok:false,items:[],day:'',at:0,loading:false};
+const QD_IC={phy:'atom',chem:'flask',bio:'leaf',math:'sigma',maths:'sigma'};
+const istDay=()=>new Date(Date.now()+19800000).toISOString().slice(0,10);
+function qdLoad(){if(QD.loading||(QD.at&&Date.now()-QD.at<1200000&&QD.day===istDay()))return;QD.loading=true;
+  rpc('cbt_qotd_today',{}).then(r=>{QD.loading=false;QD.at=Date.now();QD.ok=!!(r&&r.ok);QD.items=QD.ok?(r.items||[]):[];QD.day=QD.ok?String(r.day||''):'';
+    try{if(S.tab==='home')softRender()}catch(e){}}).catch(()=>{QD.loading=false;QD.at=Date.now();QD.ok=false;QD.items=[]})}
+function qdGroups(){const M=new Map(),ord=['phy','chem','bio'];QD.items.forEach(q=>{const k=q.s||'';if(!M.has(k))M.set(k,[]);M.get(k).push(q)});
+  const rk=s=>{const j=ord.indexOf(s);return j<0?9:j};return [...M.entries()].map(([s,L])=>({s,L,done:L.filter(x=>x.done).length})).sort((a,b)=>rk(a.s)-rk(b.s)||a.s.localeCompare(b.s))}
+function qdRow(){qdLoad();const G=QD.ok?qdGroups():[];if(!G.length)return '';const all=QD.items.length,dn=QD.items.filter(x=>x.done).length;
+  return `<section class="sec qd" id="qdBox"><div class="sh"><h2>Question of the Day</h2><span class="aside">${dn} of ${all} done</span></div><div class="qd-row" role="list">${G.map(g=>`<button class="qd-c${g.done===g.L.length?' seen':''}" role="listitem" data-a="qdOpen" data-s="${esc3(g.s)}" aria-label="${esc3(qbSub(g.s))}, ${g.done} of ${g.L.length} answered"><span class="qd-r"><span class="qd-i">${ic(QD_IC[g.s]||'book',26)}</span></span><span class="qd-l">${esc3(qbSub(g.s))}</span><small>${g.done}/${g.L.length}</small></button>`).join('')}</div></section>`}
+let QV=null;
+const qdList=()=>QV?QD.items.filter(x=>(x.s||'')===QV.s):[];
+const qdErr=r=>r&&r.error==='busy'?'Too many answers in a short time. Try again in a minute.':r&&r.error==='not_found'?'This question is not available any more.':'Could not save your answer. Please try again.';
+function qdView(){return {t:'Question of the Day',get s(){return QV?qbSub(QV.s):''},key:'qd',leave:()=>{QV=null;try{if(S.tab==='home')softRender()}catch(e){}},html:()=>{
+  const L=qdList(),n=L.length;if(!QV||!n)return `<div class="card empty"><span class="ti">${ic('info',22)}</span><b>Nothing here</b><p>There are no questions for this subject today.</p></div>`;
+  const dn=L.filter(x=>x.done).length,ok=L.filter(x=>x.done&&x.right).length;
+  const bar=`<div class="qd-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${n}" aria-valuenow="${dn}" aria-label="${dn} of ${n} answered">${L.map((x,j)=>`<i class="${x.done?'on':j===QV.i?'cur':''}"></i>`).join('')}</div>`;
+  if(QV.i>=n){const p=n?Math.round(ok/n*100):0;
+    return `${bar}<section class="mkh pr-end"><div class="mkh-ring" style="margin:0 auto">${rsRing(p,120)}<span><b>${p}%</b><small>right</small></span></div><h2>${dn===n?'You finished today\'s questions!':'Today\'s questions'}</h2><p><b>${dn}</b> of <b>${n}</b> answered, <b>${ok}</b> right.</p>
+     <div class="g2" style="grid-template-columns:1fr 1fr;width:100%"><button class="btn gold" data-a="qdQb">Practise more</button><button class="btn ghost on-dark" data-a="back">Done</button></div></section>
+     ${dn<n?`<button class="btn lg ghost" data-a="qdFirst">Answer the rest</button>`:''}`}
+  const q=L[QV.i],done=!!q.done,pick=done?q.choice:QV.pick,tags=[qbSub(q.s),q.c?qbChap(q.s,q.c):'',q.l?qbLbl(QB_LV,q.l):''].filter(Boolean);
+  return `${bar}<div class="pr-top"><span>Question <b>${QV.i+1}</b> of ${n}</span><span class="pr-sc">${ic('check',14)}${ok} right</span></div>
+   <div class="pr-card"><article class="card qc3"><div class="qc3-h">${tags.map(t=>`<span class="tag">${esc3(t)}</span>`).join('')}</div><div class="qc3-q">${esc3(q.q||'')}</div>
+    <div class="qc3-o">${(q.options||[]).map((o,j)=>{const cls=done?(j===q.answer?' c':j===q.choice?' w':''):(pick===j?' sel3':'');const tg=done||pick!=null?'div':'button';return `<${tg} class="opt3${cls}"${tg==='button'?` data-a="qdPick" data-j="${j}"`:''}><span class="k">${LT[j]}</span><span class="ot">${esc3(o||'')}</span></${tg}>`}).join('')}</div>
+    ${done?`<p class="qc3-r ${q.right?'ok':'bad'}">${q.right?'Correct! Well done.':`Not quite. The correct answer is ${LT[q.answer]}.`}</p>${q.explanation?`<div class="exp3"><b>Explanation</b><p>${esc3(q.explanation)}</p></div>`:''}`:pick!=null?'<p class="hint">Checking…</p>':''}</article></div>
+   <div class="pr-ft">${QV.i?'<button class="btn ghost" data-a="qdPrev">'+ic('back',16)+'Back</button>':'<span></span>'}<button class="btn${done?'':' ghost'}" data-a="qdNext">${done?(QV.i+1>=n?'Finish':'Next'):'Skip'}${ic('right',16)}</button></div>`}}}
+A.qdOpen=el=>{const s=el.dataset.s;if(!QD.items.some(x=>(x.s||'')===s))return;QV={s,i:0,pick:null};const f=qdList().findIndex(x=>!x.done);QV.i=f<0?0:f;closeLayer();push(qdView())};
+A.qdPick=async el=>{const q=qdList()[QV&&QV.i],j=+el.dataset.j;if(!q||q.done||QV.pick!=null)return;QV.pick=j;if(navigator.vibrate)navigator.vibrate(8);redraw();
+  let r=null;try{r=await rpc('cbt_qotd_answer',{p_id:q.id,p_choice:j})}catch(e){}
+  if(r&&r.ok)Object.assign(q,{done:true,choice:+r.choice,right:!!r.right,answer:+r.answer,explanation:String(r.explanation||'')});
+  if(!QV)return;QV.pick=null;if(!(r&&r.ok))toast3(qdErr(r));redraw()};
+A.qdNext=()=>{if(!QV)return;QV.pick=null;QV.i=Math.min(QV.i+1,qdList().length);$('#scrB').scrollTop=0;redraw()};
+A.qdPrev=()=>{if(!QV)return;QV.pick=null;QV.i=Math.max(0,QV.i-1);$('#scrB').scrollTop=0;redraw()};
+A.qdFirst=()=>{if(!QV)return;const f=qdList().findIndex(x=>!x.done);QV.i=f<0?0:f;redraw()};
+A.qdQb=()=>{openQB()};
 const RC=2*Math.PI*24;
 function cdCard3(){let c=null;try{c=cdGet()}catch(e){}
   if(!c)return `<section class="sec"><div class="card cdc"><div class="cd-top"><span class="ti g">${ic('target',22)}</span><div style="min-width:0"><h3>Exam countdown</h3><p>Set your exam date and see how much time is left.</p></div><button class="btn sm" data-a="cdEdit">Set date</button></div></div></section>`;
@@ -471,7 +514,7 @@ function storeCard(x,cls){const off=x.mrp&&x.mrp>x.price?Math.round((1-x.price/x
   return `<article class="card ${cls||'tc'}"><span class="tag">${[courseOf(x),esc3(x.section||'')].filter(Boolean).join(', ')||'Test series'}</span><h3>${esc3(x.title)}</h3>${x.subtitle?`<p class="mut" style="font-size:13px">${esc3(x.subtitle)}</p>`:''}
    <div class="ft"><span class="price">${x.price?`<b>₹${fmtN(x.price)}</b>${off?`<s>₹${fmtN(x.mrp)}</s><span class="badge off">${off}% off</span>`:''}`:'<span class="free">Free</span>'}</span><a class="btn sm ${soon?'':'gold'}" href="${storeUrl(x)}">${soon?ic('bell',15)+'Notify me':x.prebook&&x.buy_on===false?'Pre-book':'Buy now'}</a></div></article>`}
 function trending(){if(!STORE){loadStore();return `<section class="sec"><div class="sh"><h2>Trending test series</h2></div><div class="card sk" style="height:190px"></div></section>`}loadExtras();return trendRail(true)}
-VIEW.home=()=>seriesHero()+quickGrid()+cdCard3()+upcoming()+zone()+trending();
+VIEW.home=()=>seriesHero()+qdRow()+quickGrid()+cdCard3()+upcoming()+zone()+trending();
 AFTER.home=()=>{tick(true);every(()=>{tick(false);evTick()},1000);autoRail('#trRail','#trDots')};
 function autoRail(rs,ds){const c=$(rs);if(!c||!c.children.length)return;const dots=[...root.querySelectorAll(ds+' i')];let i=0,touched=false;const st=()=>c.children[0].getBoundingClientRect().width+12;
   c.addEventListener('scroll',()=>{const k=Math.round(c.scrollLeft/st());if(k!==i){i=k;dots.forEach((d,j)=>d.classList.toggle('on',j===k))}},{passive:true});

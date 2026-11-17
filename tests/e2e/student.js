@@ -442,6 +442,62 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     ok(!e6.length, `no page errors (home ${cfg.n}) ` + e6.join(' | ')); await c6.close();
   }
   await q(`delete from cbt_private.series_meta where series_id = $1`, [PSER]); await q(`delete from public.cbt_store_items where id = $1`, [ITEM]);
+  // Question of the Day stories (v90): one circle per subject on Home, one question at a time, answer + explanation after answering
+  const QI = ['d1d1d1d1-0000-0000-0000-000000000001', 'd1d1d1d1-0000-0000-0000-000000000002', 'd1d1d1d1-0000-0000-0000-000000000003'];
+  const qdClean = async () => { await q(`delete from cbt_private.qotd where qid = any($1::uuid[])`, [QI]); await q(`delete from cbt_private.qbank where id = any($1::uuid[])`, [QI]); };
+  await qdClean();
+  const qdOpen = async (cfg, tweak) => {
+    await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
+    const c = await br.newContext({ viewport: { width: cfg.w, height: cfg.h } }); await c.addInitScript(x => { try { localStorage.setItem('cbt_v3_theme', JSON.stringify({ mode: x.mode })); } catch (e) {} }, cfg);
+    const pg = await c.newPage(); const er = []; pg.on('pageerror', e => er.push(e.message));
+    await pg.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort()); await pg.route(SUPA + '/rest/v1/rpc/**', rpcRoute); if (tweak) await tweak(pg);
+    await pg.goto(BASE + 'index.html'); await codeScreen(pg); await pg.fill('#ph', '9000000002'); await pg.fill('#cd', 'BBBB2222'); await pg.click('#lbtn'); await pg.waitForTimeout(3500);
+    const sr = fn => pg.evaluate(f => { const r = document.getElementById('v3host').shadowRoot; return (new Function('r', 'return (' + f + ')(r)'))(r); }, fn.toString());
+    await sr(r => { const b = r.querySelector('[data-ob="skip"]'); if (b) b.click(); }); await pg.waitForTimeout(2600);
+    await sr(r => { const b = r.querySelector('#sheet.open [data-a="close"]'); if (b) b.click(); }); await pg.waitForTimeout(1500);
+    return { c, pg, er, sr };
+  };
+  { // not installed (the function is missing) and nothing set for today: no row, no errors
+    let t = await qdOpen({ w: 390, h: 844, mode: 'light' }, pg => pg.route(SUPA + '/rest/v1/rpc/cbt_qotd_today', r => r.fulfill({ status: 404, contentType: 'application/json', body: '{"message":"not found"}' })));
+    ok(!(await t.sr(r => !!r.querySelector('#qdBox'))) && !t.er.length, 'stories: SQL not installed → no row and no errors ' + t.er.join('|')); await t.c.close();
+    t = await qdOpen({ w: 390, h: 844, mode: 'light' });
+    ok(!(await t.sr(r => !!r.querySelector('#qdBox'))) && !t.er.length, 'stories: nothing set for today → no row ' + t.er.join('|')); await t.c.close();
+  }
+  await q(`insert into cbt_private.qbank (id, subject, q, options, answer, explanation) values
+    ($1, 'phy', 'QD-P1 <img src=x onerror=window.__xss=1>', '["a1","b1","c1","d1"]', 1, 'KEY-P1'), ($2, 'phy', 'QD-P2', '["a2","b2","c2","d2"]', 2, 'KEY-P2'), ($3, 'bio', 'QD-B1', '["a3","b3","c3","d3"]', 0, 'KEY-B1')`, QI);
+  await q(`insert into cbt_private.qotd (qid, show_on, sort) values ($1, cbt_private.qotd_day(), 1), ($2, cbt_private.qotd_day(), 2), ($3, cbt_private.qotd_day(), 3)`, QI);
+  for (const cfg of [{ n: 'light', w: 390, h: 844, mode: 'light', flow: 1 }, { n: 'dark', w: 390, h: 844, mode: 'dark' }, { n: '360', w: 360, h: 800, mode: 'light' }, { n: 'desktop', w: 1280, h: 800, mode: 'light' }]) {
+    await q(`delete from cbt_private.qotd_ans`);
+    const t = await qdOpen(cfg);
+    const row = await t.sr(r => { const b = r.querySelector('#qdBox'); if (!b) return null; const C = [...b.querySelectorAll('.qd-c')]; return { labels: C.map(x => x.querySelector('.qd-l').textContent + ' ' + x.querySelector('small').textContent).join('|'), head: b.querySelector('.aside').textContent, over: document.documentElement.scrollWidth > innerWidth, above: !!(b.compareDocumentPosition(r.querySelector('#qkBox')) & 4) }; });
+    ok(row && row.labels === 'Physics 0/2|Biology 0/1' && row.head === '0 of 3 done' && !row.over && row.above, `${cfg.n}: Home shows a circle per subject with its count, above the shortcut tiles ` + JSON.stringify(row));
+    await t.pg.screenshot({ path: path.join(__dirname, 'shots', `student_qd_${cfg.n}.png`) });
+    if (cfg.flow) {
+      await t.sr(r => r.querySelector('[data-s="phy"]').click()); await t.pg.waitForTimeout(1200);
+      const v1 = await t.sr(r => ({ q: r.querySelector('.qc3-q').textContent, n: r.querySelectorAll('.opt3').length, ex: !!r.querySelector('.exp3'), xss: !!r.querySelector('.qc3-q img'), hdr: r.querySelector('.pr-top').textContent.replace(/\s+/g, ' '), flag: window.__xss === 1 }));
+      ok(/QD-P1 <img src=x/.test(v1.q) && v1.n === 4 && !v1.ex && !v1.xss && !v1.flag && /Question 1 of 2/.test(v1.hdr), 'stories: the first question opens as text (HTML is not run), 4 options, no explanation yet ' + JSON.stringify(v1));
+      await t.sr(r => r.querySelector('.opt3[data-j="1"]').click()); await t.pg.waitForTimeout(1200);
+      const a1 = await t.sr(r => ({ res: (r.querySelector('.qc3-r') || {}).textContent, ex: (r.querySelector('.exp3') || {}).textContent, c: r.querySelector('.opt3.c .k').textContent, next: r.querySelector('[data-a="qdNext"]').textContent.trim() }));
+      ok(/Correct/.test(a1.res) && /KEY-P1/.test(a1.ex) && a1.c === 'B' && a1.next === 'Next', 'stories: a right answer says so and shows the explanation ' + JSON.stringify(a1));
+      await t.sr(r => r.querySelector('[data-a="qdNext"]').click()); await t.pg.waitForTimeout(500);
+      await t.sr(r => r.querySelector('.opt3[data-j="0"]').click()); await t.pg.waitForTimeout(1200);
+      const a2 = await t.sr(r => ({ res: (r.querySelector('.qc3-r') || {}).textContent, c: r.querySelector('.opt3.c .k').textContent, w: r.querySelector('.opt3.w .k').textContent, next: r.querySelector('[data-a="qdNext"]').textContent.trim() }));
+      ok(/Not quite/.test(a2.res) && a2.c === 'C' && a2.w === 'A' && a2.next === 'Finish', 'stories: a wrong answer shows the right one ' + JSON.stringify(a2));
+      await t.sr(r => r.querySelector('[data-a="qdNext"]').click()); await t.pg.waitForTimeout(500);
+      const sm = await t.sr(r => (r.querySelector('.pr-end') || {}).textContent);
+      ok(/2\s*of\s*2\s*answered/.test(sm.replace(/\s+/g, ' ')) && /1\s*right/.test(sm.replace(/\s+/g, ' ')), 'stories: the summary says 2 of 2 answered, 1 right ' + (sm || '').replace(/\s+/g, ' ').slice(0, 90));
+      await t.sr(r => r.querySelector('[data-a="back"]').click()); await t.pg.waitForTimeout(900);
+      const row2 = await t.sr(r => { const c = r.querySelector('[data-s="phy"]'); return { seen: c.classList.contains('seen'), n: c.querySelector('small').textContent, head: r.querySelector('#qdBox .aside').textContent }; });
+      ok(row2.seen && row2.n === '2/2' && row2.head === '2 of 3 done', 'stories: back on Home the Physics circle is grey with 2/2 ' + JSON.stringify(row2));
+      await t.pg.reload(); await t.pg.waitForTimeout(3500);
+      const row3 = await t.sr(r => { const c = r.querySelector('[data-s="phy"]'); return c ? c.querySelector('small').textContent : null; });
+      ok(row3 === '2/2', 'stories: the answers are kept on the server (after a reload) ' + row3);
+      await t.sr(r => r.querySelector('[data-s="phy"]').click()); await t.pg.waitForTimeout(1000);
+      ok(await t.sr(r => !!r.querySelector('.exp3') && /Question 1 of 2/.test(r.querySelector('.pr-top').textContent.replace(/\s+/g, ' '))), 'stories: opening a finished subject shows its first question with the answer');
+    }
+    ok(!t.er.length, `no page errors (stories ${cfg.n}) ` + t.er.join(' | ')); await t.c.close();
+  }
+  await qdClean();
   // Theme page with real finger taps (a touch phone): every tap must land on its button and be saved
   await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
   { const c3 = await br.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }); const p3 = await c3.newPage(); const e3 = []; p3.on('pageerror', e => e3.push(e.message));

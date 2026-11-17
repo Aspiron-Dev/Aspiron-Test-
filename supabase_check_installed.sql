@@ -24,7 +24,8 @@ from (values
   (17, 'supabase_v69_test_chapters.sql',       'public.cbt_test_chapters'),
   (18, 'supabase_v70_ops.sql',                 'public.cbt_admin_ops'),
   (19, 'supabase_v72_owner_profile.sql',       'public.cbt_admin_profile'),
-  (21, 'supabase_v80_access_check.sql',        'public.cbt_admin_access_check')
+  (21, 'supabase_v80_access_check.sql',        'public.cbt_admin_access_check'),
+  (23, 'supabase_v87_qotd.sql',                'public.cbt_admin_qotd')
   ) as f(n, file, fn)
 union all
 -- v71 changes an existing function: 'ok' when its text has the new code
