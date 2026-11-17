@@ -1736,6 +1736,98 @@ select pg_temp.chk('38c rank: a late first attempt (submitted after its own time
   and (select sum(v::int) from jsonb_array_elements_text(:'lb86'::jsonb->'dist') v) = 2);
 reset role;
 
+-- ===== QD. v88 Question of the Day: admin picks bank questions for a day; students answer; no leaks =====
+reset role;
+-- bank questions: 3 plain, 1 with a picture, 1 inactive, 1 from a live test that is still running
+insert into cbt_private.qbank (id, subject, chapter, q, options, answer, explanation) values
+  ('d0d0d0d0-0000-0000-0000-000000000001', 'phy', 'c1', 'QD-PHY-1', '["a","b","c","d"]', 1, 'QDKEY-1'),
+  ('d0d0d0d0-0000-0000-0000-000000000002', 'phy', 'c1', 'QD-PHY-2', '["a","b","c","d"]', 2, 'QDKEY-2'),
+  ('d0d0d0d0-0000-0000-0000-000000000003', 'bio', 'c2', 'QD-BIO-1', '["a","b","c","d"]', 3, 'QDKEY-3');
+insert into cbt_private.qbank (id, subject, q, options, answer, explanation, img) values
+  ('d0d0d0d0-0000-0000-0000-000000000004', 'chem', 'QD-PIC', '["a","b","c","d"]', 0, 'QDKEY-4', 'data:image/png;base64,AAAA');
+insert into cbt_private.qbank (id, subject, q, options, answer, explanation, active) values
+  ('d0d0d0d0-0000-0000-0000-000000000005', 'chem', 'QD-OFF', '["a","b","c","d"]', 0, 'QDKEY-5', false);
+insert into cbt_private.tests (id, series_id, title, duration, data, question_count, active, practice, closes_at, result_at) values
+  ('aaaaaaaa-0000-0000-0000-0000000000d1', '22222222-2222-2222-2222-222222222222', 'Live for QD', 60, '[{"q":"QD-LIVE","options":["a","b","c","d"],"answer":1,"explanation":"QDKEY-6"}]', 1, true, false,
+   (extract(epoch from now())*1000)::bigint + 3600000, (extract(epoch from now())*1000)::bigint + 7200000) on conflict (id) do nothing;
+insert into cbt_private.qbank (id, subject, q, options, answer, explanation, src) values
+  ('d0d0d0d0-0000-0000-0000-000000000006', 'phy', 'QD-LIVE', '["a","b","c","d"]', 1, 'QDKEY-6', 'test:aaaaaaaa-0000-0000-0000-0000000000d1:0');
+select public.cbt_admin_login('', 'OwnerPass2026x', 'QD')->>'token' as qdo \gset
+select public.cbt_admin_team(:'qdo', 'user_save', '{"name":"QD viewer","username":"qdview1","password":"Tr7k-9mQz-pLq1","perms":{"content":"view"}}')->>'ok';
+select public.cbt_admin_team(:'qdo', 'user_save', '{"name":"QD manager","username":"qdman1","password":"Tr7k-9mQz-pLq2","perms":{"content":"manage"}}')->>'ok';
+select public.cbt_admin_team(:'qdo', 'user_save', '{"name":"QD other","username":"qdoth1","password":"Tr7k-9mQz-pLq3","perms":{"messaging":"manage"}}')->>'ok';
+select public.cbt_admin_login('qdview1', 'Tr7k-9mQz-pLq1', 'QV')->>'token' as qdv \gset
+select public.cbt_admin_login('qdman1', 'Tr7k-9mQz-pLq2', 'QM')->>'token' as qdm \gset
+select public.cbt_admin_login('qdoth1', 'Tr7k-9mQz-pLq3', 'QX')->>'token' as qdx \gset
+insert into cbt_private.qbank (id, subject, q, options, answer, explanation, oimg) values
+  ('d0d0d0d0-0000-0000-0000-000000000007', 'phy', 'QD-EMPTY-NULLS', '["a","b","c","d"]', 0, 'QDKEY-7', '[null,null,null,null]'),
+  ('d0d0d0d0-0000-0000-0000-000000000008', 'phy', 'QD-EMPTY-STRS', '["a","b","c","d"]', 0, 'QDKEY-8', '["","","",""]'),
+  ('d0d0d0d0-0000-0000-0000-000000000009', 'phy', 'QD-OPT-PIC', '["a","b","c","d"]', 0, 'QDKEY-9', '[null,"data:image/png;base64,AAAA",null,null]');
+select to_char(cbt_private.qotd_day(), 'YYYY-MM-DD') as qd_today, to_char(cbt_private.qotd_day() + 1, 'YYYY-MM-DD') as qd_tom \gset
+set role anon;
+select public.cbt_admin_qotd(:'qdo', 'add', jsonb_build_object('date', :'qd_today', 'ids', jsonb_build_array(
+  'd0d0d0d0-0000-0000-0000-000000000001', 'd0d0d0d0-0000-0000-0000-000000000002', 'd0d0d0d0-0000-0000-0000-000000000003', 'd0d0d0d0-0000-0000-0000-000000000004',
+  'd0d0d0d0-0000-0000-0000-000000000005', 'd0d0d0d0-0000-0000-0000-000000000006', 'd0d0d0d0-0000-0000-0000-000000000001'))) as qd_add \gset
+select pg_temp.chk('QD1 admin picks bank questions for a day: plain ones are added; a picture, an inactive one and a live test''s question are refused; a repeat is skipped',
+  (:'qd_add'::jsonb->>'added')::int = 3 and (:'qd_add'::jsonb->>'pic')::int = 1 and (:'qd_add'::jsonb->>'held')::int = 1 and (:'qd_add'::jsonb->>'skipped')::int = 2);
+select public.cbt_admin_qotd(:'qdo', 'add', jsonb_build_object('date', :'qd_tom', 'ids', jsonb_build_array('d0d0d0d0-0000-0000-0000-000000000007', 'd0d0d0d0-0000-0000-0000-000000000008', 'd0d0d0d0-0000-0000-0000-000000000009'))) as qd_pic \gset
+select pg_temp.chk('QD1b an empty picture list ([null,…] or ["",…]) is no picture and can be picked; a real option picture is refused',
+  (:'qd_pic'::jsonb->>'added')::int = 2 and (:'qd_pic'::jsonb->>'pic')::int = 1);
+select pg_temp.chk('QD2 a stranger and a team member without Content get nothing; Content view may look but not change; Content manage may change',
+  public.cbt_admin_qotd('wrong-password', 'list', '{}')->>'ok' is distinct from 'true'
+  and public.cbt_admin_qotd(:'qdx', 'list', '{}')->>'error' = 'forbidden'
+  and public.cbt_admin_qotd(:'qdx', 'add', jsonb_build_object('date', :'qd_today', 'ids', jsonb_build_array('d0d0d0d0-0000-0000-0000-000000000002')))->>'error' = 'forbidden'
+  and public.cbt_admin_qotd(:'qdv', 'list', '{}')->>'ok' = 'true'
+  and public.cbt_admin_qotd(:'qdv', 'add', jsonb_build_object('date', :'qd_today', 'ids', jsonb_build_array('d0d0d0d0-0000-0000-0000-000000000002')))->>'error' = 'forbidden'
+  and public.cbt_admin_qotd(:'qdm', 'add', jsonb_build_object('date', :'qd_tom', 'ids', jsonb_build_array('d0d0d0d0-0000-0000-0000-000000000003')))->>'added' = '1'
+  and public.cbt_admin_qotd(:'qdo', 'nothing', '{}')->>'error' = 'action'
+  and public.cbt_admin_qotd(:'qdo', 'add', jsonb_build_object('date', '2020-01-01', 'ids', jsonb_build_array('d0d0d0d0-0000-0000-0000-000000000002')))->>'error' = 'date'
+  and public.cbt_admin_qotd(:'qdo', 'list', '{"from":"2026-13-45"}')->>'error' = 'date');
+select public.cbt_qotd_today('9000000002', 'BBBB2222', 'dev-bbbbbbbb') as qd_b0 \gset
+select pg_temp.chk('QD3 a student sees only today''s three questions, no answer and no explanation before answering; tomorrow''s question is not in the list',
+  (:'qd_b0'::jsonb->>'ok')::boolean and jsonb_array_length(:'qd_b0'::jsonb->'items') = 3
+  and :'qd_b0'::text !~ 'QDKEY' and :'qd_b0'::text !~ '"answer"' and :'qd_b0'::text ~ 'QD-PHY-1' and :'qd_b0'::text ~ 'QD-BIO-1'
+  and :'qd_b0'::text !~ 'QD-PIC' and :'qd_b0'::text !~ 'QD-OFF' and :'qd_b0'::text !~ 'QD-LIVE');
+select (x->>'id') as qd_p1 from jsonb_array_elements(:'qd_b0'::jsonb->'items') x where x->>'q' = 'QD-PHY-1' \gset
+select (x->>'id') as qd_bio from jsonb_array_elements(:'qd_b0'::jsonb->'items') x where x->>'q' = 'QD-BIO-1' \gset
+select public.cbt_qotd_answer('9000000002', 'BBBB2222', 'dev-bbbbbbbb', :'qd_p1'::uuid, 1) as qd_r1 \gset
+select public.cbt_qotd_answer('9000000002', 'BBBB2222', 'dev-bbbbbbbb', :'qd_p1'::uuid, 3) as qd_r2 \gset
+select pg_temp.chk('QD4 answering tells right / wrong with the answer and explanation; the first answer counts, a second try changes nothing',
+  (:'qd_r1'::jsonb->>'right')::boolean and :'qd_r1'::jsonb->>'explanation' = 'QDKEY-1' and (:'qd_r1'::jsonb->>'answer')::int = 1
+  and (:'qd_r2'::jsonb->>'right')::boolean and (:'qd_r2'::jsonb->>'choice')::int = 1
+  and (select count(*) from jsonb_array_elements(public.cbt_qotd_today('9000000002', 'BBBB2222', 'dev-bbbbbbbb')->'items') x where (x->>'done')::boolean) = 1
+  and public.cbt_qotd_today('9000000002', 'BBBB2222', 'dev-bbbbbbbb')::text ~ 'QDKEY-1');
+select pg_temp.chk('QD5 another student sees nothing of it: no answers, no explanations; a wrong password and a wrong choice are refused',
+  public.cbt_qotd_today('9000000001', 'AAAA1111', 'dev-aaaaaaaa')::text !~ 'QDKEY'
+  and (select count(*) from jsonb_array_elements(public.cbt_qotd_today('9000000001', 'AAAA1111', 'dev-aaaaaaaa')->'items') x where (x->>'done')::boolean) = 0
+  and public.cbt_qotd_today('9000000002', 'WRONG999', 'dev-bbbbbbbb')->>'ok' is distinct from 'true'
+  and public.cbt_qotd_answer('9000000002', 'BBBB2222', 'dev-bbbbbbbb', :'qd_bio'::uuid, 9)->>'error' = 'invalid_choice'
+  and public.cbt_qotd_answer('9000000002', 'WRONG999', 'dev-bbbbbbbb', :'qd_bio'::uuid, 1)->>'ok' is distinct from 'true');
+reset role;
+select id as qd_tom_id from cbt_private.qotd where show_on = cbt_private.qotd_day() + 1 and qid = 'd0d0d0d0-0000-0000-0000-000000000003' \gset
+set role anon;
+select pg_temp.chk('QD6 a question of another day cannot be answered, and nobody can answer a live test''s question that was put on a day by hand',
+  public.cbt_qotd_answer('9000000002', 'BBBB2222', 'dev-bbbbbbbb', :'qd_tom_id'::uuid, 3)->>'error' = 'not_found');
+reset role;
+insert into cbt_private.qotd (qid, show_on) values ('d0d0d0d0-0000-0000-0000-000000000006', cbt_private.qotd_day());
+select id as qd_live_id from cbt_private.qotd where qid = 'd0d0d0d0-0000-0000-0000-000000000006' \gset
+set role anon;
+select pg_temp.chk('QD7 even if it got on the list, a live test''s question is not shown and its answer is not told until the result time',
+  public.cbt_qotd_today('9000000002', 'BBBB2222', 'dev-bbbbbbbb')::text !~ 'QD-LIVE'
+  and public.cbt_qotd_answer('9000000002', 'BBBB2222', 'dev-bbbbbbbb', :'qd_live_id'::uuid, 1)->>'error' = 'not_found');
+select public.cbt_qotd_answer('9000000001', 'AAAA1111', 'dev-aaaaaaaa', :'qd_p1'::uuid, 0) as qd_ra \gset
+select public.cbt_admin_qotd(:'qdo', 'list', '{}') as qd_list \gset
+select pg_temp.chk('QD8 the admin sees how many answered and how many were right, and the held and picture flags',
+  exists (select 1 from jsonb_array_elements(:'qd_list'::jsonb->'items') x where x->>'q' = 'QD-PHY-1' and (x->>'n')::int = 2 and (x->>'r')::int = 1)
+  and exists (select 1 from jsonb_array_elements(:'qd_list'::jsonb->'items') x where x->>'q' = 'QD-LIVE' and (x->>'held')::boolean));
+select public.cbt_admin_qotd(:'qdo', 'move', jsonb_build_object('id', :'qd_tom_id', 'date', :'qd_today')) as qd_mv \gset
+select public.cbt_admin_qotd(:'qdo', 'remove', jsonb_build_object('id', :'qd_p1')) as qd_rm \gset
+reset role;
+select pg_temp.chk('QD9 move puts a question on another day (a duplicate on that day is refused); remove takes it and the students'' answers off',
+  :'qd_mv'::jsonb->>'error' = 'exists' and (:'qd_rm'::jsonb->>'ok')::boolean
+  and not exists (select 1 from cbt_private.qotd where id = :'qd_p1'::uuid) and not exists (select 1 from cbt_private.qotd_ans where qotd_id = :'qd_p1'::uuid));
+select pg_temp.chk('QD10 a refused try by a team member is in the activity log',
+  exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_qotd' and result = 'refused'));
 -- ===== 45. v87: doubts — a student asks on a question of a test taken (result out), a teacher answers =====
 select public.cbt_admin_login('','OwnerPass2026x','Owner')->>'token' as ow87 \gset
 select public.cbt_admin_login('viewer1','Tr7k-9mQz-pLx2','V')->>'token' as vt87 \gset
