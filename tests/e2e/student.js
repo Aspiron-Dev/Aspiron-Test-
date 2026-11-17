@@ -402,6 +402,46 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     await ck('#mnu'); await p5.waitForTimeout(500); await ck('[data-k="qb"]'); await p5.waitForTimeout(1500);
     await p5.goBack(); await p5.waitForTimeout(900); s5 = await st(); ok(!s5.scr && s5.hash === '#/x/lib', 'a page opened from the menu: Back returns to where the menu was opened (' + s5.hash + ')');
     ok(!e5.length, 'no page errors (Back button) ' + e5.join(' | ')); await c5.close(); }
+  // Home shortcut tiles (v89: Resources, All Tests) and the Upgrade plan pill. Plain student first (no plans set), then with an upgrade set by the admin (v64)
+  const PSER = '11111111-1111-1111-1111-111111111111', ITEM = 'cccccccc-0000-0000-0000-0000000000f1';
+  await q(`delete from cbt_private.series_meta where series_id = $1`, [PSER]); await q(`delete from public.cbt_store_items where id = $1`, [ITEM]);
+  const cfgs = [{ n: 'light', w: 390, h: 844, mode: 'light' }, { n: 'dark', w: 390, h: 844, mode: 'dark' }, { n: '360', w: 360, h: 800, mode: 'light' }, { n: 'palette', w: 390, h: 844, mode: 'light', pal: 'I' }, { n: 'desktop', w: 1280, h: 800, mode: 'light' }, { n: 'plans', w: 390, h: 844, mode: 'light', plans: 1 }];
+  for (const cfg of cfgs) {
+    await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
+    if (cfg.plans) {
+      await q(`insert into public.cbt_store_items (id, title, price, series_id) values ($1, 'PAID Series Pro', 899, $2) on conflict (id) do nothing`, [ITEM, PSER]);
+      await q(`insert into cbt_private.series_meta (series_id, upgrades) values ($1, $2::jsonb) on conflict (series_id) do update set upgrades = excluded.upgrades`, [PSER, JSON.stringify([{ item: ITEM, label: 'Pro' }])]);
+    }
+    const c6 = await br.newContext({ viewport: { width: cfg.w, height: cfg.h } }); await c6.addInitScript(x => { try { localStorage.setItem('cbt_v3_theme', JSON.stringify(x.pal ? { mode: x.mode, pal: { [x.mode]: x.pal } } : { mode: x.mode })); } catch (e) {} }, cfg);
+    const p6 = await c6.newPage(); const e6 = []; p6.on('pageerror', e => e6.push(e.message));
+    await p6.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort()); await p6.route(SUPA + '/rest/v1/rpc/**', rpcRoute);
+    await p6.goto(BASE + 'index.html'); await codeScreen(p6); await p6.fill('#ph', '9000000002'); await p6.fill('#cd', 'BBBB2222'); await p6.click('#lbtn'); await p6.waitForTimeout(3500);
+    const sr = fn => p6.evaluate(f => { const r = document.getElementById('v3host').shadowRoot; return (new Function('r', 'return (' + f + ')(r)'))(r); }, fn.toString());
+    await sr(r => { const b = r.querySelector('[data-ob="skip"]'); if (b) b.click(); }); await p6.waitForTimeout(2600);
+    await sr(r => { const b = r.querySelector('#sheet.open [data-a="close"]'); if (b) b.click(); }); await p6.waitForTimeout(1200);
+    const g = await sr(r => { const b = r.querySelector('#qkBox'); if (!b) return null; const L = [...b.querySelectorAll('.qk-t')]; return { n: L.length, labels: L.map(x => x.textContent.trim()).join('|'), clip: L.filter(x => { const l = x.querySelector('.qk-l'); return l.scrollWidth > l.clientWidth + 1; }).length, over: document.documentElement.scrollWidth > innerWidth, right: Math.max(...L.map(x => x.getBoundingClientRect().right)), w: innerWidth, up: (r.querySelector('.pillbtn.upg') || {}).textContent, zone: !!r.querySelector('.zgrid') }; });
+    ok(g && g.n === 2 && g.labels === 'Resources|All Tests' && !g.clip && !g.over && g.right <= g.w && g.up === 'Upgrade plan' && g.zone, `${cfg.n}: Home has the Resources and All Tests tiles, the Upgrade plan pill, and My study zone is still there ` + JSON.stringify(g));
+    await p6.screenshot({ path: path.join(__dirname, 'shots', `student_home_${cfg.n}.png`) });
+    if (cfg.n === 'light' || cfg.n === 'dark') {
+      await sr(r => r.querySelector('[data-k="res"]').click()); await p6.waitForTimeout(1200);
+      ok((await sr(r => { const b = r.querySelector('.utabs .on'); return b ? b.textContent.trim() : null; })) === 'Resources', `${cfg.n}: the Resources tile opens the series on its Resources tab`);
+      await p6.goBack(); await p6.waitForTimeout(900);
+      await sr(r => r.querySelector('[data-k="tests"]').click()); await p6.waitForTimeout(1200);
+      ok((await sr(r => { const b = r.querySelector('.utabs .on'); return b ? b.textContent.trim() : null; })) === 'Tests', `${cfg.n}: the All Tests tile opens the Tests tab`);
+      await p6.goBack(); await p6.waitForTimeout(900);
+    }
+    if (cfg.n === 'light') {
+      await sr(r => r.querySelector('.pillbtn.upg').click()); await p6.waitForTimeout(1500);
+      const hh = await p6.evaluate(() => location.hash); ok(hh === '#/x/test', `Upgrade plan with no plans set goes to the store (${hh})`);
+    }
+    if (cfg.plans) {
+      await sr(r => r.querySelector('.pillbtn.upg').click()); await p6.waitForTimeout(1800);
+      const on = await sr(r => { const b = r.querySelector('.utabs .on'); return b ? b.textContent.trim() : null; });
+      ok(on === 'Description', `Upgrade plan with an upgrade set opens the series Description (${on})`);
+    }
+    ok(!e6.length, `no page errors (home ${cfg.n}) ` + e6.join(' | ')); await c6.close();
+  }
+  await q(`delete from cbt_private.series_meta where series_id = $1`, [PSER]); await q(`delete from public.cbt_store_items where id = $1`, [ITEM]);
   // Theme page with real finger taps (a touch phone): every tap must land on its button and be saved
   await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
   { const c3 = await br.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }); const p3 = await c3.newPage(); const e3 = []; p3.on('pageerror', e => e3.push(e.message));
