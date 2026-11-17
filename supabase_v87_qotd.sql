@@ -87,7 +87,7 @@ begin
   if p_choice is null or p_choice not between 0 and 3 then return jsonb_build_object('ok', false, 'error', 'invalid_choice'); end if;
   select * into t from qotd where id = p_id and show_on = qotd_day();
   if not found then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
-  select * into b from qbank q where q.id = t.qid and q.active and qb_src_open(q.src) and not qb_has_pic(q);
+  select * into b from qbank qq where qq.id = t.qid and qq.active and qb_src_open(qq.src) and not qb_has_pic(qq);
   if not found then return jsonb_build_object('ok', false, 'error', 'not_found'); end if;
   if not rate_ok(sid, 'qotd', 120) then return jsonb_build_object('ok', false, 'error', 'busy'); end if;
   insert into qotd_ans (student_id, qotd_id, choice, ok) values (sid, t.id, p_choice, p_choice = b.answer)
