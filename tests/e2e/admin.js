@@ -113,13 +113,14 @@ async function rpcRoute(route) {
     // v85: Resources folders — arrange them, and choose the folder of an answer-key PDF
     await q(`delete from cbt_private.test_pdfs; update cbt_private.series_meta set res_order = '[]'`);
     await q(`insert into cbt_private.test_pdfs (test_id, url) values ('aaaaaaaa-0000-0000-0000-000000000001', 'https://drive.google.com/file/d/e2e85/view')`);
-    await page.goto(BASE + 'cp-dt764twzf54s5m.html#/tests/s/11111111-1111-1111-1111-111111111111'); await page.waitForSelector('[data-act=arrangeRes]');
+    await page.goto(BASE + 'cp-dt764twzf54s5m.html#/tests/s/11111111-1111-1111-1111-111111111111/settings'); await page.waitForSelector('[data-act=arrangeRes]');
     await page.click('[data-act=arrangeRes]'); await page.waitForSelector('.modal .ts-ro');
     const rn = await page.$$eval('.modal .ts-ro .r b', a => a.map(x => x.textContent));
     ok(rn.join('|') === 'Notes and PDFs|Test answer keys', tag + ' Arrange Resources lists the folders students see (' + rn.join('|') + ')');
     await page.click('.modal [data-act=mv][data-i="0"][data-d="1"]'); await page.click('.modal [data-act=save]'); await page.waitForTimeout(1000);
     const ro = (await q(`select res_order from cbt_private.series_meta where series_id = '11111111-1111-1111-1111-111111111111'`))[0];
     ok(ro && JSON.stringify(ro.res_order) === '["Test answer keys","Notes and PDFs"]', tag + ' the new order is saved (' + JSON.stringify(ro && ro.res_order) + ')');
+    await page.click('#ax-tabs a:has-text("Tests")'); await page.waitForSelector('[data-act=tMenu][data-id="aaaaaaaa-0000-0000-0000-000000000001"]');
     await page.click('[data-act=tMenu][data-id="aaaaaaaa-0000-0000-0000-000000000001"]'); await page.waitForSelector('.pop');
     await page.click('.pop button:has-text("PDF notes link")'); await page.waitForSelector('.modal #pdf-f');
     const opts = await page.$$eval('.modal #pdf-f option', a => a.map(x => x.textContent));
