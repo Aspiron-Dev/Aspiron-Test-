@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=85;
+const V3VER=86;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -185,10 +185,14 @@ function openLayer(el){if(!layer&&!layH){try{history.pushState({v3l:1},'',locati
 function closeLayer(fromBack){if(!layer)return;$('#app3').classList.remove('lay');layer.classList.remove('open');scrim.classList.remove('open');layer=null;sheet.onclick=null;lastF&&lastF.focus&&lastF.focus({preventScroll:true});
   if(layH){layH=false;if(fromBack!==true){popIgnore++;clearTimeout(settleT);settleT=setTimeout(flushSettle,700);try{history.back()}catch(e){flushSettle()}}}}
 function openSheet(h){sheet.onclick=null;sheet.innerHTML='<div class="grab"></div>'+h;sheet.scrollTop=0;openLayer(sheet)}
-/* keyboard: lift the sheet above the on-screen keyboard (visual viewport shrinks, fixed bottom does not) */
-try{if(window.visualViewport){const vv=visualViewport,kb=()=>{const k=Math.max(0,Math.round(innerHeight-vv.height-vv.offsetTop));sheet.style.setProperty('--kb',(k>60?k:0)+'px');
-  if(k>60){setTimeout(()=>{try{const a=sheet.getRootNode().activeElement;if(a&&sheet.contains(a))a.scrollIntoView({block:'center',behavior:'smooth'})}catch(e){}},120)}};
-  vv.addEventListener('resize',kb);vv.addEventListener('scroll',kb)}}catch(e){}
+/* keyboard: lift the sheet above the on-screen keyboard (visual viewport shrinks, fixed bottom does not);
+   whenever the keyboard is up, the box being typed in (or the message box) is scrolled into view, also after a tap on a star */
+try{if(window.visualViewport){const vv=visualViewport;let kbUp=false;
+  const fit=()=>{if(!kbUp)return;try{let a=sheet.getRootNode().activeElement;if(!(a&&sheet.contains(a)&&/^(TEXTAREA|INPUT)$/.test(a.tagName)))a=sheet.querySelector('textarea,input:not([type=hidden])');if(a)a.scrollIntoView({block:'center',behavior:'smooth'})}catch(e){}};
+  const kb=()=>{const k=Math.max(0,Math.round(innerHeight-vv.height-vv.offsetTop));kbUp=k>60;sheet.style.setProperty('--kb',(kbUp?k:0)+'px');if(kbUp){setTimeout(fit,120);setTimeout(fit,400)}};
+  vv.addEventListener('resize',kb);vv.addEventListener('scroll',kb);
+  sheet.addEventListener('focusin',()=>setTimeout(fit,250));
+  sheet.addEventListener('click',()=>{setTimeout(fit,120);setTimeout(fit,450)})}}catch(e){}
 
 /* ---------- full-screen pages; the phone's back button closes them ---------- */
 let STK=[],scr,undT=0;
@@ -2212,6 +2216,7 @@ const RVCSS=`:host{all:initial}*{box-sizing:border-box;margin:0;padding:0;font:i
 .bg{position:absolute;inset:0;background:rgba(10,10,12,.5);opacity:0;transition:opacity .35s ease}
 .c{position:relative;width:100%;max-width:460px;background:var(--s);color:var(--tx);border-radius:28px 28px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom,0px));box-shadow:0 -20px 60px -20px rgba(0,0,0,.4);transform:translateY(105%);transition:transform .5s cubic-bezier(.2,.9,.25,1)}
 .on .bg{opacity:1}.on .c{transform:none}
+.c{max-height:100%;overflow-y:auto;overscroll-behavior:contain}
 .x{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--s2);border:0;cursor:pointer}
 .x svg{width:18px;height:18px}
 .ic{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:var(--soft);color:var(--acc);margin-bottom:14px}
@@ -2237,7 +2242,7 @@ const RVI={star:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.5 2.3
   x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
   heart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-9.2-9A5 5 0 0 1 12 5.6 5 5 0 0 1 21.2 11C19 15.6 12 20 12 20z"/></svg>'};
 const RVW=['','Poor','Could be better','Good','Very good','Excellent'];
-function rvClose(){if(!rvHost)return;const h=rvHost;rvHost=null;const w=h.shadowRoot.querySelector('.w');w.classList.remove('on');setTimeout(()=>h.remove(),RM?0:420)}
+function rvClose(){if(!rvHost)return;const h=rvHost;rvHost=null;try{if(h._vvf){visualViewport.removeEventListener('resize',h._vvf);visualViewport.removeEventListener('scroll',h._vvf)}}catch(e){}const w=h.shadowRoot.querySelector('.w');w.classList.remove('on');setTimeout(()=>h.remove(),RM?0:420)}
 async function rvAsk(sid,title,manual,test){
   if(rvHost||(!sid&&!test)||typeof rpc!=='function')return;
   if(!manual&&document.body.classList.contains('intest'))return;
@@ -2255,6 +2260,12 @@ async function rvAsk(sid,title,manual,test){
   R.innerHTML=`<style>${RVCSS}:host{--s:${T.s};--s2:${T.s2};--tx:${T.tx};--mut:${T.mut};--line:${T.line};--line2:${T.line2};--ink:${T.ink};--on:${T.on};--acc:${T.acc};--soft:${T.soft}}</style>
    <div class="w" role="dialog" aria-modal="true" aria-labelledby="rvT"><div class="bg"></div><div class="c"><button class="x" aria-label="Close">${RVI.x}</button><div class="body"></div></div></div>`;
   const W=R.querySelector('.w'),B=R.querySelector('.body');
+  /* keyboard: the card rides above it and the message box is scrolled into view (also right after a star tap) */
+  const C=R.querySelector('.c');let kbUp=false;
+  const fit=()=>{if(!kbUp)return;try{const ta=B.querySelector('textarea');if(ta)ta.scrollIntoView({block:'center',behavior:'smooth'})}catch(e){}};
+  const vvf=()=>{const vv=window.visualViewport;if(!vv)return;const k=Math.max(0,Math.round(innerHeight-vv.height-vv.offsetTop));kbUp=k>60;W.style.bottom=(kbUp?k:0)+'px';if(kbUp){setTimeout(fit,100);setTimeout(fit,380)}};
+  if(window.visualViewport){visualViewport.addEventListener('resize',vvf);visualViewport.addEventListener('scroll',vvf);rvHost._vvf=vvf}
+  B.addEventListener('click',()=>{setTimeout(fit,120);setTimeout(fit,420)});B.addEventListener('focusin',()=>setTimeout(fit,250));
   const form=()=>{B.innerHTML=`<div class="ic">${RVI.star}</div><h2 id="rvT">${manual?'Your review':'How was your test?'}</h2>
     <p class="s">${test?`Rate <b>${esc3(test.title||'this test')}</b>. Tell us about the questions, the level and the time. It goes straight to our team.`:`Rate <b>${esc3(title||'this test series')}</b>. Your words help other students choose, and help us make every test better.`}</p>
     <div class="st" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(n=>`<button role="radio" aria-checked="${rating===n}" aria-label="${n} star${n>1?'s':''}" data-n="${n}" class="${n<=rating?'on':''}">${RVI.star}</button>`).join('')}</div>
@@ -2265,7 +2276,7 @@ async function rvAsk(sid,title,manual,test){
   const sync=()=>{const ta=B.querySelector('textarea');if(!ta)return;const n=ta.value.trim().length,ok=rating&&n>=RVMIN;B.querySelector('.go').disabled=!ok;B.querySelector('.ct').textContent=ta.value.length+' / 600';
     const hn=B.querySelector('.hn');hn.className='hn'+(n>=RVMIN?' ok':'');hn.textContent=!rating?'Choose your stars':n>=RVMIN?'Ready to send':`${RVMIN-n} more letter${RVMIN-n===1?'':'s'} please`};
   const wire=()=>{B.querySelectorAll('.st button').forEach(b=>b.addEventListener('click',()=>{rating=+b.dataset.n;B.querySelectorAll('.st button').forEach(x=>{const on=+x.dataset.n<=rating;x.classList.toggle('on',on);x.setAttribute('aria-checked',String(+x.dataset.n===rating))});
-      b.classList.add('pop');setTimeout(()=>b.classList.remove('pop'),220);B.querySelector('.lb').textContent=RVW[rating];sync();const ta=B.querySelector('textarea');if(!ta.value.trim())ta.focus({preventScroll:true})}));
+      b.classList.add('pop');setTimeout(()=>b.classList.remove('pop'),220);B.querySelector('.lb').textContent=RVW[rating];sync();const ta=B.querySelector('textarea');if(!ta.value.trim())ta.focus({preventScroll:true});setTimeout(fit,350)}));
     B.querySelector('textarea').addEventListener('input',sync);B.querySelector('.go').addEventListener('click',send);sync()};
   const send=async()=>{const ta=B.querySelector('textarea'),go=B.querySelector('.go'),er=B.querySelector('.er'),body=ta.value.trim();if(!rating||body.length<RVMIN)return;
     go.disabled=true;go.textContent='Sending…';er.textContent='';let r=null;
