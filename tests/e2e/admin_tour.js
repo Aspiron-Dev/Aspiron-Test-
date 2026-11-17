@@ -178,6 +178,37 @@ async function rpcRoute(route) {
       await page.click('#ac-rows .ac-row'); await page.waitForSelector('.drawer'); ok(/Chem/.test(await page.textContent('.drawer')), tag + ' access check: a row opens the student'); await page.keyboard.press('Escape'); await page.waitForTimeout(300);
       await q(`delete from cbt_private.tests where id = $1`, [cid]); await q(`delete from cbt_private.series_access where series_id = $1`, [CS]); await q(`delete from cbt_private.students where mobile in ('9100000011', '9100000012')`); await q(`delete from cbt_private.series where id = $1`, [CS]);
       LIVE.pop(); STU.chem = null; await page.evaluate(() => { AX.cache.drop('catalog'); AX.cache.drop('students'); AX.cache.drop('access_check'); });
+      // a series shaped like the owner's (5 folders: one hidden, two empty; 7 tests; long titles) — every action is one tab away
+      const BS = '44444444-4444-4444-4444-444444444444';
+      await q(`insert into cbt_private.series (id, title, is_free, price_label) values ($1, 'BIOLOGY PRO TEST SERIES NEET 2027 with a long name', false, '399 ₹')`, [BS]);
+      const FO = (await q(`insert into cbt_private.folders (series_id, title, sort_order, active) values ($1, 'Prectice sheets', 1, false), ($1, 'PRO - TEST', 2, true), ($1, 'Cumulative test', 3, true), ($1, 'Full Syllabus', 4, true), ($1, 'DEMO TEST', 5, true) returning id, title`, [BS]));
+      const fid = n => FO.find(f => f.title === n).id;
+      for (const [t, f, i] of [['Cell Unit of life Prectice sheet', 'Prectice sheets', 1], ['Cell Cycle and division Prectice sheet', 'Prectice sheets', 2], ['Pro Test 01 :- Cell unit of life', 'PRO - TEST', 1], ['Pro test 02 :- Biomolecules', 'PRO - TEST', 2], ['Pro test 03 - Cell Cycle and Cell Devison', 'PRO - TEST', 3], ['Breathing & Exchange of Gases', 'DEMO TEST', 1], ['Morphology in flowering plants', 'DEMO TEST', 2]])
+        await q(`insert into cbt_private.tests select (jsonb_populate_record(null::cbt_private.tests, to_jsonb(t) || jsonb_build_object('id', gen_random_uuid(), 'title', $2::text, 'series_id', $1::text, 'folder_id', $3::text, 'sort_order', $4::int, 'opens_at', null))).* from cbt_private.tests t where t.id = 'aaaaaaaa-0000-0000-0000-000000000001'`, [BS, t, fid(f), i]);
+      await page.evaluate(() => AX.cache.drop('catalog'));
+      await page.goto(U('tests/s/' + BS)); await page.waitForSelector('.ts-tr'); await page.waitForTimeout(500);
+      const tabsTxt = await page.$$eval('#ax-tabs a', a => a.map(x => x.textContent.replace(/\d+/g, '').trim()));
+      const firstOk = await page.$eval('.ts-tr', e => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight - 100; });
+      ok(JSON.stringify(tabsTxt) === '["Tests","Settings","Messages"]' && firstOk, tag + ' series page: tabs Tests / Settings / Messages, and the first test is on the first screen ' + JSON.stringify(tabsTxt) + ' ' + firstOk);
+      ok((await page.$$eval('.ts-fold', a => a.length)) === 5 && (await page.$$eval('.ts-tr', a => a.length)) === 7 && (await page.$$('[data-act=newFolder]')).length === 1, tag + ' series page: every folder and test, New folder next to them');
+      await sh('series_tests');
+      const acts = async tb => { await page.click('#ax-tabs a:has-text("' + tb + '")'); await page.waitForSelector('.ts-act'); await page.waitForTimeout(300); return page.$$eval('.ts-act', a => a.map(x => x.dataset.act)); };
+      const sa = await acts('Settings'); await sh('series_settings');
+      ok(['editS', 'media', 'sMedium', 'arrangeRes', 'delS'].every(x => sa.includes(x)) && /\/settings$/.test(page.url()), tag + ' series page: Settings has name/price, cover & files, medium, resources order, delete: ' + sa.join(','));
+      ok(/399/.test(await page.textContent('[data-act=editS]')) && /No cover photo/.test(await page.textContent('[data-act=media]')), tag + ' series page: each setting shows what it is set to now');
+      await page.evaluate(() => AX.emit('tests:changed')); await page.waitForTimeout(800);
+      ok((await page.$$('.ts-act[data-act=arrangeRes]')).length === 1, tag + ' series page: a save elsewhere redraws the same tab');
+      const ma = await acts('Messages'); await sh('series_messages');
+      ok(['amsg', 'ann', 'sNotice', 'sPush'].every(x => ma.includes(x)), tag + ' series page: Messages has approval message, announcements, notice, phone notification: ' + ma.join(','));
+      await page.click('.ts-act[data-act=amsg]'); await page.waitForSelector('.modal,.drawer'); await page.waitForTimeout(300); ok(true, tag + ' series page: a message row opens its editor'); await page.keyboard.press('Escape'); await page.waitForTimeout(400);
+      await page.goto(U('tests')); await page.waitForSelector('[data-act=sMenu][data-id="' + BS + '"]'); await page.click('[data-act=sMenu][data-id="' + BS + '"]'); await page.waitForTimeout(400);
+      const mt = await page.evaluate(() => document.body.innerText);
+      ok(/Approval message & Telegram link/.test(mt) && /Cover photo & files/.test(mt) && /Delete series/.test(mt) && /Announcements/.test(mt), tag + ' series card menu: the same actions as the series page');
+      ok(await page.$eval('.pop', p => { const r = p.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight && p.scrollHeight >= p.clientHeight; }), tag + ' series card menu: fits on the screen (scrolls if long)');
+      await page.mouse.click(2, 300); await page.waitForTimeout(300);
+      ok(!(await page.$('.pop')), tag + ' series card menu: a tap outside closes it');
+      await q(`DELETE FROM cbt_private.tests WHERE series_id = $1`, [BS]); await q(`DELETE FROM cbt_private.folders WHERE series_id = $1`, [BS]); await q(`DELETE FROM cbt_private.series WHERE id = $1`, [BS]);
+      await page.evaluate(() => AX.cache.drop('catalog'));
       await page.goto(U('live/history')); await page.waitForSelector('.lv-sc-card'); await page.waitForTimeout(300);
       const cards = await page.$$eval('.lv-sc-card', a => a.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
       ok(cards.length >= 2 && cards.some(c => /PAID Series/.test(c) && /1 live/.test(c)) && cards.some(c => /FREE Series/.test(c) && /2 live/.test(c)), tag + ' history: series first, with how many are live: ' + cards.join(' / '));

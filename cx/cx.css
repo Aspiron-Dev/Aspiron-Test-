@@ -314,7 +314,7 @@ button.kpi:hover,a.kpi:hover{transform:translateY(-2px);border-color:var(--pri-l
 .drawer{width:min(620px,100%);height:100%;display:flex;flex-direction:column;background:var(--solid);border-left:1px solid var(--line-2);box-shadow:var(--shadow-pop);animation:ax-slide var(--std) var(--ease)}
 .drawer.wide{width:min(860px,100%)}
 @keyframes ax-slide{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
-.pop{position:fixed;z-index:350;min-width:200px;max-width:min(320px,calc(100vw - 24px));padding:6px;border-radius:14px;background:var(--solid);border:1px solid var(--line-2);box-shadow:var(--shadow-pop);animation:ax-pop var(--fast) var(--ease)}
+.pop{position:fixed;z-index:350;min-width:200px;max-width:min(320px,calc(100vw - 24px));max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;padding:6px;border-radius:14px;background:var(--solid);border:1px solid var(--line-2);box-shadow:var(--shadow-pop);animation:ax-pop var(--fast) var(--ease)}
 .pop button,.pop a{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:0;background:transparent;border-radius:10px;color:var(--tx);font-weight:600;font-size:13.5px;text-align:left;text-decoration:none}
 .pop button:hover,.pop a:hover{background:var(--hover)}
 .pop .danger{color:var(--bad)}

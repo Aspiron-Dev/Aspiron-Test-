@@ -55,6 +55,25 @@ AX.css('tests', `
 .ts-hb{padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0}
 @media (max-width:760px){.ts-hero{grid-template-columns:minmax(0,1fr)}.ts-hero .ts-cv{aspect-ratio:16/9;min-height:0}}
 .ts-fold{margin-top:16px}
+.ts-fold.empty .ts-fh{border-bottom:0}
+.ts-top{display:flex;gap:14px;align-items:center;padding:12px}
+.ts-top .ts-thumb{width:120px;flex:none;aspect-ratio:16/9;border-radius:12px}
+.ts-top .ts-thumb .ts-cvp{display:none}.ts-top .ts-thumb .ts-mono{font-size:22px}
+.ts-tb{display:flex;flex-direction:column;gap:8px;min-width:0}
+.ts-nums{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--mut)}
+.ts-nums b{font-family:var(--font-display);font-size:18px;color:var(--tx);margin-right:4px}
+.ts-sec{margin-top:16px}
+.ts-sec:first-child{margin-top:0}
+.ts-sech{padding:14px 16px 10px;border-bottom:1px solid var(--line)}
+.ts-sech h3{font-size:15px;font-weight:700}
+.ts-act{width:100%;border:0;border-top:1px solid var(--line);background:none;text-align:left;color:var(--tx);align-items:center;gap:12px}
+.ts-act:first-child{border-top:0}
+.ts-act[disabled]{opacity:.6;cursor:default}
+.ts-ai{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:var(--hover);color:var(--pri);flex:none}
+.ts-act b{display:block;font-size:14px}
+.ts-av{display:block;font-size:12.5px;color:var(--mut);margin-top:2px;overflow-wrap:anywhere}
+.ts-act.danger b,.ts-act.danger .ts-ai{color:var(--bad)}
+@media (max-width:520px){.ts-top{align-items:flex-start}.ts-top .ts-thumb{width:84px}.ts-nums{gap:12px}}
 .ts-fh{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 16px;border-bottom:1px solid var(--line);background:var(--solid-2);min-width:0}
 .ts-fh .fi{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--gold-soft);color:var(--gold);flex:none}
 .ts-tr{cursor:pointer;align-items:center}
@@ -80,7 +99,7 @@ AX.mod({
   sub: 'Series, folders and tests. Changes are live for students at once.',
   async render(ctx) {
     const p = ctx.parts;
-    CUR = { ctx, view: p[0] === 's' && p[1] ? 'series' : p[0] === 'all' ? 'all' : 'library', sid: p[1] || null, q: '' };
+    CUR = { ctx, view: p[0] === 's' && p[1] ? 'series' : p[0] === 'all' ? 'all' : 'library', sid: p[1] || null, tab: p[0] === 's' ? p[2] || 'tests' : '', q: '' };
     if (offT) offT();
     offT = AX.on('tests:changed', () => { if (!CUR || !CUR.ctx.alive()) { if (offT) { offT(); offT = null; } return; } draw(false); });
     if (!ctx.el.__w) {
@@ -192,37 +211,58 @@ function paintCover(sid) {
 }
 
 /* ---------- one series ---------- */
+// one list of everything you can change about a series: the Settings / Messages tabs and the ⋮ menu of a series card
+// are drawn from it, so a new action shows up in both places. `val` = what it is set to now (from data already loaded).
+function sActs(s) {
+  const m = canM(), msg = AX.can('messaging', 'manage'), T = testsOf(s.id), L = AX.lang.last();
+  const bi = AX.lang.mode(s.id) === 'bi', ready = T.filter(t => AX.lang.state(t.id) === 'ready').length, nf = (s.files || []).length;
+  return [
+    m && { g: 'settings', act: 'editS', icon: 'edit', label: 'Name, price & visibility', val: [s.is_free ? 'Free' : 'Paid · ' + (s.price_label || 'unlock per student'), s.active === false ? 'hidden from students' : 'visible to students', 'order ' + (s.sort_order || 0)].join(' · ') },
+    m && { g: 'settings', act: 'media', icon: 'image', label: 'Cover photo & files', val: (s.has_cover ? 'Cover photo set' : 'No cover photo') + ' · ' + (nf ? fmt.plural(nf, 'file') + ' (' + s.files.map(f => f.title).slice(0, 3).join(', ') + (nf > 3 ? '…' : '') + ')' : 'no schedule / syllabus files') },
+    m && { g: 'settings', act: 'sMedium', icon: 'globe', label: 'Medium (English / हिंदी)', val: !L.ok ? (L.error === 'missing' ? 'Run supabase_v41_medium.sql in Supabase to turn it on' : 'Could not load') : (bi ? 'English + हिंदी' : 'English only') + ' · ' + ready + ' of ' + fmt.plural(T.length, 'test') + ' ready in Hindi', off: !L.ok },
+    m && { g: 'settings', act: 'arrangeRes', icon: 'sort', label: 'Order of Resources folders', val: 'Schedule, syllabus, notes and answer keys in the student app' },
+    { g: 'messages', act: 'amsg', icon: 'msg', label: 'Approval message & Telegram link', val: 'Sent to the student when you approve an order for this series' },
+    { g: 'messages', act: 'ann', icon: 'bell', label: 'Announcements (buyers only)', val: 'Inside the series, seen only by students who have it' },
+    msg && { g: 'messages', act: 'sNotice', icon: 'bell', label: 'Notice to this series', val: 'Shown on the Home screen of students who have it' },
+    msg && { g: 'messages', act: 'sPush', icon: 'send', label: 'Phone notification', val: 'A notification on the phones of students who have it' },
+    m && { g: 'danger', act: 'delS', icon: 'trash', label: 'Delete series', val: 'Deletes its folders and tests. Past results are kept.', tone: 'danger' }
+  ].filter(Boolean);
+}
+const actRow = (x, sid) => h`<button type="button" class="li click ts-act ${x.tone || ''}" data-act="${x.act}" data-id="${sid}" ${x.off ? raw('disabled') : ''}>
+  <span class="ts-ai">${icon(x.icon, 18)}</span><span class="grow"><b>${x.label}</b><span class="ts-av">${x.val}</span></span>${icon('chevR', 16)}</button>`;
+const SEC = { settings: ['Series settings', 'What students see and how the series is sold'], messages: ['Messages to students', 'Who gets each message is said under it'], danger: ['Danger zone', ''] };
+function actCards(A, sid, groups) {
+  return join(groups.filter(g => A.some(x => x.g === g)), g => h`<section class="card pad0 ts-sec"><div class="ts-sech"><h3>${SEC[g][0]}</h3>${SEC[g][1] ? h`<div class="xs mut">${SEC[g][1]}</div>` : ''}</div>
+    <div class="list">${join(A.filter(x => x.g === g), x => actRow(x, sid))}</div></section>`);
+}
+
 function vSeries(ctx) {
   const s = C.series.find(x => x.id === CUR.sid), m = canM();
   if (!s) { ctx.head({ title: 'Series not found', crumb: 'Not found' }); return AX.set(ctx.el, h`<div class="card">${UI.empty({ icon: 'layers', title: 'This series is not here any more', text: 'It may have been deleted.', action: h`<a class="btn" href="#/tests">${icon('arrowL', 15)} Back to the library</a>` })}</div>`); }
-  ctx.head({ title: s.title, crumb: s.title, sub: s.description || (s.is_free ? 'Free series' : 'Paid series · ' + (s.price_label || '')),
-    actions: h`<button class="btn" data-act="shareS" data-id="${s.id}">${icon('link', 16)} Share</button>${m ? h`<button class="btn" data-act="editS" data-id="${s.id}">${icon('edit', 16)} Edit</button><button class="btn pri" data-act="newTestIn" data-sid="${s.id}">${icon('plus', 16)} New test</button>` : ''}` });
   const F = C.folders.filter(f => f.series_id === s.id).sort(bySort), T = testsOf(s.id), root = T.filter(t => !t.folder_id || !F.some(f => f.id === t.folder_id));
-  const st = T.map(t => status(t, C.practice));
+  const A = sActs(s), base = '#/tests/s/' + s.id;
+  const TABS = [{ id: 'tests', title: 'Tests', icon: 'fileText', href: base, count: T.length },
+    A.some(x => x.g === 'settings') && { id: 'settings', title: 'Settings', icon: 'settings', href: base + '/settings' },
+    { id: 'messages', title: 'Messages', icon: 'msg', href: base + '/messages' }].filter(Boolean);
+  const tab = TABS.some(t => t.id === CUR.tab) ? CUR.tab : 'tests';
+  ctx.head({ title: s.title, crumb: s.title, sub: s.description || (s.is_free ? 'Free series' : 'Paid series · ' + (s.price_label || '')), tabs: TABS, tab,
+    actions: h`<button class="btn" data-act="shareS" data-id="${s.id}">${icon('link', 16)} Share</button>${m ? h`<button class="btn pri" data-act="newTestIn" data-sid="${s.id}">${icon('plus', 16)} New test</button>` : ''}` });
+  const st = T.map(t => status(t, C.practice)), nLive = st.filter(x => x.k === 'live').length, nSch = st.filter(x => x.k === 'sched').length;
+  const top = h`<div class="card ts-top">${cover(s, 'ts-thumb')}<div class="ts-tb">
+      <div class="row wrap gap6">${s.is_free ? UI.pill('Free for everyone', 'ok') : UI.pill('Paid · ' + (s.price_label || 'unlock per student'), 'gold')}${s.active === false ? UI.pill('Hidden from students', 'warn') : UI.pill('Visible to students', 'pri')}${nLive ? h`<span class="pill ok"><span class="live-dot"></span> ${nLive} live now</span>` : ''}${nSch ? UI.pill(nSch + ' scheduled', 'info') : ''}</div>
+      <div class="ts-nums"><span><b>${T.length}</b> tests</span><span><b>${F.length}</b> folders</span><span><b>${fmt.num(T.reduce((a, t) => a + (t.questions || 0), 0))}</b> questions</span><span><b>${fmt.num(T.reduce((a, t) => a + (t.results || 0), 0))}</b> attempts</span></div></div></div>`;
+  if (tab === 'settings') return AX.set(ctx.el, actCards(A, s.id, ['settings', 'danger']));
+  if (tab === 'messages') return AX.set(ctx.el, h`${actCards(A, s.id, ['messages'])}${AX.can('messaging') ? '' : h`<div class="xs mut mt12">Notices and phone notifications need the Messages permission.</div>`}`);
   const q = CUR.q, fT = list => q ? list.filter(t => t.title.toLowerCase().includes(q)) : list;
-  AX.set(ctx.el, h`<div class="card pad0 ts-hero">${cover(s)}
-      <div class="ts-hb"><div class="row wrap gap6">${s.is_free ? UI.pill('Free for everyone', 'ok') : UI.pill('Paid · ' + (s.price_label || 'unlock per student'), 'gold')}${s.active === false ? UI.pill('Hidden from students', 'warn') : UI.pill('Visible to students', 'pri')}<span class="pill">Order ${s.sort_order || 0}</span></div>
-        <div class="row wrap gap20"><div><div class="disp" style="font-size:26px">${T.length}</div><div class="xs mut">tests</div></div><div><div class="disp" style="font-size:26px">${F.length}</div><div class="xs mut">folders</div></div><div><div class="disp" style="font-size:26px">${fmt.num(T.reduce((a, t) => a + (t.questions || 0), 0))}</div><div class="xs mut">questions</div></div><div><div class="disp" style="font-size:26px">${fmt.num(T.reduce((a, t) => a + (t.results || 0), 0))}</div><div class="xs mut">attempts</div></div></div>
-        <div class="row wrap gap6">${st.filter(x => x.k === 'live').length ? h`<span class="pill ok"><span class="live-dot"></span> ${st.filter(x => x.k === 'live').length} live now</span>` : ''}${st.filter(x => x.k === 'sched').length ? UI.pill(st.filter(x => x.k === 'sched').length + ' scheduled', 'info') : ''}${(s.files || []).length ? join(s.files, f => UI.pill(f.title + ' · ' + f.kind)) : h`<span class="xs mut">No syllabus or schedule files yet.</span>`}</div>
-        ${m ? h`<div class="row wrap gap6"><button class="btn sm" data-act="media" data-id="${s.id}">${icon('image', 15)} Cover & files</button><button class="btn sm" data-act="newFolder" data-sid="${s.id}">${icon('folder', 15)} New folder</button>${F.length > 1 ? h`<button class="btn sm ghost" data-act="reorderF" data-sid="${s.id}">${icon('sort', 15)} Reorder folders</button>` : ''}<button class="btn sm ghost" data-act="arrangeRes" data-id="${s.id}">${icon('sort', 15)} Arrange Resources</button></div>` : ''}
-        ${medLine(s, T)}
-        <div class="row wrap gap6"><button class="btn sm" data-act="amsg" data-id="${s.id}">${icon('msg', 15)} Approval message & Telegram</button>${AX.can('messaging', 'manage') ? h`<button class="btn sm" data-act="sNotice" data-id="${s.id}">${icon('bell', 15)} Notice to this series</button><button class="btn sm" data-act="sPush" data-id="${s.id}">${icon('send', 15)} Phone notification</button>` : ''}</div></div></div>
-    ${T.length > 6 ? h`<div class="ts-tool"><div class="inp-wrap search">${icon('search', 16)}<input class="inp sm" id="ts-q" type="search" placeholder="Find a test in this series…" value="${CUR.q}" autocomplete="off" aria-label="Find a test"></div></div>` : ''}
-    ${!T.length && !F.length ? h`<div class="card mt16">${UI.empty({ icon: 'fileText', title: 'Nothing here yet', text: 'Add a folder (for example “Phase 1” or “Day 1”) or create the first test.', action: m ? h`<div class="row wrap" style="justify-content:center"><button class="btn pri" data-act="newTestIn" data-sid="${s.id}">${icon('plus', 16)} New test</button><button class="btn" data-act="newFolder" data-sid="${s.id}">${icon('folder', 16)} New folder</button></div>` : '' })}</div>` : ''}
-    ${join(F, f => { const ft = fT(testsOf(s.id, f.id)); if (q && !ft.length) return ''; return h`<section class="card pad0 ts-fold"><div class="ts-fh"><span class="fi">${icon('folder', 17)}</span><div class="grow"><div class="row gap6 wrap"><b class="ell">${f.title}</b>${f.active === false ? UI.pill('Hidden', 'warn') : ''}</div><div class="xs mut">${fmt.plural(testsOf(s.id, f.id).length, 'test')}</div></div>
+  AX.set(ctx.el, h`${top}
+    <div class="ts-tool">${T.length > 3 ? h`<div class="inp-wrap search">${icon('search', 16)}<input class="inp sm" id="ts-q" type="search" placeholder="Find a test in this series…" value="${CUR.q}" autocomplete="off" aria-label="Find a test"></div>` : h`<span class="grow"></span>`}
+      ${m ? h`<button class="btn sm" data-act="newFolder" data-sid="${s.id}">${icon('folder', 15)} New folder</button>${F.length > 1 ? h`<button class="btn sm ghost" data-act="reorderF" data-sid="${s.id}">${icon('sort', 15)} Reorder folders</button>` : ''}` : ''}</div>
+    ${!T.length && !F.length ? h`<div class="card">${UI.empty({ icon: 'fileText', title: 'Nothing here yet', text: 'Add a folder (for example “Phase 1” or “Day 1”) or create the first test.', action: m ? h`<div class="row wrap" style="justify-content:center"><button class="btn pri" data-act="newTestIn" data-sid="${s.id}">${icon('plus', 16)} New test</button><button class="btn" data-act="newFolder" data-sid="${s.id}">${icon('folder', 16)} New folder</button></div>` : '' })}</div>` : ''}
+    ${join(F, f => { const all = testsOf(s.id, f.id), ft = fT(all); if (q && !ft.length) return ''; return h`<section class="card pad0 ts-fold ${all.length ? '' : 'empty'}"><div class="ts-fh"><span class="fi">${icon('folder', 17)}</span><div class="grow"><div class="row gap6 wrap"><b class="ell">${f.title}</b>${f.active === false ? UI.pill('Hidden', 'warn') : ''}</div><div class="xs mut">${all.length ? fmt.plural(all.length, 'test') : 'No tests yet'}</div></div>
         ${m ? h`<button class="btn xs soft" data-act="newTestIn" data-sid="${s.id}" data-fid="${f.id}">${icon('plus', 13)} Test</button>` : ''}<button class="ibtn sm" data-act="fMenu" data-id="${f.id}" aria-label="More for folder ${f.title}">${icon('moreV', 16)}</button></div>
-      <div class="list">${ft.length ? join(ft, t => testRow(t)) : h`<div class="ts-none">No tests in this folder yet.</div>`}</div></section>`; })}
+      ${ft.length ? h`<div class="list">${join(ft, t => testRow(t))}</div>` : ''}</section>`; })}
     ${root.length && fT(root).length ? h`<section class="card pad0 ts-fold"><div class="ts-fh"><span class="fi" style="background:var(--pri-soft);color:var(--pri)">${icon('fileText', 17)}</span><div class="grow"><b>${F.length ? 'Not in a folder' : 'Tests'}</b><div class="xs mut">${fmt.plural(root.length, 'test')}</div></div>${m && root.length > 1 ? h`<button class="btn xs ghost" data-act="reorderT" data-sid="${s.id}" data-fid="">${icon('sort', 13)} Reorder</button>` : ''}</div>
       <div class="list">${join(fT(root), t => testRow(t))}</div></section>` : ''}`);
-}
-// the series' medium and how many of its tests have Hindi
-function medLine(s, T) {
-  const bi = AX.lang.mode(s.id) === 'bi', L = AX.lang.last(), ready = T.filter(t => AX.lang.state(t.id) === 'ready').length;
-  const todo = T.filter(t => t.active !== false && AX.lang.state(t.id) !== 'ready').length;
-  if (!L.ok) return L.error === 'missing' ? h`<div class="xs mut">${icon('globe', 13)} Hindi medium: run <span class="mono">supabase_v41_medium.sql</span> in Supabase to turn it on.</div>` : '';
-  return h`<div class="ts-med row wrap gap6"><span class="pill ${bi ? 'vio' : ''}">${icon('globe', 13)} ${bi ? 'English + हिंदी medium' : 'English medium only'}</span>
-    <span class="xs mut">${bi || ready ? ready + ' of ' + fmt.plural(T.length, 'test') + ' ready in Hindi' + (bi && todo ? ' · ' + todo + ' still English only (Hindi students get them in English)' : '') : 'Students all get English.'}</span>
-    ${canM() ? h`<button class="btn xs ghost" data-act="sMedium" data-id="${s.id}">${icon('edit', 13)} Change</button>` : ''}</div>`;
 }
 async function mediumModal(s) {
   let mode = AX.lang.mode(s.id);
@@ -283,6 +323,8 @@ const ACTS = {
   sNotice: el => AX.newNotice({ series: [el.dataset.id] }),
   sPush: el => AX.pushTo({ series: [el.dataset.id] }),
   media: el => mediaDrawer(el.dataset.id),
+  ann: el => annDrawer(S_(el.dataset.id)),
+  delS: el => delSeries(S_(el.dataset.id)),
   arrangeRes: el => arrangeRes(el.dataset.id),
   newFolder: el => folderModal(el.dataset.sid, null),
   reorderS: () => reorder('Reorder series', C.series.slice().sort(bySort).map(s => ({ id: s.id, t: s.title, s: s.sort_order })), (x, n) => AX.api.admin('series_save', { id: x.id, sort_order: n })),
@@ -299,22 +341,15 @@ document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.cl
 function openAna(id) { if (AX.openAnalytics) AX.openAnalytics(id); else AX.go('results'); }
 
 function sMenu(el, s) {
-  const m = canM();
+  const m = canM(), A = sActs(s), go = x => ({ label: x.label, icon: x.icon, tone: x.tone, fn: () => ACTS[x.act]({ dataset: { id: s.id } }) });
   UI.menu(el, [{ head: s.title },
     { label: 'Open', icon: 'arrowR', fn: () => AX.go('tests/s/' + s.id) },
     m && { label: 'New test in this series', icon: 'plus', fn: () => AX.openTest(null, { seriesId: s.id }) },
     m && { label: 'New folder', icon: 'folder', fn: () => folderModal(s.id, null) },
-    m && { label: 'Edit series', icon: 'edit', fn: () => seriesModal(s) },
-    m && { label: 'Cover & files', icon: 'image', fn: () => mediaDrawer(s.id) },
-    m && { label: 'Arrange Resources folders', icon: 'sort', fn: () => arrangeRes(s.id) },
-    { label: 'Announcements (buyers only)', icon: 'bell', fn: () => annDrawer(s) },
-    m && { label: 'Medium (English / हिंदी)', icon: 'globe', fn: () => mediumModal(s) },
-    { label: 'Approval message & Telegram', icon: 'msg', fn: () => AX.amsg.edit(s.id) },
-    AX.can('messaging', 'manage') && { label: 'Notice to this series', icon: 'bell', fn: () => AX.newNotice({ series: [s.id] }) },
-    AX.can('messaging', 'manage') && { label: 'Phone notification to this series', icon: 'send', fn: () => AX.pushTo({ series: [s.id] }) },
     { label: 'Share link', icon: 'link', fn: () => AX.shareSeries(s.id) },
-    m && { sep: true },
-    m && { label: 'Delete series', icon: 'trash', tone: 'danger', fn: () => delSeries(s) }
+    A.some(x => x.g === 'settings') && { head: 'Settings' }, ...A.filter(x => x.g === 'settings').map(go),
+    { head: 'Messages' }, ...A.filter(x => x.g === 'messages').map(go),
+    A.some(x => x.g === 'danger') && { sep: true }, ...A.filter(x => x.g === 'danger').map(go)
   ]);
 }
 function fMenu(el, f) {
@@ -332,13 +367,15 @@ function fMenu(el, f) {
 function tMenu(el, t) {
   const m = canM(), p = C.practice.has(String(t.id));
   UI.menu(el, [{ head: t.title },
+    { head: 'Edit' },
     { label: m ? 'Edit questions' : 'View questions', icon: m ? 'edit' : 'eye', fn: () => AX.openTest(t.id, { step: 'check' }) },
     m && { label: 'Details & marking', icon: 'settings', fn: () => AX.openTest(t.id, { step: 'details' }) },
     m && { label: 'Time & publish', icon: 'calendar', fn: () => AX.openTest(t.id, { step: 'publish' }) },
+    { head: 'See & share' },
     AX.can('results') && { label: 'Analytics', icon: 'chart', fn: () => openAna(t.id) },
     { label: 'Share link', icon: 'link', fn: () => AX.shareTest(t.id) },
     AX.isOwner() && { label: 'PDF notes link', icon: 'fileText', fn: () => pdfLink(t) },
-    m && { sep: true },
+    m && { head: 'Organise' },
     m && { label: p ? 'Turn practice mode off' : 'Turn practice mode on', icon: 'zap', fn: () => setPractice(t, !p) },
     m && { label: t.active === false ? 'Show to students' : 'Hide from students', icon: t.active === false ? 'eye' : 'eyeOff', fn: async () => { const r = await metaSave(t, { active: t.active === false }); if (!r.ok) return UI.err(r); changed(t.active === false ? 'Visible to students' : 'Hidden from students'); } },
     m && { label: 'Move to…', icon: 'folder', fn: () => moveModal(t) },
