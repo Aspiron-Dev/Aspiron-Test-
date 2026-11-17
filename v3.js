@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=80;
+const V3VER=81;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -1244,12 +1244,13 @@ const clearOld=k=>{try{if(k==='bm'&&typeof BMC!=='undefined')BMC=null;if(k==='mk
 
 /* ---------- files: download in parts, then View / Save (the same checks as the classic page) ---------- */
 const FILES3={};
-// v87: only a Schedule file can be saved (the server opens it to everyone); notes, syllabus and PDFs stay view-only
+// Only a Schedule file offers Download (it is open to every student); notes, syllabus and PDFs show View only.
+// This is the screen's rule: a file that can be viewed can still be saved from the browser's own menu.
 const dlOk=f=>!!f&&f.kind==='schedule';
 const fileIc=f=>ic(dlOk(f)?'dl':'eye',18),fileAria=f=>dlOk(f)?'Download':'View';
-const dlName=(n,t)=>{const b=String(n||t||'file').replace(/[\\/:*?"<>|\u0000-\u001f]/g,'').trim().slice(0,90)||'file';return /\.(pdf|png|jpe?g|webp)$/i.test(b)?b:b+(t==='application/pdf'?'.pdf':t==='image/png'?'.png':t==='image/jpeg'?'.jpg':t==='image/webp'?'.webp':'')};
+const dlName=(n,t)=>fileDlName(n,t);   // shared helper in app2.js
 async function fileGet(id,title,dl){
-  if(FILES3[id]){FILES3[id].dl=!!dl;return fileSheet(id)}
+  if(FILES3[id])return fileSheet(id,dl)
   openSheet(`<h2 id="sheetT">${esc3(title||'File')}</h2><p class="sub" id="fpS">Downloading…</p><div class="fbar"><i id="fpB"></i></div>`);
   const parts=[];let n=0,total=1,name='file';
   while(n<total){let r=null;try{r=await rpc('cbt_file_part',{p_file:id,p_n:n})}catch(e){}
@@ -1258,12 +1259,12 @@ async function fileGet(id,title,dl){
   try{const bin=atob(parts.join('')),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
     const sig=Array.from(u.slice(0,12)).map(c=>c.toString(16).padStart(2,'0')).join('');
     const real=/^25504446/.test(sig)?'application/pdf':/^89504e47/.test(sig)?'image/png':/^ffd8ff/.test(sig)?'image/jpeg':/^52494646.{8}57454250/.test(sig)?'image/webp':'';
-    FILES3[id]={url:URL.createObjectURL(new Blob([u],{type:real||'application/octet-stream'})),name,view:!!real,title,dl:!!dl,mime:real}}catch(e){closeLayer();toast3('This file is damaged.');return}
-  fileSheet(id)}
-function fileSheet(id){const f=FILES3[id];   // v77: view only; v87: a Schedule file also has Download
+    FILES3[id]={url:URL.createObjectURL(new Blob([u],{type:real||'application/octet-stream'})),name,view:!!real,title,mime:real}}catch(e){closeLayer();toast3('This file is damaged.');return}
+  fileSheet(id,dl)}
+function fileSheet(id,dl){const f=FILES3[id];   // a Schedule file also has Download
   if(!f.view){toast3('This file cannot be shown.');return}
   openSheet(`<span class="ti g" style="margin-bottom:12px">${ic('check',22)}</span><h2 id="sheetT">File ready</h2><p class="sub">${esc3(f.title||f.name)}</p>
-  <div class="${f.dl?'g2':''}" style="margin-top:14px;${f.dl?'grid-template-columns:1fr 1fr':''}"><a class="btn${f.dl?' ghost':' block'}" href="${f.url}" target="_blank" rel="noopener">${ic('eye',16)}View</a>${f.dl?`<a class="btn" href="${f.url}" download="${esc3(dlName(f.name,f.mime))}">${ic('dl',16)}Download</a>`:''}</div>`)}
+  <div class="${dl?'g2':''}" style="margin-top:14px;${dl?'grid-template-columns:1fr 1fr':''}"><a class="btn${dl?' ghost':' block'}" href="${f.url}" target="_blank" rel="noopener">${ic('eye',16)}View</a>${dl?`<a class="btn" href=""${f.url}" download="${esc3(dlName(f.name,f.mime))}">${ic('dl',16)}Download</a>`:''}</div>`)}
 A.fileOpen=el=>fileGet(el.dataset.id,el.dataset.t||'',el.dataset.kind==='schedule');
 
 /* ---------- Notes & PDFs: notes of tests (Google Drive links) and the files of every series ---------- */

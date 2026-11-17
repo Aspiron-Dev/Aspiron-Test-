@@ -1,8 +1,5 @@
 // Files in a series (new design): only a Schedule file can be downloaded, the folder page shows the folder name once.
 // Real pages in Chromium + the real SQL in the throw-away test database. Prints PASS/FAIL, exits 1 on a failure.
-// Student app + store: sign-in token, frame blocking, PDF reading, store orders, banner links, file viewing, access request.
-// The REAL pages in Chromium; every Supabase call is answered by the real SQL functions in the throw-away test
-// database built by tests/db/build.sh. Prints PASS/FAIL per check and exits 1 on any failure.
 const { chromium } = require('playwright');
 const { Client } = require('pg');
 const http = require('http'), fs = require('fs'), path = require('path');
@@ -91,6 +88,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   await nRow.click(); await p.waitForTimeout(2500);
   ok(await p.locator('a[download]').count() === 0, 'notes file sheet has NO download link (view only)');
   ok(await p.locator('.sheet a.btn', { hasText: 'View' }).count() >= 1, 'notes file sheet has View');
+  ok(await p.evaluate(() => fileDlName('Plan: A/B?', 'application/pdf') === 'Plan AB.pdf' && fileDlName('x.PDF', 'application/pdf') === 'x.PDF' && fileDlName('pic', 'image/png') === 'pic.png' && fileDlName('raw', '') === 'raw' && fileDlName('', 'application/pdf') === 'file.pdf'), 'download name: unsafe characters removed, right extension, no "undefined"');
   ok(!errs.length, 'no page errors ' + errs.join(' | '));
   await q(`delete from cbt_private.file_parts where file_id in ('eeeeeeee-0000-0000-0000-0000000000f1','eeeeeeee-0000-0000-0000-0000000000f2')`);
   await q(`delete from cbt_private.series_files where id in ('eeeeeeee-0000-0000-0000-0000000000f1','eeeeeeee-0000-0000-0000-0000000000f2')`);
