@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=87;
+const V3VER=88;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -185,14 +185,13 @@ function openLayer(el){if(!layer&&!layH){try{history.pushState({v3l:1},'',locati
 function closeLayer(fromBack){if(!layer)return;$('#app3').classList.remove('lay');layer.classList.remove('open');scrim.classList.remove('open');layer=null;sheet.onclick=null;lastF&&lastF.focus&&lastF.focus({preventScroll:true});
   if(layH){layH=false;if(fromBack!==true){popIgnore++;clearTimeout(settleT);settleT=setTimeout(flushSettle,700);try{history.back()}catch(e){flushSettle()}}}}
 function openSheet(h){sheet.onclick=null;sheet.innerHTML='<div class="grab"></div>'+h;sheet.scrollTop=0;openLayer(sheet)}
-/* keyboard: lift the sheet above the on-screen keyboard (visual viewport shrinks, fixed bottom does not);
-   whenever the keyboard is up, the box being typed in (or the message box) is scrolled into view, also after a tap on a star */
-try{if(window.visualViewport){const vv=visualViewport;let kbUp=false;
-  const fit=()=>{if(!kbUp)return;try{let a=sheet.getRootNode().activeElement;if(!(a&&sheet.contains(a)&&/^(TEXTAREA|INPUT)$/.test(a.tagName)))a=sheet.querySelector('textarea,input:not([type=hidden])');if(a)a.scrollIntoView({block:'center',behavior:'smooth'})}catch(e){}};
-  const kb=()=>{const k=Math.max(0,Math.round(innerHeight-vv.height-vv.offsetTop));kbUp=k>60;sheet.style.setProperty('--kb',(kbUp?k:0)+'px');if(kbUp){setTimeout(fit,120);setTimeout(fit,400)}};
-  vv.addEventListener('resize',kb);vv.addEventListener('scroll',kb);
-  sheet.addEventListener('focusin',()=>setTimeout(fit,250));
-  sheet.addEventListener('click',()=>{setTimeout(fit,120);setTimeout(fit,450)})}}catch(e){}
+/* keyboard: lift the sheet above the on-screen keyboard (visual viewport shrinks, fixed bottom does not).
+   Only the sheet itself is scrolled (never the page), and only when the keyboard goes from closed to open. */
+try{if(window.visualViewport){const vv=visualViewport;let kbUp=false,last=-1;
+  const fit=()=>{try{if(!sheet.classList.contains('open'))return;const a=sheet.getRootNode().activeElement;if(!(a&&sheet.contains(a)&&/^(TEXTAREA|INPUT)$/.test(a.tagName)))return;
+    sheet.scrollTop+=a.getBoundingClientRect().top-sheet.getBoundingClientRect().top-(sheet.clientHeight-a.offsetHeight)/2}catch(e){}};
+  const kb=()=>{const k=Math.max(0,Math.round(innerHeight-vv.height-vv.offsetTop)),u=k>60;if(Math.abs(k-last)<3)return;last=k;sheet.style.setProperty('--kb',(u?k:0)+'px');if(u&&!kbUp)setTimeout(fit,150);kbUp=u};
+  vv.addEventListener('resize',kb);sheet.addEventListener('focusin',()=>setTimeout(fit,250))}}catch(e){}
 
 /* ---------- full-screen pages; the phone's back button closes them ---------- */
 let STK=[],scr,undT=0;
@@ -2261,16 +2260,17 @@ async function rvAsk(sid,title,manual,test){
   R.innerHTML=`<style>${RVCSS}:host{--s:${T.s};--s2:${T.s2};--tx:${T.tx};--mut:${T.mut};--line:${T.line};--line2:${T.line2};--ink:${T.ink};--on:${T.on};--acc:${T.acc};--soft:${T.soft}}</style>
    <div class="w" role="dialog" aria-modal="true" aria-labelledby="rvT"><div class="bg"></div><div class="c"><button class="x" aria-label="Close">${RVI.x}</button><div class="body"></div></div></div>`;
   const W=R.querySelector('.w'),B=R.querySelector('.body');
-  /* keyboard: the card rides above it and the message box is scrolled into view (also right after a star tap) */
-  const C=R.querySelector('.c');let kbUp=false;
+  /* keyboard: the popup is pinned to the visible part of the screen (above the keyboard); only the card scrolls,
+     once when the keyboard opens and once after a star tap. The page behind is never scrolled by this code. */
+  const C=R.querySelector('.c');let kbUp=false,lk=-1,lt=-1;
+  const fit=()=>{if(!kbUp)return;try{const ta=B.querySelector('textarea');if(ta)C.scrollTop+=ta.getBoundingClientRect().top-C.getBoundingClientRect().top-(C.clientHeight-ta.offsetHeight)/2}catch(e){}};
+  const vvf=()=>{const vv=window.visualViewport;if(!vv)return;const k=Math.max(0,Math.round(innerHeight-vv.height-vv.offsetTop)),t=Math.round(vv.offsetTop);
+    if(Math.abs(k-lk)<3&&Math.abs(t-lt)<3)return;lk=k;lt=t;const was=kbUp;kbUp=k>60;W.style.top=t+'px';W.style.height=Math.round(vv.height)+'px';W.style.bottom='auto';if(kbUp&&!was)setTimeout(fit,150)};
+  if(window.visualViewport){visualViewport.addEventListener('resize',vvf);visualViewport.addEventListener('scroll',vvf);rvHost._vvf=vvf}
   /* the page behind stays still: no scrolling it, no drifting when the keyboard opens */
   const de=document.documentElement,bo=document.body;rvHost._lock=[de.style.overflow,bo.style.overflow];de.style.overflow='hidden';bo.style.overflow='hidden';
   W.addEventListener('touchmove',e=>{if(!C.contains(e.target)||C.scrollHeight<=C.clientHeight+1)e.preventDefault()},{passive:false});
   W.addEventListener('wheel',e=>{if(!C.contains(e.target))e.preventDefault()},{passive:false});
-  const fit=()=>{if(!kbUp)return;try{const ta=B.querySelector('textarea');if(ta)ta.scrollIntoView({block:'center',behavior:'smooth'})}catch(e){}};
-  const vvf=()=>{const vv=window.visualViewport;if(!vv)return;const k=Math.max(0,Math.round(innerHeight-vv.height-vv.offsetTop));kbUp=k>60;W.style.bottom=(kbUp?k:0)+'px';if(kbUp){setTimeout(fit,100);setTimeout(fit,380)}};
-  if(window.visualViewport){visualViewport.addEventListener('resize',vvf);visualViewport.addEventListener('scroll',vvf);rvHost._vvf=vvf}
-  B.addEventListener('click',()=>{setTimeout(fit,120);setTimeout(fit,420)});B.addEventListener('focusin',()=>setTimeout(fit,250));
   const form=()=>{B.innerHTML=`<div class="ic">${RVI.star}</div><h2 id="rvT">${manual?'Your review':'How was your test?'}</h2>
     <p class="s">${test?`Rate <b>${esc3(test.title||'this test')}</b>. Tell us about the questions, the level and the time. It goes straight to our team.`:`Rate <b>${esc3(title||'this test series')}</b>. Your words help other students choose, and help us make every test better.`}</p>
     <div class="st" role="radiogroup" aria-label="Your rating">${[1,2,3,4,5].map(n=>`<button role="radio" aria-checked="${rating===n}" aria-label="${n} star${n>1?'s':''}" data-n="${n}" class="${n<=rating?'on':''}">${RVI.star}</button>`).join('')}</div>
