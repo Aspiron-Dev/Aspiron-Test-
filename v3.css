@@ -1877,12 +1877,8 @@ p.hint>svg{display:inline-block;vertical-align:-2px;margin-right:4px}
 .rs3 b{grid-column:2;align-self:end;font-size:15.5px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;padding-right:4px}
 .rs3 small{grid-column:2;align-self:start;font-size:12.5px;color:var(--mut)}
 .rs3-go{grid-column:3;grid-row:1/3;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--surface2);color:var(--mut)}
-.rs3.lk .rs3-ic,.rs3h.lk .rs3-ic{background:var(--surface2);color:var(--mut)}
+.rs3.lk .rs3-ic{background:var(--surface2);color:var(--mut)}
 @media (hover:hover){.rs3:hover{transform:translateY(-2px);box-shadow:0 16px 30px -22px rgba(0,0,0,.45)}}
-.rs3h{display:flex;align-items:center;gap:14px;padding:4px 2px 2px}
-.rs3h .rs3-ic{margin:0;width:48px;height:48px;border-radius:15px}
-.rs3h b{display:block;font-size:17px;font-weight:600;letter-spacing:-.01em}
-.rs3h small{display:block;color:var(--mut);font-size:13px;margin-top:2px}
 /* entrance (see entr() in v3.js): plays once after a tap; transform and opacity only */
 .ent{animation:entUp .46s cubic-bezier(.2,.8,.2,1) backwards;animation-delay:calc(70ms + var(--e,0)*45ms)}
 @keyframes entUp{from{opacity:0;transform:translate3d(0,16px,0)}}
