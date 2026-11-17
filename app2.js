@@ -96,10 +96,10 @@ function filesBlock(s){
   const fl=s.files||[];if(!fl.length)return '';
   return `<div class="h2s">${ic('file',20)} Syllabus &amp; schedule</div><div class="card">${fl.map(f=>`<div class="rrow"><div class="tico">${ic('file')}</div>
     <div class="grow"><b>${esc(f.title)}</b><span class="sm mut">${KIND[f.kind]||'File'}</span></div>
-    <button class="btn soft sm" onclick="openFile('${f.id}')">${ic('download')} Open</button></div>`).join('')}</div>`;
+    <button class="btn soft sm" onclick="openFile('${f.id}','${esc(f.kind||'')}')">${ic('download')} ${f.kind==='schedule'?'Open / Save':'Open'}</button></div>`).join('')}</div>`;
 }
-async function openFile(id){
-  if(FILEURL[id])return showFile(id);
+async function openFile(id,kind){
+  if(FILEURL[id]){FILEURL[id].dl=kind==='schedule';return showFile(id)}
   modal(`<div class="spin"></div><p class="mut" style="text-align:center" id="fp">Downloading…</p>`);
   const parts=[];let n=0,total=1,mime='application/pdf',name='file';
   while(n<total){
@@ -113,14 +113,14 @@ async function openFile(id){
     // only a real PDF or photo (checked by its first bytes) is shown; anything else is only offered as a download
     const sig=Array.from(u.slice(0,12)).map(c=>c.toString(16).padStart(2,'0')).join('');
     const real=/^25504446/.test(sig)?'application/pdf':/^89504e47/.test(sig)?'image/png':/^ffd8ff/.test(sig)?'image/jpeg':/^52494646.{8}57454250/.test(sig)?'image/webp':/^47494638/.test(sig)?'image/gif':'';
-    FILEURL[id]={url:URL.createObjectURL(new Blob([u],{type:real||'application/octet-stream'})),name,view:!!real};
+    FILEURL[id]={url:URL.createObjectURL(new Blob([u],{type:real||'application/octet-stream'})),name,view:!!real,dl:kind==='schedule',mime:real};
   }catch(e){closeModal();toast('This file is damaged.');return}
   showFile(id);
 }
 function showFile(id){
   const f=FILEURL[id];
   modal(`<div class="logo" style="background:var(--ok)">${ic('check',24)}</div><h2>File ready</h2><p class="mut" style="margin:6px 0 14px">${esc(f.name)}</p>
-   <div class="row">${f.view?`<a class="btn" style="flex:1;text-decoration:none" href="${f.url}" target="_blank" rel="noopener">${ic('eye')} View</a>`:'<p class="mut">This file cannot be shown.</p>'}</div>
+   <div class="row">${f.view?`<a class="btn${f.dl?' soft':''}" style="flex:1;text-decoration:none" href="${f.url}" target="_blank" rel="noopener">${ic('eye')} View</a>`:'<p class="mut">This file cannot be shown.</p>'}${f.view&&f.dl?`<a class="btn" style="flex:1;text-decoration:none" href="${f.url}" download="${esc(String(f.name||'file').replace(/[\\/:*?"<>|]/g,'').slice(0,90)||'file')}${/\.(pdf|png|jpe?g|webp)$/i.test(f.name||'')?'':f.mime==='application/pdf'?'.pdf':''}">${ic('download')} Download</a>`:''}</div>
    <button class="btn ghost block" style="margin-top:10px" onclick="closeModal()">Close</button>`);
 }
 function viewSeries(id){
