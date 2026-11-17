@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=89;
+const V3VER=90;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -372,7 +372,7 @@ function seriesHero(){const s=curSeries();
    Everything else stays in "My study zone". Upgrade plan opens the series' plans when the admin set upgrades for it. ---------- */
 const QK=[['res','Resources','file'],['tests','All Tests','tests']];
 function quickGrid(){const s=curSeries();if(!s)return '';
-  return `<section class="qk" id="qkBox" aria-label="Shortcuts"><div class="qk-g" style="--n:${QK.length}">${QK.map((x,i)=>`<button class="qk-t" data-a="qk" data-k="${x[0]}" style="--i:${i}"><span class="qk-i">${ic(x[2],26)}</span><span class="qk-l">${x[1]}</span></button>`).join('')}</div></section>`}
+  return `<section class="qk" id="qkBox" aria-label="Shortcuts"><div class="qk-g" style="--n:${QK.length}">${QK.map((x,i)=>`<button class="qk-t" data-a="qk" data-k="${x[0]}" style="--i:${i}"><span class="qk-i">${ic(x[2],21)}</span><span class="qk-l">${x[1]}</span></button>`).join('')}</div></section>`}
 A.qk=el=>{const s=curSeries();if(!s)return;A.openSD({dataset:{id:s.id,t:el.dataset.k==='res'?'r':'t'}})};
 let UPGB=false;   // one tap at a time; the page opens only if the student is still on Home with nothing open; the store after 2.5 s without the plans data
 A.upg=()=>{if(UPGB)return;UPGB=true;const s=curSeries(),wait=Promise.all([loadMeta(),STORE===null?loadStore():null]).catch(()=>{});
