@@ -88,6 +88,24 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   await nRow.click(); await p.waitForTimeout(2500);
   ok(await p.locator('a[download]').count() === 0, 'notes file sheet has NO download link (view only)');
   ok(await p.locator('.sheet a.btn', { hasText: 'View' }).count() >= 1, 'notes file sheet has View');
+  // a Google Drive test PDF (answer key): the sheet has View and a direct Download, both to Google; our side stores nothing
+  await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+  const TID = 'aaaaaaaa-0000-0000-0000-0000000000e5';
+  await q(`delete from cbt_private.test_pdfs where test_id=$1`, [TID]); await q(`delete from cbt_private.tests where id=$1`, [TID]);
+  await q(`insert into cbt_private.tests (id, series_id, title, duration, data, question_count, sort_order, practice) select $1, series_id, 'Drive PDF test', 30, data, question_count, 50, true from cbt_private.tests where id='aaaaaaaa-0000-0000-0000-000000000001'`, [TID]);
+  await q(`insert into cbt_private.test_pdfs (test_id, url, label) values ($1, 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUv/view?usp=sharing', 'Drive PDF test answer key')`, [TID]);
+  await p.reload(); await p.waitForTimeout(3500);
+  for (let i = 0; i < 6; i++) { await p.evaluate(() => { const h = [...document.querySelectorAll('*')].find(e => e.shadowRoot && e.shadowRoot.querySelector('.app')); const b = h && [...h.shadowRoot.querySelectorAll('button')].find(x => /^Skip/.test(x.textContent.trim())); if (b) b.click(); }); await p.waitForTimeout(300); }
+  await p.evaluate(sid => { location.hash = '#/s/' + sid; }, SER); await p.waitForTimeout(2500);
+  await p.locator('[data-a="xt"][data-v="r"]').click(); await p.waitForTimeout(1200);
+  await p.locator('[data-a="resOpen"]', { hasText: /answer keys?|Tests/i }).first().click(); await p.waitForTimeout(900);
+  const pRow = p.locator('[data-a="pdfOpen"]').first();
+  ok(await pRow.count() === 1, 'Drive PDF row is in the folder');
+  await pRow.click(); await p.waitForTimeout(700);
+  const hv = await p.locator('.sheet a', { hasText: 'View' }).first().getAttribute('href'), hd = await p.locator('.sheet a', { hasText: 'Download' }).first().getAttribute('href');
+  ok(/^https:\/\/drive\.google\.com\/file\/d\/1AbCdEfGhIjKlMnOpQrStUv/.test(hv || ''), 'Drive PDF: View goes to Google Drive');
+  ok(hd === 'https://drive.google.com/uc?export=download&id=1AbCdEfGhIjKlMnOpQrStUv', 'Drive PDF: Download is the direct Google download link (' + hd + ')');
+  await q(`delete from cbt_private.test_pdfs where test_id=$1`, [TID]); await q(`delete from cbt_private.tests where id=$1`, [TID]);
   ok(await p.evaluate(() => fileDlName('Plan: A/B?', 'application/pdf') === 'Plan AB.pdf' && fileDlName('x.PDF', 'application/pdf') === 'x.PDF' && fileDlName('pic', 'image/png') === 'pic.png' && fileDlName('raw', '') === 'raw' && fileDlName('', 'application/pdf') === 'file.pdf'), 'download name: unsafe characters removed, right extension, no "undefined"');
   ok(!errs.length, 'no page errors ' + errs.join(' | '));
   await q(`delete from cbt_private.file_parts where file_id in ('eeeeeeee-0000-0000-0000-0000000000f1','eeeeeeee-0000-0000-0000-0000000000f2')`);

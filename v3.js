@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=81;
+const V3VER=82;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -837,7 +837,7 @@ function resView(sid,k){if(!resGroups(sid).some(x=>x.k===k))return null;
    if(!g)return `<div class="card empty"><b>Nothing here yet</b></div>`;let i=0;
    return `<div class="card rows">${g.f.map(f=>f.locked?`<button class="row dim rs3r" style="--d:${i++}" data-a="resLocked"><span class="ti">${ic('lock',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>Buy this series to open it</small></span>${ic('lock',18)}</button>`
      :`<button class="row rs3r" style="--d:${i++}" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}" data-kind="${esc3(f.kind||'')}" aria-label="${fileAria(f)} ${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b>${fSize(f)?`<small>${fSize(f)}</small>`:''}</span>${fileIc(f)}</button>`).join('')}${g.p.map(t=>{const l=PDF3[t.id].label||t.title;
-     return `<button class="row rs3r" style="--d:${i++}" data-a="pdfOpen" data-id="${esc3(t.id)}"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(l)}</b>${l!==t.title?`<small>${esc3(t.title)}</small>`:''}</span>${ic('eye',18)}</button>`}).join('')}</div>`}}}
+     return `<button class="row rs3r" style="--d:${i++}" data-a="pdfOpen" data-id="${esc3(t.id)}"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(l)}</b>${l!==t.title?`<small>${esc3(t.title)}</small>`:''}</span>${ic('dl',18)}</button>`}).join('')}</div>`}}}
 A.resOpen=el=>{const v=resView(el.dataset.id,el.dataset.k);if(v){hap(6);push(v)}};
 A.resLocked=()=>toast3('This file opens after you buy the series.');
 /* Tests: category chips (the series' folders), a status filter, the banner from the admin, then the tests in order */
@@ -856,7 +856,7 @@ function tCard(t){const s=tState(t),r=resOf(t.id)[0],syl=((META||{}).syl||{})[t.
    <button class="tc3-go${act[2]?'':' off'}${act[2]==='alT'&&alOn3(t.id)?' alon':''}" ${act[2]==='test'||act[2]==='alT'?`data-a="${act[2]}" data-id="${esc3(t.id)}"`:act[2]==='review'?`data-a="review" data-r="${esc3(r.id)}"`:'disabled'}><span>${ic(act[0],20)}</span><small>${act[1]}</small></button>
    ${pdf3Ask()}${(()=>{const pdf=PDF3&&PDF3[t.id],again=s==='att'&&r&&!p;   // v68: re-attempt any number of times + answer key PDF
      const res=r&&!p&&(s==='att'||s==='miss');void again;
-     return syl||res||pdf?`<div class="tc3-f">${syl?`<button data-a="syl" data-id="${esc3(t.id)}">Syllabus</button>`:''}${res?`<button data-a="review" data-r="${esc3(r.id)}">${ic('chart',14)} Result</button>`:''}${pdf?`<button data-a="pdfOpen" data-id="${esc3(t.id)}">${ic('eye',14)} PDF</button>`:''}</div>`:''})()}</article>`}
+     return syl||res||pdf?`<div class="tc3-f">${syl?`<button data-a="syl" data-id="${esc3(t.id)}">Syllabus</button>`:''}${res?`<button data-a="review" data-r="${esc3(r.id)}">${ic('chart',14)} Result</button>`:''}${pdf?`<button data-a="pdfOpen" data-id="${esc3(t.id)}">${ic('dl',14)} PDF</button>`:''}</div>`:''})()}</article>`}
 const TORD=[['live','Live now'],['res','Continue'],['up','Upcoming'],['new','Available'],['held','Waiting for result'],['att','Attempted'],['miss','Missed'],['lock','Locked']];
 function spTests(sid){const all=testsOf(sid),F=(C().folders||[]).filter(f=>f.series_id===sid&&all.some(t=>t.folder_id===f.id)),loose=all.some(t=>!t.folder_id);
   if(TQ.tf!=='all'&&TQ.tf!=='none'&&!F.some(f=>f.id===TQ.tf))TQ.tf='all';
@@ -1275,15 +1275,17 @@ function notesView(){return {t:'Notes & PDFs',s:'Study material of your test ser
   if(PDF3===null)return '<div class="card sk" style="height:90px"></div><div class="card sk" style="height:90px"></div>';
   if(!T.length&&!S.length)return `<div class="card empty"><span class="ti">${ic('file',22)}</span><b>No notes yet</b><p>When your teacher adds notes or PDFs to your test series, they show up here.</p></div>`;
   return S.map(s=>`<div class="stack" style="gap:10px"><p class="gh">${esc3(s.title)}</p><div class="card rows">${s.files.map(f=>`<button class="row" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}" data-kind="${esc3(f.kind||'')}" aria-label="${fileAria(f)} ${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>${({schedule:'Schedule',syllabus:'Syllabus',notes:'Notes'})[f.kind]||'File'}</small></span>${fileIc(f)}</button>`).join('')}</div></div>`).join('')
-   +(T.length?`<div class="stack" style="gap:10px"><p class="gh">Notes of tests</p><div class="card rows">${T.map(t=>`<div class="row"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(PDF3[t.id].label||t.title)}</b><small>${esc3(t.title)}, Google Drive</small></span><button class="btn sm" data-a="pdfOpen" data-id="${esc3(t.id)}" aria-label="View">${ic('eye',15)}View</button></div>`).join('')}</div></div>`:'')}}}
+   +(T.length?`<div class="stack" style="gap:10px"><p class="gh">Notes of tests</p><div class="card rows">${T.map(t=>`<div class="row"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(PDF3[t.id].label||t.title)}</b><small>${esc3(t.title)}, Google Drive</small></span><button class="btn sm" data-a="pdfOpen" data-id="${esc3(t.id)}" aria-label="Open or download">${ic('dl',15)}Open</button></div>`).join('')}</div></div>`:'')}}}
 const pdfLinkOk=u=>typeof u==='string'&&u.length<=500&&/^https:\/\/(drive|docs)\.google\.com\/[A-Za-z0-9/_?=&%.#~+-]+$/.test(u);
 function loadPdf3(){return rpc('cbt_test_pdfs',{}).then(r=>{const o={};if(r&&r.ok&&r.items)for(const k in r.items){const x=r.items[k];if(/^[A-Za-z0-9_-]{1,64}$/.test(k)&&x&&pdfLinkOk(x.url))o[k]={url:x.url,label:String(x.label||''),folder:String(x.folder||'').trim()}}PDF3=o}).catch(()=>{PDF3=PDF3||{}})}
-A.pdfOpen=el=>{const p=PDF3&&PDF3[el.dataset.id];if(!p||!pdfLinkOk(p.url)){toast3('PDF not available');return}const w=window.open(p.url,'_blank','noopener,noreferrer');if(w)w.opener=null};
+// v88: a Google Drive PDF opens a small sheet: View, or Download straight from Google (nothing is stored on our side)
+A.pdfOpen=el=>{const id=el.dataset.id,p=PDF3&&PDF3[id],t=tOf(id);if(!p||!pdfLinkOk(p.url)){toast3('PDF not available');return}
+  openSheet(`<span class="ti g" style="margin-bottom:12px">${ic('file',22)}</span><h2 id="sheetT">${esc3(p.label||(t&&t.title)||'PDF')}</h2><p class="sub">${t&&p.label&&p.label!==t.title?esc3(t.title)+' · ':''}Opens in Google Drive</p>
+  <div class="g2" style="margin-top:14px;grid-template-columns:1fr 1fr"><a class="btn ghost" href="${esc3(p.url)}" target="_blank" rel="noopener noreferrer">${ic('eye',16)}View</a><a class="btn" href="${esc3(pdfDl3(p.url))}" target="_blank" rel="noopener noreferrer">${ic('dl',16)}Download</a></div>`)};
 // v68: direct download of a Google Drive / Docs file
 const pdfDl3=u=>{let m=/\/file\/d\/([A-Za-z0-9_-]{10,})/.exec(u)||/[?&]id=([A-Za-z0-9_-]{10,})/.exec(u);
   if(m&&/^https:\/\/drive\.google\.com\//.test(u))return 'https://drive.google.com/uc?export=download&id='+m[1];
   m=/^https:\/\/docs\.google\.com\/(document|spreadsheets|presentation)\/d\/([A-Za-z0-9_-]{10,})/.exec(u);return m?'https://docs.google.com/'+m[1]+'/d/'+m[2]+'/export?format=pdf':u};
-A.pdfDl=el=>{const p=PDF3&&PDF3[el.dataset.id];if(!p||!pdfLinkOk(p.url)){toast3('PDF not available');return}const w=window.open(pdfDl3(p.url),'_blank','noopener,noreferrer');if(w)w.opener=null};
 function openNotes(){push(notesView());loadPdf3().then(()=>{if(top()&&top().key==='notes')redraw()})}
 
 /* ---------- one question card (Saved and Mistakes) ---------- */

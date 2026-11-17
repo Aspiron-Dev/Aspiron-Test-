@@ -21,9 +21,11 @@ function loadPdfs(force){
   }).catch(()=>(PDFS=PDFS||{})).finally(()=>{pdfBusy=null});
   return pdfBusy;
 }
-function openPdf(id){
+function openPdf(id){   // v88: View, or Download straight from Google Drive (nothing is stored on our side)
   const p=PDFS&&PDFS[id];if(!p||!pdfOk(p.url))return toast('PDF not available');
-  const w=window.open(p.url,'_blank','noopener,noreferrer');if(w)w.opener=null;
+  modal(`<div class="logo" style="background:var(--ok)">${ic('check',24)}</div><h2>${esc(p.label||'PDF')}</h2><p class="mut" style="margin:6px 0 14px">Opens in Google Drive</p>
+   <div class="row"><a class="btn soft" style="flex:1;text-decoration:none" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">${ic('eye')} View</a><a class="btn" style="flex:1;text-decoration:none" href="${esc(pdfDlUrl(p.url))}" target="_blank" rel="noopener noreferrer">${ic('download')} Download</a></div>
+   <button class="btn ghost block" style="margin-top:10px" onclick="closeModal()">Close</button>`);
 }
 /* v68: a direct download link for a Google Drive / Docs file (falls back to the normal link) */
 function pdfDlUrl(u){
@@ -32,10 +34,6 @@ function pdfDlUrl(u){
   m=/^https:\/\/docs\.google\.com\/(document|spreadsheets|presentation)\/d\/([A-Za-z0-9_-]{10,})/.exec(u);
   if(m)return 'https://docs.google.com/'+m[1]+'/d/'+m[2]+'/export?format=pdf';
   return u;
-}
-function dlPdf(id){
-  const p=PDFS&&PDFS[id];if(!p||!pdfOk(p.url))return toast('PDF not available');
-  const w=window.open(pdfDlUrl(p.url),'_blank','noopener,noreferrer');if(w)w.opener=null;
 }
 /* PDF button next to a test that has notes */
 if(typeof testRow==='function'){
@@ -101,7 +99,7 @@ async function viewNotes(){
   const by=new Map();for(const t of T){const k=t.series_id;if(!by.has(k))by.set(k,[]);by.get(k).push(t)}
   const sname=id=>{const s=(CAT.series||[]).find(x=>x.id===id);return s?s.title:'Tests'};
   setApp(`<div class="wrap lib"><div class="crumb"><a href="#/lib">${ic('left',16)} Library</a></div>${pageHead('Material','Notes & PDFs','Result & answer key PDFs. Open or download from Google Drive.')}
-   ${T.length?[...by].map(([sid,ts])=>lgroup(esc(sname(sid)),ts.map(t=>{const i=esc(String(t.id));return `<div class="lgr"><span class="lgi">${ic('pdf',20)}</span><span class="grow"><b>${esc(o[t.id].label||t.title)}</b><small>${esc(t.title)}</small></span><button class="btn sm" onclick="openPdf('${i}')">${ic('eye')} View</button></div>`}))).join('')
+   ${T.length?[...by].map(([sid,ts])=>lgroup(esc(sname(sid)),ts.map(t=>{const i=esc(String(t.id));return `<div class="lgr"><span class="lgi">${ic('pdf',20)}</span><span class="grow"><b>${esc(o[t.id].label||t.title)}</b><small>${esc(t.title)}</small></span><button class="btn sm" onclick="openPdf('${i}')">${ic('download')} Open</button></div>`}))).join('')
    :`<div class="card empty">${ic('pdf',30)}<h3 style="margin:10px 0 4px">No notes yet</h3><p class="sm mut">When your teacher adds a PDF to a test, it shows here and next to the test.</p></div>`}
   </div>`);
 }
