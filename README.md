@@ -203,6 +203,20 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - New in the install order: `… → v80_access_check → v35_admin_team → v81_submit_limits → v82_cron_key`. `supabase_check_installed.sql`
   now also shows v74 and v82.
 
+## Doubts (`supabase_v87_doubts.sql`)
+- **Student:** in a test result, every question has a **?** button. The student writes the doubt (text only, 5 to 1200
+  letters) and picks a subject; it can be asked once the result is out. **My Doubts** (the third tile on Home) keeps
+  every doubt and the answer, with Waiting / Answered, subject chips and a test-series filter. A waiting doubt can be
+  taken back. Doubts are private: other students never see them.
+- **Teacher:** Admin → **Doubts** (group Communication): waiting doubts first, filters, search, **Answer** (a link
+  button can be added with `[button text](https://link)`), **Close** without an answer, **Delete**, and **Open
+  question**. Messaging = View reads; Messaging = Full access answers, closes and deletes. The dashboard shows how many are
+  waiting.
+- Limits: 20 doubts an hour and 30 a day per student, 3 waiting on one question. No photos and no AI answers (they
+  would cost money); no notification yet.
+- **Setup:** run `supabase_v87_doubts.sql` once (after v86), then `supabase_v35_admin_team.sql` again. Until then the
+  app says doubts are being set up and the admin page asks for the setup.
+
 ## Rank: every student's first attempt counts (`supabase_v86_rank_first_attempt.sql`)
 
 - **Setup:** run `supabase_v86_rank_first_attempt.sql` once (after v85). Nothing else.

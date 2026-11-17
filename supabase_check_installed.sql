@@ -25,7 +25,7 @@ from (values
   (18, 'supabase_v70_ops.sql',                 'public.cbt_admin_ops'),
   (19, 'supabase_v72_owner_profile.sql',       'public.cbt_admin_profile'),
   (21, 'supabase_v80_access_check.sql',        'public.cbt_admin_access_check'),
-  (23, 'supabase_v87_qotd.sql',                'public.cbt_admin_qotd')
+  (23, 'supabase_v88_qotd.sql',                'public.cbt_admin_qotd')
   ) as f(n, file, fn)
 union all
 -- v71 changes an existing function: 'ok' when its text has the new code
@@ -64,5 +64,11 @@ select 29, 'supabase_v85_resource_folders.sql', case when exists (select 1 from 
   and pg_get_functiondef(to_regprocedure('cbt_private.cbt_admin_files__core(text,text,jsonb)')) like '%''order''%' then 'ok'
   when exists (select 1 from information_schema.columns where table_schema = 'cbt_private' and table_name = 'series_meta' and column_name = 'res_order')
   then 'run supabase_v35_admin_team.sql again' else 'MISSING — run this file' end
+union all
+select 30, 'supabase_v87_doubts.sql', case when to_regprocedure('public.cbt_doubt_ask(text,text,text,text,integer,text,text)') is not null
+  and to_regprocedure('public.cbt_doubts_list(text,text,text)') is not null and to_regprocedure('public.cbt_admin_doubts(text,text,jsonb)') is not null
+  and to_regprocedure('cbt_private.cbt_admin_doubts__core(text,text,jsonb)') is not null then 'ok'
+  when to_regprocedure('public.cbt_doubt_ask(text,text,text,text,integer,text,text)') is not null then 'run supabase_v35_admin_team.sql again'
+  else 'MISSING — run this file' end
 ) x
 order by n;

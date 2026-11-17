@@ -31,7 +31,7 @@ Live database Claude ko nahi dikhta. Jo kaam pehle hi ho chuka ho, use seedha ti
   *Check:* a new student's Refer & earn link looks like `store?r=asp48213`.
 - [ ] **1.12 Owner profile + hidden phone numbers:** Supabase → SQL Editor: `supabase_v72_owner_profile.sql` → `supabase_v35_admin_team.sql` → `supabase_v73_contacts.sql`.
 - [x] **1.13 Access check (owner only):** Supabase → SQL Editor: `supabase_v80_access_check.sql` → `supabase_v35_admin_team.sql` (done, with the review fix).
-- [ ] **1.14 Question of the Day (stories on the student Home):** Supabase → SQL Editor: `supabase_v87_qotd.sql` → `supabase_v35_admin_team.sql`. Then Admin → Tests & questions → Question of the Day → Add questions (they come from the Question bank). Until the SQL is run the student app shows no stories.
+- [ ] **1.14 Question of the Day (stories on the student Home):** Supabase → SQL Editor: `supabase_v88_qotd.sql` → `supabase_v35_admin_team.sql`. Then Admin → Tests & questions → Question of the Day → Add questions (they come from the Question bank). Until the SQL is run the student app shows no stories.
   *Check:* Team & access → a member has a "Contact details" row; an account without it sees numbers as `98••• ••210`.
 - [ ] **1.14 send-push "due" ke liye secret (F-05):** SQL Editor → `supabase_v82_cron_key.sql` → `select value from cbt_private.settings where key = 'cron_key';`
   → value copy karo → Edge Functions → Secrets → `CRON_KEY` → `send-push` redeploy (Verify JWT off). **Order zaroori hai:** pehle SQL, phir secret.

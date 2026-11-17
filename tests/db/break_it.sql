@@ -1736,7 +1736,7 @@ select pg_temp.chk('38c rank: a late first attempt (submitted after its own time
   and (select sum(v::int) from jsonb_array_elements_text(:'lb86'::jsonb->'dist') v) = 2);
 reset role;
 
--- ===== QD. v87 Question of the Day: admin picks bank questions for a day; students answer; no leaks =====
+-- ===== QD. v88 Question of the Day: admin picks bank questions for a day; students answer; no leaks =====
 reset role;
 -- bank questions: 3 plain, 1 with a picture, 1 inactive, 1 from a live test that is still running
 insert into cbt_private.qbank (id, subject, chapter, q, options, answer, explanation) values
@@ -1828,6 +1828,93 @@ select pg_temp.chk('QD9 move puts a question on another day (a duplicate on that
   and not exists (select 1 from cbt_private.qotd where id = :'qd_p1'::uuid) and not exists (select 1 from cbt_private.qotd_ans where qotd_id = :'qd_p1'::uuid));
 select pg_temp.chk('QD10 a refused try by a team member is in the activity log',
   exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_qotd' and result = 'refused'));
+-- ===== 45. v87: doubts — a student asks on a question of a test taken (result out), a teacher answers =====
+select public.cbt_admin_login('','OwnerPass2026x','Owner')->>'token' as ow87 \gset
+select public.cbt_admin_login('viewer1','Tr7k-9mQz-pLx2','V')->>'token' as vt87 \gset
+select public.cbt_admin_team(:'ow87','user_save','{"name":"Teacher","username":"teach87","password":"Tr7k-9mQz-pLx2","perms":{"messaging":"view"}}')->>'ok' as t87ok \gset
+select public.cbt_admin_login('teach87','Tr7k-9mQz-pLx2','T')->>'token' as tt87 \gset
+-- a test nobody has taken
+insert into cbt_private.tests(id,series_id,title,duration,data,question_count,active,practice,result_at)
+values ('aaaaaaaa-0000-0000-0000-000000000087','22222222-2222-2222-2222-222222222222','Untaken',30,'[{"q":"U1","options":["a","b","c","d"],"answer":1}]',1,true,false,null);
+-- a result on a test whose result is still held back (Free Live, result in an hour)
+insert into cbt_private.results (student_id, test_id, test_title, score, max_score, correct, wrong, skipped, used_seconds, answers)
+select id, 'aaaaaaaa-0000-0000-0000-000000000002', 'Free Live', 0, 4, 0, 0, 1, 60, '{}' from cbt_private.students where mobile = '9000000001';
+set role anon;
+select public.cbt_doubt_ask('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000004',0,'  <i>Physics</i> ','Why is <b>option D</b> right?  I did not get step 2') as d87a \gset
+select pg_temp.chk('45a a student asks a doubt on a test question; markup characters are removed; the question text is copied',
+  :'d87a'::jsonb->>'ok' = 'true'
+  and (select x->>'subject' || '|' || (x->>'body') || '|' || (x->>'q') || '|' || (x->>'test') || '|' || (x->>'status')
+         from jsonb_array_elements(public.cbt_doubts_list('9000000001','AAAA1111','dev-aaaaaaaa')->'items') x where x->>'id' = :'d87a'::jsonb->>'id')
+      = 'iPhysics/i|Why is boption D/b right?  I did not get step 2|OQ|Open mock|open');
+select pg_temp.chk('45b refused: not taken, result still held back, a question that does not exist, too short, bad test id',
+  public.cbt_doubt_ask('9000000002','BBBB2222','dev-bbbbbbbb','aaaaaaaa-0000-0000-0000-000000000087',0,'','A real doubt here')->>'error' = 'not_taken'
+  and public.cbt_doubt_ask('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000002',0,'','A real doubt here')->>'error' = 'hidden'
+  and public.cbt_doubt_ask('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000004',5,'','A real doubt here')->>'error' = 'question'
+  and public.cbt_doubt_ask('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000004',-1,'','A real doubt here')->>'error' = 'question'
+  and public.cbt_doubt_ask('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000004',0,'','abc')->>'error' = 'short'
+  and public.cbt_doubt_ask('9000000001','AAAA1111','dev-aaaaaaaa','not-a-test',0,'','A real doubt here')->>'error' = 'test'
+  and public.cbt_doubt_ask('9000000001','WRONG999','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000004',0,'','A real doubt here')->>'ok' = 'false');
+select pg_temp.chk('45c a student sees only their own doubts',
+  jsonb_array_length(public.cbt_doubts_list('9000000001','AAAA1111','dev-aaaaaaaa')->'items') = 1
+  and jsonb_array_length(public.cbt_doubts_list('9000000002','BBBB2222','dev-bbbbbbbb')->'items') = 0
+  and public.cbt_doubts_list('9000000001','WRONG999','dev-aaaaaaaa')->>'ok' = 'false'
+  and (public.cbt_doubts_list('9000000001','AAAA1111','dev-aaaaaaaa')->>'v87')::boolean);
+select public.cbt_doubt_ask('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000004',0,'','Second doubt on the same question') ->>'ok' as d87b \gset
+select public.cbt_doubt_ask('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000004',0,'','Third doubt on the same question') ->>'ok' as d87c \gset
+select pg_temp.chk('45d at most 3 doubts waiting on one question',
+  :'d87b' = 'true' and :'d87c' = 'true'
+  and public.cbt_doubt_ask('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000004',0,'','Fourth doubt on the same question')->>'error' = 'waiting');
+reset role;
+-- 45e: a student who already asked 30 doubts today is stopped
+insert into cbt_private.doubts (student_id, test_id, test_title, qidx, body)
+select id, null, 'x', g, 'filler doubt text' from cbt_private.students, generate_series(1, 27) g where mobile = '9000000001';
+set role anon;
+select pg_temp.chk('45e the daily limit (30) holds',
+  public.cbt_doubt_ask('9000000001','AAAA1111','dev-aaaaaaaa','aaaaaaaa-0000-0000-0000-000000000004',0,'','One more doubt on this question')->>'error' = 'busy');
+reset role;
+delete from cbt_private.doubts where test_title = 'x';
+select id as d87id from cbt_private.doubts where student_id = (select id from cbt_private.students where mobile = '9000000001') order by created_at limit 1 \gset
+set role anon;
+select pg_temp.chk('45f the admin sees every doubt with the student and mobile; a member without Messaging is refused; a Messaging view member reads but cannot answer',
+  public.cbt_admin_doubts(:'ow87','get','{}')->>'ok' = 'true'
+  and (public.cbt_admin_doubts(:'ow87','get','{}')->>'waiting')::int = 3
+  and public.cbt_admin_doubts(:'ow87','get','{}')->'items'->0->>'mobile' = '9000000001'
+  and public.cbt_admin_doubts(:'vt87','get','{}')->>'error' = 'forbidden'
+  and public.cbt_admin_doubts(:'tt87','get','{}')->>'ok' = 'true'
+  and public.cbt_admin_doubts(:'tt87','answer',jsonb_build_object('id',:'d87id','answer','Try again'))->>'error' = 'forbidden'
+  and public.cbt_admin_doubts('wrong','get','{}')->>'ok' = 'false');
+select public.cbt_admin_doubts(:'ow87','answer',jsonb_build_object('id',:'d87id','answer','  Step 2 uses <b>energy</b> conservation.  ')) ->>'ok' as d87ans \gset
+select pg_temp.chk('45g the owner answers: the answer is cleaned and the student sees it, answered',
+  :'d87ans' = 'true'
+  and (select (x->>'status') || '|' || (x->>'answer') from jsonb_array_elements(public.cbt_doubts_list('9000000001','AAAA1111','dev-aaaaaaaa')->'items') x where x->>'id' = :'d87id') = 'answered|Step 2 uses benergy/b conservation.'
+  and public.cbt_admin_doubts(:'ow87','answer',jsonb_build_object('id',:'d87id','answer',' '))->>'error' = 'empty'
+  and public.cbt_admin_doubts(:'ow87','answer','{"id":"x","answer":"hello there"}')->>'error' = 'not_found');
+reset role;
+select id::text as d87open from cbt_private.doubts where status = 'open' order by created_at limit 1 \gset
+set role anon;
+select pg_temp.chk('45h a student can take back a waiting doubt, not an answered one and not another student''s',
+  public.cbt_doubt_del('9000000001','AAAA1111','dev-aaaaaaaa',:'d87id')->>'error' = 'not_found'
+  and public.cbt_doubt_del('9000000002','BBBB2222','dev-bbbbbbbb',:'d87open')->>'error' = 'not_found'
+  and public.cbt_doubt_del('9000000001','AAAA1111','dev-aaaaaaaa',:'d87open')->>'ok' = 'true'
+  and public.cbt_doubt_del('9000000001','AAAA1111','dev-aaaaaaaa','nope')->>'error' = 'not_found');
+reset role;
+select id::text as d87open2 from cbt_private.doubts where status = 'open' order by created_at limit 1 \gset
+set role anon;
+select public.cbt_admin_doubts(:'ow87','close',jsonb_build_object('id',:'d87open2'))->>'ok' as d87cl \gset
+select pg_temp.chk('45i close and delete work and are written to the activity log; the status filter works',
+  :'d87cl' = 'true'
+  and jsonb_array_length(public.cbt_admin_doubts(:'ow87','get','{"status":"closed"}')->'items') = 1
+  and jsonb_array_length(public.cbt_admin_doubts(:'ow87','get','{"status":"answered"}')->'items') = 1
+  and public.cbt_admin_doubts(:'ow87','delete',jsonb_build_object('id',:'d87open2'))->>'ok' = 'true'
+  and jsonb_array_length(public.cbt_admin_doubts(:'ow87','get','{"status":"closed"}')->'items') = 0);
+reset role;
+select pg_temp.chk('45j the activity log has the answer, close and delete; a doubt is kept when its test is deleted; the table refuses impossible values',
+  exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_doubts' and act = 'answer' and who = 'Owner')
+  and exists (select 1 from cbt_private.admin_audit where fn = 'cbt_admin_doubts' and act = 'delete' and who = 'Owner')
+  and (select confdeltype from pg_constraint where conrelid = 'cbt_private.doubts'::regclass and confrelid = 'cbt_private.tests'::regclass limit 1) = 'n'
+  and pg_temp.refused($q$insert into cbt_private.doubts (student_id, body) select id, repeat('x', 1300) from cbt_private.students limit 1$q$)
+  and pg_temp.refused($q$insert into cbt_private.doubts (student_id, body, status) select id, 'ok text', 'weird' from cbt_private.students limit 1$q$)
+  and not has_table_privilege('anon', 'cbt_private.doubts', 'select'));
 
 -- ===== report =====
 \t off

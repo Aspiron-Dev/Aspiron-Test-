@@ -383,6 +383,53 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     const lk = await ev(() => { const r = document.getElementById('v3host').shadowRoot; return [...r.querySelectorAll('.ann3 a')].map(a => [a.className, a.textContent.trim(), a.getAttribute('href')]).concat([[r.querySelectorAll('.ann3 p b').length]]); });
     ok(lk[0][0] === 'ab' && lk[0][1] === 'Telegram channel' && lk[0][2] === 'https://t.me/abc?x=1&y=2' && lk[1][0] === '' && lk[1][2] === 'https://example.com/plain' && !lk.some(x => /javascript/.test(x[2] || '')) && lk[lk.length - 1][0] === 0, 'Announcements: [text](https://…) is a link button, a plain address stays a link, javascript: and HTML stay text (' + JSON.stringify(lk) + ')');
     ok(!e10.length, 'no page errors (folders, re-attempt) ' + e10.join(' | ')); await c10.close(); }
+  // Doubts (v87): ask on a question of a result, see it in My Doubts, the teacher's answer; without the SQL the page says so
+  await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
+  await q(`delete from cbt_private.doubts`);
+  for (const off of [false, true]) {
+    const c12 = await br.newContext({ viewport: { width: 390, height: 844 } }); const p12 = await c12.newPage(); const e12 = [];
+    p12.on('pageerror', e => e12.push(e.message));
+    await p12.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort());
+    await p12.route(SUPA + '/rest/v1/rpc/**', async r => { if (off && /rpc\/cbt_doubt/.test(r.request().url())) return r.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ code: 'PGRST202', message: 'Could not find the function' }) }); return rpcRoute(r); });
+    await p12.goto(BASE + 'index.html'); await codeScreen(p12); await p12.fill('#ph', '9000000002'); await p12.fill('#cd', 'BBBB2222'); await p12.click('#lbtn'); await p12.waitForTimeout(3500);
+    const ck12 = sel => p12.evaluate(x => { const e = document.getElementById('v3host').shadowRoot.querySelector(x); if (e) e.click(); return !!e; }, sel);
+    const tx12 = sel => p12.evaluate(x => { const e = document.getElementById('v3host').shadowRoot.querySelector(x); return e ? e.textContent.replace(/\s+/g, ' ').trim() : null; }, sel);
+    await ck12('[data-ob="skip"]'); await p12.waitForTimeout(2600); await ck12('#sheet.open [data-a="close"]'); await p12.waitForTimeout(900);
+    const tiles = await p12.evaluate(() => [...document.getElementById('v3host').shadowRoot.querySelectorAll('#qkBox .qk-t')].map(x => x.textContent.trim()));
+    ok(tiles.join('|') === 'Resources|All Tests|My Doubts', 'Home: My Doubts is the third shortcut tile (' + tiles.join('|') + ')');
+    await ck12('#qkBox [data-k="doubts"]'); await p12.waitForTimeout(1500);
+    if (off) {
+      ok(/being set up/.test(await tx12('#scrB') || ''), 'Doubts: without the SQL the page says doubts are being set up');
+      ok(!e12.length, 'no page errors (doubts, no SQL) ' + e12.join(' | ')); await c12.close(); continue;
+    }
+    ok(/Doubts will be visible here/.test(await tx12('#scrB') || ''), 'My Doubts: an empty state before any doubt');
+    await ck12('#scrBack'); await p12.waitForTimeout(700);
+    await q(`insert into cbt_private.results (student_id, test_id, test_title, score, max_score, correct, wrong, skipped, used_seconds, answers)
+             select id, 'aaaaaaaa-0000-0000-0000-000000000004', 'Open mock', 4, 8, 1, 0, 1, 60, '{}' from cbt_private.students s where mobile = '9000000002'
+              and not exists (select 1 from cbt_private.results r where r.student_id = s.id and r.test_id = 'aaaaaaaa-0000-0000-0000-000000000004')`);
+    const rid = (await q(`select r.id from cbt_private.results r join cbt_private.students s on s.id = r.student_id where s.mobile = '9000000002' and r.test_id = 'aaaaaaaa-0000-0000-0000-000000000004' limit 1`))[0].id;
+    await p12.evaluate(id => { const r = document.getElementById('v3host').shadowRoot, b = document.createElement('button'); b.dataset.a = 'review'; b.dataset.r = id; b.id = 'zzrev'; r.querySelector('#main').appendChild(b); b.click(); }, rid); await p12.waitForTimeout(2500);
+    await p12.evaluate(() => { const b = document.getElementById('v3host').shadowRoot.querySelector('[data-a="rsTab"][data-v="sol"]'); if (b) b.click(); }); await p12.waitForTimeout(900);
+    ok(await ck12('[data-a="dbtAsk"]'), 'Result: every question has an Ask doubt button'); await p12.waitForTimeout(600);
+    await ck12('#dbtGo'); await p12.waitForTimeout(400);
+    ok((await q(`select count(*)::int n from cbt_private.doubts`))[0].n === 0, 'Ask doubt: an empty doubt is not sent');
+    await p12.evaluate(() => { const t = document.getElementById('v3host').shadowRoot.querySelector('#dbtTx'); t.value = 'Why is option D right? <b>bold</b> I did not get step 2'; });
+    await ck12('#dbtGo'); await p12.waitForTimeout(1500);
+    const dr = (await q(`select body, subject, qtext, status from cbt_private.doubts`))[0];
+    ok(dr && dr.status === 'open' && dr.body === 'Why is option D right? bbold/b I did not get step 2' && dr.qtext === 'OQ', 'Ask doubt: sent to the teacher, markup characters removed (' + JSON.stringify(dr) + ')');
+    await ck12('#scrBack'); await p12.waitForTimeout(700);
+    await ck12('#qkBox [data-k="doubts"]'); await p12.waitForTimeout(1800);
+    const w1 = await p12.evaluate(() => { const b = document.getElementById('v3host').shadowRoot.querySelector('#scrB'); return [b.querySelectorAll('.dbc').length, (b.querySelector('.dbc .st') || {}).textContent, b.querySelectorAll('.dbc-b b').length, (b.querySelector('.dbc-w') || {}).textContent]; });
+    ok(w1[0] === 1 && /Waiting/.test(w1[1]) && w1[2] === 0 && /Waiting for a teacher/.test(w1[3] || ''), 'My Doubts: the doubt is listed as waiting (' + JSON.stringify(w1) + ')');
+    await q(`update cbt_private.doubts set status = 'answered', answered_at = now(), answer = 'Use energy <script>window.__x=1</script> conservation. Notes: [Open notes](https://drive.google.com/file/d/abc/view)'`);
+    await ck12('#scrBack'); await p12.waitForTimeout(500); await ck12('#qkBox [data-k="doubts"]'); await p12.waitForTimeout(1800);
+    const w2 = await p12.evaluate(() => { const r = document.getElementById('v3host').shadowRoot, b = r.querySelector('#scrB'); return [(b.querySelector('.dbc .st') || {}).textContent, (b.querySelector('.dbc-a p') || {}).textContent, b.querySelectorAll('.dbc-a a.ab').length, b.querySelectorAll('script').length, !!window.__x]; });
+    ok(/Answered/.test(w2[0]) && /energy <script>/.test(w2[1]) && w2[2] === 1 && w2[3] === 0 && !w2[4], 'My Doubts: the answer is shown, a link button works, HTML stays text (' + JSON.stringify(w2) + ')');
+    ok(!e12.length, 'no page errors (doubts) ' + e12.join(' | ')); await c12.close();
+  }
+  // the doubts block made a result and doubts for student 2 (a result changes which series Home shows): take them away again
+  await q(`delete from cbt_private.doubts`);
+  await q(`delete from cbt_private.results where student_id = (select id from cbt_private.students where mobile = '9000000002') and test_id = 'aaaaaaaa-0000-0000-0000-000000000004' and used_seconds = 60 and score = 4 and max_score = 8`);
   // the phone's Back button closes an open sheet or the menu first, never the page behind it
   await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
   { const c5 = await br.newContext({ viewport: { width: 390, height: 844 } }); const p5 = await c5.newPage(); const e5 = []; p5.on('pageerror', e => e5.push(e.message));
@@ -420,7 +467,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     await sr(r => { const b = r.querySelector('[data-ob="skip"]'); if (b) b.click(); }); await p6.waitForTimeout(2600);
     await sr(r => { const b = r.querySelector('#sheet.open [data-a="close"]'); if (b) b.click(); }); await p6.waitForTimeout(1200);
     const g = await sr(r => { const b = r.querySelector('#qkBox'); if (!b) return null; const L = [...b.querySelectorAll('.qk-t')]; return { n: L.length, labels: L.map(x => x.textContent.trim()).join('|'), clip: L.filter(x => { const l = x.querySelector('.qk-l'); return l.scrollWidth > l.clientWidth + 1; }).length, over: document.documentElement.scrollWidth > innerWidth, right: Math.max(...L.map(x => x.getBoundingClientRect().right)), w: innerWidth, up: (r.querySelector('.pillbtn.upg') || {}).textContent, zone: !!r.querySelector('.zgrid') }; });
-    ok(g && g.n === 2 && g.labels === 'Resources|All Tests' && !g.clip && !g.over && g.right <= g.w && g.up === 'Upgrade plan' && g.zone, `${cfg.n}: Home has the Resources and All Tests tiles, the Upgrade plan pill, and My study zone is still there ` + JSON.stringify(g));
+    ok(g && g.n === 3 && g.labels === 'Resources|All Tests|My Doubts' && !g.clip && !g.over && g.right <= g.w && g.up === 'Upgrade plan' && g.zone, `${cfg.n}: Home has the Resources, All Tests and My Doubts tiles, the Upgrade plan pill, and My study zone is still there ` + JSON.stringify(g));
     await p6.screenshot({ path: path.join(__dirname, 'shots', `student_home_${cfg.n}.png`) });
     if (cfg.n === 'light' || cfg.n === 'dark') {
       await sr(r => r.querySelector('[data-k="res"]').click()); await p6.waitForTimeout(1200);

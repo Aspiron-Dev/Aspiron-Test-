@@ -1,6 +1,6 @@
 /* =====================================================================
    Question of the Day: the stories on the student Home. Pick Question bank questions for a day; students see one circle per subject.
-   Server: cbt_admin_qotd (supabase_v87_qotd.sql) · questions come from cbt_admin_qbank (the Question bank page writes new ones).
+   Server: cbt_admin_qotd (supabase_v88_qotd.sql) · questions come from cbt_admin_qbank (the Question bank page writes new ones).
    Only text questions can be picked (no picture); a question of a live test waits for its result time.
    ===================================================================== */
 (function () {
@@ -20,7 +20,7 @@ const chapName = (s, c) => { if (!c) return ''; const x = SUBS().find(y => y.id 
 const dayName = (d, today) => { const t = new Date(d + 'T00:00:00'), diff = Math.round((t - new Date(today + 'T00:00:00')) / 864e5), nm = t.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
   return diff === 0 ? 'Today · ' + nm : diff === 1 ? 'Tomorrow · ' + nm : diff === -1 ? 'Yesterday · ' + nm : nm; };
 const addDays = (d, n) => { const t = new Date(d + 'T00:00:00'); t.setDate(t.getDate() + n); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); };
-const setupBox = () => h`<div class="card">${UI.empty({ tone: 'lock', icon: 'db', title: 'One-time setup needed', text: 'Run supabase_v87_qotd.sql once in Supabase → SQL Editor, then supabase_v35_admin_team.sql again, and refresh this page.' })}</div>`;
+const setupBox = () => h`<div class="card">${UI.empty({ tone: 'lock', icon: 'db', title: 'One-time setup needed', text: 'Run supabase_v88_qotd.sql once in Supabase → SQL Editor, then supabase_v35_admin_team.sql again, and refresh this page.' })}</div>`;
 const chapOpts = s => { const x = SUBS().find(y => y.id === s); return x ? h`<option value="">All chapters</option>${join([11, 12], cl => { const L = x.chapters.filter(c => c.cls === cl && !c.old); return L.length ? h`<optgroup label="Class ${cl}">${join(L, c => h`<option value="${c.id}">${c.name}</option>`)}</optgroup>` : ''; })}` : h`<option value="">All chapters</option>`; };
 let CUR = null;
 const changed = msg => { AX.cache.drop('qotd'); if (msg) UI.toast(msg); if (CUR && CUR.ctx.alive()) CUR.ctx.reload(); };

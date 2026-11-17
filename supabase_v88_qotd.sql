@@ -1,5 +1,5 @@
 -- =====================================================================
---  v87: Question of the Day (stories on the student Home)
+--  v88: Question of the Day (stories on the student Home)
 --
 --  The admin picks questions from the Question bank for a day (Admin → Question of the Day). The questions are grouped by
 --  subject; on that day each subject shows as a story circle on Home. The student taps it, answers one question at a time
@@ -12,7 +12,7 @@
 --  • The day is the Indian date (Asia/Kolkata). Only today's questions can be answered. The first answer counts and cannot be changed.
 --  • Students see only their own answers; the admin sees how many answered and how many were right.
 --
---  Run ONCE in Supabase → SQL Editor after v86, then run supabase_v35_admin_team.sql again (permission for the admin function).
+--  Run ONCE in Supabase → SQL Editor after v87, then run supabase_v35_admin_team.sql again (permission for the admin function).
 --  Needs v55 (Question bank) and v75. Safe to run again. Until it is run, the student app simply shows no stories.
 -- =====================================================================
 
@@ -167,4 +167,4 @@ revoke all on function public.cbt_admin_qotd(text, text, jsonb) from public, aut
 grant execute on function public.cbt_admin_qotd(text, text, jsonb) to anon;
 
 notify pgrst, 'reload schema';
-select 'v87 installed — now run supabase_v35_admin_team.sql again' as status;
+select 'v88 installed — now run supabase_v35_admin_team.sql again' as status;
