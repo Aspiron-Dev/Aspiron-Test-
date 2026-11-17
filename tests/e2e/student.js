@@ -402,6 +402,38 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     await ck('#mnu'); await p5.waitForTimeout(500); await ck('[data-k="qb"]'); await p5.waitForTimeout(1500);
     await p5.goBack(); await p5.waitForTimeout(900); s5 = await st(); ok(!s5.scr && s5.hash === '#/x/lib', 'a page opened from the menu: Back returns to where the menu was opened (' + s5.hash + ')');
     ok(!e5.length, 'no page errors (Back button) ' + e5.join(' | ')); await c5.close(); }
+  // Home shortcut tiles (v89) and the Upgrade plan pill: light and dark, tiles fit the phone, Show more, Resources opens the series' Resources
+  await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
+  for (const mode of ['light', 'dark']) {
+    const c6 = await br.newContext({ viewport: { width: 390, height: 844 } }); await c6.addInitScript(m => { try { localStorage.setItem('cbt_v3_theme', JSON.stringify({ mode: m })); } catch (e) {} }, mode);
+    const p6 = await c6.newPage(); const e6 = []; p6.on('pageerror', e => e6.push(e.message));
+    await p6.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort()); await p6.route(SUPA + '/rest/v1/rpc/**', rpcRoute);
+    await p6.goto(BASE + 'index.html'); await codeScreen(p6); await p6.fill('#ph', '9000000002'); await p6.fill('#cd', 'BBBB2222'); await p6.click('#lbtn'); await p6.waitForTimeout(3500);
+    const sr = (fn, a) => p6.evaluate(([f, x]) => { const r = document.getElementById('v3host').shadowRoot; return (new Function('r', 'x', 'return (' + f + ')(r, x)'))(r, x); }, [fn.toString(), a]);
+    await sr(r => { const b = r.querySelector('[data-ob="skip"]'); if (b) b.click(); }); await p6.waitForTimeout(2600);
+    await sr(r => { const b = r.querySelector('#sheet.open [data-a="close"]'); if (b) b.click(); }); await p6.waitForTimeout(800);
+    await p6.waitForTimeout(500);
+    const g = await sr(r => { const b = r.querySelector('#qkBox'); if (!b) return null; const bb = b.getBoundingClientRect(), t = [...b.querySelectorAll('.qk-t')]; const vis = t.filter(x => getComputedStyle(x).display !== 'none');
+      return { n: t.length, vis: vis.length, first: t[0] && t[0].textContent.trim(), left: Math.min(...vis.map(x => x.getBoundingClientRect().left)), right: Math.max(...vis.map(x => x.getBoundingClientRect().right)), w: innerWidth, more: !!b.querySelector('.qk-m') }; });
+    ok(g && g.n >= 9 && g.first === 'Resources' && g.vis === 8 && g.left >= 0 && g.right <= g.w && g.more, `${mode}: home has the shortcut tiles (8 shown, first is Resources, all inside the phone) ` + JSON.stringify(g));
+    const up = await sr(r => { const b = r.querySelector('.pillbtn.upg'); return b ? b.textContent.trim() : null; });
+    ok(up === 'Upgrade plan', `${mode}: the pill says "Upgrade plan" (${up})`);
+    await p6.screenshot({ path: path.join(__dirname, 'shots', `student_home_${mode}.png`) });
+    await sr(r => r.querySelector('.qk-m').click()); await p6.waitForTimeout(300);
+    const more = await sr(r => ({ vis: [...r.querySelectorAll('.qk-t')].filter(x => getComputedStyle(x).display !== 'none').length, ex: r.querySelector('.qk-m').getAttribute('aria-expanded'), txt: r.querySelector('.qk-m').textContent.trim() }));
+    ok(more.vis >= 9 && more.ex === 'true' && more.txt === 'Show less', `${mode}: Show more opens the other tiles ` + JSON.stringify(more));
+    await sr(r => r.querySelector('.qk-m').click()); await p6.waitForTimeout(200);
+    await sr(r => r.querySelector('[data-k="res"]').click()); await p6.waitForTimeout(1200);
+    const on = await sr(r => { const b = r.querySelector('.utabs .on'); return b ? b.textContent.trim() : null; });
+    ok(on === 'Resources', `${mode}: the Resources tile opens the series on its Resources tab (${on})`);
+    await p6.goBack(); await p6.waitForTimeout(900);
+    await sr(r => r.querySelector('[data-k="tests"]').click()); await p6.waitForTimeout(1200);
+    ok((await sr(r => { const b = r.querySelector('.utabs .on'); return b ? b.textContent.trim() : null; })) === 'Tests', `${mode}: the All Tests tile opens the Tests tab`);
+    await p6.goBack(); await p6.waitForTimeout(900);
+    await sr(r => r.querySelector('[data-k="qb"]').click()); await p6.waitForTimeout(1500);
+    ok(await sr(r => !!r.querySelector('#scr') && r.querySelector('#scr').classList.contains('open')) || (await sr(r => /question bank/i.test(r.textContent))), `${mode}: the Question bank tile opens it`);
+    ok(!e6.length, `no page errors (home tiles, ${mode}) ` + e6.join(' | ')); await c6.close();
+  }
   // Theme page with real finger taps (a touch phone): every tap must land on its button and be saved
   await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}' where mobile = '9000000002'`);
   { const c3 = await br.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }); const p3 = await c3.newPage(); const e3 = []; p3.on('pageerror', e => e3.push(e.message));

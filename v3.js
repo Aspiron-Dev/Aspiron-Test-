@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=88;
+const V3VER=89;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -366,8 +366,24 @@ function seriesHero(){const s=curSeries();
   const k=seriesStats(s);
   return `<section class="band" id="serBox"><div class="band-in"><small>YOUR TEST SERIES</small>
    <div class="band-row"><button class="band-t" data-a="switchSeries" aria-label="Change test series"><span>${esc3(s.title)}</span>${ic('down',20)}</button>
-    <button class="pillbtn" data-a="tab" data-tab="test">UPGRADE</button></div>
+    <button class="pillbtn upg" data-a="upg" aria-label="Upgrade plan">${ic('crown',15)}<span>Upgrade plan</span></button></div>
    <div class="band-meta"><span>${k.done} of ${k.n} tests attempted</span><button class="minibtn" data-a="openSD" data-id="${esc3(s.id)}">Open${ic('right',14)}</button></div></div></section>`}
+/* ---------- v89: shortcut tiles under the series band ----------
+   Resources and All Tests open the selected series (they need one); the rest are the study tools. Tiles 1-8 show at first,
+   "Show more" opens the others (no re-render: only a class changes). Upgrade plan opens the series' plans when it has any. */
+const QK=[['res','Resources','file',1],['tests','All Tests','tests',1],['pyq','PYQ Analyzer','pyq'],['qb','Question bank','qb'],
+  ['gen','Test generator','spark'],['ranks','Ranks','trophy'],['mk','Mistake notebook','pen'],['hist','Test history','hist'],
+  ['sv','Saved questions','bookmark'],['trk','Study tracker','cal'],['ref','Refer and earn','gift']];
+function quickGrid(){const s=curSeries(),L=QK.filter(x=>!x[3]||s);if(L.length<5)return '';
+  const tile=(x,i)=>`<button class="qk-t${i>7?' qk-x':''}" data-a="qk" data-k="${x[0]}" style="--i:${i%8}"><span class="qk-i">${ic(x[2],24)}</span><span class="qk-l">${x[1]}</span></button>`;
+  return `<section class="qk" id="qkBox" aria-label="Shortcuts"><div class="qk-g">${L.map(tile).join('')}</div>
+   ${L.length>8?`<button class="qk-m" data-a="qkMore" aria-expanded="false"><span>Show more</span>${ic('down',16)}</button>`:''}</section>`}
+A.qk=el=>{const s=curSeries(),k=el.dataset.k;
+  ({res:()=>s&&A.openSD({dataset:{id:s.id,t:'r'}}),tests:()=>s&&A.openSD({dataset:{id:s.id,t:'t'}}),pyq:()=>openPyq(),qb:()=>openQB(),gen:()=>openGen(),
+    ranks:()=>openRanks(),mk:()=>openMistakes(),hist:()=>A.hist(),sv:()=>openSaved(),trk:()=>openTracker(),ref:()=>openRefer()}[k]||(()=>{}))()};
+A.qkMore=el=>{const b=$('#qkBox');if(!b)return;const on=b.classList.toggle('open');el.setAttribute('aria-expanded',String(on));el.querySelector('span').textContent=on?'Show less':'Show more'};
+/* Upgrade plan: the series' plans (Description tab) when the admin set upgrades for it, else the store as before */
+A.upg=()=>{const s=curSeries();loadMeta();if(s&&upgradesOf(s.id).length&&!expired(s))A.openSD({dataset:{id:s.id,t:'d'}});else A.toStore()};
 const RC=2*Math.PI*24;
 function cdCard3(){let c=null;try{c=cdGet()}catch(e){}
   if(!c)return `<section class="sec"><div class="card cdc"><div class="cd-top"><span class="ti g">${ic('target',22)}</span><div style="min-width:0"><h3>Exam countdown</h3><p>Set your exam date and see how much time is left.</p></div><button class="btn sm" data-a="cdEdit">Set date</button></div></div></section>`;
@@ -461,7 +477,7 @@ function storeCard(x,cls){const off=x.mrp&&x.mrp>x.price?Math.round((1-x.price/x
   return `<article class="card ${cls||'tc'}"><span class="tag">${[courseOf(x),esc3(x.section||'')].filter(Boolean).join(', ')||'Test series'}</span><h3>${esc3(x.title)}</h3>${x.subtitle?`<p class="mut" style="font-size:13px">${esc3(x.subtitle)}</p>`:''}
    <div class="ft"><span class="price">${x.price?`<b>₹${fmtN(x.price)}</b>${off?`<s>₹${fmtN(x.mrp)}</s><span class="badge off">${off}% off</span>`:''}`:'<span class="free">Free</span>'}</span><a class="btn sm ${soon?'':'gold'}" href="${storeUrl(x)}">${soon?ic('bell',15)+'Notify me':x.prebook&&x.buy_on===false?'Pre-book':'Buy now'}</a></div></article>`}
 function trending(){if(!STORE){loadStore();return `<section class="sec"><div class="sh"><h2>Trending test series</h2></div><div class="card sk" style="height:190px"></div></section>`}loadExtras();return trendRail(true)}
-VIEW.home=()=>seriesHero()+cdCard3()+upcoming()+zone()+trending();
+VIEW.home=()=>seriesHero()+quickGrid()+cdCard3()+upcoming()+zone()+trending();
 AFTER.home=()=>{tick(true);every(()=>{tick(false);evTick()},1000);autoRail('#trRail','#trDots')};
 function autoRail(rs,ds){const c=$(rs);if(!c||!c.children.length)return;const dots=[...root.querySelectorAll(ds+' i')];let i=0,touched=false;const st=()=>c.children[0].getBoundingClientRect().width+12;
   c.addEventListener('scroll',()=>{const k=Math.round(c.scrollLeft/st());if(k!==i){i=k;dots.forEach((d,j)=>d.classList.toggle('on',j===k))}},{passive:true});
