@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=92;
+const V3VER=93;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -304,7 +304,7 @@ addEventListener('keydown',e=>{if(!booted||INTEST||!document.body.classList.cont
 function syncDock(){try{deskSync()}catch(e){}dock.style.setProperty('--i',NAV.findIndex(n=>n[0]===S.tab));dock.querySelectorAll('button').forEach(b=>{const on=b.dataset.tab===S.tab;b.classList.toggle('on',on);on?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current')})}
 let timers=[];
 const every=(fn,ms)=>{const t=setInterval(fn,ms);timers.push(t);return t};
-function render(anim){timers.forEach(clearInterval);timers=[];main.dataset.tab=S.tab;if(anim&&S.tab==='test')arm();try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please pull down to refresh, or tell us from Help.</p></div>`}
+function render(anim){timers.forEach(clearInterval);timers=[];main.dataset.tab=S.tab;if(S.tab!=='home')QV=null;if(anim&&S.tab==='test')arm();try{main.innerHTML=VIEW[S.tab]()}catch(e){console.error(e);main.innerHTML=`<div class="card empty"><b>Something went wrong</b><p>Please pull down to refresh, or tell us from Help.</p></div>`}
   main.classList.remove('in','swl','swr');if(swGhost){const g=swGhost;swGhost=null;main.style.transition='';main.style.transform='';dock&&dock.classList.remove('swp');requestAnimationFrame(()=>g.remove())}else if(anim&&!RM){void main.offsetWidth;main.classList.add(SWD==='l'?'swl':SWD==='r'?'swr':'in')}SWD='';try{AFTER[S.tab]&&AFTER[S.tab]()}catch(e){console.error(e)}try{pstSync(true)}catch(e){}countUp(main);if(S.tab==='test')entr($('#tBody'));reveal(main)}
 /* content below the first screen fades up into place as it scrolls into view (once; nothing hides if the browser cannot) */
 let rvIO=null;
@@ -366,11 +366,9 @@ function softRender(){if(!document.body.classList.contains('v3on')||document.bod
 /* ================= HOME ================= */
 function seriesHero(){const s=curSeries();
   if(!s)return `<section class="band"><div class="band-in"><small>YOUR TEST SERIES</small><div class="band-row"><b class="band-t">Choose your first test series</b><button class="pillbtn" data-a="tab" data-tab="test">OPEN STORE</button></div></div></section>`;
-  const k=seriesStats(s);
-  return `<section class="band" id="serBox"><div class="band-in"><small>YOUR TEST SERIES</small>
-   <div class="band-row"><button class="band-t" data-a="switchSeries" aria-label="Change test series"><span>${esc3(s.title)}</span>${ic('down',20)}</button>
-    <button class="pillbtn upg" data-a="upg" aria-label="Upgrade plan">${ic('crown',15)}<span>Upgrade plan</span></button></div>
-   <div class="band-meta"><span>${k.done} of ${k.n} tests attempted</span><button class="minibtn" data-a="openSD" data-id="${esc3(s.id)}">Open${ic('right',14)}</button></div></div></section>`}
+  return `<section class="band tight" id="serBox"><div class="band-in"><div class="band-top"><small>YOUR TEST SERIES</small>
+    <button class="pillbtn upg" data-a="upg" aria-label="Upgrade plan">${ic('crown',16)}<span class="u2"><b>Upgrade</b> <i>plan</i></span></button></div>
+   <button class="band-t" data-a="switchSeries" aria-label="Change test series" title="${esc3(s.title)}"><span>${esc3(s.title)}</span>${ic('down',18)}</button></div></section>`}
 /* ---------- v89: the shortcut tiles under the series band: Resources and All Tests (both need a series). My Doubts joins them with the Doubts feature.
    Everything else stays in "My study zone". Upgrade plan opens the series' plans when the admin set upgrades for it. ---------- */
 const QK=[['res','Resources','file'],['tests','All Tests','tests'],['doubts','My Doubts','doubt']];
@@ -395,33 +393,54 @@ function qdLoad(){const d=istDay();if(QD.loading||(QDT&&Date.now()-QDT<1200000&&
     QD.fresh=!had&&QD.items.length>0;try{if(S.tab==='home')softRender()}catch(e){}QD.fresh=false}).catch(()=>{QD.loading=false;QD.ok=false;QD.items=[];QD.sig=''})}
 function qdGroups(){const M=new Map(),ord=['phy','chem','bio'];QD.items.forEach(q=>{const k=q.s||'';if(!M.has(k))M.set(k,[]);M.get(k).push(q)});
   const rk=s=>{const j=ord.indexOf(s);return j<0?9:j};return [...M.entries()].map(([s,L])=>({s,L,done:L.filter(x=>x.done).length})).sort((a,b)=>rk(a.s)-rk(b.s)||a.s.localeCompare(b.s))}
-function qdRow(){qdLoad();const G=QD.ok?qdGroups():[];if(!G.length)return '';const all=QD.items.length,dn=QD.items.filter(x=>x.done).length;
-  return `<section class="qd${QD.fresh?' pop':''}" id="qdBox"><div class="qd-in"><div class="sh"><h2>Question of the Day</h2><span class="aside">${dn} of ${all} done</span></div><div class="qd-row" role="list">${G.map(g=>`<button class="qd-c${g.done===g.L.length?' seen':''}" role="listitem" data-a="qdOpen" data-s="${esc3(g.s)}" aria-label="${esc3(qbSub(g.s))}, ${g.done} of ${g.L.length} answered"><span class="qd-r"><span class="qd-i">${ic(QD_IC[g.s]||'book',26)}</span></span><span class="qd-l">${esc3(qbSub(g.s))}</span><small>${g.done}/${g.L.length}</small></button>`).join('')}</div></div></section>`}
+/* the circles for one day: "x of y done", and the story panel that opens under them (the shortcut tiles move down; closing brings them back) */
+const qdCount=()=>({all:QD.items.length,dn:QD.items.filter(x=>x.done).length});
+function qdRow(){qdLoad();const G=QD.ok?qdGroups():[];if(!G.length)return '';const c=qdCount();
+  if(QV&&!G.some(g=>g.s===QV.s))QV=null;   // the day changed: that subject is gone
+  return `<section class="qd${QD.fresh?' pop':''}" id="qdBox"><div class="qd-in"><div class="sh"><h2>Question of the Day</h2><span class="aside">${c.dn} of ${c.all} done</span></div>
+   <div class="qd-row" role="list">${G.map(g=>`<button class="qd-c${g.done===g.L.length?' seen':''}${QV&&QV.s===g.s?' on':''}" role="listitem" data-a="qdOpen" data-s="${esc3(g.s)}" aria-expanded="${!!(QV&&QV.s===g.s)}" aria-label="${esc3(qbSub(g.s))}, ${g.done} of ${g.L.length} answered"><span class="qd-r"><span class="qd-i">${ic(QD_IC[g.s]||'book',22)}</span></span><span class="qd-l">${esc3(qbSub(g.s))}</span><small>${g.done}/${g.L.length}</small></button>`).join('')}</div>
+   <div class="qdp${QV?' open':''}" id="qdpBox"><div class="qdp-in" id="qdpIn" data-noswipe>${QV?qsHtml():''}</div></div></div></section>`}
 let QV=null;
 const qdList=()=>QV?QD.items.filter(x=>(x.s||'')===QV.s):[];
 const qdErr=r=>r&&r.error==='busy'?'Too many answers in a short time. Try again in a minute.':r&&r.error==='not_found'?'This question is not available any more.':'Could not save your answer. Please try again.';
-function qdView(){return {t:'Question of the Day',get s(){return QV?qbSub(QV.s):''},key:'qd',leave:()=>{QV=null;try{if(S.tab==='home')softRender()}catch(e){}},html:()=>{
-  const L=qdList(),n=L.length;if(!QV||!n)return `<div class="card empty"><span class="ti">${ic('info',22)}</span><b>Nothing here</b><p>There are no questions for this subject today.</p></div>`;
+function qsHtml(){
+  const L=qdList(),n=L.length;if(!QV||!n)return '';
   const dn=L.filter(x=>x.done).length,ok=L.filter(x=>x.done&&x.right).length;
+  const head=`<div class="qdp-h"><span class="qdp-t">${esc3(qbSub(QV.s))}<small>${n} question${n===1?'':'s'}</small></span><button class="qdp-x" data-a="qdClose" aria-label="Close the questions">${ic('x',18)}</button></div>`;
   const bar=`<div class="qd-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${n}" aria-valuenow="${dn}" aria-label="${dn} of ${n} answered">${L.map((x,j)=>`<i class="${x.done?'on':j===QV.i?'cur':''}"></i>`).join('')}</div>`;
   if(QV.i>=n){const p=n?Math.round(ok/n*100):0;
-    return `${bar}<section class="mkh pr-end"><div class="mkh-ring" style="margin:0 auto">${rsRing(p,120)}<span><b>${p}%</b><small>right</small></span></div><h2>${dn===n?'You finished today\'s questions!':'Today\'s questions'}</h2><p><b>${dn}</b> of <b>${n}</b> answered, <b>${ok}</b> right.</p>
-     <div class="g2" style="grid-template-columns:1fr 1fr;width:100%"><button class="btn gold" data-a="qdQb">Practise more</button><button class="btn ghost on-dark" data-a="back">Done</button></div></section>
+    return `${head}${bar}<section class="mkh pr-end"><div class="mkh-ring" style="margin:0 auto">${rsRing(p,120)}<span><b>${p}%</b><small>right</small></span></div><h2>${dn===n?'You finished today\'s questions!':'Today\'s questions'}</h2><p><b>${dn}</b> of <b>${n}</b> answered, <b>${ok}</b> right.</p>
+     <div class="g2" style="grid-template-columns:1fr 1fr;width:100%"><button class="btn gold" data-a="qdQb">Practise more</button><button class="btn ghost on-dark" data-a="qdClose">Done</button></div></section>
      ${dn<n?`<button class="btn lg ghost" data-a="qdFirst">Answer the rest</button>`:''}`}
   const q=L[QV.i],done=!!q.done,pick=done?q.choice:QV.pick,tags=[qbSub(q.s),q.c?qbChap(q.s,q.c):'',q.l?qbLbl(QB_LV,q.l):''].filter(Boolean);
-  return `${bar}<div class="pr-top"><span>Question <b>${QV.i+1}</b> of ${n}</span><span class="pr-sc">${ic('check',14)}${ok} right</span></div>
+  return `${head}${bar}<div class="pr-top"><span>Question <b>${QV.i+1}</b> of ${n}</span><span class="pr-sc">${ic('check',14)}${ok} right</span></div>
    <div class="pr-card"><article class="card qc3"><div class="qc3-h">${tags.map(t=>`<span class="tag">${esc3(t)}</span>`).join('')}</div><div class="qc3-q">${esc3(q.q||'')}</div>
     <div class="qc3-o">${(q.options||[]).map((o,j)=>{const cls=done?(j===q.answer?' c':j===q.choice?' w':''):(pick===j?' sel3':'');const tg=done||pick!=null?'div':'button';return `<${tg} class="opt3${cls}"${tg==='button'?` data-a="qdPick" data-j="${j}"`:''}><span class="k">${LT[j]}</span><span class="ot">${esc3(o||'')}</span></${tg}>`}).join('')}</div>
     ${done?`<p class="qc3-r ${q.right?'ok':'bad'}">${q.right?'Correct! Well done.':`Not quite. The correct answer is ${LT[q.answer]}.`}</p>${q.explanation?`<div class="exp3"><b>Explanation</b><p>${esc3(q.explanation)}</p></div>`:''}`:pick!=null?'<p class="hint">Checking…</p>':''}</article></div>
-   <div class="pr-ft">${QV.i?'<button class="btn ghost" data-a="qdPrev">'+ic('back',16)+'Back</button>':'<span></span>'}<button class="btn${done?'':' ghost'}" data-a="qdNext">${done?(QV.i+1>=n?'Finish':'Next'):'Skip'}${ic('right',16)}</button></div>`}}}
-A.qdOpen=el=>{const s=el.dataset.s;if(!QD.items.some(x=>(x.s||'')===s))return;QV={s,i:0,pick:null};const f=qdList().findIndex(x=>!x.done);QV.i=f<0?0:f;closeLayer();push(qdView())};
-A.qdPick=async el=>{const q=qdList()[QV&&QV.i],j=+el.dataset.j;if(!q||q.done||QV.pick!=null)return;QV.pick=j;if(navigator.vibrate)navigator.vibrate(8);redraw();
+   <div class="pr-ft">${QV.i?'<button class="btn ghost" data-a="qdPrev">'+ic('back',16)+'Back</button>':'<span></span>'}<button class="btn${done?'':' ghost'}" data-a="qdNext">${done?(QV.i+1>=n?'Finish':'Next'):'Skip'}${ic('right',16)}</button></div>`}
+/* draw only the panel (never the whole page), and bring the circles and the count up to date in place */
+function qdSync(){const G=qdGroups(),c=qdCount(),a=$('#qdBox .aside');if(a)a.textContent=`${c.dn} of ${c.all} done`;
+  G.forEach(g=>{const b=root.querySelector(`.qd-c[data-s="${CSS.escape(g.s)}"]`);if(!b)return;b.classList.toggle('seen',g.done===g.L.length);b.classList.toggle('on',!!(QV&&QV.s===g.s));b.setAttribute('aria-expanded',!!(QV&&QV.s===g.s));
+    const sm=b.querySelector('small');if(sm)sm.textContent=`${g.done}/${g.L.length}`;b.setAttribute('aria-label',`${qbSub(g.s)}, ${g.done} of ${g.L.length} answered`)})}
+function qsDraw(swap){const el=$('#qdpIn');if(!el)return;const put=()=>{el.innerHTML=qsHtml();qdSync()};
+  if(swap&&!RM){el.classList.add('sw');setTimeout(()=>{put();el.classList.remove('sw')},140)}else put()}
+function qdSwipe(){const el=$('#qdpIn');if(!el||el.dataset.sw)return;el.dataset.sw='1';let x0=0,y0=0,t0=0,on=false;
+  el.addEventListener('touchstart',e=>{on=e.touches.length===1&&!e.target.closest('button,a');if(!on)return;x0=e.touches[0].clientX;y0=e.touches[0].clientY;t0=Date.now()},{passive:true});
+  el.addEventListener('touchend',e=>{if(!on||!QV)return;on=false;const t=e.changedTouches[0],dx=t.clientX-x0,dy=t.clientY-y0;if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.6||Date.now()-t0>700)return;dx<0?A.qdNext():A.qdPrev()},{passive:true})}
+A.qdOpen=el=>{const s=el.dataset.s;if(!QD.items.some(x=>(x.s||'')===s))return;
+  if(QV&&QV.s===s){A.qdClose();return}
+  const was=!!QV;QV={s,i:0,pick:null};const f=qdList().findIndex(x=>!x.done);QV.i=f<0?0:f;closeLayer();
+  const box=$('#qdpBox');if(!box)return;qsDraw(was);box.classList.add('open');qdSync();hap(6);
+  setTimeout(()=>{const b=$('#qdpBox');if(b&&QV)b.scrollIntoView({block:'nearest',behavior:RM?'auto':'smooth'})},RM?0:360)};
+A.qdClose=()=>{if(!QV)return;QV=null;const box=$('#qdpBox');if(box)box.classList.remove('open');qdSync();
+  setTimeout(()=>{const e=$('#qdpIn');if(e&&!QV)e.innerHTML=''},RM?0:520)};
+A.qdPick=async el=>{const q=qdList()[QV&&QV.i],j=+el.dataset.j;if(!q||q.done||QV.pick!=null)return;QV.pick=j;if(navigator.vibrate)navigator.vibrate(8);qsDraw();
   let r=null;try{r=await rpc('cbt_qotd_answer',{p_id:q.id,p_choice:j})}catch(e){}
   if(r&&r.ok)Object.assign(q,{done:true,choice:+r.choice,right:!!r.right,answer:+r.answer,explanation:String(r.explanation||'')});
-  if(!QV)return;QV.pick=null;if(!(r&&r.ok))toast3(qdErr(r));redraw()};
-A.qdNext=()=>{if(!QV)return;QV.pick=null;QV.i=Math.min(QV.i+1,qdList().length);$('#scrB').scrollTop=0;redraw()};
-A.qdPrev=()=>{if(!QV)return;QV.pick=null;QV.i=Math.max(0,QV.i-1);$('#scrB').scrollTop=0;redraw()};
-A.qdFirst=()=>{if(!QV)return;const f=qdList().findIndex(x=>!x.done);QV.i=f<0?0:f;redraw()};
+  if(!QV)return;QV.pick=null;if(!(r&&r.ok))toast3(qdErr(r));qsDraw()};
+A.qdNext=()=>{if(!QV)return;QV.pick=null;QV.i=Math.min(QV.i+1,qdList().length);qsDraw(true)};
+A.qdPrev=()=>{if(!QV)return;QV.pick=null;QV.i=Math.max(0,QV.i-1);qsDraw(true)};
+A.qdFirst=()=>{if(!QV)return;const f=qdList().findIndex(x=>!x.done);QV.i=f<0?0:f;qsDraw(true)};
 A.qdQb=()=>{openQB()};
 const RC=2*Math.PI*24;
 function cdCard3(){let c=null;try{c=cdGet()}catch(e){}
@@ -517,7 +536,7 @@ function storeCard(x,cls){const off=x.mrp&&x.mrp>x.price?Math.round((1-x.price/x
    <div class="ft"><span class="price">${x.price?`<b>₹${fmtN(x.price)}</b>${off?`<s>₹${fmtN(x.mrp)}</s><span class="badge off">${off}% off</span>`:''}`:'<span class="free">Free</span>'}</span><a class="btn sm ${soon?'':'gold'}" href="${storeUrl(x)}">${soon?ic('bell',15)+'Notify me':x.prebook&&x.buy_on===false?'Pre-book':'Buy now'}</a></div></article>`}
 function trending(){if(!STORE){loadStore();return `<section class="sec"><div class="sh"><h2>Trending test series</h2></div><div class="card sk" style="height:190px"></div></section>`}loadExtras();return trendRail(true)}
 VIEW.home=()=>seriesHero()+qdRow()+quickGrid()+cdCard3()+upcoming()+zone()+trending();
-AFTER.home=()=>{tick(true);every(()=>{tick(false);evTick()},1000);autoRail('#trRail','#trDots')};
+AFTER.home=()=>{tick(true);every(()=>{tick(false);evTick()},1000);autoRail('#trRail','#trDots');qdSwipe()};
 function autoRail(rs,ds){const c=$(rs);if(!c||!c.children.length)return;const dots=[...root.querySelectorAll(ds+' i')];let i=0,touched=false;const st=()=>c.children[0].getBoundingClientRect().width+12;
   c.addEventListener('scroll',()=>{const k=Math.round(c.scrollLeft/st());if(k!==i){i=k;dots.forEach((d,j)=>d.classList.toggle('on',j===k))}},{passive:true});
   ['pointerdown','touchstart','wheel','focusin'].forEach(ev=>c.addEventListener(ev,()=>{touched=true},{passive:true}));
