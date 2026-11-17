@@ -1804,7 +1804,7 @@ select pg_temp.chk('QD5 another student sees nothing of it: no answers, no expla
   and public.cbt_qotd_answer('9000000002', 'BBBB2222', 'dev-bbbbbbbb', :'qd_bio'::uuid, 9)->>'error' = 'invalid_choice'
   and public.cbt_qotd_answer('9000000002', 'WRONG999', 'dev-bbbbbbbb', :'qd_bio'::uuid, 1)->>'ok' is distinct from 'true');
 reset role;
-select id as qd_tom_id from cbt_private.qotd where show_on = cbt_private.qotd_day() + 1 \gset
+select id as qd_tom_id from cbt_private.qotd where show_on = cbt_private.qotd_day() + 1 and qid = 'd0d0d0d0-0000-0000-0000-000000000003' \gset
 set role anon;
 select pg_temp.chk('QD6 a question of another day cannot be answered, and nobody can answer a live test''s question that was put on a day by hand',
   public.cbt_qotd_answer('9000000002', 'BBBB2222', 'dev-bbbbbbbb', :'qd_tom_id'::uuid, 3)->>'error' = 'not_found');
