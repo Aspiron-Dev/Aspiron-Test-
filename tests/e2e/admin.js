@@ -142,6 +142,19 @@ async function rpcRoute(route) {
     ok(av === 'Join now [Telegram channel](https://t.me/aspiron)', tag + ' Add link puts the button into the message (' + av + ')');
     await page.click('.drawer [data-act=add]'); await page.waitForTimeout(1200);
     ok((await q(`select count(*)::int n from cbt_private.series_posts where body like '%[Telegram channel](https://t.me/aspiron)%'`))[0].n === 1, tag + ' the announcement with the link button is saved');
+    // v87: Doubts — the owner sees a doubt, answers it, the student's own words are shown as text
+    await q(`delete from cbt_private.doubts`);
+    await q(`insert into cbt_private.doubts (student_id, test_id, series_id, test_title, qidx, qtext, subject, body) select s.id, 'aaaaaaaa-0000-0000-0000-000000000004', '22222222-2222-2222-2222-222222222222', 'Open mock', 0, 'What is <b>OQ</b>?', 'Physics', 'Please explain <img src=x onerror="window.__dx=1"> step two' from cbt_private.students s where s.mobile = '9000000002'`);
+    await page.goto(BASE + 'cp-dt764twzf54s5m.html#/doubts'); await page.waitForSelector('#db-list .card'); await page.waitForTimeout(500);
+    const dd = await page.evaluate(() => ({ cards: document.querySelectorAll('#db-list .card').length, img: document.querySelectorAll('#db-list img').length, bold: document.querySelectorAll('#db-list p b').length, x: !!window.__dx, t: document.querySelector('#db-list').innerText }));
+    ok(dd.cards === 1 && dd.img === 0 && dd.bold === 0 && !dd.x && /Please explain <img src=x/.test(dd.t) && /Question 1/.test(dd.t) && /Physics/.test(dd.t), tag + ' Doubts: the doubt is listed with the student text shown as text, not HTML');
+    await page.click('#db-list [data-act=ans]'); await page.waitForSelector('#pr-in'); await page.fill('#pr-in', 'Use energy conservation. [Notes](https://drive.google.com/file/d/abc/view)'); await page.click('#pr-ok'); await page.waitForTimeout(1500);
+    const da = (await q(`select status, answer from cbt_private.doubts limit 1`))[0];
+    ok(da && da.status === 'answered' && /energy conservation/.test(da.answer), tag + ' Doubts: the answer is saved and the doubt is answered (' + JSON.stringify(da) + ')');
+    await page.goto(BASE + 'cp-dt764twzf54s5m.html#/doubts?f=answered'); await page.waitForSelector('#db-list .card'); await page.waitForTimeout(400);
+    ok(/Answered/.test(await page.textContent('#db-list')), tag + ' Doubts: the Answered filter lists it');
+    const ovf3 = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1); ok(!ovf3, tag + ' no horizontal scroll (doubts)');
+    await q(`delete from cbt_private.doubts`);
     ok(!errs.length, tag + ' no page errors ' + errs.join(' | '));
     await ctx.close();
   }

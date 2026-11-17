@@ -63,5 +63,11 @@ select 29, 'supabase_v85_resource_folders.sql', case when exists (select 1 from 
   and pg_get_functiondef(to_regprocedure('cbt_private.cbt_admin_files__core(text,text,jsonb)')) like '%''order''%' then 'ok'
   when exists (select 1 from information_schema.columns where table_schema = 'cbt_private' and table_name = 'series_meta' and column_name = 'res_order')
   then 'run supabase_v35_admin_team.sql again' else 'MISSING — run this file' end
+union all
+select 30, 'supabase_v87_doubts.sql', case when to_regprocedure('public.cbt_doubt_ask(text,text,text,text,integer,text,text)') is not null
+  and to_regprocedure('public.cbt_doubts_list(text,text,text)') is not null and to_regprocedure('public.cbt_admin_doubts(text,text,jsonb)') is not null
+  and to_regprocedure('cbt_private.cbt_admin_doubts__core(text,text,jsonb)') is not null then 'ok'
+  when to_regprocedure('public.cbt_doubt_ask(text,text,text,text,integer,text,text)') is not null then 'run supabase_v35_admin_team.sql again'
+  else 'MISSING — run this file' end
 ) x
 order by n;
