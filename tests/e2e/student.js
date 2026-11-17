@@ -457,6 +457,16 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
     await sr(r => { const b = r.querySelector('#sheet.open [data-a="close"]'); if (b) b.click(); }); await pg.waitForTimeout(1500);
     return { c, pg, er, sr };
   };
+  { // the stories loader must not call the server in a loop: one call per 20 minutes, whatever the reply
+    for (const [nm, fulfil] of [['404', { status: 404, contentType: 'application/json', body: '{"message":"not found"}' }], ['ok:false', { status: 200, contentType: 'application/json', body: '{"ok":false,"error":"x"}' }],
+      ['yesterday', { status: 200, contentType: 'application/json', body: '{"ok":true,"day":"2020-01-01","items":[{"id":"d3d3d3d3-0000-0000-0000-000000000001","s":"phy","c":"","l":"easy","q":"old day","options":["a","b","c","d"],"done":false}]}' }]]) {
+      let calls = 0;
+      const t = await qdOpen({ w: 390, h: 844, mode: 'light' }, pg => pg.route(SUPA + '/rest/v1/rpc/cbt_qotd_today', r => { calls++; return r.fulfill(fulfil); }));
+      await t.pg.waitForTimeout(5000);
+      await t.pg.evaluate(() => { location.hash = '#/x/test'; }); await t.pg.waitForTimeout(1500); await t.pg.evaluate(() => { location.hash = '#/'; }); await t.pg.waitForTimeout(2500);
+      ok(calls === 1 && !t.er.length, `stories loader: one server call only, also after leaving Home and coming back (${nm}: ${calls} call${calls === 1 ? '' : 's'}) ` + t.er.join('|')); await t.c.close();
+    }
+  }
   { // not installed (the function is missing) and nothing set for today: no row, no errors
     let t = await qdOpen({ w: 390, h: 844, mode: 'light' }, pg => pg.route(SUPA + '/rest/v1/rpc/cbt_qotd_today', r => r.fulfill({ status: 404, contentType: 'application/json', body: '{"message":"not found"}' })));
     ok(!(await t.sr(r => !!r.querySelector('#qdBox'))) && !t.er.length && (await t.sr(r => !!r.querySelector('#serBox') && !!r.querySelector('#qkBox') && !r.querySelector('.net3') && !!r.querySelector('.zgrid'))), 'stories: SQL not installed → no row, no errors, and Home (band, tiles, study zone) is intact ' + t.er.join('|')); await t.c.close();

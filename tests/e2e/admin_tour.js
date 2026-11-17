@@ -226,6 +226,10 @@ async function rpcRoute(route) {
       await page.click('#ax-ph [data-act=add]'); await page.waitForSelector('.qa-r'); await page.waitForTimeout(400);
       const rowsT = await page.$$eval('.qa-r', a => a.map(x => ({ off: x.classList.contains('off'), t: x.textContent })));
       ok(rowsT.length === 3 && rowsT.some(x => x.off && /picture/.test(x.t)), tag + ' question of the day: the add dialog lists the bank, a picture question is greyed out');
+      await page.selectOption('#qa-s', 'phy'); await page.waitForTimeout(700);
+      const chOk = await page.$$eval('#qa-c option', a => a.length > 1) && !(await page.$eval('#qa-c', e => e.disabled));
+      ok(chOk && (await page.$$('.qa-r')).length === 1, tag + ' question of the day: choosing a subject offers its chapters and narrows the list');
+      await page.selectOption('#qa-s', ''); await page.waitForTimeout(700);
       await page.fill('#qa-q', 'biology'); await page.waitForTimeout(800);
       ok((await page.$$('.qa-r')).length === 1, tag + ' question of the day: search narrows the list');
       await page.click('.qa-r input'); await page.waitForTimeout(200);
