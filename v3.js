@@ -374,8 +374,9 @@ const QK=[['res','Resources','file'],['tests','All Tests','tests']];
 function quickGrid(){const s=curSeries();if(!s)return '';
   return `<section class="qk" id="qkBox" aria-label="Shortcuts"><div class="qk-g" style="--n:${QK.length}">${QK.map((x,i)=>`<button class="qk-t" data-a="qk" data-k="${x[0]}" style="--i:${i}"><span class="qk-i">${ic(x[2],26)}</span><span class="qk-l">${x[1]}</span></button>`).join('')}</div></section>`}
 A.qk=el=>{const s=curSeries();if(!s)return;A.openSD({dataset:{id:s.id,t:el.dataset.k==='res'?'r':'t'}})};
-A.upg=el=>{const s=curSeries();if(el&&el.dataset.busy)return;if(el)el.dataset.busy='1';
-  Promise.all([loadMeta(),STORE===null?loadStore():null]).catch(()=>{}).then(()=>{if(el)delete el.dataset.busy;
+let UPGB=false;   // one tap at a time; the page opens only if the student is still on Home with nothing open; the store after 2.5 s without the plans data
+A.upg=()=>{if(UPGB)return;UPGB=true;const s=curSeries(),wait=Promise.all([loadMeta(),STORE===null?loadStore():null]).catch(()=>{});
+  Promise.race([wait,new Promise(r=>setTimeout(r,2500))]).then(()=>{UPGB=false;if(S.tab!=='home'||STK.length||layer)return;
     if(s&&upgradesOf(s.id).length&&!expired(s))A.openSD({dataset:{id:s.id,t:'d'}});else A.toStore()})};
 const RC=2*Math.PI*24;
 function cdCard3(){let c=null;try{c=cdGet()}catch(e){}
