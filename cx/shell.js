@@ -333,7 +333,7 @@ function route() {
       const tb = document.getElementById('ax-tabs');
       if (o.tabs && o.tabs.length) { tb.classList.remove('hide'); AX.set(tb, join(o.tabs.filter(t => !t.perm || AX.can(...[].concat(t.perm))), t => h`<a href="${t.href || '#/' + m.id + '/' + t.id}" class="${t.id === o.tab ? 'on' : ''}">${t.icon ? icon(t.icon, 16) : ''}${t.title}${t.count ? h`<em>${t.count}</em>` : ''}</a>`)); }
       else tb.classList.add('hide');
-      const ot = o.tabs && o.tab != null && o.tabs.find(t => t.id === o.tab), tab = ot ? { title: ot.title, href: ot.href || '#/' + m.id + '/' + ot.id } : null;
+      const ot = o.crumbTab !== false && o.tabs && o.tab != null && o.tabs.find(t => t.id === o.tab), tab = ot ? { title: ot.title, href: ot.href || '#/' + m.id + '/' + ot.id } : null;
       if (o.crumb || tab) AX.set('#ax-crumb', crumb(m, o.crumb, tab));
       document.title = (o.title || m.title) + ' · Aspiron Control';
     },

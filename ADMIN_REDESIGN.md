@@ -62,6 +62,7 @@ Routes did not change (no redirect needed); only the menu groups did.
 | `#/home` | m-home.js | Command centre | cbt_admin2 overview … | any | tour ✓ |
 | `#/students` | m-students.js | Students & accounts | cbt_admin students…, cbt_admin_edit | students | tour ✓ |
 | `#/tests` | m-tests/builder/import.js | Tests & questions | cbt_admin test_*, cbt_admin_files | content | tour ✓ |
+| `#/tests/s/<id>` · `/settings` · `/messages` | m-tests.js | Tests & questions | (same) — one series: Tests / Settings / Messages tabs | content (messages: messaging) | tour ✓, admin.js |
 | `#/live` | m-live.js | Tests & questions | cbt_admin3 live | results | tour ✓ |
 | `#/reports` | m-reports.js | Tests & questions | cbt_admin reports | content | tour ✓ |
 | `#/integrity` | m-integrity.js | Tests & questions | cbt_admin_cheat, cbt_admin_suspects | integrity | tour ✓ |

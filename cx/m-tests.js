@@ -216,10 +216,11 @@ function paintCover(sid) {
 function sActs(s) {
   const m = canM(), msg = AX.can('messaging', 'manage'), T = testsOf(s.id), L = AX.lang.last();
   const bi = AX.lang.mode(s.id) === 'bi', ready = T.filter(t => AX.lang.state(t.id) === 'ready').length, nf = (s.files || []).length;
+  const todo = T.filter(t => t.active !== false && AX.lang.state(t.id) !== 'ready').length;
   return [
     m && { g: 'settings', act: 'editS', icon: 'edit', label: 'Name, price & visibility', val: [s.is_free ? 'Free' : 'Paid · ' + (s.price_label || 'unlock per student'), s.active === false ? 'hidden from students' : 'visible to students', 'order ' + (s.sort_order || 0)].join(' · ') },
     m && { g: 'settings', act: 'media', icon: 'image', label: 'Cover photo & files', val: (s.has_cover ? 'Cover photo set' : 'No cover photo') + ' · ' + (nf ? fmt.plural(nf, 'file') + ' (' + s.files.map(f => f.title).slice(0, 3).join(', ') + (nf > 3 ? '…' : '') + ')' : 'no schedule / syllabus files') },
-    m && { g: 'settings', act: 'sMedium', icon: 'globe', label: 'Medium (English / हिंदी)', val: !L.ok ? (L.error === 'missing' ? 'Run supabase_v41_medium.sql in Supabase to turn it on' : 'Could not load') : (bi ? 'English + हिंदी' : 'English only') + ' · ' + ready + ' of ' + fmt.plural(T.length, 'test') + ' ready in Hindi', off: !L.ok },
+    m && { g: 'settings', act: 'sMedium', icon: 'globe', label: 'Medium (English / हिंदी)', val: !L.ok ? (L.error === 'missing' ? 'Run supabase_v41_medium.sql in Supabase to turn it on' : 'Could not load') : (bi ? 'English + हिंदी' : 'English only') + ' · ' + ready + ' of ' + fmt.plural(T.length, 'test') + ' ready in Hindi' + (bi && todo ? ' · ' + todo + ' still English only (Hindi students get them in English)' : ''), off: !L.ok },
     m && { g: 'settings', act: 'arrangeRes', icon: 'sort', label: 'Order of Resources folders', val: 'Schedule, syllabus, notes and answer keys in the student app' },
     { g: 'messages', act: 'amsg', icon: 'msg', label: 'Approval message & Telegram link', val: 'Sent to the student when you approve an order for this series' },
     { g: 'messages', act: 'ann', icon: 'bell', label: 'Announcements (buyers only)', val: 'Inside the series, seen only by students who have it' },
@@ -241,12 +242,12 @@ function vSeries(ctx) {
   if (!s) { ctx.head({ title: 'Series not found', crumb: 'Not found' }); return AX.set(ctx.el, h`<div class="card">${UI.empty({ icon: 'layers', title: 'This series is not here any more', text: 'It may have been deleted.', action: h`<a class="btn" href="#/tests">${icon('arrowL', 15)} Back to the library</a>` })}</div>`); }
   const F = C.folders.filter(f => f.series_id === s.id).sort(bySort), T = testsOf(s.id), root = T.filter(t => !t.folder_id || !F.some(f => f.id === t.folder_id));
   const A = sActs(s), base = '#/tests/s/' + s.id;
-  const TABS = [{ id: 'tests', title: 'Tests', icon: 'fileText', href: base, count: T.length },
+  const TABS = [{ id: 'tests', title: 'Tests', icon: 'fileText', href: base },
     A.some(x => x.g === 'settings') && { id: 'settings', title: 'Settings', icon: 'settings', href: base + '/settings' },
     { id: 'messages', title: 'Messages', icon: 'msg', href: base + '/messages' }].filter(Boolean);
   const tab = TABS.some(t => t.id === CUR.tab) ? CUR.tab : 'tests';
-  ctx.head({ title: s.title, crumb: s.title, sub: s.description || (s.is_free ? 'Free series' : 'Paid series · ' + (s.price_label || '')), tabs: TABS, tab,
-    actions: h`<button class="btn" data-act="shareS" data-id="${s.id}">${icon('link', 16)} Share</button>${m ? h`<button class="btn pri" data-act="newTestIn" data-sid="${s.id}">${icon('plus', 16)} New test</button>` : ''}` });
+  ctx.head({ title: s.title, crumb: s.title, sub: s.description || (s.is_free ? 'Free series' : 'Paid series · ' + (s.price_label || '')), tabs: TABS, tab, crumbTab: false,   // the trail stays “Test studio › series”; the tab strip shows the tab
+    actions: h`<button class="btn" data-act="shareS" data-id="${s.id}">${icon('link', 16)} Share</button>${m ? h`<button class="btn" data-act="editS" data-id="${s.id}">${icon('edit', 16)} Edit</button><button class="btn pri" data-act="newTestIn" data-sid="${s.id}">${icon('plus', 16)} New test</button>` : ''}` });
   const st = T.map(t => status(t, C.practice)), nLive = st.filter(x => x.k === 'live').length, nSch = st.filter(x => x.k === 'sched').length;
   const top = h`<div class="card ts-top">${cover(s, 'ts-thumb')}<div class="ts-tb">
       <div class="row wrap gap6">${s.is_free ? UI.pill('Free for everyone', 'ok') : UI.pill('Paid · ' + (s.price_label || 'unlock per student'), 'gold')}${s.active === false ? UI.pill('Hidden from students', 'warn') : UI.pill('Visible to students', 'pri')}${nLive ? h`<span class="pill ok"><span class="live-dot"></span> ${nLive} live now</span>` : ''}${nSch ? UI.pill(nSch + ' scheduled', 'info') : ''}</div>

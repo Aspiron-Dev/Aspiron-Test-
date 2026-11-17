@@ -192,10 +192,15 @@ async function rpcRoute(route) {
       ok(JSON.stringify(tabsTxt) === '["Tests","Settings","Messages"]' && firstOk, tag + ' series page: tabs Tests / Settings / Messages, and the first test is on the first screen ' + JSON.stringify(tabsTxt) + ' ' + firstOk);
       ok((await page.$$eval('.ts-fold', a => a.length)) === 5 && (await page.$$eval('.ts-tr', a => a.length)) === 7 && (await page.$$('[data-act=newFolder]')).length === 1, tag + ' series page: every folder and test, New folder next to them');
       await sh('series_tests');
+      const cb = await page.$eval('#ax-crumb', e => ({ t: e.textContent, r: Math.max(...[...e.children].map(c => c.getBoundingClientRect().right)) }));
+      const sx = await page.$eval('#ax-search', e => e.getBoundingClientRect().left);
+      ok(/BIOLOGY PRO/.test(cb.t) && !(await page.$('#ax-crumb .cb-tab')) && cb.r <= sx + 1, tag + ' series page: the top trail names the series and stays clear of the search button ' + JSON.stringify(cb.t) + ' ' + Math.round(cb.r) + '/' + Math.round(sx));
+      ok(!(await page.$('#ax-tabs a em')), tag + ' series page: no red number on the Tests tab');
+      ok((await page.$$('#ax-ph [data-act=editS]')).length === 1, tag + ' series page: Edit is still in the header');
       const acts = async tb => { await page.click('#ax-tabs a:has-text("' + tb + '")'); await page.waitForSelector('.ts-act'); await page.waitForTimeout(300); return page.$$eval('.ts-act', a => a.map(x => x.dataset.act)); };
       const sa = await acts('Settings'); await sh('series_settings');
       ok(['editS', 'media', 'sMedium', 'arrangeRes', 'delS'].every(x => sa.includes(x)) && /\/settings$/.test(page.url()), tag + ' series page: Settings has name/price, cover & files, medium, resources order, delete: ' + sa.join(','));
-      ok(/399/.test(await page.textContent('[data-act=editS]')) && /No cover photo/.test(await page.textContent('[data-act=media]')), tag + ' series page: each setting shows what it is set to now');
+      ok(/399/.test(await page.textContent('.ts-act[data-act=editS]')) && /No cover photo/.test(await page.textContent('[data-act=media]')), tag + ' series page: each setting shows what it is set to now');
       await page.evaluate(() => AX.emit('tests:changed')); await page.waitForTimeout(800);
       ok((await page.$$('.ts-act[data-act=arrangeRes]')).length === 1, tag + ' series page: a save elsewhere redraws the same tab');
       const ma = await acts('Messages'); await sh('series_messages');
