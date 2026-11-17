@@ -214,6 +214,27 @@ async function rpcRoute(route) {
       ok(!(await page.$('.pop')), tag + ' series card menu: a tap outside closes it');
       await q(`DELETE FROM cbt_private.tests WHERE series_id = $1`, [BS]); await q(`DELETE FROM cbt_private.folders WHERE series_id = $1`, [BS]); await q(`DELETE FROM cbt_private.series WHERE id = $1`, [BS]);
       await page.evaluate(() => AX.cache.drop('catalog'));
+      // Question of the Day: the page lists days with their questions, "Add questions" picks from the bank (a picture one cannot be picked), move and remove work
+      await q(`insert into cbt_private.qbank (id, subject, q, options, answer, explanation) values
+        ('d2d2d2d2-0000-0000-0000-000000000001', 'phy', 'Tour QOTD physics question one with a fairly long text to wrap on two lines of a phone screen, then some more words', '["a","b","c","d"]', 1, 'e1'),
+        ('d2d2d2d2-0000-0000-0000-000000000002', 'bio', 'Tour QOTD biology question', '["a","b","c","d"]', 2, 'e2')`);
+      await q(`insert into cbt_private.qbank (id, subject, q, options, answer, explanation, img) values ('d2d2d2d2-0000-0000-0000-000000000003', 'chem', 'Tour QOTD picture question', '["a","b","c","d"]', 0, 'e3', 'data:image/png;base64,AAAA')`);
+      await q(`insert into cbt_private.qotd (qid, show_on, sort) values ('d2d2d2d2-0000-0000-0000-000000000001', cbt_private.qotd_day(), 0)`);
+      await page.evaluate(() => AX.cache.drop('qotd')); await page.goto(U('qotd')); await page.waitForSelector('.qd-day'); await page.waitForTimeout(400);
+      ok(/Today/.test(await page.textContent('.qd-day.now')) && /Tour QOTD physics/.test(await page.textContent('.qd-day.now')) && /No answers yet/.test(await page.textContent('.qd-day.now')) && (await page.$$('.callout.ok')).length === 1, tag + ' question of the day: today is listed with its question and the "today has 1 question" note');
+      await sh('qotd');
+      await page.click('#ax-ph [data-act=add]'); await page.waitForSelector('.qa-r'); await page.waitForTimeout(400);
+      const rowsT = await page.$$eval('.qa-r', a => a.map(x => ({ off: x.classList.contains('off'), t: x.textContent })));
+      ok(rowsT.length === 3 && rowsT.some(x => x.off && /picture/.test(x.t)), tag + ' question of the day: the add dialog lists the bank, a picture question is greyed out');
+      await page.fill('#qa-q', 'biology'); await page.waitForTimeout(800);
+      ok((await page.$$('.qa-r')).length === 1, tag + ' question of the day: search narrows the list');
+      await page.click('.qa-r input'); await page.waitForTimeout(200);
+      ok(/Add 1 question/.test(await page.textContent('#qa-go')), tag + ' question of the day: the button counts the picked questions');
+      await page.click('[data-act=dayTo][data-d]:has-text("Tomorrow")'); await page.click('#qa-go'); await page.waitForTimeout(1500);
+      ok(/Tour QOTD biology/.test(await page.textContent('#ax-body')) && /Tomorrow/.test(await page.textContent('#ax-body')), tag + ' question of the day: the picked question is on tomorrow');
+      await page.click('.qd-row:has-text("Tour QOTD biology") [data-act=remove]'); await page.waitForSelector('#cf-yes'); await page.click('#cf-yes'); await page.waitForTimeout(1200);
+      ok(!/Tour QOTD biology/.test(await page.textContent('#ax-body')), tag + ' question of the day: take-off removes it');
+      await q(`DELETE FROM cbt_private.qotd WHERE qid::text LIKE 'd2d2d2d2%'`); await q(`DELETE FROM cbt_private.qbank WHERE id::text LIKE 'd2d2d2d2%'`); await page.evaluate(() => AX.cache.drop('qotd'));
       await page.goto(U('live/history')); await page.waitForSelector('.lv-sc-card'); await page.waitForTimeout(300);
       const cards = await page.$$eval('.lv-sc-card', a => a.map(x => x.textContent.replace(/\s+/g, ' ').trim()));
       ok(cards.length >= 2 && cards.some(c => /PAID Series/.test(c) && /1 live/.test(c)) && cards.some(c => /FREE Series/.test(c) && /2 live/.test(c)), tag + ' history: series first, with how many are live: ' + cards.join(' / '));

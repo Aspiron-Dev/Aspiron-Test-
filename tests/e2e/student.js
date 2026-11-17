@@ -479,6 +479,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
       await t.sr(r => r.querySelector('.opt3[data-j="1"]').click()); await t.pg.waitForTimeout(1200);
       const a1 = await t.sr(r => ({ res: (r.querySelector('.qc3-r') || {}).textContent, ex: (r.querySelector('.exp3') || {}).textContent, c: r.querySelector('.opt3.c .k').textContent, next: r.querySelector('[data-a="qdNext"]').textContent.trim() }));
       ok(/Correct/.test(a1.res) && /KEY-P1/.test(a1.ex) && a1.c === 'B' && a1.next === 'Next', 'stories: a right answer says so and shows the explanation ' + JSON.stringify(a1));
+      await t.pg.screenshot({ path: path.join(__dirname, 'shots', 'student_qd_question.png') });
       await t.sr(r => r.querySelector('[data-a="qdNext"]').click()); await t.pg.waitForTimeout(500);
       await t.sr(r => r.querySelector('.opt3[data-j="0"]').click()); await t.pg.waitForTimeout(1200);
       const a2 = await t.sr(r => ({ res: (r.querySelector('.qc3-r') || {}).textContent, c: r.querySelector('.opt3.c .k').textContent, w: r.querySelector('.opt3.w .k').textContent, next: r.querySelector('[data-a="qdNext"]').textContent.trim() }));
@@ -486,6 +487,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
       await t.sr(r => r.querySelector('[data-a="qdNext"]').click()); await t.pg.waitForTimeout(500);
       const sm = await t.sr(r => (r.querySelector('.pr-end') || {}).textContent);
       ok(/2\s*of\s*2\s*answered/.test(sm.replace(/\s+/g, ' ')) && /1\s*right/.test(sm.replace(/\s+/g, ' ')), 'stories: the summary says 2 of 2 answered, 1 right ' + (sm || '').replace(/\s+/g, ' ').slice(0, 90));
+      await t.pg.screenshot({ path: path.join(__dirname, 'shots', 'student_qd_summary.png') });
       await t.sr(r => r.querySelector('[data-a="back"]').click()); await t.pg.waitForTimeout(900);
       const row2 = await t.sr(r => { const c = r.querySelector('[data-s="phy"]'); return { seen: c.classList.contains('seen'), n: c.querySelector('small').textContent, head: r.querySelector('#qdBox .aside').textContent }; });
       ok(row2.seen && row2.n === '2/2' && row2.head === '2 of 3 done', 'stories: back on Home the Physics circle is grey with 2/2 ' + JSON.stringify(row2));
