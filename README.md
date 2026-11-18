@@ -203,6 +203,16 @@ the OCR worker and language data still load from jsDelivr / tessdata as before),
 - New in the install order: `… → v80_access_check → v35_admin_team → v81_submit_limits → v82_cron_key`. `supabase_check_installed.sql`
   now also shows v74 and v82.
 
+## Files: free or paid one by one, and Google Drive links (`supabase_v89_file_access.sql`)
+- **Admin → series → Settings → Cover photo & files:** every file (Syllabus, Notes, PDFs) can be **Everyone (free)** or
+  **Students with the series**; a row has a **Make free / Make buyers only** button. The Schedule is always free.
+  A file can also be added as a **Google Drive link** (share it as "Anyone with the link"); only the link is stored.
+- **Student:** a free file opens without buying (upload: View; Drive link: View and Download from Google). Paid files stay locked.
+  The Drive link is never in the catalog or the feed: the server gives it (`cbt_file_link`) only to a student who may open it now
+  (lock and "opens at" time checked). A buyer can still forward a paid Drive link, so uploads are safer for paid content.
+- **Setup:** run `supabase_v89_file_access.sql` once (after v88), then `supabase_v35_admin_team.sql` again. Until then the
+  admin form hides the new options; nothing changes for students. Existing files stay "buyers only".
+
 ## Doubts (`supabase_v87_doubts.sql`)
 - **Student:** in a test result, every question has a **?** button. The student writes the doubt (text only, 5 to 1200
   letters) and picks a subject; it can be asked once the result is out. **My Doubts** (the third tile on Home) keeps
