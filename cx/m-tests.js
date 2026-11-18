@@ -710,7 +710,7 @@ function mediaDrawer(sid) {
         const items = list.map((f, i) => ({ id: f.id, folder: folderOf(f), sort: i }));
         const r = await AX.api.call('cbt_admin_files', 'arrange', { series_id: sid, items });
         if (!r.ok) { UI.toast(r.error === 'action' ? 'Run supabase_v77_free_vs_paid.sql in Supabase first' : AX.errText(r), { tone: 'bad' }); return false; }
-        items.forEach(x => { LAY[x.id] = Object.assign({}, LAY[x.id], { folder: x.folder, sort: x.sort }); });   // keep free / link redraw(); AX.cache.drop('catalog'); return true;
+        items.forEach(x => { LAY[x.id] = Object.assign({}, LAY[x.id], { folder: x.folder, sort: x.sort }); }); /* keep free / link */ redraw(); AX.cache.drop('catalog'); return true;
       };
       // save sections in order: every file gets its folder and a running number
       const save = async (S) => { const L = []; S.forEach(sec => sec.files.forEach(f => { LAY[f.id] = Object.assign({}, LAY[f.id], { folder: sec.name, sort: 0 }); L.push(f); })); return arrange(L); };
