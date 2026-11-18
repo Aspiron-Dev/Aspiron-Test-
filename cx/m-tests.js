@@ -687,9 +687,9 @@ function mediaDrawer(sid) {
       <div class="row wrap mt12"><button class="btn soft" data-act="cvUp">${icon('upload', 16)} ${s.has_cover ? 'Change photo' : 'Upload photo'}</button>${s.has_cover ? h`<button class="btn ghost danger" data-act="cvRm">${icon('trash', 15)} Remove</button>${cv === undefined ? '' : UI.pill('Cover set', 'ok')}` : ''}</div>
       <div class="section-t">Syllabus, schedule & notes</div>
       ${(s.files || []).length ? (LAY ? folderBox() : h`<div class="card flat tight">${join(ordered(), f => fileRow(f, null))}</div>`) : h`<div class="card flat tight"><div class="xs mut">No files yet. Students can open these from the series page.</div></div>`}
-      <div class="card flat mt12"><div class="card-h">${icon('upload')}<h3>Upload a file</h3></div><div class="col gap16">
+      <div class="card flat mt12"><div class="card-h">${icon('upload')}<h3>${R89 ? "Add a file" : "Upload a file"}</h3></div><div class="col gap16">
         <div class="fld"><label for="mf-t">Name shown to students</label><input class="inp" id="mf-t" maxlength="80" placeholder="e.g. Full syllabus"></div>
-        ${R89 ? h`<div class="fld"><label>Add it as</label><div class="seg" id="mf-s">${join([['up', 'Upload a file'], ['link', 'Google Drive link']], ([v, l]) => h`<button type="button" class="${src === v ? 'on' : ''}" data-v="${v}">${l}</button>`)}</div></div>` : ''}
+        ${R89 ? h`<div class="fld"><label>Add it as</label><div class="seg" id="mf-src">${join([['up', 'Upload a file'], ['link', 'Google Drive link']], ([v, l]) => h`<button type="button" class="${src === v ? 'on' : ''}" data-v="${v}">${l}</button>`)}</div></div>` : ''}
         <div class="fld"><label>Type</label><div class="seg" id="mf-k">${join([['syllabus', 'Syllabus'], ['schedule', 'Schedule'], ['notes', 'Notes']], ([v, l]) => h`<button type="button" class="${kind === v ? 'on' : ''}" data-v="${v}">${l}</button>`)}</div></div>
         ${R89 && kind !== 'schedule' ? h`<div class="fld"><label>Who can open it</label><div class="seg" id="mf-a">${join([['paid', 'Students with the series'], ['free', 'Everyone (free)']], ([v, l]) => h`<button type="button" class="${acc === v ? 'on' : ''}" data-v="${v}">${l}</button>`)}</div><div class="xs mut mt4">${acc === 'free' ? 'Every student can open this file, even without buying the series.' : 'Only students who have this series can open it.'}</div></div>` : ''}
         ${R89 && src === 'link' ? h`<div class="fld"><label for="mf-u">Google Drive link</label><input class="inp" id="mf-u" maxlength="500" inputmode="url" placeholder="https://drive.google.com/file/d/…/view"><div class="xs mut mt4">Share the file as "Anyone with the link". Only the link is saved here, not the file.</div></div>` : h`<div class="dropzone" data-act="fPick" id="mf-dz">${file ? h`${icon('fileText', 18)} <b>${file.name}</b> · ${fmt.bytes(file.size)} <span class="xs">(tap to change)</span>` : h`${icon('upload', 18)} <b>Choose a PDF or image</b> · up to 6 MB`}</div>`}
@@ -710,10 +710,10 @@ function mediaDrawer(sid) {
         const items = list.map((f, i) => ({ id: f.id, folder: folderOf(f), sort: i }));
         const r = await AX.api.call('cbt_admin_files', 'arrange', { series_id: sid, items });
         if (!r.ok) { UI.toast(r.error === 'action' ? 'Run supabase_v77_free_vs_paid.sql in Supabase first' : AX.errText(r), { tone: 'bad' }); return false; }
-        items.forEach(x => { LAY[x.id] = { folder: x.folder, sort: x.sort }; }); redraw(); AX.cache.drop('catalog'); return true;
+        items.forEach(x => { LAY[x.id] = Object.assign({}, LAY[x.id], { folder: x.folder, sort: x.sort }); });   // keep free / link redraw(); AX.cache.drop('catalog'); return true;
       };
       // save sections in order: every file gets its folder and a running number
-      const save = async (S) => { const L = []; S.forEach(sec => sec.files.forEach(f => { LAY[f.id] = { folder: sec.name, sort: 0 }; L.push(f); })); return arrange(L); };
+      const save = async (S) => { const L = []; S.forEach(sec => sec.files.forEach(f => { LAY[f.id] = Object.assign({}, LAY[f.id], { folder: sec.name, sort: 0 }); L.push(f); })); return arrange(L); };
       const move = async (id, d) => { const S = sections(), sec = S.find(x => x.files.some(f => f.id === id)); if (!sec) return; const i = sec.files.findIndex(f => f.id === id), j = i + d; if (j < 0 || j >= sec.files.length) return; [sec.files[i], sec.files[j]] = [sec.files[j], sec.files[i]]; await save(S); };
       const moveSec = async (k, d) => { const S = sections(), j = k + d; if (j < 0 || j >= S.length) return; [S[k], S[j]] = [S[j], S[k]];
         NEWF = S.filter(x => !x.files.length).map(x => x.name); await save(S); };
@@ -724,8 +724,8 @@ function mediaDrawer(sid) {
       el.addEventListener('change', async e => { const sel = e.target.closest('select.fmv'); if (!sel) return; let v = sel.value; if (v === '') return;
         if (v === '#new#') { v = await askName('New folder'); if (!v) { sel.value = ''; return; } } else if (v === '#none#') v = '';
         await toFolder(sel.dataset.id, v); });
-      el.addEventListener('click', e => { const b = e.target.closest('#mf-k button, #mf-s button, #mf-a button'); if (!b) return; const t = el.querySelector('#mf-t'), u = el.querySelector('#mf-u'), tv = t ? t.value : '', uv = u ? u.value : '';
-        if (b.closest('#mf-k')) kind = b.dataset.v; else if (b.closest('#mf-s')) src = b.dataset.v; else acc = b.dataset.v;
+      el.addEventListener('click', e => { const b = e.target.closest('#mf-k button, #mf-src button, #mf-a button'); if (!b) return; const t = el.querySelector('#mf-t'), u = el.querySelector('#mf-u'), tv = t ? t.value : '', uv = u ? u.value : '';
+        if (b.closest('#mf-k')) kind = b.dataset.v; else if (b.closest('#mf-src')) src = b.dataset.v; else acc = b.dataset.v;
         redraw(); const t2 = el.querySelector('#mf-t'), u2 = el.querySelector('#mf-u'); if (t2) t2.value = tv; if (u2) u2.value = uv; });
       AX.act(el, {
         mvU: b => move(b.dataset.id, -1),

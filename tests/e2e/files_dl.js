@@ -53,14 +53,16 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}'`);
   const SER = '11111111-1111-1111-1111-111111111111', b64 = MINI_PDF.toString('base64');
   await q(`delete from cbt_private.file_parts where file_id in ('eeeeeeee-0000-0000-0000-0000000000f1','eeeeeeee-0000-0000-0000-0000000000f2')`);
-  await q(`delete from cbt_private.series_files where id in ('eeeeeeee-0000-0000-0000-0000000000f1','eeeeeeee-0000-0000-0000-0000000000f2','eeeeeeee-0000-0000-0000-0000000000f3')`);
+  await q(`delete from cbt_private.series_files where id in ('eeeeeeee-0000-0000-0000-0000000000f1','eeeeeeee-0000-0000-0000-0000000000f2','eeeeeeee-0000-0000-0000-0000000000f3','eeeeeeee-0000-0000-0000-0000000000f4','eeeeeeee-0000-0000-0000-0000000000f5')`);
   await q(`insert into cbt_private.series_files (id, series_id, title, kind, file_name, mime, size, parts, ready, folder, sort_order) values
     ('eeeeeeee-0000-0000-0000-0000000000f1',$1,'CHEMISTRY PRO TEST PLANNER','schedule','planner.pdf','application/pdf',1000,1,true,'',0),
     ('eeeeeeee-0000-0000-0000-0000000000f2',$1,'Cumulative Test 1','notes','cum1.pdf','application/pdf',1000,1,true,'Cumulative Test',1)`, [SER]);
   // v89: a Google Drive link file (buyers only) in the same folder
   await q(`insert into cbt_private.series_files (id, series_id, title, kind, file_name, mime, size, parts, ready, folder, sort_order, url, free) values
+    ('eeeeeeee-0000-0000-0000-0000000000f4',$1,'Free syllabus','syllabus','syl.pdf','application/pdf',1000,1,true,'Free pack',3,'',true),
+    ('eeeeeeee-0000-0000-0000-0000000000f5',$1,'Free Drive notes','notes','Google Drive','link',0,0,true,'Free pack',4,'https://drive.google.com/file/d/1FreeNotesAbCdEfGh/view',true),
     ('eeeeeeee-0000-0000-0000-0000000000f3',$1,'Cumulative Drive notes','notes','Google Drive','link',0,0,true,'Cumulative Test',2,'https://drive.google.com/file/d/1DriveNotesAbCdEfGh/view?usp=sharing',false)`, [SER]);
-  await q(`insert into cbt_private.file_parts (file_id, n, data) values ('eeeeeeee-0000-0000-0000-0000000000f1',0,$1),('eeeeeeee-0000-0000-0000-0000000000f2',0,$1)`, [b64]);
+  await q(`insert into cbt_private.file_parts (file_id, n, data) values ('eeeeeeee-0000-0000-0000-0000000000f1',0,$1),('eeeeeeee-0000-0000-0000-0000000000f2',0,$1),('eeeeeeee-0000-0000-0000-0000000000f4',0,$1)`, [b64]);
   await new Promise(r => server.listen(PORT, '127.0.0.1', r));
   const br = await chromium.launch();
   const errs = [];
@@ -120,9 +122,28 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   ok(hd === 'https://drive.google.com/uc?export=download&id=1AbCdEfGhIjKlMnOpQrStUv', 'Drive PDF: Download is the direct Google download link (' + hd + ')');
   await q(`delete from cbt_private.test_pdfs where test_id=$1`, [TID]); await q(`delete from cbt_private.tests where id=$1`, [TID]);
   ok(await p.evaluate(() => fileDlName('Plan: A/B?', 'application/pdf') === 'Plan AB.pdf' && fileDlName('x.PDF', 'application/pdf') === 'x.PDF' && fileDlName('pic', 'image/png') === 'pic.png' && fileDlName('raw', '') === 'raw' && fileDlName('', 'application/pdf') === 'file.pdf'), 'download name: unsafe characters removed, right extension, no "undefined"');
+  // v89, the owner's case: a student who has NOT bought the series. Paid files stay locked; files marked free open (upload and Drive link).
+  const ca = await br.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true }); const pa = await ca.newPage(); pa.on('pageerror', e => errs.push(e.message));
+  await pa.route(u => !u.href.startsWith(BASE) && !u.href.startsWith(SUPA), r => r.abort()); await pa.route(SUPA + '/rest/v1/rpc/**', rpcRoute);
+  await pa.goto(BASE + 'index.html'); await codeScreen(pa);
+  await pa.fill('#ph', '9000000001'); await pa.fill('#cd', 'AAAA1111'); await pa.click('#lbtn'); await pa.waitForTimeout(3500);
+  for (let i = 0; i < 6; i++) { await pa.evaluate(() => { const h = [...document.querySelectorAll('*')].find(e => e.shadowRoot && e.shadowRoot.querySelector('.app')); const b = h && [...h.shadowRoot.querySelectorAll('button')].find(x => /^Skip/.test(x.textContent.trim())); if (b) b.click(); }); await pa.waitForTimeout(400); }
+  await pa.evaluate(sid => { location.hash = '#/s/' + sid; }, SER); await pa.waitForTimeout(2500);
+  await pa.locator('[data-a="xt"][data-v="r"]').click(); await pa.waitForTimeout(1200);
+  ok(await pa.locator('.rs3.lk', { hasText: 'Cumulative Test' }).count() === 1, 'non-buyer: the folder with only paid files is locked');
+  ok(await pa.locator('.rs3:not(.lk)', { hasText: 'Free pack' }).count() === 1, 'non-buyer: the folder with free files is open');
+  await pa.locator('[data-a="resOpen"]', { hasText: 'Free pack' }).first().click(); await pa.waitForTimeout(900);
+  ok(await pa.locator('[data-a="fileOpen"]').count() === 2 && await pa.locator('[data-a="resLocked"]').count() === 0, 'non-buyer: both free files are open rows, not "Buy this series to open it"');
+  await pa.locator('[data-a="fileOpen"][data-link="0"]').first().click(); await pa.waitForTimeout(2500);
+  ok(await pa.locator('.sheet a.btn', { hasText: 'View' }).count() >= 1, 'non-buyer: a free uploaded syllabus opens (View)');
+  await pa.keyboard.press('Escape'); await pa.waitForTimeout(500);
+  await pa.locator('[data-a="fileOpen"][data-link="1"]').first().click(); await pa.waitForTimeout(1500);
+  const fv = await pa.locator('.sheet a', { hasText: 'View' }).first().getAttribute('href');
+  ok(/^https:\/\/drive\.google\.com\/file\/d\/1FreeNotesAbCdEfGh/.test(fv || ''), 'non-buyer: a free Drive-link file opens (View goes to Google Drive)');
+  ok(!(await pa.evaluate(() => JSON.stringify(CAT.series.map(x => x.files)))).includes('drive.google'), 'non-buyer: no Drive link in the catalog the app holds');
   ok(!errs.length, 'no page errors ' + errs.join(' | '));
-  await q(`delete from cbt_private.file_parts where file_id in ('eeeeeeee-0000-0000-0000-0000000000f1','eeeeeeee-0000-0000-0000-0000000000f2')`);
-  await q(`delete from cbt_private.series_files where id in ('eeeeeeee-0000-0000-0000-0000000000f1','eeeeeeee-0000-0000-0000-0000000000f2','eeeeeeee-0000-0000-0000-0000000000f3')`);
+  await q(`delete from cbt_private.file_parts where file_id in ('eeeeeeee-0000-0000-0000-0000000000f1','eeeeeeee-0000-0000-0000-0000000000f2','eeeeeeee-0000-0000-0000-0000000000f4')`);
+  await q(`delete from cbt_private.series_files where id in ('eeeeeeee-0000-0000-0000-0000000000f1','eeeeeeee-0000-0000-0000-0000000000f2','eeeeeeee-0000-0000-0000-0000000000f3','eeeeeeee-0000-0000-0000-0000000000f4','eeeeeeee-0000-0000-0000-0000000000f5')`);
   console.log(fails ? 'FAILED ' + fails : 'ALL PASS');
   await br.close(); server.close(); await db.end(); process.exit(fails ? 1 : 0);
 })();
