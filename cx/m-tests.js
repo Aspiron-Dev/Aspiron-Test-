@@ -654,7 +654,7 @@ function annDrawer(s) {
 /* ---------- cover & files ---------- */
 function mediaDrawer(sid) {
   if (!canM()) return;
-  let kind = 'syllabus', file = null, busy = false, OPENS = {}, LAY = null;
+  let kind = 'syllabus', file = null, busy = false, OPENS = {}, LAY = null, R89 = false, src = 'up', acc = 'paid';   // R89: supabase_v89_file_access.sql is run (free / paid per file, Drive links)
   // v77: folders and order of the files (supabase_v77_free_vs_paid.sql); students see them in this order, grouped by folder
   const ordered = () => { const L = (S_(sid) || {}).files || []; return L.map((f, i) => [f, i]).sort((a, b) => ((LAY && LAY[a[0].id] ? LAY[a[0].id].sort : 0) - (LAY && LAY[b[0].id] ? LAY[b[0].id].sort : 0)) || a[1] - b[1]).map(x => x[0]); };
   const folderOf = f => (LAY && LAY[f.id] && LAY[f.id].folder) || '';
@@ -663,8 +663,9 @@ function mediaDrawer(sid) {
   const sections = () => { const M = new Map(); ordered().forEach(f => { const k = folderOf(f); if (!M.has(k)) M.set(k, []); M.get(k).push(f); });
     NEWF = NEWF.filter(n => !M.has(n)); NEWF.forEach(n => M.set(n, [])); return [...M].map(([name, files]) => ({ name, files })); };
   const kindName = k => ({ schedule: 'Schedule', syllabus: 'Syllabus', notes: 'Notes' })[k] || 'Notes';
+  const L89 = f => (LAY && LAY[f.id]) || {};   // v89: {free, link} of a file
   const fileRow = (f, sec) => { const S = sec ? sections() : null, me = sec ? sec.files : null, i = me ? me.indexOf(f) : -1;
-    return h`<div class="ts-file"><span class="ts-ic ${f.kind === 'schedule' ? 'info' : f.kind === 'notes' ? 'vio' : 'gold'}">${icon(/\.pdf$/i.test(f.name || '') ? 'pdf' : 'image', 18)}</span><div class="grow"><b class="ell" style="display:block">${f.title}</b><div class="xs mut">${kindName(f.kind)}${f.kind === 'schedule' ? ' · free for everyone' : ''} · ${Math.round((f.size || 0) / 1024)} KB</div>${OPENS[f.id] ? h`<div class="xs mt4">${UI.pill((OPENS[f.id] > Date.now() ? 'Opens ' : 'Opened ') + fmt.dt(OPENS[f.id]), OPENS[f.id] > Date.now() ? 'warn' : 'ok')}</div>` : ''}
+    return h`<div class="ts-file"><span class="ts-ic ${f.kind === 'schedule' ? 'info' : f.kind === 'notes' ? 'vio' : 'gold'}">${icon(/\.pdf$/i.test(f.name || '') ? 'pdf' : 'image', 18)}</span><div class="grow"><b class="ell" style="display:block">${f.title}</b><div class="xs mut">${kindName(f.kind)}${f.kind === 'schedule' ? ' · free for everyone' : ''}${L89(f).link ? ' · Google Drive link' : ' · ' + Math.round((f.size || 0) / 1024) + ' KB'}</div>${R89 && f.kind !== 'schedule' ? h`<div class="row gap6 mt4" style="align-items:center">${UI.pill(L89(f).free ? 'Free for everyone' : 'Students with the series', L89(f).free ? 'ok' : 'warn')}<button class="btn xs ghost" data-act="fFree" data-id="${f.id}" data-free="${L89(f).free ? 0 : 1}">${L89(f).free ? 'Make buyers only' : 'Make free'}</button></div>` : ''}${OPENS[f.id] ? h`<div class="xs mt4">${UI.pill((OPENS[f.id] > Date.now() ? 'Opens ' : 'Opened ') + fmt.dt(OPENS[f.id]), OPENS[f.id] > Date.now() ? 'warn' : 'ok')}</div>` : ''}
       ${sec ? h`<div class="row gap6 mt8" style="flex-wrap:nowrap;align-items:center"><button class="btn xs ghost" data-act="mvU" data-id="${f.id}" ${i === 0 ? raw('disabled') : ''} title="Move up" aria-label="Move up">↑</button><button class="btn xs ghost" data-act="mvD" data-id="${f.id}" ${i === me.length - 1 ? raw('disabled') : ''} title="Move down" aria-label="Move down">↓</button>
         <select class="inp xs fmv" data-id="${f.id}" aria-label="Move to folder" style="flex:1;min-width:0;height:30px;padding:0 8px"><option value="" disabled selected>Folder…</option>${join(S.filter(x => x.name !== sec.name), x => h`<option value="${x.name || '#none#'}">${x.name ? '📁 ' + x.name : 'No folder'}</option>`)}<option value="#new#">+ New folder…</option></select>
         <button class="btn xs ghost" data-act="fOpen" data-id="${f.id}" title="Students can open it only from this time" aria-label="Opens at">${icon('clock', 14)}</button><button class="btn xs danger" data-act="fDel" data-id="${f.id}" aria-label="Delete">${icon('trash', 13)}</button></div>` : ''}</div>
@@ -686,13 +687,15 @@ function mediaDrawer(sid) {
       <div class="row wrap mt12"><button class="btn soft" data-act="cvUp">${icon('upload', 16)} ${s.has_cover ? 'Change photo' : 'Upload photo'}</button>${s.has_cover ? h`<button class="btn ghost danger" data-act="cvRm">${icon('trash', 15)} Remove</button>${cv === undefined ? '' : UI.pill('Cover set', 'ok')}` : ''}</div>
       <div class="section-t">Syllabus, schedule & notes</div>
       ${(s.files || []).length ? (LAY ? folderBox() : h`<div class="card flat tight">${join(ordered(), f => fileRow(f, null))}</div>`) : h`<div class="card flat tight"><div class="xs mut">No files yet. Students can open these from the series page.</div></div>`}
-      <div class="card flat mt12"><div class="card-h">${icon('upload')}<h3>Upload a file</h3></div><div class="col gap16">
+      <div class="card flat mt12"><div class="card-h">${icon('upload')}<h3>${R89 ? "Add a file" : "Upload a file"}</h3></div><div class="col gap16">
         <div class="fld"><label for="mf-t">Name shown to students</label><input class="inp" id="mf-t" maxlength="80" placeholder="e.g. Full syllabus"></div>
+        ${R89 ? h`<div class="fld"><label>Add it as</label><div class="seg" id="mf-src">${join([['up', 'Upload a file'], ['link', 'Google Drive link']], ([v, l]) => h`<button type="button" class="${src === v ? 'on' : ''}" data-v="${v}">${l}</button>`)}</div></div>` : ''}
         <div class="fld"><label>Type</label><div class="seg" id="mf-k">${join([['syllabus', 'Syllabus'], ['schedule', 'Schedule'], ['notes', 'Notes']], ([v, l]) => h`<button type="button" class="${kind === v ? 'on' : ''}" data-v="${v}">${l}</button>`)}</div></div>
-        <div class="dropzone" data-act="fPick" id="mf-dz">${file ? h`${icon('fileText', 18)} <b>${file.name}</b> · ${fmt.bytes(file.size)} <span class="xs">(tap to change)</span>` : h`${icon('upload', 18)} <b>Choose a PDF or image</b> · up to 6 MB`}</div>
+        ${R89 && kind !== 'schedule' ? h`<div class="fld"><label>Who can open it</label><div class="seg" id="mf-a">${join([['paid', 'Students with the series'], ['free', 'Everyone (free)']], ([v, l]) => h`<button type="button" class="${acc === v ? 'on' : ''}" data-v="${v}">${l}</button>`)}</div><div class="xs mut mt4">${acc === 'free' ? 'Every student can open this file, even without buying the series.' : 'Only students who have this series can open it.'}</div></div>` : ''}
+        ${R89 && src === 'link' ? h`<div class="fld"><label for="mf-u">Google Drive link</label><input class="inp" id="mf-u" maxlength="500" inputmode="url" placeholder="https://drive.google.com/file/d/…/view"><div class="xs mut mt4">Share the file as "Anyone with the link". Only the link is saved here, not the file.</div></div>` : h`<div class="dropzone" data-act="fPick" id="mf-dz">${file ? h`${icon('fileText', 18)} <b>${file.name}</b> · ${fmt.bytes(file.size)} <span class="xs">(tap to change)</span>` : h`${icon('upload', 18)} <b>Choose a PDF or image</b> · up to 6 MB`}</div>`}
         <div id="mf-p" class="hide"><div class="progress"><i style="width:0%"></i></div><div class="xs mut mt8" id="mf-s"></div></div>
         <div class="err sm" id="mf-e"></div>
-        <button class="btn pri" data-act="fUp" ${file ? '' : raw('disabled')}>${icon('upload', 16)} Upload file</button></div></div>`;
+        <button class="btn pri" data-act="fUp" ${file || (R89 && src === 'link') ? '' : raw('disabled')}>${icon('upload', 16)} ${R89 && src === 'link' ? 'Add link' : 'Upload file'}</button></div></div>`;
   };
   UI.drawer({
     title: 'Cover & files', sub: (S_(sid) || {}).title || '', body: body(),
@@ -701,15 +704,16 @@ function mediaDrawer(sid) {
       const refresh = async () => { AX.cache.drop('catalog'); const c = await AX.data.catalog(true); if (c && c.ok) C = c; redraw(); AX.emit('data:changed'); AX.emit('tests:changed'); };
       if (S_(sid) && S_(sid).has_cover && !COV.has(sid)) loadCovers().then(() => { if (el.isConnected) redraw(); });
       // v43: when each file opens for students (e.g. solutions only after the test)
-      AX.api.call('cbt_admin_files', 'get', { series_id: sid }).then(r => { if (r && r.ok) { OPENS = r.files || {}; if (r.layout) LAY = r.layout; if (el.isConnected) redraw(); } });
+      const loadLay = () => AX.api.call('cbt_admin_files', 'get', { series_id: sid }).then(r => { if (r && r.ok) { OPENS = r.files || {}; if (r.layout) LAY = r.layout; R89 = !!r.v89; if (el.isConnected) redraw(); } });
+      loadLay();
       const arrange = async (list) => {
         const items = list.map((f, i) => ({ id: f.id, folder: folderOf(f), sort: i }));
         const r = await AX.api.call('cbt_admin_files', 'arrange', { series_id: sid, items });
         if (!r.ok) { UI.toast(r.error === 'action' ? 'Run supabase_v77_free_vs_paid.sql in Supabase first' : AX.errText(r), { tone: 'bad' }); return false; }
-        items.forEach(x => { LAY[x.id] = { folder: x.folder, sort: x.sort }; }); redraw(); AX.cache.drop('catalog'); return true;
+        items.forEach(x => { LAY[x.id] = Object.assign({}, LAY[x.id], { folder: x.folder, sort: x.sort }); }); /* keep free / link */ redraw(); AX.cache.drop('catalog'); return true;
       };
       // save sections in order: every file gets its folder and a running number
-      const save = async (S) => { const L = []; S.forEach(sec => sec.files.forEach(f => { LAY[f.id] = { folder: sec.name, sort: 0 }; L.push(f); })); return arrange(L); };
+      const save = async (S) => { const L = []; S.forEach(sec => sec.files.forEach(f => { LAY[f.id] = Object.assign({}, LAY[f.id], { folder: sec.name, sort: 0 }); L.push(f); })); return arrange(L); };
       const move = async (id, d) => { const S = sections(), sec = S.find(x => x.files.some(f => f.id === id)); if (!sec) return; const i = sec.files.findIndex(f => f.id === id), j = i + d; if (j < 0 || j >= sec.files.length) return; [sec.files[i], sec.files[j]] = [sec.files[j], sec.files[i]]; await save(S); };
       const moveSec = async (k, d) => { const S = sections(), j = k + d; if (j < 0 || j >= S.length) return; [S[k], S[j]] = [S[j], S[k]];
         NEWF = S.filter(x => !x.files.length).map(x => x.name); await save(S); };
@@ -720,7 +724,9 @@ function mediaDrawer(sid) {
       el.addEventListener('change', async e => { const sel = e.target.closest('select.fmv'); if (!sel) return; let v = sel.value; if (v === '') return;
         if (v === '#new#') { v = await askName('New folder'); if (!v) { sel.value = ''; return; } } else if (v === '#none#') v = '';
         await toFolder(sel.dataset.id, v); });
-      el.addEventListener('click', e => { const b = e.target.closest('#mf-k button'); if (!b) return; kind = b.dataset.v; el.querySelectorAll('#mf-k button').forEach(x => x.classList.toggle('on', x === b)); });
+      el.addEventListener('click', e => { const b = e.target.closest('#mf-k button, #mf-src button, #mf-a button'); if (!b) return; const t = el.querySelector('#mf-t'), u = el.querySelector('#mf-u'), tv = t ? t.value : '', uv = u ? u.value : '';
+        if (b.closest('#mf-k')) kind = b.dataset.v; else if (b.closest('#mf-src')) src = b.dataset.v; else acc = b.dataset.v;
+        redraw(); const t2 = el.querySelector('#mf-t'), u2 = el.querySelector('#mf-u'); if (t2) t2.value = tv; if (u2) u2.value = uv; });
       AX.act(el, {
         mvU: b => move(b.dataset.id, -1),
         mvD: b => move(b.dataset.id, 1),
@@ -750,6 +756,13 @@ function mediaDrawer(sid) {
             COV.set(sid, ''); UI.toast('Cover removed'); await refresh(); paintCover(sid);
           });
         },
+        async fFree(b) {
+          await UI.busy(b, async () => {
+            const r = await AX.api.call('cbt_admin_files', 'free', { id: b.dataset.id, free: b.dataset.free === '1' });
+            if (!r.ok) return UI.err(r);
+            UI.toast(b.dataset.free === '1' ? 'Free for everyone' : 'Only students with the series'); await loadLay();
+          });
+        },
         async fOpen(b) {
           const v = await UI.pickDateTime({ value: OPENS[b.dataset.id] || null, title: 'Students can open this file from', clear: true });
           if (v === undefined) return;
@@ -767,6 +780,21 @@ function mediaDrawer(sid) {
         async fPick() { const f = await AX.u.pickFile('application/pdf,image/png,image/jpeg,image/webp'); if (!f) return; const t = el.querySelector('#mf-t').value; file = f; redraw(); el.querySelector('#mf-t').value = t || f.name.replace(/\.[a-z0-9]+$/i, ''); },
         async fUp(b) {
           if (busy) return;
+          if (R89 && src === 'link') {   // v89: a Google Drive link instead of an upload
+            const er = el.querySelector('#mf-e'), url = (el.querySelector('#mf-u').value || '').trim(), title = el.querySelector('#mf-t').value.trim();
+            er.textContent = '';
+            if (!title) { er.textContent = 'Please type the name students will see.'; return; }
+            if (!/^https:\/\/(drive|docs)\.google\.com\//.test(url)) { er.textContent = 'Please paste a Google Drive link (it starts with https://drive.google.com/).'; return; }
+            busy = true;
+            await UI.busy(b, async () => {
+              try {
+                const r = await AX.api.call('cbt_admin_files', 'link', { series_id: sid, title, kind, url, free: kind === 'schedule' || acc === 'free' });
+                if (!r.ok) { er.textContent = r.error === 'url' ? 'This link is not accepted. Use a drive.google.com or docs.google.com link.' : r.error === 'many' ? 'This series already has 200 files.' : AX.errText(r); return; }
+                UI.toast('Link added'); el.querySelector('#mf-u').value = ''; el.querySelector('#mf-t').value = ''; await refresh(); await loadLay();
+              } finally { busy = false; }
+            });
+            return;
+          }
           const er = el.querySelector('#mf-e'), set = (p, t) => { el.querySelector('#mf-p').classList.remove('hide'); el.querySelector('#mf-p i').style.width = p + '%'; el.querySelector('#mf-s').textContent = t; };
           er.textContent = '';
           if (!file) { er.textContent = 'Please choose a file.'; return; }
@@ -786,7 +814,9 @@ function mediaDrawer(sid) {
                 id = r.id;
               }
               set(100, 'Done');
-              file = null; UI.toast('File uploaded'); await refresh();
+              let note = 'File uploaded';
+              if (R89 && acc === 'free' && kind !== 'schedule') { const fr = await AX.api.call('cbt_admin_files', 'free', { id, free: true }); if (!fr.ok) note = 'File uploaded, but it could not be made free. Use "Make free" on it.'; }
+              file = null; UI.toast(note); await refresh(); await loadLay();
             } catch (e) { er.textContent = 'Upload failed: ' + e.message; }
             finally { busy = false; }
           });

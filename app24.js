@@ -249,8 +249,8 @@ function xPanel(s){
   }
   if(SVT==='ma'){
     const fl=s.files||[];
-    return `<div class="xfiles">${fl.map(f=>`<button class="xfile${open?'':' lk'}" onclick="${open?`openFile('${esc(f.id)}','${esc(f.kind||'')}')`:`tsExplore('${s.id}','rs')`}"><span class="xfi">${ic(open?(f.kind==='schedule'?'calendar':'file'):'lock',18)}</span>
-      <span class="grow"><b>${esc(f.title)}</b><small>${esc(KIND[f.kind]||'File')}${f.size?' · '+fsize(f.size):''}${open?'':' · opens after you buy'}</small></span><span class="xfa">${ic(open?'download':'lock',16)}</span></button>`).join('')}</div>`;
+    return `<div class="xfiles">${fl.map(f=>{const op=open||!f.locked;return `<button class="xfile${op?'':' lk'}" onclick="${op?`openFile('${esc(f.id)}','${esc(f.kind||'')}',${f.link?1:0})`:`tsExplore('${s.id}','rs')`}"><span class="xfi">${ic(op?(f.kind==='schedule'?'calendar':'file'):'lock',18)}</span>
+      <span class="grow"><b>${esc(f.title)}</b><small>${esc(KIND[f.kind]||'File')}${f.size?' · '+fsize(f.size):''}${op?'':' · opens after you buy'}</small></span><span class="xfa">${ic(op?'download':'lock',16)}</span></button>`}).join('')}</div>`;
   }
   if(SVT==='rv'){
     const it=itemOf(s),rv=xRv(it);let h='';

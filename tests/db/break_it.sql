@@ -1916,6 +1916,59 @@ select pg_temp.chk('45j the activity log has the answer, close and delete; a dou
   and pg_temp.refused($q$insert into cbt_private.doubts (student_id, body, status) select id, 'ok text', 'weird' from cbt_private.students limit 1$q$)
   and not has_table_privilege('anon', 'cbt_private.doubts', 'select'));
 
+
+-- ===== v89: free or paid per file, Google Drive links =====
+reset role;
+select public.cbt_admin_login('','OwnerPass2026x','Owner')->>'token' as ow89 \gset
+-- student 9000000001 is made a non-buyer of the first series for these checks (put back below)
+delete from cbt_private.series_access where series_id = '11111111-1111-1111-1111-111111111111' and student_id = (select id from cbt_private.students where mobile = '9000000001');
+set role anon;
+select public.cbt_admin_files(:'ow89','link','{"series_id":"11111111-1111-1111-1111-111111111111","title":"Drive notes","kind":"notes","url":"https://drive.google.com/file/d/ABCdef123_-x/view?usp=sharing"}')->>'id' as l89 \gset
+select pg_temp.chk('46a admin: a Drive link is accepted only for Google Drive / Docs https links, and is locked (buyers only) unless made free',
+  :'l89' is not null and length(:'l89') = 36
+  and public.cbt_admin_files(:'ow89','link','{"series_id":"11111111-1111-1111-1111-111111111111","title":"x","url":"https://evil.example.com/a.pdf"}')->>'error' = 'url'
+  and public.cbt_admin_files(:'ow89','link','{"series_id":"11111111-1111-1111-1111-111111111111","title":"x","url":"javascript:alert(1)"}')->>'error' = 'url'
+  and public.cbt_admin_files(:'ow89','link','{"series_id":"99999999-9999-9999-9999-999999999999","title":"x","url":"https://drive.google.com/file/d/AAA/view"}')->>'error' = 'series'
+  and (public.cbt_admin_files(:'ow89','get','{"series_id":"11111111-1111-1111-1111-111111111111"}')->'layout'->(:'l89')->>'link')::boolean
+  and not (public.cbt_admin_files(:'ow89','get','{"series_id":"11111111-1111-1111-1111-111111111111"}')->'layout'->(:'l89')->>'free')::boolean);
+select public.cbt_catalog('9000000001','AAAA1111','dev-aaaaaaaa')::text as ca89, public.cbt_catalog('9000000002','BBBB2222','dev-bbbbbbbb')::text as cb89,
+       public.cbt_series_feed('9000000001','AAAA1111','dev-aaaaaaaa','11111111-1111-1111-1111-111111111111')::text as fa89,
+       public.cbt_series_feed('9000000002','BBBB2222','dev-bbbbbbbb','11111111-1111-1111-1111-111111111111')::text as fb89 \gset
+select pg_temp.chk('46b the Drive link is never in the catalog or the feed (for anyone); a paid link is locked for a free student and open for a buyer',
+  position('drive.google' in :'ca89') = 0 and position('drive.google' in :'cb89') = 0 and position('drive.google' in :'fa89') = 0 and position('drive.google' in :'fb89') = 0
+  and (select (x->>'locked')::boolean and (x->>'link')::boolean from jsonb_array_elements(:'ca89'::jsonb->'series'->0->'files') x where x->>'id' = :'l89')
+  and (select not (x->>'locked')::boolean from jsonb_array_elements(:'cb89'::jsonb->'series'->0->'files') x where x->>'id' = :'l89')
+  and public.cbt_file_link('9000000001','AAAA1111','dev-aaaaaaaa',:'l89'::uuid)->>'error' = 'locked'
+  and public.cbt_file_link('9000000002','BBBB2222','dev-bbbbbbbb',:'l89'::uuid)->>'url' = 'https://drive.google.com/file/d/ABCdef123_-x/view?usp=sharing'
+  and public.cbt_file_part('9000000002','BBBB2222','dev-bbbbbbbb',:'l89'::uuid,0)->>'error' = 'link'
+  and public.cbt_file_link('9000000001','WRONG','dev-aaaaaaaa',:'l89'::uuid)->>'ok' = 'false');
+select public.cbt_admin_files(:'ow89','free',jsonb_build_object('id',:'l89','free',true))->>'ok' as fr89 \gset
+select pg_temp.chk('46c making the link free opens it for a student without the series; the link is still not in the catalog',
+  :'fr89' = 'true'
+  and public.cbt_file_link('9000000001','AAAA1111','dev-aaaaaaaa',:'l89'::uuid)->>'url' like 'https://drive.google.com/%'
+  and position('drive.google' in public.cbt_catalog('9000000001','AAAA1111','dev-aaaaaaaa')::text) = 0
+  and (select not (x->>'locked')::boolean from jsonb_array_elements(public.cbt_catalog('9000000001','AAAA1111','dev-aaaaaaaa')->'series'->0->'files') x where x->>'id' = :'l89'));
+select public.cbt_admin_files(:'ow89','free','{"id":"ffffffff-0000-0000-0000-000000000001","free":true}')->>'ok' as fu89 \gset
+select pg_temp.chk('46d an uploaded paid file can be made free for everyone and back; the schedule stays free; a missing file is refused',
+  :'fu89' = 'true'
+  and public.cbt_file_part('9000000001','AAAA1111','dev-aaaaaaaa','ffffffff-0000-0000-0000-000000000001',0)->>'data' = 'PAID-PDF-CONTENT'
+  and public.cbt_admin_files(:'ow89','free','{"id":"ffffffff-0000-0000-0000-000000000001","free":false}')->>'ok' = 'true'
+  and public.cbt_file_part('9000000001','AAAA1111','dev-aaaaaaaa','ffffffff-0000-0000-0000-000000000001',0)->>'error' = 'locked'
+  and (public.cbt_file_part('9000000001','AAAA1111','dev-aaaaaaaa','ffffffff-0000-0000-0000-000000000077',0)->>'data') = 'SCHEDULE'
+  and public.cbt_admin_files(:'ow89','free','{"id":"00000000-0000-0000-0000-00000000dead","free":true}')->>'error' = 'not_found');
+select public.cbt_admin_files(:'ow89','set',jsonb_build_object('id',:'l89','at',(extract(epoch from now())*1000)::bigint + 86400000))->>'ok' as op89 \gset
+select pg_temp.chk('46e the "opens at" time still blocks a Drive link, even a free one; the new student function is anon only',
+  :'op89' = 'true'
+  and public.cbt_file_link('9000000001','AAAA1111','dev-aaaaaaaa',:'l89'::uuid)->>'error' = 'not_open'
+  and public.cbt_file_link('9000000002','BBBB2222','dev-bbbbbbbb',:'l89'::uuid)->>'error' = 'not_open'
+  and not has_function_privilege('authenticated', 'public.cbt_file_link(text,text,text,uuid)', 'execute')
+  and has_function_privilege('anon', 'public.cbt_file_link(text,text,text,uuid)', 'execute'));
+reset role;
+insert into cbt_private.series_access (student_id, series_id) select id, '11111111-1111-1111-1111-111111111111' from cbt_private.students where mobile = '9000000001' on conflict do nothing;
+select pg_temp.chk('46f the lock-rule helper cannot be called by the app roles',
+  not has_function_privilege('anon', 'cbt_private.file_locked(text,boolean,boolean,boolean)', 'execute')
+  and not has_function_privilege('authenticated', 'cbt_private.file_locked(text,boolean,boolean,boolean)', 'execute'));
+
 -- ===== report =====
 \t off
 \a

@@ -96,11 +96,22 @@ function filesBlock(s){
   const fl=s.files||[];if(!fl.length)return '';
   return `<div class="h2s">${ic('file',20)} Syllabus &amp; schedule</div><div class="card">${fl.map(f=>`<div class="rrow"><div class="tico">${ic('file')}</div>
     <div class="grow"><b>${esc(f.title)}</b><span class="sm mut">${KIND[f.kind]||'File'}</span></div>
-    <button class="btn soft sm" onclick="openFile('${f.id}','${esc(f.kind||'')}')">${ic('download')} ${f.kind==='schedule'?'Open / Save':'Open'}</button></div>`).join('')}</div>`;
+    <button class="btn soft sm" onclick="openFile('${f.id}','${esc(f.kind||'')}',${f.link?1:0})">${ic('download')} ${f.kind==='schedule'?'Open / Save':'Open'}</button></div>`).join('')}</div>`;
 }
 // v87: a download name that is safe and has the right extension (also used by the new design)
 function fileDlName(n,mime){const b=String(n||'file').replace(/[\\/:*?"<>|\u0000-\u001f]/g,'').trim().slice(0,90)||'file';return /\.(pdf|png|jpe?g|webp)$/i.test(b)?b:b+(({'application/pdf':'.pdf','image/png':'.png','image/jpeg':'.jpg','image/webp':'.webp'})[mime||'']||'')}
-async function openFile(id,kind){
+// v89: a file that is a Google Drive link: the server checks the lock and gives the link; View or Download from Google
+async function openFileLink(id){
+  const r=await rpc('cbt_file_link',{p_file:id});
+  if(!r||!r.ok||!/^https:\/\/(drive|docs)\.google\.com\/[A-Za-z0-9/_?=&%.#~+-]{1,500}$/.test(r.url||'')){if(!(r&&authErr(r)))toast(r&&r.error==='not_open'?'This file opens on '+fmtWhen(r.opens_at)+'.':r&&r.error==='locked'?'This file is part of a test series you have not joined.':'Could not open this file.');return}
+  let d=r.url,m=/\/file\/d\/([A-Za-z0-9_-]{10,})/.exec(r.url)||/[?&]id=([A-Za-z0-9_-]{10,})/.exec(r.url);
+  if(m&&/^https:\/\/drive\.google\.com\//.test(r.url))d='https://drive.google.com/uc?export=download&id='+m[1];
+  modal(`<div class="logo" style="background:var(--ok)">${ic('check',24)}</div><h2>${esc(r.title||'File')}</h2><p class="mut" style="margin:6px 0 14px">Opens in Google Drive</p>
+   <div class="row"><a class="btn soft" style="flex:1;text-decoration:none" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${ic('eye')} View</a><a class="btn" style="flex:1;text-decoration:none" href="${esc(d)}" target="_blank" rel="noopener noreferrer">${ic('download')} Download</a></div>
+   <button class="btn ghost block" style="margin-top:10px" onclick="closeModal()">Close</button>`);
+}
+async function openFile(id,kind,link){
+  if(link)return openFileLink(id);
   if(FILEURL[id])return showFile(id,kind==='schedule');
   modal(`<div class="spin"></div><p class="mut" style="text-align:center" id="fp">Downloading…</p>`);
   const parts=[];let n=0,total=1,mime='application/pdf',name='file';

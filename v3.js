@@ -5,7 +5,7 @@
 (function(){
 'use strict';
 if(window.__v3)return;window.__v3=1;
-const V3VER=92;
+const V3VER=93;
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}};
 const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 /* the new design is the only design now: the old cbt_v3=false choice is ignored. cbt_v3_ci is set only by the
@@ -546,7 +546,7 @@ function feedOf(sid){if(FEED3[sid]===undefined){FEED3[sid]=null;rpc('cbt_series_
 function dayFeed(a){const cs=curSeries();if(!cs)return [];const b=addDays(a,1);return feedOf(cs.id).filter(x=>x.at>=a&&x.at<b).sort((x,y)=>x.at-y.at)}
 const FDL={file:'New file',post:'Announcement',pdf:'Answer key PDF'};
 function feedRow(x,sid){const lk=!!x.locked,ico=x.k==='post'?'mega':x.k==='file'&&x.kind==='schedule'?'cal':'file',
-  act=x.k==='file'?(lk?'data-a="resLocked"':`data-a="fileOpen" data-id="${esc3(x.id)}" data-t="${esc3(x.title)}" data-kind="${esc3(x.kind||'')}"`):`data-a="openSD" data-id="${esc3(sid)}" data-t="${x.k==='post'?'a':'r'}"`;
+  act=x.k==='file'?(lk?'data-a="resLocked"':`data-a="fileOpen" data-id="${esc3(x.id)}" data-t="${esc3(x.title)}" data-kind="${esc3(x.kind||'')}" data-link="${x.link?1:0}"`):`data-a="openSD" data-id="${esc3(sid)}" data-t="${x.k==='post'?'a':'r'}"`;
   return `<button class="it test${lk?' dim':''}" ${act} style="width:100%;text-align:left"><time>${fT(x.at)}</time><div><b>${esc3(x.title||FDL[x.k])}</b><small><em>${FDL[x.k]||'Update'}</em>${x.k==='file'?`, ${({schedule:'Schedule',syllabus:'Syllabus',notes:'Notes'})[x.kind]||'File'}`:''}${lk?', buy to open':''}</small></div>${ic(lk?'lock':'right',16)}</button>`}
 function dayItems(a){const b=addDays(a,1);return wkTests().filter(t=>t.opens_at>=a&&t.opens_at<b).sort((x,y)=>x.opens_at-y.opens_at)}
 const weekItems=i=>dayItems(addDays(MON(),i));
@@ -900,7 +900,7 @@ function resView(sid,k){if(!resGroups(sid).some(x=>x.k===k))return null;
   return {t:(resGroups(sid).find(x=>x.k===k)||{}).t||'Resources',s:sOf(sid).title,key:'res',html:()=>{const g=resGroups(sid).find(x=>x.k===k);
    if(!g)return `<div class="card empty"><b>Nothing here yet</b></div>`;let i=0;
    return `<div class="stack" style="gap:10px">${g.f.map(f=>f.locked?`<div class="card rows"><button class="row dim rs3r" style="--d:${i++}" data-a="resLocked"><span class="ti">${ic('lock',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>Buy this series to open it</small></span>${ic('lock',18)}</button></div>`
-     :`<div class="card rows"><button class="row rs3r" style="--d:${i++}" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}" data-kind="${esc3(f.kind||'')}" aria-label="${fileAria(f)} ${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b>${fSize(f)?`<small>${fSize(f)}</small>`:''}</span>${fileIc(f)}</button></div>`).join('')}${g.p.map(t=>{const l=PDF3[t.id].label||t.title;
+     :`<div class="card rows"><button class="row rs3r" style="--d:${i++}" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}" data-kind="${esc3(f.kind||'')}" data-link="${f.link?1:0}" aria-label="${fileAria(f)} ${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b>${fSize(f)?`<small>${fSize(f)}</small>`:''}</span>${fileIc(f)}</button></div>`).join('')}${g.p.map(t=>{const l=PDF3[t.id].label||t.title;
      return `<div class="card rows"><button class="row rs3r" style="--d:${i++}" data-a="pdfOpen" data-id="${esc3(t.id)}"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(l)}</b>${l!==t.title?`<small>${esc3(t.title)}</small>`:''}</span>${ic('dl',18)}</button></div>`}).join('')}</div>`}}}
 A.resOpen=el=>{const v=resView(el.dataset.id,el.dataset.k);if(v){hap(6);push(v)}};
 A.resLocked=()=>toast3('This file opens after you buy the series.');
@@ -1315,7 +1315,7 @@ const FILES3={};
 // Only a Schedule file offers Download (it is open to every student); notes, syllabus and PDFs show View only.
 // This is the screen's rule: a file that can be viewed can still be saved from the browser's own menu.
 const dlOk=f=>!!f&&f.kind==='schedule';
-const fileIc=f=>ic(dlOk(f)?'dl':'eye',18),fileAria=f=>dlOk(f)?'Download':'View';
+const fileIc=f=>ic(dlOk(f)||f.link?'dl':'eye',18),fileAria=f=>dlOk(f)?'Download':f.link?'Open':'View';   // a Google Drive file offers View and Download
 const dlName=(n,t)=>fileDlName(n,t);   // shared helper in app2.js
 async function fileGet(id,title,dl){
   if(FILES3[id])return fileSheet(id,dl)
@@ -1332,8 +1332,14 @@ async function fileGet(id,title,dl){
 function fileSheet(id,dl){const f=FILES3[id];   // a Schedule file also has Download
   if(!f.view){toast3('This file cannot be shown.');return}
   openSheet(`<span class="ti g" style="margin-bottom:12px">${ic('check',22)}</span><h2 id="sheetT">File ready</h2><p class="sub">${esc3(f.title||f.name)}</p>
-  <div class="${dl?'g2':''}" style="margin-top:14px;${dl?'grid-template-columns:1fr 1fr':''}"><a class="btn${dl?' ghost':' block'}" href="${f.url}" target="_blank" rel="noopener">${ic('eye',16)}View</a>${dl?`<a class="btn" href=""${f.url}" download="${esc3(dlName(f.name,f.mime))}">${ic('dl',16)}Download</a>`:''}</div>`)}
-A.fileOpen=el=>fileGet(el.dataset.id,el.dataset.t||'',el.dataset.kind==='schedule');
+  <div class="${dl?'g2':''}" style="margin-top:14px;${dl?'grid-template-columns:1fr 1fr':''}"><a class="btn${dl?' ghost':' block'}" href="${f.url}" target="_blank" rel="noopener">${ic('eye',16)}View</a>${dl?`<a class="btn" href="${f.url}" download="${esc3(dlName(f.name,f.mime))}">${ic('dl',16)}Download</a>`:''}</div>`)}
+A.fileOpen=el=>el.dataset.link==='1'?linkGet(el.dataset.id,el.dataset.t||''):fileGet(el.dataset.id,el.dataset.t||'',el.dataset.kind==='schedule');
+// v89: a file that is a Google Drive link. The link comes only from the server, after it checked the lock and the "opens at" time.
+async function linkGet(id,title){
+  let r=null;try{r=await rpc('cbt_file_link',{p_file:id})}catch(e){}
+  if(!r||!r.ok||!pdfLinkOk(r.url)){toast3(r&&r.error==='not_open'?'This file opens on '+dS(r.opens_at)+'.':r&&r.error==='locked'?'This file is part of a test series you have not joined.':'Could not open this file. Please try again.');return}
+  openSheet(`<span class="ti g" style="margin-bottom:12px">${ic('file',22)}</span><h2 id="sheetT">${esc3(title||r.title||'File')}</h2><p class="sub">Opens in Google Drive</p>
+  <div class="g2" style="margin-top:14px;grid-template-columns:1fr 1fr"><a class="btn ghost" href="${esc3(r.url)}" target="_blank" rel="noopener noreferrer">${ic('eye',16)}View</a><a class="btn" href="${esc3(pdfDl3(r.url))}" target="_blank" rel="noopener noreferrer">${ic('dl',16)}Download</a></div>`)}
 
 /* ---------- Notes & PDFs: notes of tests (Google Drive links) and the files of every series ---------- */
 let PDF3=null,pdf3Asked=0;
@@ -1342,7 +1348,7 @@ function notesView(){return {t:'Notes & PDFs',s:'Study material of your test ser
   const T=(C().tests||[]).filter(t=>PDF3&&PDF3[t.id]),S=mine().filter(s=>(s.files||[]).length);
   if(PDF3===null)return '<div class="card sk" style="height:90px"></div><div class="card sk" style="height:90px"></div>';
   if(!T.length&&!S.length)return `<div class="card empty"><span class="ti">${ic('file',22)}</span><b>No notes yet</b><p>When your teacher adds notes or PDFs to your test series, they show up here.</p></div>`;
-  return S.map(s=>`<div class="stack" style="gap:10px"><p class="gh">${esc3(s.title)}</p><div class="card rows">${s.files.map(f=>`<button class="row" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}" data-kind="${esc3(f.kind||'')}" aria-label="${fileAria(f)} ${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>${({schedule:'Schedule',syllabus:'Syllabus',notes:'Notes'})[f.kind]||'File'}</small></span>${fileIc(f)}</button>`).join('')}</div></div>`).join('')
+  return S.map(s=>`<div class="stack" style="gap:10px"><p class="gh">${esc3(s.title)}</p><div class="card rows">${s.files.map(f=>`<button class="row" data-a="fileOpen" data-id="${esc3(f.id)}" data-t="${esc3(f.title||f.name)}" data-kind="${esc3(f.kind||'')}" data-link="${f.link?1:0}" aria-label="${fileAria(f)} ${esc3(f.title||f.name)}"><span class="ti g">${ic(f.kind==='schedule'?'cal':f.kind==='syllabus'?'list':'file',19)}</span><span><b>${esc3(f.title||f.name)}</b><small>${({schedule:'Schedule',syllabus:'Syllabus',notes:'Notes'})[f.kind]||'File'}</small></span>${fileIc(f)}</button>`).join('')}</div></div>`).join('')
    +(T.length?`<div class="stack" style="gap:10px"><p class="gh">Notes of tests</p><div class="card rows">${T.map(t=>`<div class="row"><span class="ti g">${ic('file',19)}</span><span><b>${esc3(PDF3[t.id].label||t.title)}</b><small>${esc3(t.title)}, Google Drive</small></span><button class="btn sm" data-a="pdfOpen" data-id="${esc3(t.id)}" aria-label="Open or download">${ic('dl',15)}Open</button></div>`).join('')}</div></div>`:'')}}}
 const pdfLinkOk=u=>typeof u==='string'&&u.length<=500&&/^https:\/\/(drive|docs)\.google\.com\/[A-Za-z0-9/_?=&%.#~+-]+$/.test(u);
 function loadPdf3(){return rpc('cbt_test_pdfs',{}).then(r=>{const o={};if(r&&r.ok&&r.items)for(const k in r.items){const x=r.items[k];if(/^[A-Za-z0-9_-]{1,64}$/.test(k)&&x&&pdfLinkOk(x.url))o[k]={url:x.url,label:String(x.label||''),folder:String(x.folder||'').trim()}}PDF3=o}).catch(()=>{PDF3=PDF3||{}})}
