@@ -53,10 +53,13 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   await q(`update cbt_private.students set fail_count=0, locked_until=0, devices='{}'`);
   const SER = '11111111-1111-1111-1111-111111111111', b64 = MINI_PDF.toString('base64');
   await q(`delete from cbt_private.file_parts where file_id in ('eeeeeeee-0000-0000-0000-0000000000f1','eeeeeeee-0000-0000-0000-0000000000f2')`);
-  await q(`delete from cbt_private.series_files where id in ('eeeeeeee-0000-0000-0000-0000000000f1','eeeeeeee-0000-0000-0000-0000000000f2')`);
+  await q(`delete from cbt_private.series_files where id in ('eeeeeeee-0000-0000-0000-0000000000f1','eeeeeeee-0000-0000-0000-0000000000f2','eeeeeeee-0000-0000-0000-0000000000f3')`);
   await q(`insert into cbt_private.series_files (id, series_id, title, kind, file_name, mime, size, parts, ready, folder, sort_order) values
     ('eeeeeeee-0000-0000-0000-0000000000f1',$1,'CHEMISTRY PRO TEST PLANNER','schedule','planner.pdf','application/pdf',1000,1,true,'',0),
     ('eeeeeeee-0000-0000-0000-0000000000f2',$1,'Cumulative Test 1','notes','cum1.pdf','application/pdf',1000,1,true,'Cumulative Test',1)`, [SER]);
+  // v89: a Google Drive link file (buyers only) in the same folder
+  await q(`insert into cbt_private.series_files (id, series_id, title, kind, file_name, mime, size, parts, ready, folder, sort_order, url, free) values
+    ('eeeeeeee-0000-0000-0000-0000000000f3',$1,'Cumulative Drive notes','notes','Google Drive','link',0,0,true,'Cumulative Test',2,'https://drive.google.com/file/d/1DriveNotesAbCdEfGh/view?usp=sharing',false)`, [SER]);
   await q(`insert into cbt_private.file_parts (file_id, n, data) values ('eeeeeeee-0000-0000-0000-0000000000f1',0,$1),('eeeeeeee-0000-0000-0000-0000000000f2',0,$1)`, [b64]);
   await new Promise(r => server.listen(PORT, '127.0.0.1', r));
   const br = await chromium.launch();
@@ -75,6 +78,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   ok((await sRow.getAttribute('aria-label') || '').startsWith('Download'), 'schedule row is marked Download (download icon, not the eye)');
   await sRow.click(); await p.waitForTimeout(2500);
   const dl = p.locator('a[download]').first();
+  ok(/^blob:/.test(await dl.getAttribute('href') || ''), 'schedule Download link points at the file (blob:), not at the page');
   ok(await dl.count() === 1, 'schedule file sheet has a Download button');
   const [d] = await Promise.all([p.waitForEvent('download', { timeout: 8000 }), dl.click()]);
   ok(/\.pdf$/i.test(d.suggestedFilename()), 'Download saves a .pdf file (' + d.suggestedFilename() + ')');
@@ -88,6 +92,15 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   await nRow.click(); await p.waitForTimeout(2500);
   ok(await p.locator('a[download]').count() === 0, 'notes file sheet has NO download link (view only)');
   ok(await p.locator('.sheet a.btn', { hasText: 'View' }).count() >= 1, 'notes file sheet has View');
+  // v89: a Drive-link file: View and Download go to Google; the link is not in the page data until the student opens it
+  await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+  ok(!(await p.evaluate(() => JSON.stringify(CAT.series.map(x => x.files)))).includes('drive.google'), 'the Drive link is not in the catalog the app holds');
+  const lRow = p.locator('[data-a="fileOpen"][data-link="1"]').first();
+  ok(await lRow.count() === 1, 'the Drive-link file is listed');
+  await lRow.click(); await p.waitForTimeout(1200);
+  const lv = await p.locator('.sheet a', { hasText: 'View' }).first().getAttribute('href'), ld = await p.locator('.sheet a', { hasText: 'Download' }).first().getAttribute('href');
+  ok(/^https:\/\/drive\.google\.com\/file\/d\/1DriveNotesAbCdEfGh/.test(lv || ''), 'Drive-link file: View goes to Google Drive');
+  ok(ld === 'https://drive.google.com/uc?export=download&id=1DriveNotesAbCdEfGh', 'Drive-link file: Download is the direct Google link (' + ld + ')');
   // a Google Drive test PDF (answer key): the sheet has View and a direct Download, both to Google; our side stores nothing
   await p.keyboard.press('Escape'); await p.waitForTimeout(400);
   const TID = 'aaaaaaaa-0000-0000-0000-0000000000e5';
@@ -109,7 +122,7 @@ const MINI_PDF = Buffer.from('%PDF-1.1\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endo
   ok(await p.evaluate(() => fileDlName('Plan: A/B?', 'application/pdf') === 'Plan AB.pdf' && fileDlName('x.PDF', 'application/pdf') === 'x.PDF' && fileDlName('pic', 'image/png') === 'pic.png' && fileDlName('raw', '') === 'raw' && fileDlName('', 'application/pdf') === 'file.pdf'), 'download name: unsafe characters removed, right extension, no "undefined"');
   ok(!errs.length, 'no page errors ' + errs.join(' | '));
   await q(`delete from cbt_private.file_parts where file_id in ('eeeeeeee-0000-0000-0000-0000000000f1','eeeeeeee-0000-0000-0000-0000000000f2')`);
-  await q(`delete from cbt_private.series_files where id in ('eeeeeeee-0000-0000-0000-0000000000f1','eeeeeeee-0000-0000-0000-0000000000f2')`);
+  await q(`delete from cbt_private.series_files where id in ('eeeeeeee-0000-0000-0000-0000000000f1','eeeeeeee-0000-0000-0000-0000000000f2','eeeeeeee-0000-0000-0000-0000000000f3')`);
   console.log(fails ? 'FAILED ' + fails : 'ALL PASS');
   await br.close(); server.close(); await db.end(); process.exit(fails ? 1 : 0);
 })();
