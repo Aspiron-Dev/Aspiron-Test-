@@ -77,7 +77,7 @@ async function rpcRoute(route) {
   // 1. live test: leaving the screen submits it, exactly once
   await setT(true, false); await clean(); let { c, p } = await boot(); await start(p);
   ok(await p.evaluate(() => INTEST && XG.on), 'live test: guard is on');
-  ok(await p.evaluate(() => document.body.classList.contains('xg-on')) && !!(await p.$('#xgWm')), 'live test: watermark and no-select class');
+  ok(await p.evaluate(() => document.body.classList.contains('xg-on')) && !(await p.$('#xgWm')), 'live test: no watermark (removed by the owner) and no-select class');
   await goHidden(p); await p.waitForTimeout(2500);
   ok((await rows()) === 1, 'live test: going to the background submitted it once (results rows ' + (await rows()) + ')');
   ok(await p.evaluate(() => !INTEST && !Object.keys(localStorage).some(k => k.startsWith('cbt_prog_'))), 'live test: progress removed, test is over');

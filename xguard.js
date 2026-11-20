@@ -9,8 +9,6 @@
    - the window loses focus for 2.5 s (a floating or split-screen app) -> a "come back" countdown, then the same submit.
    - Back (button or gesture) -> a small "Leave test?" popup first: Stay or Submit.
    - copy, cut, paste, select, drag, long-press menu, print and the usual copy / save / print keys are blocked; links do not open.
-   - a faint watermark with the student's name and masked number is drawn over the screen (a screenshot cannot be blocked by a
-     web page or an installed web app, but a leaked one can be traced).
    - the screen is kept awake (Wake Lock) so the phone does not lock while the student reads.
    Nothing here changes the server: it uses the same cbt_submit (safe to send twice: the client id returns the same result). */
 (function(){
@@ -36,7 +34,6 @@ css.textContent=`
 body.xg-on #app,body.xg-on #app *{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}
 body.xg-on img{-webkit-user-drag:none;user-drag:none}
 @media print{body.xg-on{display:none!important}}
-#xgWm{position:fixed;inset:0;z-index:35;pointer-events:none;opacity:.09;background-repeat:repeat}
 #xgBlur{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;background:rgba(12,14,20,.92);color:#fff;font-family:inherit}
 #xgBlur div{max-width:320px}
 #xgBlur b{display:block;font-size:22px;margin-bottom:8px}
@@ -47,26 +44,17 @@ body.xg-on img{-webkit-user-drag:none;user-drag:none}
 document.head.appendChild(css);
 
 /* ---------- start / stop ---------- */
-function watermark(){
-  try{
-    const nm=String((AUTH&&AUTH.name)||'').replace(/[<>&"']/g,'').slice(0,24),mb=String((AUTH&&AUTH.mobile)||'').replace(/\D/g,''),m=mb?mb.slice(0,2)+'xxxxxx'+mb.slice(-2):'';
-    const tx=(nm+' '+m).trim();if(!tx)return;
-    const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="140"><text x="20" y="90" transform="rotate(-24 120 70)" font-family="sans-serif" font-size="15" font-weight="700" fill="#808080">${tx}</text></svg>`;
-    const d=document.createElement('div');d.id='xgWm';d.style.backgroundImage='url("data:image/svg+xml;utf8,'+encodeURIComponent(svg)+'")';document.body.appendChild(d);
-  }catch(e){}
-}
 async function wake(){try{if('wakeLock' in navigator){XG.wl=await navigator.wakeLock.request('screen')}}catch(e){}}
 function unwake(){try{if(XG.wl){XG.wl.release();XG.wl=null}}catch(e){}}
 function xgStart(){
   if(!isStrict()){xgStop();return}
   if(XG.on)return;
   XG.on=true;XG.hi=(T&&T.lang==='hi');XG.popup=false;
-  document.body.classList.add('xg-on');watermark();wake();
+  document.body.classList.add('xg-on');wake();
   try{history.pushState({xg:1},'',location.href)}catch(e){}   // one guard entry: Back lands on it first
 }
 function xgStop(){
   XG.on=false;document.body.classList.remove('xg-on');
-  const w=document.getElementById('xgWm');if(w)w.remove();
   clearBlur();unwake();
 }
 window.xgStrictNow=()=>XG.on;
